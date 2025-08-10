@@ -76,6 +76,7 @@ security/manager/.nss.checkout
 
 # Build directories
 /obj*/
+/.obj*/
 
 # Hazard analysis results
 /haz-*/
