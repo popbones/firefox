@@ -375,3 +375,7 @@ toolkit/crashreporter/minidump-analyzer/analyzer-test/target/
 
 # Ignore mozperftest artifacts folder
 /artifacts/
+
+# Ignore direnv
+.envrc
+
