@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<?csp default-src chrome:; img-src data: *; media-src data: *; style-src chrome: 'unsafe-inline'; ?>
+
 <!DOCTYPE html>
 <!-- This Source Code Form is subject to the terms of the Mozilla Public
    - License, v. 2.0. If a copy of the MPL was not distributed with this
    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml"
       windowtype="Toolkit:PictureInPicture"
       macnativefullscreen="true"
+      customtitlebar="true"
+      drawtitle="true"
       scrolling="false"
       >
   <head>
@@ -16,7 +21,16 @@
     <link rel="localization" href="toolkit/pictureinpicture/pictureinpicture.ftl"/>
     <link rel="localization" href="browser/browserSets.ftl"/>
     <script src="chrome://global/content/pictureinpicture/player.js"></script>
-    <title data-l10n-id="pictureinpicture-player-title"></title>
+    <title></title>
+    #ifdef XP_MACOSX
+    #include ../../../../browser/base/content/macWindow.inc.xhtml
+    #else
+    <script src="chrome://global/content/globalOverlay.js"/>
+    <script src="chrome://global/content/editMenuOverlay.js"/>
+    <script src="chrome://browser/content/utilityOverlay.js"/>
+    #endif
+    <script src="chrome://global/content/contentAreaUtils.js"/>
+    <script src="chrome://global/content/treeUtils.js"/>
   </head>
 
   <body>
