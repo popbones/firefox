@@ -991,7 +991,7 @@ export var PictureInPicture = {
     top = Math.round(resolvedTop);
     left = Math.round(resolvedLeft);
     width = Math.round(width);
-    height = Math.round(height) + 28;
+    height = Math.round(height);
 
     let features =
       `${PLAYER_FEATURES},top=${top},left=${left},outerWidth=${width},` +
