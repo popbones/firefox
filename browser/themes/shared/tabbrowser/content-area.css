@@ -80,13 +80,17 @@
     @media -moz-pref("sidebar.revamp.round-content-area") {
       :root:not([inDOMFullscreen]) &[sidebar-shown] {
         overflow: clip;
-        border-start-end-radius: var(--border-radius-medium);
+        border-radius: var(--border-radius-medium);
+        margin-top: 0px;
+        margin-left: 4px;
+        margin-right: 8px;
+        margin-bottom: 8px;
 
         /* stylelint-disable-next-line media-query-no-invalid */
-        @media -moz-pref("sidebar.position_start") {
+        /* @media -moz-pref("sidebar.position_start") {
           border-start-start-radius: var(--border-radius-medium);
-          border-start-end-radius: 0;
-        }
+          border-start-end-radius: var(--border-radius-medium);
+        } */
       }
     }
   }
