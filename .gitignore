@@ -72,6 +72,7 @@ security/manager/.nss.checkout
 
 # Build directories
 /obj*/
+/.obj*/
 
 # Hazard analysis results
 /haz-*/
@@ -374,3 +375,7 @@ toolkit/crashreporter/minidump-analyzer/analyzer-test/target/
 
 # Ignore mozperftest artifacts folder
 /artifacts/
+
+# Ignore direnv
+.envrc
+
