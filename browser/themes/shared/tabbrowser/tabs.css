@@ -796,6 +796,8 @@
   margin-inline: 0;
   line-height: var(--tab-label-line-height); /* override 'normal' in case of fallback math fonts with huge metrics */
   white-space: nowrap;
+  /* TODO(popbones): use variable */
+  font-size: 1.1rem;
 }
 
 .tab-close-button {
