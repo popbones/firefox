@@ -1,0 +1,10 @@
+# Automatically download and use compiled C++ components:
+# ac_add_options --enable-artifact-builds
+ac_add_options --with-app-basename=Icefox
+ac_add_options --with-app-name=Icefox
+ac_add_options --with-distribution-id=com.popbones
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/.obj-@CONFIG_GUESS@
+
+mk_add_options MOZ_BRANDING_DIRECTORY=browser/branding/icefox
+mk_add_options MOZ_OFFICIAL_BRANDING_DIRECTORY=browser/branding/icefox
