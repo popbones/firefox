@@ -30,6 +30,8 @@ toolbarbutton {
   margin: 0;
   padding: 0;
   vertical-align: middle;
+  /* TODO(popbones): use variable */
+  font-size: 1.1rem;
 }
 
 /* ::::: toolbarbutton badged ::::: */
