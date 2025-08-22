@@ -1968,12 +1968,16 @@ export class PictureInPictureChild extends JSWindowActorChild {
         let video = this.getWeakVideo();
         let currentTime = this.videoWrapper.getCurrentTime(video);
         let duration = this.videoWrapper.getDuration(video);
-        if (duration - currentTime <= 0.01) {
+        if (duration - currentTime <= 1.0) {
+          console.log("Video ended");
+          console.log("Move the scrubber to the beginning");
           this.sendAsyncMessage("PictureInPicture:SetTimestampAndScrubberPosition", {
             timestamp: this.videoWrapper.formatTimestamp(currentTime, duration),
             scrubberPosition: 0
           });
-          this.videoWrapper.play(video);
+          setTimeout(() => {
+            this.videoWrapper.play(video);
+          }, 100);
         }
         break;
       }
