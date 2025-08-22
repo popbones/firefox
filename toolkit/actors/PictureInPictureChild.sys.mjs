@@ -1964,6 +1964,17 @@ export class PictureInPictureChild extends JSWindowActorChild {
       }
       case "pause": {
         this.sendAsyncMessage("PictureInPicture:Paused");
+        // MARKER: Pip Auto-Replay
+        let video = this.getWeakVideo();
+        let currentTime = this.videoWrapper.getCurrentTime(video);
+        let duration = this.videoWrapper.getDuration(video);
+        if (duration - currentTime <= 0.01) {
+          this.sendAsyncMessage("PictureInPicture:SetTimestampAndScrubberPosition", {
+            timestamp: this.videoWrapper.formatTimestamp(currentTime, duration),
+            scrubberPosition: 0
+          });
+          this.videoWrapper.play(video);
+        }
         break;
       }
       case "volumechange": {
