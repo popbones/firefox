@@ -124,6 +124,7 @@ export const prefs = new PrefsHelper("devtools", {
     "Bool",
     "debugger.source-map-ignore-list-enabled",
   ],
+  pausedOverlayEnabled: ["Bool", "debugger.features.overlay"],
 });
 
 // The pref may not be defined. Defaulting to null isn't viable (cursor never blinks).
@@ -155,7 +156,7 @@ export function resetSchemaVersion() {
 export function verifyPrefSchema() {
   if (prefs.debuggerPrefsSchemaVersion < prefsSchemaVersion) {
     asyncStore.pendingBreakpoints = {};
-    asyncStore.tabs = [];
+    asyncStore.openedURLs = [];
     asyncStore.xhrBreakpoints = [];
     asyncStore.eventListenerBreakpoints = undefined;
     asyncStore.blackboxedRanges = {};

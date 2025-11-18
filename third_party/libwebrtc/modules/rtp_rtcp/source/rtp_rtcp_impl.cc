@@ -99,7 +99,7 @@ ModuleRtpRtcpImpl::ModuleRtpRtcpImpl(const Environment& env,
 
   // Set default packet size limit.
   // TODO(nisse): Kind-of duplicates
-  // webrtc::VideoSendStream::Config::Rtp::kDefaultMaxPacketSize.
+  // VideoSendStream::Config::Rtp::kDefaultMaxPacketSize.
   const size_t kTcpOverIpv4HeaderSize = 40;
   SetMaxRtpPacketSize(IP_PACKET_SIZE - kTcpOverIpv4HeaderSize);
 }
@@ -210,7 +210,7 @@ std::optional<uint32_t> ModuleRtpRtcpImpl::FlexfecSsrc() const {
 }
 
 void ModuleRtpRtcpImpl::IncomingRtcpPacket(
-    rtc::ArrayView<const uint8_t> rtcp_packet) {
+    ArrayView<const uint8_t> rtcp_packet) {
   rtcp_receiver_.IncomingPacket(rtcp_packet);
 }
 
@@ -404,13 +404,13 @@ ModuleRtpRtcpImpl::FetchFecPackets() {
 }
 
 void ModuleRtpRtcpImpl::OnAbortedRetransmissions(
-    rtc::ArrayView<const uint16_t> /* sequence_numbers */) {
+    ArrayView<const uint16_t> /* sequence_numbers */) {
   RTC_DCHECK_NOTREACHED()
       << "Stream flushing not supported with legacy rtp modules.";
 }
 
 void ModuleRtpRtcpImpl::OnPacketsAcknowledged(
-    rtc::ArrayView<const uint16_t> sequence_numbers) {
+    ArrayView<const uint16_t> sequence_numbers) {
   RTC_DCHECK(rtp_sender_);
   rtp_sender_->packet_history.CullAcknowledgedPackets(sequence_numbers);
 }
@@ -436,7 +436,7 @@ ModuleRtpRtcpImpl::GeneratePadding(size_t target_size_bytes) {
 
 std::vector<RtpSequenceNumberMap::Info>
 ModuleRtpRtcpImpl::GetSentRtpPacketInfos(
-    rtc::ArrayView<const uint16_t> sequence_numbers) const {
+    ArrayView<const uint16_t> sequence_numbers) const {
   RTC_DCHECK(rtp_sender_);
   return rtp_sender_->packet_sender.GetSentRtpPacketInfos(sequence_numbers);
 }
@@ -601,14 +601,14 @@ int32_t ModuleRtpRtcpImpl::SendNACK(const uint16_t* nack_list,
   }
   nack_last_seq_number_sent_ = nack_list[start_id + nack_length - 1];
 
-  return rtcp_sender_.SendRTCP(GetFeedbackState(), kRtcpNack, nack_length,
-                               &nack_list[start_id]);
+  return rtcp_sender_.SendRTCP(
+      GetFeedbackState(), kRtcpNack,
+      MakeArrayView(&nack_list[start_id], nack_length));
 }
 
 void ModuleRtpRtcpImpl::SendNack(
     const std::vector<uint16_t>& sequence_numbers) {
-  rtcp_sender_.SendRTCP(GetFeedbackState(), kRtcpNack, sequence_numbers.size(),
-                        sequence_numbers.data());
+  rtcp_sender_.SendRTCP(GetFeedbackState(), kRtcpNack, sequence_numbers);
 }
 
 bool ModuleRtpRtcpImpl::TimeToSendFullNackList(int64_t now) const {
@@ -696,7 +696,7 @@ void ModuleRtpRtcpImpl::OnReceivedNack(
 }
 
 void ModuleRtpRtcpImpl::OnReceivedRtcpReportBlocks(
-    rtc::ArrayView<const ReportBlockData> report_blocks) {
+    ArrayView<const ReportBlockData> report_blocks) {
   if (rtp_sender_) {
     uint32_t ssrc = SSRC();
     std::optional<uint32_t> rtx_ssrc;

@@ -50,6 +50,7 @@ nsDocShellLoadState::nsDocShellLoadState(
     const DocShellLoadStateInit& aLoadState, mozilla::ipc::IProtocol* aActor,
     bool* aReadSuccess)
     : mNotifiedBeforeUnloadListeners(false),
+      mShouldNotForceReplaceInOnLoad(false),
       mLoadIdentifier(aLoadState.LoadIdentifier()) {
   // If we return early, we failed to read in the data.
   *aReadSuccess = false;
@@ -96,8 +97,9 @@ nsDocShellLoadState::nsDocShellLoadState(
   mTriggeringClassificationFlags = aLoadState.TriggeringClassificationFlags();
   mTriggeringRemoteType = aLoadState.TriggeringRemoteType();
   mSchemelessInput = aLoadState.SchemelessInput();
+  mForceMediaDocument = aLoadState.forceMediaDocument();
   mHttpsUpgradeTelemetry = aLoadState.HttpsUpgradeTelemetry();
-  mCsp = aLoadState.Csp();
+  mPolicyContainer = aLoadState.PolicyContainer();
   mOriginalURIString = aLoadState.OriginalURIString();
   mCancelContentJSEpoch = aLoadState.CancelContentJSEpoch();
   mPostDataStream = aLoadState.PostDataStream();
@@ -163,12 +165,13 @@ nsDocShellLoadState::nsDocShellLoadState(const nsDocShellLoadState& aOther)
       mTriggeringWindowId(aOther.mTriggeringWindowId),
       mTriggeringStorageAccess(aOther.mTriggeringStorageAccess),
       mTriggeringClassificationFlags(aOther.mTriggeringClassificationFlags),
-      mCsp(aOther.mCsp),
+      mPolicyContainer(aOther.mPolicyContainer),
       mKeepResultPrincipalURIIfSet(aOther.mKeepResultPrincipalURIIfSet),
       mLoadReplace(aOther.mLoadReplace),
       mInheritPrincipal(aOther.mInheritPrincipal),
       mPrincipalIsExplicit(aOther.mPrincipalIsExplicit),
       mNotifiedBeforeUnloadListeners(aOther.mNotifiedBeforeUnloadListeners),
+      mShouldNotForceReplaceInOnLoad(aOther.mShouldNotForceReplaceInOnLoad),
       mPrincipalToInherit(aOther.mPrincipalToInherit),
       mPartitionedPrincipalToInherit(aOther.mPartitionedPrincipalToInherit),
       mForceAllowDataURI(aOther.mForceAllowDataURI),
@@ -206,6 +209,7 @@ nsDocShellLoadState::nsDocShellLoadState(const nsDocShellLoadState& aOther)
       mRemoteTypeOverride(aOther.mRemoteTypeOverride),
       mTriggeringRemoteType(aOther.mTriggeringRemoteType),
       mSchemelessInput(aOther.mSchemelessInput),
+      mForceMediaDocument(aOther.mForceMediaDocument),
       mHttpsUpgradeTelemetry(aOther.mHttpsUpgradeTelemetry) {
   MOZ_DIAGNOSTIC_ASSERT(
       XRE_IsParentProcess(),
@@ -230,6 +234,7 @@ nsDocShellLoadState::nsDocShellLoadState(nsIURI* aURI, uint64_t aLoadIdentifier)
       mInheritPrincipal(false),
       mPrincipalIsExplicit(false),
       mNotifiedBeforeUnloadListeners(false),
+      mShouldNotForceReplaceInOnLoad(false),
       mForceAllowDataURI(false),
       mIsExemptFromHTTPSFirstMode(false),
       mOriginalFrameSrc(false),
@@ -490,7 +495,7 @@ nsresult nsDocShellLoadState::CreateFromLoadURIOptions(
   loadState->SetHeadersStream(aLoadURIOptions.mHeaders);
   loadState->SetBaseURI(aLoadURIOptions.mBaseURI);
   loadState->SetTriggeringPrincipal(aLoadURIOptions.mTriggeringPrincipal);
-  loadState->SetCsp(aLoadURIOptions.mCsp);
+  loadState->SetPolicyContainer(aLoadURIOptions.mPolicyContainer);
   loadState->SetForceAllowDataURI(forceAllowDataURI);
   if (aLoadURIOptions.mCancelContentJSEpoch) {
     loadState->SetCancelContentJSEpoch(aLoadURIOptions.mCancelContentJSEpoch);
@@ -514,6 +519,9 @@ nsresult nsDocShellLoadState::CreateFromLoadURIOptions(
 
   loadState->SetSchemelessInput(static_cast<nsILoadInfo::SchemelessInputType>(
       aLoadURIOptions.mSchemelessInput));
+
+  loadState->SetForceMediaDocument(aLoadURIOptions.mForceMediaDocument);
+  loadState->SetAppLinkLaunchType(aLoadURIOptions.mAppLinkLaunchType);
 
   loadState.forget(aResult);
   return NS_OK;
@@ -594,11 +602,14 @@ void nsDocShellLoadState::SetPartitionedPrincipalToInherit(
   mPartitionedPrincipalToInherit = aPartitionedPrincipalToInherit;
 }
 
-void nsDocShellLoadState::SetCsp(nsIContentSecurityPolicy* aCsp) {
-  mCsp = aCsp;
+void nsDocShellLoadState::SetPolicyContainer(
+    nsIPolicyContainer* aPolicyContainer) {
+  mPolicyContainer = aPolicyContainer;
 }
 
-nsIContentSecurityPolicy* nsDocShellLoadState::Csp() const { return mCsp; }
+nsIPolicyContainer* nsDocShellLoadState::PolicyContainer() const {
+  return mPolicyContainer;
+}
 
 void nsDocShellLoadState::SetTriggeringSandboxFlags(uint32_t flags) {
   mTriggeringSandboxFlags = flags;
@@ -656,6 +667,15 @@ bool nsDocShellLoadState::NotifiedBeforeUnloadListeners() const {
 void nsDocShellLoadState::SetNotifiedBeforeUnloadListeners(
     bool aNotifiedBeforeUnloadListeners) {
   mNotifiedBeforeUnloadListeners = aNotifiedBeforeUnloadListeners;
+}
+
+bool nsDocShellLoadState::ShouldNotForceReplaceInOnLoad() const {
+  return mShouldNotForceReplaceInOnLoad;
+}
+
+void nsDocShellLoadState::SetShouldNotForceReplaceInOnLoad(
+    bool aShouldNotForceReplaceInOnLoad) {
+  mShouldNotForceReplaceInOnLoad = aShouldNotForceReplaceInOnLoad;
 }
 
 bool nsDocShellLoadState::ForceAllowDataURI() const {
@@ -1384,7 +1404,7 @@ DocShellLoadStateInit nsDocShellLoadState::Serialize(
   loadState.TriggeringRemoteType() = mTriggeringRemoteType;
   loadState.SchemelessInput() = mSchemelessInput;
   loadState.HttpsUpgradeTelemetry() = mHttpsUpgradeTelemetry;
-  loadState.Csp() = mCsp;
+  loadState.PolicyContainer() = mPolicyContainer;
   loadState.OriginalURIString() = mOriginalURIString;
   loadState.CancelContentJSEpoch() = mCancelContentJSEpoch;
   loadState.ReferrerInfo() = mReferrerInfo;
@@ -1395,6 +1415,7 @@ DocShellLoadStateInit nsDocShellLoadState::Serialize(
   loadState.LoadIdentifier() = mLoadIdentifier;
   loadState.ChannelInitialized() = mChannelInitialized;
   loadState.IsMetaRefresh() = mIsMetaRefresh;
+  loadState.forceMediaDocument() = mForceMediaDocument;
   if (mLoadingSessionHistoryInfo) {
     loadState.loadingSessionHistoryInfo().emplace(*mLoadingSessionHistoryInfo);
   }
@@ -1450,4 +1471,12 @@ mozilla::dom::FormData* nsDocShellLoadState::GetFormDataEntryList() {
 void nsDocShellLoadState::SetFormDataEntryList(
     mozilla::dom::FormData* aFormDataEntryList) {
   mFormDataEntryList = aFormDataEntryList;
+}
+
+uint32_t nsDocShellLoadState::GetAppLinkLaunchType() const {
+  return mAppLinkLaunchType;
+}
+
+void nsDocShellLoadState::SetAppLinkLaunchType(uint32_t aAppLinkLaunchType) {
+  mAppLinkLaunchType = aAppLinkLaunchType;
 }

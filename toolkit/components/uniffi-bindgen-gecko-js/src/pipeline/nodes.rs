@@ -9,7 +9,7 @@ use askama::Template;
 use uniffi_bindgen::backend::filters::to_askama_error;
 use uniffi_pipeline::Node;
 
-use crate::Config;
+use crate::{ConcurrencyMode, Config};
 
 /// Initial IR, this stores the metadata and other data
 #[derive(Debug, Clone, Node)]
@@ -27,8 +27,8 @@ pub struct CppScaffolding {
     pub ffi_definitions: CombinedItems<FfiDefinition>,
     pub scaffolding_calls: CombinedItems<ScaffoldingCall>,
     pub pointer_types: CombinedItems<PointerType>,
+    pub callback_return_handler_classes: CombinedItems<CallbackReturnHandlerClass>,
     pub callback_interfaces: CombinedItems<CppCallbackInterface>,
-    pub async_callback_method_handler_bases: CombinedItems<AsyncCallbackMethodHandlerBase>,
 }
 
 // A Scaffolding call implemented in the C++ code
@@ -47,6 +47,8 @@ pub struct FfiValueArgument {
     pub name: String,
     /// C++ class field name
     pub field_name: String,
+    /// C++ function variable name
+    pub var_name: String,
     pub ffi_value_class: String,
     /// Is this argument for a method receiver?
     pub receiver: bool,
@@ -108,26 +110,44 @@ pub struct CppCallbackInterface {
 pub struct CppCallbackInterfaceMethod {
     /// Name of the handler function
     pub fn_name: String,
-    pub async_data: Option<CppCallbackInterfaceMethodAsyncData>,
-    pub base_class_name: String,
+    pub kind: CallbackMethodKind,
+    pub return_handler_class_name: String,
     /// Name of the subclass
-    pub handler_class_name: String,
+    pub async_handler_class_name: String,
     pub ffi_func: FfiFunctionType,
     pub arguments: Vec<FfiValueArgument>,
     pub return_ty: Option<FfiValueReturnType>,
     pub out_pointer_ty: FfiTypeNode,
 }
 
+/// Callback method kind.
+///
+/// There's currently only 2 options:
+///   - Methods that are async in both Rust and JS
+///   - Sync Rust methods wrapped to be fire-and-forget JS methods
+#[derive(Debug, Clone, Node)]
+pub enum CallbackMethodKind {
+    Sync,
+    FireAndForget,
+    Async(CppCallbackInterfaceMethodAsyncData),
+}
+
 #[derive(Debug, Clone, Node)]
 pub struct CppCallbackInterfaceMethodAsyncData {
-    pub callback_handler_base_class: String,
     pub complete_callback_type_name: String,
     pub result_type_name: String,
 }
 
+#[derive(Debug, Clone, Node)]
+pub struct CallbackReturnHandlerClass {
+    pub name: String,
+    pub return_ty: Option<FfiValueReturnType>,
+    pub return_type_name: String,
+}
+
 /// Base class for an async callback method handler
 ///
-/// This derives from `UniffiCallbackMethodHandlerBase` and adds support for returning data to
+/// This derives from `AsyncCallbackMethodHandlerBase` and adds support for returning data to
 /// Rust.  The final callback method handler derives from this and adds support for argument
 /// handling.
 ///
@@ -218,6 +238,7 @@ pub struct Callable {
     pub name: String,
     pub async_data: Option<AsyncData>,
     pub is_js_async: bool,
+    pub concurrency_mode: ConcurrencyMode,
     // UniFFIScaffolding method used to invoke this callable
     pub uniffi_scaffolding_method: String,
     pub kind: CallableKind,
@@ -242,6 +263,7 @@ pub enum CallableKind {
     },
     VTableMethod {
         trait_name: String,
+        for_callback_interface: bool,
     },
 }
 
@@ -833,12 +855,6 @@ impl FfiFunctionType {
             .map(|a| a.ty.type_name.as_str())
             .chain(self.has_rust_call_status_arg.then_some("RustCallStatus*"))
             .collect()
-    }
-}
-
-impl CppCallbackInterfaceMethod {
-    fn is_async(&self) -> bool {
-        self.async_data.is_some()
     }
 }
 

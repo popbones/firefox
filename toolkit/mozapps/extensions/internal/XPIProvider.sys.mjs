@@ -2695,6 +2695,9 @@ export var XPIProvider = {
   startup(aAppChanged, aOldAppVersion, aOldPlatformVersion) {
     try {
       AddonManagerPrivate.recordTimestamp("XPI_startup_begin");
+      Glean.addonsManager.startupTimeline.XPI_startup_begin.set(
+        Services.telemetry.msSinceProcessStart()
+      );
 
       logger.debug("startup");
 
@@ -2747,8 +2750,11 @@ export var XPIProvider = {
       ) {
         // The user is using a theme that was once bundled with Firefox, but no longer
         // is. Clear their theme so that they will be forced to reset to the default.
-        this.startupPromises.push(
-          AddonManagerPrivate.notifyAddonChanged(null, "theme")
+        let promise = AddonManagerPrivate.notifyAddonChanged(null, "theme");
+        this.startupPromises.push(promise);
+        lazy.AsyncShutdown.appShutdownConfirmed.addBlocker(
+          `Clearing obsolete theme ${lastTheme}`,
+          promise
         );
       }
 
@@ -2784,6 +2790,9 @@ export var XPIProvider = {
 
       try {
         AddonManagerPrivate.recordTimestamp("XPI_bootstrap_addons_begin");
+        Glean.addonsManager.startupTimeline.XPI_bootstrap_addons_begin.set(
+          Services.telemetry.msSinceProcessStart()
+        );
 
         for (let addon of this.sortBootstrappedAddons()) {
           // The startup update check above may have already started some
@@ -2809,8 +2818,13 @@ export var XPIProvider = {
             ) {
               reason = BOOTSTRAP_REASONS.ADDON_ENABLE;
             }
-            this.enabledAddonsStartupPromises.push(
-              BootstrapScope.get(addon).startup(reason)
+            let scope = BootstrapScope.get(addon);
+            let promise = scope.startup(reason);
+            this.enabledAddonsStartupPromises.push(promise);
+            lazy.AsyncShutdown.appShutdownConfirmed.addBlocker(
+              `Extension startup: ${addon.id}`,
+              promise,
+              { fetchState: scope.fetchState.bind(scope) }
             );
           } catch (e) {
             logger.error(
@@ -2823,6 +2837,9 @@ export var XPIProvider = {
           }
         }
         AddonManagerPrivate.recordTimestamp("XPI_bootstrap_addons_end");
+        Glean.addonsManager.startupTimeline.XPI_bootstrap_addons_end.set(
+          Services.telemetry.msSinceProcessStart()
+        );
       } catch (e) {
         logger.error("bootstrap startup failed", e);
         AddonManagerPrivate.recordException(
@@ -2832,11 +2849,13 @@ export var XPIProvider = {
         );
       }
 
+      let xpiProviderShutdownState = "(shutdown not started)";
       // Let these shutdown a little earlier when they still have access to most
       // of XPCOM
       lazy.AsyncShutdown.appShutdownConfirmed.addBlocker(
         "XPIProvider shutdown",
         async () => {
+          xpiProviderShutdownState = "Awaiting startup promises";
           // Do not enter shutdown before we actually finished starting as this
           // can lead to hangs as seen in bug 1814104.
           await Promise.allSettled([
@@ -2846,7 +2865,9 @@ export var XPIProvider = {
 
           XPIProvider._closing = true;
 
+          xpiProviderShutdownState = "cleanupTemporaryAddons";
           await XPIProvider.cleanupTemporaryAddons();
+          xpiProviderShutdownState = "Shutting down addons";
           for (let addon of XPIProvider.sortBootstrappedAddons().reverse()) {
             // If no scope has been loaded for this add-on then there is no need
             // to shut it down (should only happen when a bootstrapped add-on is
@@ -2885,12 +2906,16 @@ export var XPIProvider = {
               }
             );
           }
-        }
+        },
+        { fetchState: () => xpiProviderShutdownState }
       );
 
       // Detect final-ui-startup for telemetry reporting
       Services.obs.addObserver(function observer() {
         AddonManagerPrivate.recordTimestamp("XPI_finalUIStartup");
+        Glean.addonsManager.startupTimeline.XPI_finalUIStartup.set(
+          Services.telemetry.msSinceProcessStart()
+        );
         Services.obs.removeObserver(observer, "final-ui-startup");
       }, "final-ui-startup");
 
@@ -2941,6 +2966,9 @@ export var XPIProvider = {
       }
 
       AddonManagerPrivate.recordTimestamp("XPI_startup_end");
+      Glean.addonsManager.startupTimeline.XPI_startup_end.set(
+        Services.telemetry.msSinceProcessStart()
+      );
 
       if (
         Services.prefs.getIntPref(PREF_LAST_SIGNATURE_CHECKPOINT, 0) !==
@@ -3265,6 +3293,10 @@ export var XPIProvider = {
       if (!existing || existing.version != aVersion) {
         installed = this.installBuiltinAddon(aBase);
         this.startupPromises.push(installed);
+        lazy.AsyncShutdown.appShutdownConfirmed.addBlocker(
+          `maybeInstallBuiltinAddon: ${aID}`,
+          installed
+        );
       }
     }
     return installed;
@@ -3365,6 +3397,7 @@ export var XPIProvider = {
           "XPIDB_startup_load_reasons",
           updateReasons
         );
+        Glean.xpiDatabase.startupLoadReasons.set(updateReasons);
         XPIExports.XPIDatabase.syncLoadDB(false);
         try {
           extensionListChanged =
@@ -3531,6 +3564,14 @@ export var XPIProvider = {
     }
 
     return { addons: result, fullData: false };
+  },
+
+  getBuiltinAddonVersion(addonId) {
+    if (!this.builtInAddons) {
+      throw new Error("XPIProvider has not been started yet");
+    }
+    const found = SystemBuiltInLocation.readAddons().get(addonId);
+    return found?.builtin.addon_version;
   },
 
   shouldShowBlocklistAttention() {

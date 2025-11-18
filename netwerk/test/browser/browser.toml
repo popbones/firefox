@@ -45,6 +45,7 @@ support-files = [
   "res_http_index_format",
   "res_http_index_format^headers^",
   "square.png",
+  "square2.png",
   "no_103_preload.html",
   "no_103_preload.html^headers^",
   "103_preload_anchor.html^informationalResponse^",
@@ -92,10 +93,9 @@ support-files = [
   "103_preload_no_img.html^informationalResponse^",
 ]
 skip-if = [
-  "os == 'mac' && os_version == '10.15' && processor == 'x86_64' && debug", # Bug 1829935
-  "os == 'mac' && os_version == '11.20' && arch == 'aarch64' && opt", # Bug 1829935
-  "os == 'mac' && os_version == '15.30' && arch == 'aarch64' && opt", # Bug 1829935
-  "os == 'win' && os_version == '11.26100' && opt", # Bug 1829935
+  "os == 'mac' && os_version == '10.15' && processor == 'x86_64'", # Bug 1829935
+  "os == 'mac' && os_version == '15.30' && arch == 'aarch64'", # Bug 1829935
+  "os == 'win' && os_version == '11.26100' && processor == 'x86_64'", # Bug 1829935
 ]
 
 ["browser_103_csp.js"]
@@ -147,9 +147,7 @@ support-files = ["early_hint_preload_test_helper.sys.mjs",]
 ["browser_NetUtil.js"]
 
 ["browser_about_cache.js"]
-skip-if = [
-  "os == 'linux' && os_version == '24.04' && processor == 'x86_64' && display == 'x11'", # Bug 1970244
-]
+skip-if = ["os == 'linux' && os_version == '24.04' && processor == 'x86_64' && display == 'x11'"] # Bug 1970244
 
 ["browser_backgroundtask_purgeHTTPCache.js"]
 
@@ -188,6 +186,8 @@ support-files = ["file_lnk.lnk",]
 
 ["browser_http_index_format.js"]
 
+["browser_ipAddressSpace_mainpage_unaffected.js"]
+
 ["browser_mock_https_rr.js"]
 skip-if = [
   "http3",
@@ -220,7 +220,6 @@ skip-if = ["socketprocess_networking"] # Bug 1772209
 ["browser_test_data_channel_observer.js"]
 
 ["browser_test_favicon.js"]
-skip-if = ["verify && (os == 'linux' || os == 'mac')"]
 support-files = [
   "damonbowling.jpg",
   "damonbowling.jpg^headers^",
@@ -229,9 +228,17 @@ support-files = [
 
 ["browser_test_file_channel_observer.js"]
 
+["browser_test_local_network_access.js"]
+support-files = [
+  "page_with_non_trackers.html",
+  "page_with_non_trackers.html^headers^",
+  "fetch_from_tracker.sjs",
+]
+
 ["browser_test_local_network_trackers.js"]
 support-files = [
   "page_with_trackers.html",
+  "page_with_non_trackers.html",
   "fetch_from_tracker.sjs",
 ]
 

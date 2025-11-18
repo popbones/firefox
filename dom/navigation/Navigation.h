@@ -7,16 +7,14 @@
 #ifndef mozilla_dom_Navigation_h___
 #define mozilla_dom_Navigation_h___
 
-#include "nsHashtablesFwd.h"
-#include "nsStringFwd.h"
-
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/DOMEventTargetHelper.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/RefPtr.h"
-
 #include "mozilla/dom/NavigateEvent.h"
 #include "mozilla/dom/NavigationBinding.h"
+#include "nsHashtablesFwd.h"
+#include "nsStringFwd.h"
 
 class nsIDHashKey;
 
@@ -44,6 +42,11 @@ class Navigation final : public DOMEventTargetHelper {
 
   explicit Navigation(nsPIDOMWindowInner* aWindow);
 
+  using EventTarget::EventListenerAdded;
+  virtual void EventListenerAdded(nsAtom* aType) override;
+  using EventTarget::EventListenerRemoved;
+  virtual void EventListenerRemoved(nsAtom* aType) override;
+
   // Navigation.webidl
   void Entries(nsTArray<RefPtr<NavigationHistoryEntry>>& aResult) const;
   already_AddRefed<NavigationHistoryEntry> GetCurrentEntry() const;
@@ -65,19 +68,18 @@ class Navigation final : public DOMEventTargetHelper {
 
   void Navigate(JSContext* aCx, const nsAString& aUrl,
                 const NavigationNavigateOptions& aOptions,
-                NavigationResult& aResult) {}
+                NavigationResult& aResult);
 
   MOZ_CAN_RUN_SCRIPT void Reload(JSContext* aCx,
                                  const NavigationReloadOptions& aOptions,
                                  NavigationResult& aResult);
 
   void TraverseTo(JSContext* aCx, const nsAString& aKey,
-                  const NavigationOptions& aOptions,
-                  NavigationResult& aResult) {}
+                  const NavigationOptions& aOptions, NavigationResult& aResult);
   void Back(JSContext* aCx, const NavigationOptions& aOptions,
-            NavigationResult& aResult) {}
+            NavigationResult& aResult);
   void Forward(JSContext* aCx, const NavigationOptions& aOptions,
-               NavigationResult& aResult) {}
+               NavigationResult& aResult);
 
   IMPL_EVENT_HANDLER(navigate);
   IMPL_EVENT_HANDLER(navigatesuccess);
@@ -109,7 +111,7 @@ class Navigation final : public DOMEventTargetHelper {
   // https://html.spec.whatwg.org/#navigate-event-firing
 
   MOZ_CAN_RUN_SCRIPT bool FireTraverseNavigateEvent(
-      JSContext* aCx, SessionHistoryInfo* aDestinationSessionHistoryInfo,
+      JSContext* aCx, const SessionHistoryInfo& aDestinationSessionHistoryInfo,
       Maybe<UserNavigationInvolvement> aUserInvolvement);
 
   MOZ_CAN_RUN_SCRIPT bool FirePushReplaceReloadNavigateEvent(
@@ -135,6 +137,13 @@ class Navigation final : public DOMEventTargetHelper {
   void AbortOngoingNavigation(
       JSContext* aCx, JS::Handle<JS::Value> aError = JS::UndefinedHandleValue);
 
+  MOZ_CAN_RUN_SCRIPT
+  void InformAboutChildNavigableDestruction(JSContext* aCx);
+
+  void CreateNavigationActivationFrom(
+      SessionHistoryInfo* aPreviousEntryForActivation,
+      NavigationType aNavigationType);
+
  private:
   friend struct NavigationAPIMethodTracker;
   using UpcomingTraverseAPIMethodTrackers =
@@ -144,11 +153,6 @@ class Navigation final : public DOMEventTargetHelper {
 
   // https://html.spec.whatwg.org/multipage/nav-history-apis.html#has-entries-and-events-disabled
   bool HasEntriesAndEventsDisabled() const;
-
-  void ScheduleEventsFromNavigation(
-      NavigationType aType,
-      const RefPtr<NavigationHistoryEntry>& aPreviousEntry,
-      nsTArray<RefPtr<NavigationHistoryEntry>>&& aDisposedEntries);
 
   MOZ_CAN_RUN_SCRIPT
   nsresult FireEvent(const nsAString& aName);
@@ -167,7 +171,7 @@ class Navigation final : public DOMEventTargetHelper {
       const nsAString& aDownloadRequestFilename);
 
   NavigationHistoryEntry* FindNavigationHistoryEntry(
-      SessionHistoryInfo* aSessionHistoryInfo) const;
+      const SessionHistoryInfo& aSessionHistoryInfo) const;
 
   void PromoteUpcomingAPIMethodTrackerToOngoing(Maybe<nsID>&& aDestinationKey);
 
@@ -181,6 +185,9 @@ class Navigation final : public DOMEventTargetHelper {
 
   void SetEarlyErrorResult(JSContext* aCx, NavigationResult& aResult,
                            ErrorResult&& aRv) const;
+
+  void SetEarlyStateErrorResult(JSContext* aCx, NavigationResult& aResult,
+                                const nsACString& aMessage) const;
 
   bool CheckIfDocumentIsFullyActiveAndMaybeSetEarlyErrorResult(
       JSContext* aCx, const Document* aDocument,
@@ -198,7 +205,14 @@ class Navigation final : public DOMEventTargetHelper {
 
   Document* GetAssociatedDocument() const;
 
+  // Update the state managing if we need to dispatch the traverse event or not.
+  void UpdateNeedsTraverse();
+
   void LogHistory() const;
+
+  void PerformNavigationTraversal(JSContext* aCx, const nsID& aKey,
+                                  const NavigationOptions& aOptions,
+                                  NavigationResult& aResult);
 
   // https://html.spec.whatwg.org/multipage/nav-history-apis.html#navigation-entry-list
   nsTArray<RefPtr<NavigationHistoryEntry>> mEntries;
@@ -232,5 +246,16 @@ class Navigation final : public DOMEventTargetHelper {
 };
 
 }  // namespace mozilla::dom
+
+template <>
+struct fmt::formatter<mozilla::dom::NavigationType, char>
+    : public formatter<nsLiteralCString> {
+  template <typename FmtContext>
+  constexpr auto format(const mozilla::dom::NavigationType& aNavigationType,
+                        FmtContext& aCtx) const {
+    return formatter<nsLiteralCString>::format(
+        mozilla::dom::GetEnumString(aNavigationType), aCtx);
+  }
+};
 
 #endif  // mozilla_dom_Navigation_h___

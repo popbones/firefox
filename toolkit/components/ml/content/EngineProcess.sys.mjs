@@ -20,14 +20,21 @@ export const DEFAULT_ENGINE_ID = "default-engine";
  * @type {Array<string>}
  * @description Supported backends.
  */
-export const BACKENDS = ["onnx", "wllama", "onnx-native"];
+export const BACKENDS = Object.freeze({
+  onnx: "onnx",
+  wllama: "wllama",
+  onnxNative: "onnx-native",
+  llamaCpp: "llama.cpp",
+  bestLlama: "best-llama",
+  openai: "openai",
+});
 
 /**
  * @constant
  * @type {Array<string>}
  * @description Backends using WASM.
  */
-export const WASM_BACKENDS = ["onnx", "wllama"];
+export const WASM_BACKENDS = [BACKENDS.onnx, BACKENDS.wllama];
 
 /**
  * @constant
@@ -129,10 +136,6 @@ export const DEFAULT_MODELS = Object.freeze({
  * The only exception is web extension, as the engine id is dynamically created with the extension id.
  */
 export const FEATURES = {
-  // see toolkit/components/formautofill/MLAutofill.sys.mjs
-  "autofill-classification": {
-    engineId: "autofill-ml",
-  },
   // see toolkit/components/pdfjs/content/PdfjsParent.sys.mjs
   "pdfjs-alt-text": {
     engineId: "pdfjs",
@@ -566,6 +569,20 @@ export class PipelineOptions {
   backend = null;
 
   /**
+   * The base URL to use for openai API requests.
+   *
+   * @type {?string}
+   */
+  baseURL = null;
+
+  /**
+   * The API key to use for openai API requests.
+   *
+   * @type {?string}
+   */
+  apiKey = null;
+
+  /**
    * Create a PipelineOptions instance.
    *
    * @param {object} options - The options for the pipeline. Must include mandatory fields.
@@ -654,7 +671,7 @@ export class PipelineOptions {
   #validateId(field, value) {
     // Define a regular expression to match the optional organization and required name
     // `organization/` part is optional, and both parts should follow the taskName pattern.
-    const validPattern = /^(?:[a-zA-Z0-9_\-\.]+\/)?[a-zA-Z0-9_\-\.]+$/;
+    const validPattern = /^(?:[a-zA-Z0-9_\-\.\:]+\/)?[a-zA-Z0-9_\-\.\:]+$/;
 
     // Check if the value matches the pattern
     if (!validPattern.test(value)) {
@@ -768,6 +785,8 @@ export class PipelineOptions {
       "numThreadsDecoding",
       "modelFile",
       "backend",
+      "baseURL",
+      "apiKey",
     ];
 
     if (options instanceof PipelineOptions) {
@@ -852,11 +871,14 @@ export class PipelineOptions {
         this.#validateIntegerRange(key, options[key], 1, 10000000);
       }
 
-      if (key === "backend" && !BACKENDS.includes(options[key])) {
+      if (
+        key === "backend" &&
+        !Object.values(BACKENDS).includes(options[key])
+      ) {
         throw new PipelineOptionsValidationError(
           key,
           options[key],
-          `Should be one of ${BACKENDS.join(", ")}`
+          `Should be one of ${Object.values(BACKENDS).join(", ")}`
         );
       }
 
@@ -901,6 +923,8 @@ export class PipelineOptions {
       numThreadsDecoding: this.numThreadsDecoding,
       modelFile: this.modelFile,
       backend: this.backend,
+      baseURL: this.baseURL,
+      apiKey: this.apiKey,
     };
   }
 
@@ -1014,6 +1038,10 @@ export class EngineProcess {
 
     try {
       const actor = keepAlive.domProcess.getActor(actorName);
+
+      // keep track of the childID for the inference process, so we can observe its shutdowns.
+      actor.childID = keepAlive.domProcess.childID;
+
       if (actor && !actor.processKeepAlive) {
         ChromeUtils.addProfilerMarker(
           "EngineProcess",
@@ -1077,12 +1105,21 @@ export class EngineProcess {
  *
  * @param {object} options - Configuration options for the ML engine.
  * @param {?function(ProgressAndStatusCallbackParams):void} notificationsCallback A function to call to indicate notifications.
+ * @param {?AbortSignal} abortSignal - AbortSignal to cancel the download.
  */
-export async function createEngine(options, notificationsCallback = null) {
+export async function createEngine(
+  options,
+  notificationsCallback = null,
+  abortSignal
+) {
   try {
     const pipelineOptions = new PipelineOptions(options);
     const engineParent = await EngineProcess.getMLEngineParent();
-    return engineParent.getEngine(pipelineOptions, notificationsCallback);
+    return engineParent.getEngine({
+      pipelineOptions,
+      notificationsCallback,
+      abortSignal,
+    });
   } catch (e) {
     Glean.firefoxAiRuntime.engineCreationFailure.record({
       engineId: options.engineId || "",

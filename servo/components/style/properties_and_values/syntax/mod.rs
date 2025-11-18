@@ -150,7 +150,9 @@ impl Parse for Descriptor {
 }
 
 /// <https://drafts.css-houdini.org/css-properties-values-api-1/#multipliers>
-#[derive(Clone, Copy, Debug, MallocSizeOf, PartialEq, ToComputedValue, ToResolvedValue, ToShmem)]
+#[derive(
+    Clone, Copy, Debug, MallocSizeOf, PartialEq, ToComputedValue, ToResolvedValue, ToShmem,
+)]
 pub enum Multiplier {
     /// Indicates a space-separated list.
     Space,
@@ -192,7 +194,7 @@ impl Component {
 
     /// If the component is premultiplied, return the un-premultiplied component.
     #[inline]
-    pub fn unpremultiplied(&self) -> Cow<Self> {
+    pub fn unpremultiplied(&self) -> Cow<'_, Self> {
         match self.name.unpremultiply() {
             Some(component) => {
                 debug_assert!(

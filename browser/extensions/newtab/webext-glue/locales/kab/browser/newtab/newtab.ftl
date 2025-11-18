@@ -8,6 +8,9 @@
 newtab-page-title = Iccer amaynut
 newtab-settings-button =
     .title = Sagen asebter n yiccer-ik amaynut
+newtab-customize-panel-icon-button =
+    .title = Sagen asebter-a
+newtab-customize-panel-icon-button-label = Sagen
 newtab-personalize-settings-icon-label =
     .title = Sagen iccer amaynut
     .aria-label = Iɣewwaren
@@ -53,6 +56,9 @@ newtab-topsites-add-shortcut-header = Anegzum amaynut
 newtab-topsites-edit-topsites-header = Ẓreg asmel ifazen
 newtab-topsites-edit-shortcut-header = Ẓreg anegzum
 newtab-topsites-add-shortcut-label = Rnu anegzum
+newtab-topsites-add-shortcut-title =
+    .title = Rnu anegzum
+    .aria-label = Rnu anegzum
 newtab-topsites-title-label = Azwel
 newtab-topsites-title-input =
     .placeholder = Sekcem azwel
@@ -301,9 +307,6 @@ newtab-custom-pocket-sponsored = Tiqṣidin yettwarefden
 newtab-custom-pocket-show-recent-saves = Sken iseklas akk ineggura
 newtab-custom-recent-title = Armud n melmi kan
 newtab-custom-recent-subtitle = Tafrant n yismal d ugbur n melmi kan
-newtab-custom-recent-toggle =
-    .label = Armud n melmi kan
-    .description = Tafrant n yismal d ugbur n melmi kan
 newtab-custom-close-button = Mdel
 newtab-custom-settings = Sefrek ugar n yiɣewwaṛen
 
@@ -319,15 +322,21 @@ newtab-wallpaper-dark-mountain = Tugna n yidurar
 
 ## Solid Colors
 
+newtab-wallpaper-category-title-colors = Initen imsariyen
 newtab-wallpaper-blue = Amidadi
+newtab-wallpaper-light-blue = Amidadi ifaw
+newtab-wallpaper-light-purple = Avyuli ifaw
+newtab-wallpaper-light-green = Azegzaw ifaw
 newtab-wallpaper-green = Azegzaw
 newtab-wallpaper-beige = Beige
 newtab-wallpaper-yellow = Awraɣ
 newtab-wallpaper-orange = Ačinawi
 newtab-wallpaper-pink = Axuxi
+newtab-wallpaper-light-pink = Axuxi ifaw
 newtab-wallpaper-red = Azggaɣ
 newtab-wallpaper-dark-blue = Amidadi iḥemqen
 newtab-wallpaper-dark-purple = Axuxi Iḥemqen
+newtab-wallpaper-dark-green = Azegzaw iḥemqen
 newtab-wallpaper-brown = Aqehwi
 
 ## Abstract
@@ -336,6 +345,7 @@ newtab-wallpaper-category-title-abstract = Amadwan
 
 ## Celestial
 
+newtab-wallpaper-category-title-photographs = Tiwlafin
 newtab-wallpaper-white-mountains = Idurar imellalen
 # Variables
 #   $author_string (String) - The name of the creator of the photo.
@@ -351,9 +361,6 @@ feature-highlight-wallpaper =
     .title = { -newtab-wallpaper-feature-highlight-header }
     .aria-label = { -newtab-wallpaper-feature-highlight-content }
 
-## Celestial
-
-
 ## New Tab Weather
 
 # Variables:
@@ -363,7 +370,6 @@ newtab-weather-menu-change-location = Ẓreg adig
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Adig n unadi
     .aria-label = Adig n unadi
-newtab-weather-change-location-search-input = Adig n unadi
 newtab-weather-menu-weather-display = Askan n tegnawt
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -383,6 +389,7 @@ newtab-weather-menu-learn-more = Issin ugar
 newtab-topic-label-business = Amahil
 newtab-topic-label-career = Axeddim
 newtab-topic-label-education = Aselmed
+newtab-topic-label-arts = Asedhu
 newtab-topic-label-food = Tuččit
 newtab-topic-label-health = Tazmert
 newtab-topic-label-hobbies = Uraren
@@ -441,6 +448,10 @@ newtab-section-mangage-topics-blocked-topics = Iwḥel
 newtab-section-mangage-topics-blocked-topics-empty-state = Ur tesweḥleḍ ula d yiwen usentel akka ar tura.
 newtab-custom-wallpaper-cta = Ɛreḍ-it
 
+## Strings for new user activation custom wallpaper highlight
+
+newtab-new-user-custom-wallpaper-cta = Ɛreḍ-it tura
+
 ## Strings for download mobile highlight
 
 newtab-download-mobile-highlight-title = Sader { -brand-product-name } i uziraz
@@ -453,8 +464,15 @@ newtab-report-content-why-reporting-this =
     .label = Ayɣer i d-tuzneḍ aneqqis ɣef waya?
 newtab-report-content-wrong-category =
     .label = Yir taggayt
+newtab-report-content-outdated =
+    .label = Aqbuṛ
 newtab-report-cancel = Sefsex
 newtab-report-submit = Azen
 
 ## Strings for trending searches
 
+newtab-trending-searches-learn-more = Issin ugar
+
+## Strings for task / to-do list productivity widget
+
+newtab-widget-lists-input-menu-open-link = Ldi aseɣwen

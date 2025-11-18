@@ -195,6 +195,7 @@ class BrowsingContextModule extends RootBiDiModule {
     this.#navigationListener = new lazy.NavigationListener(
       this.messageHandler.navigationManager
     );
+    this.#navigationListener.on("download-started", this.#onDownloadStarted);
     this.#navigationListener.on(
       "fragment-navigated",
       this.#onFragmentNavigated
@@ -679,7 +680,7 @@ class BrowsingContextModule extends RootBiDiModule {
       }
       case "tab": {
         // The window to open the new tab in.
-        let window = Services.wm.getMostRecentWindow(null);
+        let window = Services.wm.getMostRecentBrowserWindow();
 
         let referenceTab;
         if (referenceContext !== null) {
@@ -822,13 +823,13 @@ class BrowsingContextModule extends RootBiDiModule {
       contexts = [this.#getBrowsingContext(rootId)];
     } else {
       // Return all top-level browsing contexts.
-      contexts = lazy.TabManager.browsers.map(
+      contexts = lazy.TabManager.getBrowsers().map(
         browser => browser.browsingContext
       );
     }
 
     const contextsInfo = contexts.map(context => {
-      return this.#getBrowsingContextInfo(context, { maxDepth });
+      return getBrowsingContextInfo(context, { maxDepth });
     });
 
     return { contexts: contextsInfo };
@@ -1776,6 +1777,31 @@ class BrowsingContextModule extends RootBiDiModule {
         navigation: navigationId,
         url,
       };
+    } catch (e) {
+      // Get the current navigation object for the browsing context.
+      const navigation =
+        this.messageHandler.navigationManager.getNavigationForBrowsingContext(
+          webProgress.browsingContext
+        );
+
+      // NavigationError with isBindingAborted represent navigations aborted by
+      // another navigation. If the navigation was committed and matches the
+      // navigationId, consider the navigation as successful.
+      if (
+        e?.isNavigationError &&
+        e.isBindingAborted &&
+        navigation &&
+        navigation.committed &&
+        navigation.navigationId == navigationId
+      ) {
+        return {
+          navigation: navigationId,
+          url: navigation.url,
+        };
+      }
+
+      // Otherwise, bubble the error from the Navigation helper.
+      throw e;
     } finally {
       if (listener.isStarted) {
         listener.stop();
@@ -1861,75 +1887,17 @@ class BrowsingContextModule extends RootBiDiModule {
     return context;
   }
 
-  /**
-   * Get the WebDriver BiDi browsing context information.
-   *
-   * @param {BrowsingContext} context
-   *     The browsing context to get the information from.
-   * @param {object=} options
-   * @param {boolean=} options.includeParentId
-   *     Flag that indicates if the parent ID should be included.
-   *     Defaults to true.
-   * @param {number=} options.maxDepth
-   *     Depth of the browsing context tree to traverse. If not specified
-   *     the whole tree is returned.
-   * @returns {BrowsingContextInfo}
-   *     The information about the browsing context.
-   */
-  #getBrowsingContextInfo(context, options = {}) {
-    const { includeParentId = true, maxDepth = null } = options;
-
-    let children = null;
-    if (maxDepth === null || maxDepth > 0) {
-      children = context.children.map(context =>
-        this.#getBrowsingContextInfo(context, {
-          maxDepth: maxDepth === null ? maxDepth : maxDepth - 1,
-          includeParentId: false,
-        })
-      );
-    }
-
-    const userContext = lazy.UserContextManager.getIdByBrowsingContext(context);
-    const originalOpener =
-      context.crossGroupOpener !== null
-        ? lazy.TabManager.getIdForBrowsingContext(context.crossGroupOpener)
-        : null;
-    const contextInfo = {
-      children,
-      context: lazy.TabManager.getIdForBrowsingContext(context),
-      // TODO: Bug 1904641. If a browsing context was not tracked in TabManager,
-      // because it was created and discarded before the WebDriver BiDi session was
-      // started, we get undefined as id for this browsing context.
-      // We should remove this condition, when we can provide a correct id here.
-      originalOpener: originalOpener === undefined ? null : originalOpener,
-      url: context.currentURI.spec,
-      userContext,
-      clientWindow: lazy.windowManager.getIdForBrowsingContext(context),
-    };
-
-    if (includeParentId) {
-      // Only emit the parent id for the top-most browsing context.
-      const parentId = lazy.TabManager.getIdForBrowsingContext(context.parent);
-      contextInfo.parent = parentId;
-    }
-
-    return contextInfo;
-  }
-
   #hasConfigurationForContext(userContext) {
     const internalId = lazy.UserContextManager.getInternalIdById(userContext);
-    // The following should be refactored into a method on SessionData (bug 1972865)
-    for (const sessionDataItem of this.messageHandler.sessionData._data) {
-      const { contextDescriptor, moduleName } = sessionDataItem;
-      if (
-        moduleName == "_configuration" &&
-        contextDescriptor.type === lazy.ContextDescriptorType.UserContext &&
-        contextDescriptor.id == internalId
-      ) {
-        return true;
-      }
-    }
-    return false;
+    const contextDescriptor = {
+      type: lazy.ContextDescriptorType.UserContext,
+      id: internalId,
+    };
+    return this.messageHandler.sessionData.hasSessionData(
+      "_configuration",
+      undefined,
+      contextDescriptor
+    );
   }
 
   #onContextAttached = async (eventName, data = {}) => {
@@ -1957,12 +1925,9 @@ class BrowsingContextModule extends RootBiDiModule {
         return;
       }
 
-      const browsingContextInfo = this.#getBrowsingContextInfo(
-        browsingContext,
-        {
-          maxDepth: 0,
-        }
-      );
+      const browsingContextInfo = getBrowsingContextInfo(browsingContext, {
+        maxDepth: 0,
+      });
 
       this.#emitContextEventForBrowsingContext(
         browsingContext.id,
@@ -2006,11 +1971,33 @@ class BrowsingContextModule extends RootBiDiModule {
         return;
       }
 
-      const browsingContextInfo = this.#getBrowsingContextInfo(browsingContext);
+      const browsingContextInfo = getBrowsingContextInfo(browsingContext);
 
       this.#emitContextEventForBrowsingContext(
         browsingContext.id,
         "browsingContext.contextDestroyed",
+        browsingContextInfo
+      );
+    }
+  };
+
+  #onDownloadStarted = async (eventName, data) => {
+    if (this.#subscribedEvents.has("browsingContext.downloadWillBegin")) {
+      const { navigationId, navigableId, suggestedFilename, timestamp, url } =
+        data;
+
+      const browsingContextInfo = {
+        context: navigableId,
+        navigation: navigationId,
+        suggestedFilename,
+        timestamp,
+        url,
+      };
+
+      const context = this.#getBrowsingContext(navigableId);
+      this.#emitContextEventForBrowsingContext(
+        context.id,
+        "browsingContext.downloadWillBegin",
         browsingContextInfo
       );
     }
@@ -2193,6 +2180,7 @@ class BrowsingContextModule extends RootBiDiModule {
     this.#subscribedEvents.delete(event);
 
     const hasNavigationEvent =
+      this.#subscribedEvents.has("browsingContext.downloadWillBegin") ||
       this.#subscribedEvents.has("browsingContext.fragmentNavigated") ||
       this.#subscribedEvents.has("browsingContext.historyUpdated") ||
       this.#subscribedEvents.has("browsingContext.navigationFailed") ||
@@ -2223,6 +2211,7 @@ class BrowsingContextModule extends RootBiDiModule {
         this.#subscribedEvents.add(event);
         break;
       }
+      case "browsingContext.downloadWillBegin":
       case "browsingContext.fragmentNavigated":
       case "browsingContext.historyUpdated":
       case "browsingContext.navigationCommitted":
@@ -2248,6 +2237,7 @@ class BrowsingContextModule extends RootBiDiModule {
         this.#stopListeningToContextEvent(event);
         break;
       }
+      case "browsingContext.downloadWillBegin":
       case "browsingContext.fragmentNavigated":
       case "browsingContext.historyUpdated":
       case "browsingContext.navigationCommitted":
@@ -2394,6 +2384,7 @@ class BrowsingContextModule extends RootBiDiModule {
       "browsingContext.contextCreated",
       "browsingContext.contextDestroyed",
       "browsingContext.domContentLoaded",
+      "browsingContext.downloadWillBegin",
       "browsingContext.fragmentNavigated",
       "browsingContext.historyUpdated",
       "browsingContext.load",
@@ -2405,5 +2396,60 @@ class BrowsingContextModule extends RootBiDiModule {
     ];
   }
 }
+
+/**
+ * Get the WebDriver BiDi browsing context information.
+ *
+ * @param {BrowsingContext} context
+ *     The browsing context to get the information from.
+ * @param {object=} options
+ * @param {boolean=} options.includeParentId
+ *     Flag that indicates if the parent ID should be included.
+ *     Defaults to true.
+ * @param {number=} options.maxDepth
+ *     Depth of the browsing context tree to traverse. If not specified
+ *     the whole tree is returned.
+ * @returns {BrowsingContextInfo}
+ *     The information about the browsing context.
+ */
+export const getBrowsingContextInfo = (context, options = {}) => {
+  const { includeParentId = true, maxDepth = null } = options;
+
+  let children = null;
+  if (maxDepth === null || maxDepth > 0) {
+    children = context.children.map(context =>
+      getBrowsingContextInfo(context, {
+        maxDepth: maxDepth === null ? maxDepth : maxDepth - 1,
+        includeParentId: false,
+      })
+    );
+  }
+
+  const userContext = lazy.UserContextManager.getIdByBrowsingContext(context);
+  const originalOpener =
+    context.crossGroupOpener !== null
+      ? lazy.TabManager.getIdForBrowsingContext(context.crossGroupOpener)
+      : null;
+  const contextInfo = {
+    children,
+    context: lazy.TabManager.getIdForBrowsingContext(context),
+    // TODO: Bug 1904641. If a browsing context was not tracked in TabManager,
+    // because it was created and discarded before the WebDriver BiDi session was
+    // started, we get undefined as id for this browsing context.
+    // We should remove this condition, when we can provide a correct id here.
+    originalOpener: originalOpener === undefined ? null : originalOpener,
+    url: context.currentURI.spec,
+    userContext,
+    clientWindow: lazy.windowManager.getIdForBrowsingContext(context),
+  };
+
+  if (includeParentId) {
+    // Only emit the parent id for the top-most browsing context.
+    const parentId = lazy.TabManager.getIdForBrowsingContext(context.parent);
+    contextInfo.parent = parentId;
+  }
+
+  return contextInfo;
+};
 
 export const browsingContext = BrowsingContextModule;

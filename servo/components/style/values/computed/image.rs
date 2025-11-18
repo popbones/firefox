@@ -32,7 +32,7 @@ pub type Image = generic::GenericImage<Gradient, ComputedUrl, Color, Percentage,
 #[cfg(feature = "gecko")]
 size_of_test!(Image, 16);
 #[cfg(feature = "servo")]
-size_of_test!(Image, 40);
+size_of_test!(Image, 24);
 
 /// Computed values for a CSS gradient.
 /// <https://drafts.csswg.org/css-images/#gradients>
@@ -217,6 +217,7 @@ impl ToComputedValue for specified::Image {
             Self::Gradient(g) => Image::Gradient(g.to_computed_value(context)),
             #[cfg(feature = "gecko")]
             Self::Element(e) => Image::Element(e.to_computed_value(context)),
+            #[cfg(feature = "gecko")]
             Self::MozSymbolicIcon(e) => Image::MozSymbolicIcon(e.to_computed_value(context)),
             #[cfg(feature = "servo")]
             Self::PaintWorklet(w) => Image::PaintWorklet(w.to_computed_value(context)),
@@ -233,7 +234,10 @@ impl ToComputedValue for specified::Image {
             Image::Gradient(g) => Self::Gradient(ToComputedValue::from_computed_value(g)),
             #[cfg(feature = "gecko")]
             Image::Element(e) => Self::Element(ToComputedValue::from_computed_value(e)),
-            Image::MozSymbolicIcon(e) => Self::MozSymbolicIcon(ToComputedValue::from_computed_value(e)),
+            #[cfg(feature = "gecko")]
+            Image::MozSymbolicIcon(e) => {
+                Self::MozSymbolicIcon(ToComputedValue::from_computed_value(e))
+            },
             #[cfg(feature = "servo")]
             Image::PaintWorklet(w) => Self::PaintWorklet(ToComputedValue::from_computed_value(w)),
             Image::CrossFade(f) => Self::CrossFade(ToComputedValue::from_computed_value(f)),

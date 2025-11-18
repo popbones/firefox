@@ -216,6 +216,7 @@ support-files = [
 ["test_abrupt_completion.html"]
 skip-if = [
   "os == 'linux' && os_version == '24.04' && processor == 'x86_64' && display == 'x11'", # Bug 1615164
+  "os == 'android' && android_version == '34' && processor == 'x86_64'", # Bug 1776997
 ]
 
 ["test_async_waituntil.html"]
@@ -274,7 +275,7 @@ support-files = [
 ["test_file_blob_upload.html"]
 
 ["test_file_upload.html"]
-skip-if = ["os == 'android'"] #Bug 1430182
+skip-if = ["os == 'android'"] # Bug 1430182
 support-files = [
   "script_file_upload.js",
   "sw_file_upload.js",
@@ -302,7 +303,7 @@ skip-if = [
 ["test_imagecache_max_age.html"]
 skip-if = [
   "os == 'linux' && os_version == '18.04' && processor == 'x86_64' && asan", # Bug 1585668
-  "os == 'linux' && os_version == '22.04' && debug && display == 'wayland'",  # Bug 1856980
+  "os == 'linux' && os_version == '22.04' && debug && display == 'wayland'", # Bug 1856980
   "http3",
   "http2",
 ]
@@ -315,6 +316,8 @@ skip-if = [
 skip-if = ["xorigin"] # JavaScript error: http://mochi.xorigin-test:8888/tests/SimpleTest/TestRunner.js, line 157: SecurityError: Permission denied to access property "wrappedJSObject" on cross-origin object
 
 ["test_installation_simple.html"]
+skip-if = ["os == 'android' && android_version == '34' && processor == 'x86_64'"] # Bug 1816639
+
 
 ["test_match_all.html"]
 
@@ -332,7 +335,6 @@ skip-if = ["os == 'android'"]
 
 ["test_navigationPreload_disable_crash.html"]
 scheme = "https"
-skip-if = ["os == 'linux' && os_version == '18.04' && processor == 'x86_64' && debug"] # Bug 1749068
 
 ["test_navigator.html"]
 
@@ -402,7 +404,6 @@ skip-if = [
 # distinct scopes from other SW tests, it's not expected that loss of "verify"
 # coverage will cause problems since the test only potentially interferes with
 # itself, not other tests.
-skip-if = ["verify"]
 
 ["test_script_loader_intercepted_js_cache.html"]
 disabled = "https://bugzilla.mozilla.org/show_bug.cgi?id=1853173"
@@ -427,6 +428,7 @@ support-files = [
   "test_serviceworker_interfaces.js",
   "!/dom/tests/mochitest/general/interface_exposure_checker.js",
 ]
+skip-if = ["os == 'android' && android_version == '34' && processor == 'x86_64'"] # Bug 1777011
 
 ["test_serviceworker_not_sharedworker.html"]
 skip-if = [
@@ -448,10 +450,7 @@ support-files = [
 ["test_unregister.html"]
 
 ["test_unresolved_fetch_interception.html"]
-skip-if = [
-  "verify",
-  "true",
-]
+skip-if = ["true"]
 
 ["test_workerUnregister.html"]
 

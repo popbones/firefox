@@ -542,20 +542,26 @@ prefs = [
         kwargs["shuffle"] = shuffle
         kwargs["verbose"] = verbose
         kwargs["headless"] = headless
-        kwargs["sequential"] = True
+        kwargs["selfTest"] = True  # Prevent singleFile from forcing sequential=True
         kwargs["testingModulesDir"] = self.testing_modules
         kwargs["utility_path"] = self.utility_path
         kwargs["repeat"] = 0
-        self.assertEqual(
-            expected,
-            self.x.runTests(kwargs),
-            msg="""Tests should have %s, log:
+
+        startup_profiling = os.environ.pop("MOZ_PROFILER_STARTUP", None)
+        try:
+            self.assertEqual(
+                expected,
+                self.x.runTests(kwargs),
+                msg="""Tests should have %s, log:
 ========
 %s
 ========
 """
-            % ("passed" if expected else "failed", self.log.getvalue()),
-        )
+                % ("passed" if expected else "failed", self.log.getvalue()),
+            )
+        finally:
+            if startup_profiling:
+                os.environ["MOZ_PROFILER_STARTUP"] = startup_profiling
 
     def _assertLog(self, s, expected):
         l = self.log.getvalue()

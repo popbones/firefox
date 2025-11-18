@@ -20,6 +20,137 @@ const isMSIX =
 
 const MESSAGES = () => [
   {
+    id: "TASKBAR_TAB_TEST_CALLOUT",
+    template: "feature_callout",
+    groups: ["cfr"],
+    content: {
+      id: "TASKBAR_TAB_TEST_CALLOUT",
+      template: "multistage",
+      backdrop: "transparent",
+      transitions: false,
+      screens: [
+        {
+          id: "TASKBAR_TAB_TEST_CALLOUT",
+          anchors: [
+            {
+              selector: "#taskbar-tabs-button",
+              panel_position: {
+                anchor_attachment: "bottomcenter",
+                callout_attachment: "topright",
+              },
+            },
+          ],
+          content: {
+            position: "callout",
+            padding: 16,
+            width: "330px",
+            title_logo: {
+              imageURL:
+                "chrome://browser/content/asrouter/assets/smiling-fox-icon.svg",
+              width: "24px",
+              height: "24px",
+              marginInline: "0 16px",
+              alignment: "top",
+            },
+            title: {
+              raw: "Taskbar tabs action test",
+            },
+            primary_button: {
+              label: {
+                raw: "Create taskbar tab",
+              },
+              action: {
+                type: "CREATE_TASKBAR_TAB",
+              },
+            },
+            dismiss_button: {
+              action: {
+                dismiss: true,
+              },
+              background: true,
+              size: "small",
+              marginInline: "0 20px",
+              marginBlock: "20px 0",
+            },
+          },
+        },
+      ],
+    },
+    targeting: "visitsCount >= 1",
+    trigger: {
+      id: "openURL",
+      params: ["wikipedia.org", "www.wikipedia.org"],
+    },
+    frequency: {
+      lifetime: 1,
+    },
+    skip_in_tests: "it's not tested in automation",
+  },
+  {
+    id: "FREQUENCY_CAP_CLEANUP_TEST",
+    profileScope: "single",
+    template: "feature_callout",
+    groups: [],
+    content: {
+      id: "FREQUENCY_CAP_CLEANUP_TEST",
+      padding: "16",
+      template: "multistage",
+      backdrop: "transparent",
+      transitions: false,
+      disableHistoryUpdates: true,
+      screens: [
+        {
+          id: "FREQUENCY_CAP_CLEANUP_TEST",
+          anchors: [
+            {
+              selector: "#fxa-toolbar-menu-button",
+              panel_position: {
+                anchor_attachment: "bottomcenter",
+                callout_attachment: "topright",
+              },
+            },
+          ],
+          content: {
+            position: "callout",
+            width: "400px",
+            padding: 16,
+            title: {
+              raw: "Frequency Cap Test",
+            },
+            subtitle: {
+              raw: "This callout has a very short frequency cap.",
+            },
+            additional_button: {
+              action: {
+                dismiss: true,
+              },
+              label: {
+                string_id: "dismiss-button-label",
+                fontWeight: "590",
+                fontSize: "11px",
+              },
+              style: "secondary",
+            },
+          },
+        },
+      ],
+    },
+    frequency: {
+      custom: [
+        {
+          cap: 1,
+          period: 120000,
+        },
+      ],
+    },
+    trigger: {
+      id: "defaultBrowserCheck",
+    },
+    targeting:
+      "(region in ['CA', 'US']) && previousSessionEnd && !willShowDefaultPrompt && !activeNotifications && userPrefs.cfrFeatures",
+    skip_in_tests: "it's not tested in automation",
+  },
+  {
     id: "CLOSE_TAB_GROUP_TEST_CALLOUT",
     template: "feature_callout",
     groups: ["cfr"],
@@ -1395,6 +1526,125 @@ const MESSAGES = () => [
     },
   },
   {
+    weight: 100,
+    id: "TEST_MULTI_TILES_SURVEY",
+    template: "feature_callout",
+    groups: [],
+    content: {
+      id: "TEST_MULTI_TILES_SURVEY",
+      template: "multistage",
+      backdrop: "transparent",
+      transitions: false,
+      disableHistoryUpdates: true,
+      screens: [
+        {
+          id: "SCREEN_1",
+          force_hide_steps_indicator: true,
+          anchors: [
+            {
+              selector: "hbox#browser",
+              hide_arrow: true,
+              absolute_position: {
+                bottom: "20px",
+                right: "20px",
+              },
+            },
+          ],
+          content: {
+            position: "callout",
+            title: {
+              raw: "Test title",
+            },
+            width: "297px",
+            title_logo: {
+              imageURL:
+                "chrome://browser/content/asrouter/assets/smiling-fox-icon.svg",
+            },
+            subtitle: {
+              raw: "Answer two questions!",
+            },
+            primary_button: {
+              label: "Submit",
+              action: {
+                dismiss: true,
+              },
+            },
+            dismiss_button: {
+              action: {
+                dismiss: true,
+              },
+            },
+            contentTilesContainer: {
+              style: {
+                marginBlock: "6px",
+              },
+            },
+            tiles: [
+              {
+                type: "multiselect",
+                title: {
+                  raw: "Question 1",
+                },
+                data: [
+                  {
+                    id: "checkbox-1",
+                    defaultValue: false,
+                    label: {
+                      raw: "Checkbox 1",
+                    },
+                  },
+                  {
+                    id: "checkbox-2",
+                    defaultValue: false,
+                    label: {
+                      raw: "Checkbox 2",
+                    },
+                  },
+                  {
+                    id: "checkbox-3",
+                    defaultValue: false,
+                    label: {
+                      raw: "Checkbox 3",
+                    },
+                  },
+                  {
+                    id: "checkbox-4",
+                    defaultValue: false,
+                    label: {
+                      raw: "Checkbox 4",
+                    },
+                  },
+                ],
+              },
+              {
+                type: "multiselect",
+                title: {
+                  raw: "Question 2",
+                },
+                data: [
+                  {
+                    id: "checkbox-1",
+                    defaultValue: false,
+                    label: {
+                      raw: "Checkbox 1",
+                    },
+                  },
+                  {
+                    id: "checkbox-2",
+                    defaultValue: false,
+                    label: {
+                      raw: "Checkbox 2",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+  {
     id: "EXPERIMENT_L10N_TEST",
     template: "feature_callout",
     description:
@@ -1505,10 +1755,11 @@ const MESSAGES = () => [
     },
   },
   {
-    id: "FXA_ACCOUNTS_APPMENU_PROTECT_BROWSING_DATA",
+    id: "FXA_ACCOUNTS_PXIMENU_ROW_LAYOUT",
     template: "menu_message",
     content: {
       messageType: "fxa_cta",
+      layout: "row",
       primaryText: "Bounce between devices",
       secondaryText:
         "Sync and encrypt your bookmarks, passwords, and more on all your devices.",
@@ -1532,15 +1783,17 @@ const MESSAGES = () => [
           id: "FXA_ACCOUNTS_APPMENU_PROTECT_BROWSING_DATA",
         },
       },
-      imageURL:
-        "chrome://browser/content/asrouter/assets/fox-with-box-on-cloud.svg",
-      imageVerticalTopOffset: -20,
+      imageURL: "chrome://browser/content/asrouter/assets/fox-with-devices.svg",
+      imageVerticalBottomOffset: -32,
+      imageVerticalTopOffset: -4,
+      containerVerticalBottomOffset: 20,
+      imageWidth: 100,
     },
     skip_in_tests: "TODO",
     trigger: {
       id: "menuOpened",
     },
-    testingTriggerContext: "app_menu",
+    testingTriggerContext: "pxi_menu",
   },
   {
     id: "TEST_NEWTAB_MESSAGE",
@@ -1593,7 +1846,7 @@ const MESSAGES = () => [
       dismissable: false,
       buttons: [
         {
-          label: "Continue",
+          label: { string_id: "existing-user-tou-accept" },
           action: {
             type: "SET_PREF",
             data: {
@@ -1614,6 +1867,149 @@ const MESSAGES = () => [
     template: "infobar",
     frequency: {
       lifetime: 100,
+    },
+  },
+  {
+    id: "TEST_PROFILE_SPOTLIGHT",
+    groups: [],
+    targeting: "canCreateSelectableProfiles",
+    trigger: {
+      id: "defaultBrowserCheck",
+    },
+    template: "spotlight",
+    profileScope: "single",
+    frequency: {
+      lifetime: 1,
+    },
+    content: {
+      template: "multistage",
+      modal: "tab",
+      screens: [
+        {
+          id: "SCREEN_1",
+          content: {
+            logo: {
+              imageURL:
+                "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/ms-images/a3c640c8-7594-4bb2-bc18-8b4744f3aaf2.gif",
+            },
+            title: {
+              raw: "Firefox profiles Test Message",
+            },
+            subtitle: {
+              raw: "Profiles keep you organized.",
+            },
+            dismiss_button: {
+              action: {
+                dismiss: true,
+              },
+            },
+            secondary_button: {
+              label: "Close",
+              action: {
+                dismiss: true,
+              },
+            },
+          },
+        },
+      ],
+      transitions: true,
+    },
+  },
+  {
+    id: "TEST_NEW_TAB_DIV_FEATURE_TOUR",
+    groups: [],
+    template: "feature_callout",
+    content: {
+      id: "TEST_NEW_TAB_MESSAGE_FEATURE_TOUR",
+      template: "multistage",
+      backdrop: "transparent",
+      transitions: true,
+      disableHistoryUpdates: true,
+      screens: [
+        {
+          id: "FIRST_NEW_TAB_SCREEN",
+          force_hide_steps_indicator: true,
+          anchors: [
+            {
+              selector: "hbox#browser",
+              hide_arrow: true,
+              absolute_position: {
+                right: "20px",
+                bottom: "20px",
+              },
+            },
+          ],
+          content: {
+            position: "callout",
+            width: "320px",
+            padding: "0 16px 16px 16px",
+            title: {
+              raw: "Test Message",
+            },
+            logo: null,
+            subtitle: {
+              raw: "Test Screen message",
+            },
+            secondary_button: {
+              label: {
+                raw: "Next",
+              },
+              style: "primary",
+              action: {
+                type: "MULTI_ACTION",
+                advance_screens: {
+                  id: "SECOND_NEW_TAB_SCREEN",
+                },
+                data: {
+                  actions: [],
+                },
+              },
+            },
+          },
+        },
+        {
+          id: "SECOND_NEW_TAB_SCREEN",
+          force_hide_steps_indicator: true,
+          anchors: [
+            {
+              selector: "hbox#browser",
+              hide_arrow: true,
+              absolute_position: {
+                right: "20px",
+                bottom: "20px",
+              },
+            },
+          ],
+          content: {
+            position: "callout",
+            width: "320px",
+            padding: "0 16px 16px 16px",
+            title: {
+              raw: "Test Message ",
+            },
+            logo: null,
+            subtitle: {
+              raw: "Test Screen 2 message.",
+            },
+            secondary_button: {
+              label: {
+                raw: "Done",
+              },
+              style: "primary",
+              action: {
+                dismiss: true,
+              },
+            },
+          },
+        },
+      ],
+    },
+    frequency: {
+      lifetime: 1,
+    },
+    targeting: "!activeNotifications",
+    trigger: {
+      id: "newtabFeatureCalloutCheck",
     },
   },
 ];

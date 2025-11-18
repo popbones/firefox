@@ -68,9 +68,19 @@ class GitRepository(Repository):
 
     def is_cinnabar_repo(self) -> bool:
         """Return `True` if the repo is a git-cinnabar clone."""
-        output = self._run("for-each-ref")
 
-        return "refs/cinnabar" in output
+        try:
+            # First revision of the canonical Firefox repository
+            self._run(
+                "cat-file",
+                "-e",
+                "2ca566cd74d5d0863ba7ef0529a4f88b2823eb43^{commit}",
+                stderr=subprocess.DEVNULL,
+            )
+        except subprocess.CalledProcessError:
+            output = self._run("for-each-ref")
+            return "refs/cinnabar" in output
+        return False
 
     def get_mozilla_upstream_remotes(self) -> Iterator[str]:
         """Return the Mozilla-official upstream remotes for this repo."""
@@ -265,11 +275,12 @@ class GitRepository(Repository):
         # git-diff doesn't support an 'exclude-from-files' param, but
         # allow to add individual exclude pattern since v1.9, see
         # https://git-scm.com/docs/gitglossary#gitglossary-aiddefpathspecapathspec
-        with open(exclude_file) as exclude_pattern_file:
-            for pattern in exclude_pattern_file.readlines():
-                pattern = self._translate_exclude_expr(pattern.rstrip())
-                if pattern is not None:
-                    args.append(pattern)
+        if exclude_file is not None:
+            with open(exclude_file) as exclude_pattern_file:
+                for pattern in exclude_pattern_file.readlines():
+                    pattern = self._translate_exclude_expr(pattern.rstrip())
+                    if pattern is not None:
+                        args.append(pattern)
         return self._pipefrom(*args)
 
     def working_directory_clean(self, untracked=False, ignored=False):
@@ -631,6 +642,7 @@ class GitRepository(Repository):
                 "watchman is not installed. Please install `watchman` and "
                 "re-run `./mach vcs-setup` to enable faster git commands."
             )
+            return
 
         print("Ensuring watchman is properly configured...")
 

@@ -8,26 +8,26 @@
 
 #include "nsVideoFrame.h"
 
-#include "nsCOMPtr.h"
-#include "nsGkAtoms.h"
+#include <algorithm>
 
+#include "ImageContainer.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/dom/HTMLImageElement.h"
 #include "mozilla/dom/HTMLVideoElement.h"
 #include "mozilla/dom/ShadowRoot.h"
 #include "mozilla/layers/RenderRootStateManager.h"
+#include "nsCOMPtr.h"
+#include "nsContentCreatorFunctions.h"
+#include "nsContentUtils.h"
 #include "nsDisplayList.h"
 #include "nsGenericHTMLElement.h"
-#include "nsPresContext.h"
-#include "nsContentCreatorFunctions.h"
+#include "nsGkAtoms.h"
 #include "nsIContentInlines.h"
-#include "nsImageFrame.h"
 #include "nsIImageLoadingContent.h"
-#include "nsContentUtils.h"
+#include "nsImageFrame.h"
 #include "nsLayoutUtils.h"
-#include "ImageContainer.h"
+#include "nsPresContext.h"
 #include "nsStyleUtil.h"
-#include <algorithm>
 
 using namespace mozilla;
 using namespace mozilla::layers;
@@ -502,7 +502,8 @@ void nsVideoFrame::UpdatePosterSource(bool aNotify) {
 }
 
 nsresult nsVideoFrame::AttributeChanged(int32_t aNameSpaceID,
-                                        nsAtom* aAttribute, int32_t aModType) {
+                                        nsAtom* aAttribute,
+                                        AttrModType aModType) {
   if (aAttribute == nsGkAtoms::poster && HasVideoElement()) {
     UpdatePosterSource(true);
   }

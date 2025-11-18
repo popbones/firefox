@@ -43,6 +43,8 @@ import mozilla.components.lib.state.ext.observeAsComposableState
 import mozilla.components.lib.state.ext.observeAsState
 import org.mozilla.samples.compose.browser.browser.BrowserToolbarMiddleware.Companion.Dependencies
 import org.mozilla.samples.compose.browser.components
+import mozilla.components.feature.awesomebar.R as awesomebarR
+import mozilla.components.feature.fxsuggest.R as fxsuggestR
 
 /**
  * The main browser screen.
@@ -183,9 +185,11 @@ private fun Suggestions(
 
     val sessionSuggestionProvider = remember(context) {
         SessionSuggestionProvider(
-            context.resources,
             components.store,
             components.tabsUseCases.selectTab,
+            switchToTabDescription = context.getString(
+                awesomebarR.string.switch_to_tab_description,
+            ),
         )
     }
 
@@ -195,16 +199,17 @@ private fun Suggestions(
 
     val fxSuggestSuggestionProvider = remember(context) {
         FxSuggestSuggestionProvider(
-            context.resources,
             loadUrlUseCase = components.sessionUseCases.loadUrl,
             includeSponsoredSuggestions = false,
             includeNonSponsoredSuggestions = true,
+            sponsoredSuggestionDescription = context.getString(
+                fxsuggestR.string.sponsored_suggestion_description,
+            ),
         )
     }
 
     val searchSuggestionProvider = remember(context) {
         SearchSuggestionProvider(
-            context,
             components.store,
             components.searchUseCases.defaultSearch,
             components.client,

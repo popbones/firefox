@@ -37,7 +37,6 @@ FEATURE_CHECK_NEEDED = {
     "uint8array-base64": "!Uint8Array.fromBase64",  # Bug 1862220
     "json-parse-with-source": "!JSON.hasOwnProperty('isRawJSON')",  # Bug 1658310
     "RegExp.escape": "!RegExp.escape",
-    "promise-try": "!Promise.try",
     "explicit-resource-management": "!(this.hasOwnProperty('getBuildConfiguration')&&getBuildConfiguration('explicit-resource-management'))",  # Bug 1569081
     "Atomics.pause": "!this.hasOwnProperty('Atomics')||!Atomics.pause",
     "Error.isError": "!Error.isError",
@@ -49,11 +48,9 @@ FEATURE_CHECK_NEEDED = {
 RELEASE_OR_BETA = set(
     [
         "regexp-modifiers",
-        "symbols-as-weakmap-keys",
     ]
 )
 SHELL_OPTIONS = {
-    "import-attributes": "--enable-import-attributes",
     "ShadowRealm": "--enable-shadow-realms",
     "iterator-helpers": "--enable-iterator-helpers",
     "symbols-as-weakmap-keys": "--enable-symbols-as-weakmap-keys",
@@ -62,7 +59,6 @@ SHELL_OPTIONS = {
     "regexp-duplicate-named-groups": "--enable-regexp-duplicate-named-groups",
     "RegExp.escape": "--enable-regexp-escape",
     "regexp-modifiers": "--enable-regexp-modifiers",
-    "promise-try": "--enable-promise-try",
     "explicit-resource-management": "--enable-explicit-resource-management",
     "Atomics.pause": "--enable-atomics-pause",
     "Temporal": "--enable-temporal",

@@ -6,14 +6,14 @@
 
 #include "SVGAnimatedPreserveAspectRatio.h"
 
+#include "SMILEnumType.h"
+#include "SVGAttrTearoffTable.h"
 #include "mozAutoDocUpdate.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/SMILValue.h"
 #include "mozilla/SVGContentUtils.h"
 #include "mozilla/dom/SVGAnimatedPreserveAspectRatioBinding.h"
-#include "SMILEnumType.h"
-#include "SVGAttrTearoffTable.h"
 
 using namespace mozilla::dom;
 
@@ -47,15 +47,13 @@ class MOZ_RAII AutoChangePreserveAspectRatioNotifier {
     MOZ_ASSERT(mSVGElement, "Expecting non-null element");
     if (mDoSetAttr) {
       mUpdateBatch.emplace(aSVGElement->GetComposedDoc(), true);
-      mEmptyOrOldValue =
-          mSVGElement->WillChangePreserveAspectRatio(mUpdateBatch.ref());
+      mSVGElement->WillChangePreserveAspectRatio(mUpdateBatch.ref());
     }
   }
 
   ~AutoChangePreserveAspectRatioNotifier() {
     if (mDoSetAttr) {
-      mSVGElement->DidChangePreserveAspectRatio(mEmptyOrOldValue,
-                                                mUpdateBatch.ref());
+      mSVGElement->DidChangePreserveAspectRatio(mUpdateBatch.ref());
     }
     if (mPreserveAspectRatio->mIsAnimated) {
       mSVGElement->AnimationNeedsResample();
@@ -66,7 +64,6 @@ class MOZ_RAII AutoChangePreserveAspectRatioNotifier {
   SVGAnimatedPreserveAspectRatio* const mPreserveAspectRatio;
   SVGElement* const mSVGElement;
   Maybe<mozAutoDocUpdate> mUpdateBatch;
-  nsAttrValue mEmptyOrOldValue;
   bool mDoSetAttr;
 };
 

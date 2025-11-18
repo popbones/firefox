@@ -4,7 +4,6 @@
 
 package org.mozilla.fenix.browser.tabstrip
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +29,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import mozilla.components.compose.base.button.PrimaryButton
+import mozilla.components.compose.base.button.FilledButton
 import mozilla.components.compose.base.menu.DropdownMenu
 import mozilla.components.compose.base.menu.MenuItem
 import mozilla.components.ui.tabcounter.TabCounter
@@ -48,7 +47,6 @@ import org.mozilla.fenix.theme.FirefoxTheme
  * @param onClick Invoked when the user clicks the button.
  */
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 fun TabStripTabCounterButton(
     tabCount: Int,
     size: Dp,
@@ -132,7 +130,7 @@ private fun TabStripTabCounterButtonPreview() {
                 privacyBadgeVisible = privacyBadgeVisible,
             )
 
-            PrimaryButton(
+            FilledButton(
                 text = "Toggle privacy badge",
                 modifier = Modifier.fillMaxWidth(),
             ) {

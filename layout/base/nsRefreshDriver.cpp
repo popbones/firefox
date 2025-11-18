@@ -18,7 +18,9 @@
  */
 
 #include "nsRefreshDriver.h"
+
 #include "mozilla/DataMutex.h"
+#include "mozilla/dom/VideoFrameProvider.h"
 #include "nsThreadUtils.h"
 
 #ifdef XP_WIN
@@ -26,84 +28,84 @@
 // mmsystem isn't part of WIN32_LEAN_AND_MEAN, so we have
 // to manually include it
 #  include <mmsystem.h>
+
 #  include "WinUtils.h"
 #endif
 
+#include "GeckoProfiler.h"
+#include "VsyncSource.h"
+#include "imgIContainer.h"
+#include "imgRequest.h"
+#include "jsapi.h"
 #include "mozilla/AnimationEventDispatcher.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/AutoRestore.h"
 #include "mozilla/BasePrincipal.h"
-#include "mozilla/dom/MediaQueryList.h"
 #include "mozilla/CycleCollectedJSContext.h"
-#include "mozilla/SMILAnimationController.h"
 #include "mozilla/DisplayPortUtils.h"
 #include "mozilla/Hal.h"
 #include "mozilla/InputTaskManager.h"
 #include "mozilla/IntegerRange.h"
-#include "mozilla/PresShell.h"
-#include "mozilla/VsyncTaskManager.h"
-#include "nsITimer.h"
-#include "nsLayoutUtils.h"
-#include "nsPresContext.h"
-#include "imgRequest.h"
-#include "nsComponentManagerUtils.h"
 #include "mozilla/Logging.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/DocumentTimeline.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/dom/HTMLVideoElement.h"
-#include "nsIXULRuntime.h"
-#include "jsapi.h"
-#include "nsContentUtils.h"
-#include "nsTextFrame.h"
 #include "mozilla/PendingFullscreenEvent.h"
-#include "mozilla/dom/PerformanceMainThread.h"
 #include "mozilla/Preferences.h"
+#include "mozilla/PresShell.h"
+#include "mozilla/RestyleManager.h"
+#include "mozilla/SMILAnimationController.h"
+#include "mozilla/ScopeExit.h"
 #include "mozilla/StaticPrefs_apz.h"
 #include "mozilla/StaticPrefs_gfx.h"
 #include "mozilla/StaticPrefs_idle_period.h"
 #include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/StaticPrefs_page_load.h"
-#include "nsViewManager.h"
-#include "GeckoProfiler.h"
+#include "mozilla/TaskController.h"
+#include "mozilla/Unused.h"
+#include "mozilla/VsyncDispatcher.h"
+#include "mozilla/VsyncTaskManager.h"
 #include "mozilla/dom/BrowserChild.h"
 #include "mozilla/dom/CallbackDebuggerNotification.h"
 #include "mozilla/dom/ContentChild.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
+#include "mozilla/dom/DocumentTimeline.h"
 #include "mozilla/dom/Event.h"
+#include "mozilla/dom/HTMLVideoElement.h"
+#include "mozilla/dom/LargestContentfulPaint.h"
+#include "mozilla/dom/MediaQueryList.h"
 #include "mozilla/dom/Performance.h"
+#include "mozilla/dom/PerformanceMainThread.h"
+#include "mozilla/dom/ScriptSettings.h"
 #include "mozilla/dom/Selection.h"
 #include "mozilla/dom/VsyncMainChild.h"
 #include "mozilla/dom/WindowBinding.h"
-#include "mozilla/dom/LargestContentfulPaint.h"
-#include "mozilla/layers/WebRenderLayerManager.h"
-#include "mozilla/RestyleManager.h"
-#include "mozilla/TaskController.h"
-#include "imgIContainer.h"
-#include "mozilla/dom/ScriptSettings.h"
-#include "nsDocShell.h"
-#include "nsISimpleEnumerator.h"
-#include "nsJSEnvironment.h"
-#include "mozilla/ScopeExit.h"
 #include "mozilla/glean/LayoutMetrics.h"
-
 #include "mozilla/ipc/BackgroundChild.h"
 #include "mozilla/ipc/PBackgroundChild.h"
-#include "VsyncSource.h"
-#include "mozilla/VsyncDispatcher.h"
-#include "mozilla/Unused.h"
+#include "mozilla/layers/WebRenderLayerManager.h"
 #include "nsAnimationManager.h"
-#include "nsDisplayList.h"
+#include "nsComponentManagerUtils.h"
+#include "nsContentUtils.h"
 #include "nsDOMNavigationTiming.h"
+#include "nsDisplayList.h"
+#include "nsDocShell.h"
+#include "nsISimpleEnumerator.h"
+#include "nsITimer.h"
+#include "nsIXULRuntime.h"
+#include "nsJSEnvironment.h"
+#include "nsLayoutUtils.h"
+#include "nsPresContext.h"
+#include "nsTextFrame.h"
 #include "nsTransitionManager.h"
+#include "nsViewManager.h"
 
 #if defined(MOZ_WIDGET_ANDROID)
 #  include "VRManagerChild.h"
 #endif  // defined(MOZ_WIDGET_ANDROID)
 
-#include "nsXULPopupManager.h"
-
 #include <numeric>
+
+#include "nsXULPopupManager.h"
 
 using namespace mozilla;
 using namespace mozilla::widget;
@@ -425,7 +427,7 @@ class SimpleTimerBasedRefreshDriverTimer : public RefreshDriverTimer {
     uint32_t delay = static_cast<uint32_t>(mRateMilliseconds);
     mTimer->InitWithNamedFuncCallback(
         TimerTick, this, delay, nsITimer::TYPE_ONE_SHOT,
-        "SimpleTimerBasedRefreshDriverTimer::StartTimer");
+        "SimpleTimerBasedRefreshDriverTimer::StartTimer"_ns);
   }
 
   void StopTimer() override { mTimer->Cancel(); }
@@ -1023,7 +1025,7 @@ class StartupRefreshDriverTimer : public SimpleTimerBasedRefreshDriverTimer {
         static_cast<uint32_t>((newTarget - aNowTime).ToMilliseconds());
     mTimer->InitWithNamedFuncCallback(
         TimerTick, this, delay, nsITimer::TYPE_ONE_SHOT,
-        "StartupRefreshDriverTimer::ScheduleNextTick");
+        "StartupRefreshDriverTimer::ScheduleNextTick"_ns);
     mTargetTime = newTarget;
   }
 
@@ -1093,9 +1095,9 @@ class InactiveRefreshDriverTimer final
     mTargetTime = mLastFireTime + mRateDuration;
 
     uint32_t delay = static_cast<uint32_t>(mRateMilliseconds);
-    mTimer->InitWithNamedFuncCallback(TimerTickOne, this, delay,
-                                      nsITimer::TYPE_ONE_SHOT,
-                                      "InactiveRefreshDriverTimer::StartTimer");
+    mTimer->InitWithNamedFuncCallback(
+        TimerTickOne, this, delay, nsITimer::TYPE_ONE_SHOT,
+        "InactiveRefreshDriverTimer::StartTimer"_ns);
     mIsTicking = true;
   }
 
@@ -1123,7 +1125,7 @@ class InactiveRefreshDriverTimer final
     uint32_t delay = static_cast<uint32_t>(mNextTickDuration);
     mTimer->InitWithNamedFuncCallback(
         TimerTickOne, this, delay, nsITimer::TYPE_ONE_SHOT,
-        "InactiveRefreshDriverTimer::ScheduleNextTick");
+        "InactiveRefreshDriverTimer::ScheduleNextTick"_ns);
 
     LOG("[%p] inactive timer next tick in %f ms [index %d/%d]", this,
         mNextTickDuration, mNextDriverIndex, GetRefreshDriverCount());
@@ -2088,7 +2090,6 @@ void nsRefreshDriver::RunVideoFrameCallbacks(
     AUTO_PROFILER_TRACING_MARKER_INNERWINDOWID(
         "Paint", "requestVideoFrame callbacks", GRAPHICS, doc->InnerWindowID());
     for (const auto& videoElm : videoElms) {
-      nsTArray<VideoFrameRequest> callbacks;
       VideoFrameCallbackMetadata metadata;
 
       // Presentation time is our best estimate of when the video frame was
@@ -2104,20 +2105,25 @@ void nsRefreshDriver::RunVideoFrameCallbacks(
       // not fall behind on compositing.
       metadata.mExpectedDisplayTime = nextTickTimeStamp;
 
-      // TakeVideoFrameRequestCallbacks is responsible for populating the rest
+      // WillFireVideoFrameCallbacks is responsible for populating the rest
       // of the metadata fields. If it is not ready, or there has been no
-      // change, it will not populate metadata nor yield any callbacks.
-      videoElm->TakeVideoFrameRequestCallbacks(aNowTime, nextTickHint, metadata,
-                                               callbacks);
+      // change, it will not populate metadata and will return false.
+      if (!videoElm->WillFireVideoFrameCallbacks(aNowTime, nextTickHint,
+                                                 metadata)) {
+        continue;
+      }
 
-      for (auto& callback : callbacks) {
-        if (videoElm->IsVideoFrameCallbackCancelled(callback.mHandle)) {
+      VideoFrameRequestManager::FiringCallbacks callbacks(
+          videoElm->FrameRequestManager());
+
+      for (auto& callback : callbacks.mList) {
+        if (callback.mCancelled) {
           continue;
         }
 
-        // MOZ_KnownLive is OK, because the stack array frameRequestCallbacks
-        // keeps callback alive and the mCallback strong reference can't be
-        // mutated by the call.
+        // MOZ_KnownLive is OK, because the stack FiringCallbacks keeps callback
+        // alive and the mCallback strong reference can't be mutated by the
+        // call.
         LogVideoFrameRequestCallback::Run run(callback.mCallback);
         MOZ_KnownLive(callback.mCallback)->Call(timeStamp, metadata);
       }
@@ -2128,9 +2134,8 @@ void nsRefreshDriver::RunVideoFrameCallbacks(
 void nsRefreshDriver::RunFrameRequestCallbacks(
     const nsTArray<RefPtr<Document>>& aDocs, TimeStamp aNowTime) {
   for (Document* doc : aDocs) {
-    nsTArray<FrameRequest> callbacks;
-    doc->TakeFrameRequestCallbacks(callbacks);
-    if (callbacks.IsEmpty()) {
+    FrameRequestManager::FiringCallbacks callbacks(doc->FrameRequestManager());
+    if (callbacks.mList.IsEmpty()) {
       continue;
     }
 
@@ -2146,8 +2151,8 @@ void nsRefreshDriver::RunFrameRequestCallbacks(
     AUTO_PROFILER_TRACING_MARKER_INNERWINDOWID(
         "Paint", "requestAnimationFrame callbacks", GRAPHICS,
         doc->InnerWindowID());
-    for (const auto& callback : callbacks) {
-      if (doc->IsCanceledFrameRequestCallback(callback.mHandle)) {
+    for (auto& callback : callbacks.mList) {
+      if (callback.mCancelled) {
         continue;
       }
 

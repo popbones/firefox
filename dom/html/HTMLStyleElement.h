@@ -38,9 +38,11 @@ class HTMLStyleElement final : public nsGenericHTMLElement,
                            mozilla::ErrorResult& aError) override;
 
  public:
-  virtual void SetTextContentInternal(const nsAString& aTextContent,
-                                      nsIPrincipal* aSubjectPrincipal,
-                                      mozilla::ErrorResult& aError) override;
+  virtual void SetTextContentInternal(
+      const nsAString& aTextContent, nsIPrincipal* aSubjectPrincipal,
+      mozilla::ErrorResult& aError,
+      MutationEffectOnScript aMutationEffectOnScript =
+          MutationEffectOnScript::DropTrustWorthiness) override;
   /**
    * Mark this style element with a devtools-specific principal that
    * skips Content Security Policy unsafe-inline checks. This triggering
@@ -99,6 +101,7 @@ class HTMLStyleElement final : public nsGenericHTMLElement,
    * parent; we should only respond to the change if aContent is non-anonymous.
    */
   void ContentChanged(nsIContent* aContent);
+  nsresult CopyInnerTo(HTMLStyleElement* aDest);
 
   RefPtr<nsDOMTokenList> mBlocking;
 };

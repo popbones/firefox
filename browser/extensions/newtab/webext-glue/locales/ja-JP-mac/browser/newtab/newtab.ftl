@@ -8,6 +8,9 @@
 newtab-page-title = 新規タブ
 newtab-settings-button =
     .title = 新規タブページをカスタマイズ
+newtab-customize-panel-icon-button =
+    .title = このページをカスタマイズ
+newtab-customize-panel-icon-button-label = カスタマイズ
 newtab-personalize-settings-icon-label =
     .title = 新規タブをパーソナライズ
     .aria-label = 設定
@@ -53,6 +56,9 @@ newtab-topsites-add-shortcut-header = 新規ショートカット
 newtab-topsites-edit-topsites-header = トップサイトを編集
 newtab-topsites-edit-shortcut-header = ショートカットを編集
 newtab-topsites-add-shortcut-label = ショートカット追加
+newtab-topsites-add-shortcut-title =
+    .title = ショートカット追加
+    .aria-label = ショートカット追加
 newtab-topsites-title-label = タイトル
 newtab-topsites-title-input =
     .placeholder = タイトルを入力
@@ -81,6 +87,14 @@ newtab-confirm-delete-history-p2 = この操作は取り消せません。
 ## Top Sites - Sponsored label
 
 newtab-topsite-sponsored = 広告
+
+## Label used by screen readers for pinned top sites
+
+# Variables:
+#   $title (string) - The label or hostname of the site.
+topsite-label-pinned =
+    .aria-label = { $title } (ピン留め)
+    .title = { $title }
 
 ## Context Menu - Action Tooltips.
 
@@ -119,7 +133,6 @@ newtab-menu-show-privacy-info = 私たちのスポンサーとあなたのプラ
 newtab-menu-about-fakespot = { -fakespot-brand-name } について
 # Report is a verb (i.e. report issue with the content).
 newtab-menu-report = 報告
-newtab-menu-report-content = このコンテンツを報告
 # Context menu option to personalize New Tab recommended stories by blocking a section of stories,
 # e.g. "Sports". "Block" is a verb here.
 newtab-menu-section-block = ブロック
@@ -304,12 +317,25 @@ newtab-custom-pocket-sponsored = 広告記事
 newtab-custom-pocket-show-recent-saves = 最近保存したものを表示
 newtab-custom-recent-title = 最近のアクティビティ
 newtab-custom-recent-subtitle = 最近のサイトとコンテンツの抜粋
-newtab-custom-recent-toggle =
-    .label = 最近のアクティビティ
-    .description = 最近のサイトとコンテンツの抜粋
 newtab-custom-weather-toggle =
     .label = 天気予報
     .description = 一目でわかる今日の天気
+newtab-custom-trending-search-toggle =
+    .label = トレンド検索
+    .description = 人気があり頻繁に検索されているトピックです
+newtab-custom-widget-weather-toggle =
+    .label = 天気予報
+newtab-custom-widget-trending-search-toggle =
+    .label = トレンド検索
+newtab-custom-widget-lists-toggle =
+    .label = ToDo リスト
+newtab-custom-widget-timer-toggle =
+    .label = タイマー
+newtab-custom-widget-section-title = ウィジェット
+# Tooltip for close button
+newtab-custom-close-menu-button =
+    .title = 閉じる
+    .aria-label = メニューを閉じる
 newtab-custom-close-button = 閉じる
 newtab-custom-settings = 他の設定を管理
 
@@ -371,7 +397,7 @@ newtab-wallpaper-abstract-purple-green = 紫色と緑色の明るいグラデー
 newtab-wallpaper-abstract-blue-purple-waves = 青色と紫色の波形の形状
 newtab-wallpaper-abstract-black-waves = 黒色の波形の形状
 
-## Photographs
+## Celestial
 
 newtab-wallpaper-category-title-photographs = 写真
 newtab-wallpaper-beach-at-sunrise = 早朝の砂浜
@@ -427,7 +453,6 @@ newtab-weather-menu-change-location = 予報地点を変更
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = 場所を検索
     .aria-label = 場所を検索
-newtab-weather-change-location-search-input = 場所を検索
 newtab-weather-menu-weather-display = 天気表示
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -486,11 +511,6 @@ newtab-topic-selection-privacy-link = ユーザーデータの保護と管理に
 newtab-topic-selection-button-update-interests = 関心事を更新
 newtab-topic-selection-button-pick-interests = 関心事を選ぶ
 
-## Button to block/unblock listed topics
-## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
-## e.g. Blocked the politics section of stories.
-
-
 ## Content Feed Sections
 ## "Follow", "unfollow", and "following" are social media terms that refer to subscribing to or unsubscribing from a section of stories.
 ## e.g. Following the travel section of stories.
@@ -498,6 +518,9 @@ newtab-topic-selection-button-pick-interests = 関心事を選ぶ
 newtab-section-follow-button = フォローする
 newtab-section-following-button = フォロー中
 newtab-section-unfollow-button = フォロー解除
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = フィードを微調整
+newtab-section-follow-highlight-subtitle = 興味のあることをフォローして、お好みのコンテンツを多く表示します
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -530,15 +553,26 @@ newtab-custom-wallpaper-title = カスタム壁紙が利用できます
 newtab-custom-wallpaper-subtitle = 壁紙をアップロードするかお好みのカラーを選んで、あなただけの { -brand-product-name } にカスタマイズしましょう。
 newtab-custom-wallpaper-cta = 壁紙を試す
 
+## Strings for new user activation custom wallpaper highlight
+
+newtab-new-user-custom-wallpaper-title = 壁紙を選んであなただけの { -brand-product-name } に彩りましょう
+newtab-new-user-custom-wallpaper-subtitle = お好みの壁紙とカラーですべての新規タブを自宅のようにカスタマイズできます。
+newtab-new-user-custom-wallpaper-cta = 今すぐ試す
+
 ## Strings for download mobile highlight
 
 newtab-download-mobile-highlight-title = モバイル版 { -brand-product-name } をダウンロード
 # "Scan the code" refers to scanning the QR code that appears above the body text that leads to Firefox for mobile download.
 newtab-download-mobile-highlight-body-variant-a = QR コードをスキャンして安全にダウンロード。
 newtab-download-mobile-highlight-body-variant-b = タブやパスワード、他のデータを同期しておけば、中断したところからピックアップできます。
-newtab-download-mobile-highlight-body-variant-c = 同じ { -brand-product-name } ブラウザーをポケットに入れてを持ち出せることをご存じですか？ 
+newtab-download-mobile-highlight-body-variant-c = 同じ { -brand-product-name } ブラウザーをポケットに入れてを持ち出せることをご存じですか？
 newtab-download-mobile-highlight-image =
     .aria-label = モバイル版 { -brand-product-name } をダウンロードするための QR コード
+
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = 指先一つでお気に入りに追加
+newtab-shortcuts-highlight-subtitle = ショートカットを追加してお気に入りのサイトに 1 クリックでアクセスできます。
 
 ## Strings for reporting ads and content
 
@@ -562,3 +596,84 @@ newtab-report-cancel = キャンセル
 newtab-report-submit = 送信
 newtab-toast-thanks-for-reporting =
     .message = ご報告ありがとうございます。
+
+## Strings for trending searches
+
+newtab-trending-searches-show-trending =
+    .title = トレンド検索を表示します
+newtab-trending-searches-hide-trending =
+    .title = トレンド検索を隠します
+newtab-trending-searches-learn-more = 詳細情報
+newtab-trending-searches-dismiss = トレンド検索を隠す
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = トレンド検索
+
+## Strings for task / to-do list productivity widget
+
+# "Add one" means adding a new task to the list (e.g., "Walk the dog")
+newtab-widget-lists-empty-cta = 可能性は限りなく。リストを作りましょう。
+# A simple label next to the default list name letting users know this is a new / beta feature
+newtab-widget-lists-label-new =
+    .label = 新機能
+newtab-widget-lists-label-beta =
+    .label = Beta
+# When tasks have been previous marked as complete, they will appear in their own separate list beneath incomplete items
+# Variables:
+#   $number (number) - Amount of list items marked complete
+newtab-widget-lists-completed-list = 完了 ({ $number })
+newtab-widget-task-list-menu-copy = コピー
+newtab-widget-lists-menu-edit = リスト名を編集
+newtab-widget-lists-menu-create = 新規を作成
+newtab-widget-lists-menu-delete = このリストを削除
+newtab-widget-lists-menu-copy = リストをクリップボードにコピー
+newtab-widget-lists-menu-hide = すべてのリストを隠す
+newtab-widget-lists-menu-learn-more = 詳細情報
+newtab-widget-lists-input-add-an-item =
+    .placeholder = アイテムを追加してください
+newtab-widget-lists-input-error = 追加するアイテムにテキストを含めてください
+newtab-widget-lists-input-menu-open-link = リンクを開く
+newtab-widget-lists-input-menu-move-up = 上へ移動
+newtab-widget-lists-input-menu-move-down = 下へ移動
+newtab-widget-lists-input-menu-delete = 削除
+newtab-widget-lists-input-menu-edit = 編集
+newtab-widget-lists-name-label-default =
+    .label = ToDo リスト
+newtab-widget-lists-name-placeholder-default =
+    .placeholder = ToDo リスト
+# The placeholder value of the name field for a newly created list
+newtab-widget-lists-name-placeholder-new =
+    .placeholder = 新規リスト
+
+## Strings for timer productivity widget
+## When the timer ends, a system notification may be shown. Depending on which mode the timer is in, that message would be shown
+
+newtab-widget-timer-notification-title = タイマー
+newtab-widget-timer-notification-focus = 時間内に良い仕事をしましょう。休憩はいかが？
+newtab-widget-timer-notification-break = 休憩時間が終わりました。準備はよいですか？
+newtab-widget-timer-notification-warning = 通知がオフになっています
+newtab-widget-timer-mode-focus =
+    .label = 集中
+newtab-widget-timer-mode-break =
+    .label = 休憩
+newtab-widget-timer-play =
+    .title = 再生
+newtab-widget-timer-pause =
+    .title = 一時停止
+newtab-widget-timer-label-play =
+    .label = 再生
+newtab-widget-timer-label-pause =
+    .label = 一時停止
+newtab-widget-timer-reset =
+    .title = リセット
+newtab-widget-timer-menu-notifications = 通知をオフにする
+newtab-widget-timer-menu-notifications-on = 通知をオンにする
+newtab-widget-timer-menu-hide = タイマーを隠す
+newtab-widget-timer-menu-learn-more = 詳細情報
+# Message that appears when widgets are full-height. This reminds users that there is more New Tab content to see if they scroll
+newtab-widget-keep-scrolling = 続きはスクロールしてください
+newtab-promo-card-title = { -brand-product-name } を支援
+newtab-promo-card-body = 私たちのスポンサーはより良いウェブを作り上げるという私たちの使命を支援します
+newtab-promo-card-cta = 詳細情報
+newtab-promo-card-dismiss-button =
+    .title = 閉じる
+    .aria-label = 閉じる

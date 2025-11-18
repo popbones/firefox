@@ -35,8 +35,7 @@ import mozilla.components.support.base.feature.LifecycleAwareFeature
 import mozilla.components.support.base.feature.UserInteractionHandler
 import mozilla.components.support.ktx.android.content.share
 import mozilla.components.support.ktx.android.util.dpToPx
-import mozilla.components.support.ktx.android.view.setNavigationBarTheme
-import mozilla.components.support.ktx.android.view.setStatusBarTheme
+import mozilla.components.support.ktx.android.view.setSystemBarsBackground
 import mozilla.components.support.ktx.kotlinx.coroutines.flow.ifAnyChanged
 import mozilla.components.support.utils.ext.resizeMaintainingAspectRatio
 import mozilla.components.ui.icons.R as iconsR
@@ -71,7 +70,7 @@ class CustomTabsToolbarFeature(
     private val menuBuilder: BrowserMenuBuilder? = null,
     private val menuItemIndex: Int = menuBuilder?.items?.size ?: 0,
     private val window: Window? = null,
-    @NightMode private val appNightMode: Int = MODE_NIGHT_FOLLOW_SYSTEM,
+    @param:NightMode private val appNightMode: Int = MODE_NIGHT_FOLLOW_SYSTEM,
     private val forceActionButtonTinting: Boolean = false,
     private val customTabsToolbarButtonConfig: CustomTabsToolbarButtonConfig =
         CustomTabsToolbarButtonConfig(),
@@ -212,14 +211,20 @@ class CustomTabsToolbarFeature(
             )
         }
 
-        if (customTabsColorsConfig.updateStatusBarColor && toolbarColor != null) {
-            window?.setStatusBarTheme(toolbarColor)
-        }
-
-        val areNavigationBarColorsAvailable = navigationBarColor != null || navigationBarDividerColor != null
-        if (customTabsColorsConfig.updateSystemNavigationBarColor && areNavigationBarColorsAvailable) {
-            window?.setNavigationBarTheme(navigationBarColor, navigationBarDividerColor)
-        }
+        window?.setSystemBarsBackground(
+            statusBarColor = when (customTabsColorsConfig.updateStatusBarColor) {
+                true -> toolbarColor
+                false -> null
+            },
+            navigationBarColor = when (customTabsColorsConfig.updateSystemNavigationBarColor) {
+                true -> navigationBarColor
+                false -> null
+            },
+            navigationBarDividerColor = when (customTabsColorsConfig.updateSystemNavigationBarColor) {
+                true -> navigationBarDividerColor
+                false -> null
+            },
+        )
     }
 
     /**

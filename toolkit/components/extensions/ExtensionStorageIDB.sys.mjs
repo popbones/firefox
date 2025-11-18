@@ -301,6 +301,41 @@ class ExtensionStorageLocalIDB extends IndexedDB {
   }
 
   /**
+   * Asynchronously retrieves the bytes in use for the given storage items.
+   *
+   * @param {Array<string>|string|null} [keys]
+   * @returns {Promise<number>}
+   */
+  async getBytesInUse(keys) {
+    const data = await this.get(keys);
+    let bytesInUse = 0;
+    for (let key in data) {
+      const clone = new StructuredCloneHolder(key, null, data[key]);
+      bytesInUse += key.length + clone.dataSize;
+    }
+    return bytesInUse;
+  }
+
+  /**
+   * Asynchronously retrieves all keys.
+   *
+   * @returns {Promise<Array<string>>}
+   *          Returns an array of keys.
+   */
+  async getKeys() {
+    const cursor = await this.objectStore(
+      IDB_DATA_STORENAME,
+      "readonly"
+    ).openCursor();
+    const keys = [];
+    while (!cursor.done) {
+      keys.push(cursor.key);
+      await cursor.continue();
+    }
+    return keys;
+  }
+
+  /**
    * Asynchronously removes the given storage items.
    *
    * @param {string|Array<string>} keys

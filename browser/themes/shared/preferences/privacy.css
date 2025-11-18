@@ -41,6 +41,14 @@
   list-style-image: url(chrome://browser/skin/notification-icons/camera.svg);
 }
 
+.localhost-icon {
+  list-style-image: url(chrome://browser/skin/notification-icons/local-host.svg);
+}
+
+.local-network-icon {
+  list-style-image: url(chrome://browser/skin/notification-icons/local-network.svg);
+}
+
 .microphone-icon {
   list-style-image: url(chrome://browser/skin/notification-icons/microphone.svg);
 }
@@ -117,7 +125,7 @@
 }
 
 .arrowhead {
-  border-radius: 2px;
+  border-radius: var(--border-radius-xsmall);
   min-height: 20px;
   min-width: 20px;
   max-height: 20px;
@@ -267,6 +275,11 @@
   list-style-image: url("chrome://global/skin/icons/warning.svg");
   width: 16px;
   margin-inline-end: 6px;
+}
+
+.content-blocking-exceptions {
+  border-top: 1px solid var(--border-color);
+  padding-top: 18px;
 }
 
 #blockCookiesMenu {

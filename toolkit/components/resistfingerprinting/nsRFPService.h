@@ -52,14 +52,14 @@
 #  define SPOOFED_UA_OS "Android 10; Mobile"
 #  define SPOOFED_APPVERSION "5.0 (Android 10)"
 #  define SPOOFED_OSCPU "Linux armv81"
-#  define SPOOFED_MAX_TOUCH_POINTS 10
+#  define SPOOFED_MAX_TOUCH_POINTS 5
 #else
 // For Linux and other platforms, like BSDs, SunOS and etc, we will use Linux
 // platform.
 #  define SPOOFED_UA_OS SPOOFED_UA_OS_OTHER
 #  define SPOOFED_APPVERSION "5.0 (X11)"
 #  define SPOOFED_OSCPU "Linux x86_64"
-#  define SPOOFED_MAX_TOUCH_POINTS 10
+#  define SPOOFED_MAX_TOUCH_POINTS 0
 #endif
 
 #define LEGACY_BUILD_ID "20181001000000"
@@ -286,6 +286,12 @@ class nsRFPService final : public nsIObserver, public nsIRFPService {
 
   // --------------------------------------------------------------------------
 
+  // This method generates the time zone string (e.g. "Atlantic/Reykjavik") that
+  // should be spoofed by the JavaScript engine.
+  static nsCString GetSpoofedJSTimeZone();
+
+  // --------------------------------------------------------------------------
+
   /**
    * This method for getting spoofed modifier states for the given keyboard
    * event.
@@ -339,13 +345,22 @@ class nsRFPService final : public nsIObserver, public nsIRFPService {
       nsIURI* aFirstPartyURI, nsIPrincipal* aPrincipal,
       bool aForeignByAncestorContext);
 
-  // The method to add random noises to the image data based on the random key
-  // of the given cookieJarSettings.
+  // This function is plumbed to RandomizeElements function.
   static nsresult RandomizePixels(nsICookieJarSettings* aCookieJarSettings,
                                   nsIPrincipal* aPrincipal, uint8_t* aData,
                                   uint32_t aWidth, uint32_t aHeight,
                                   uint32_t aSize,
                                   mozilla::gfx::SurfaceFormat aSurfaceFormat);
+  // This function is used to randomize the elements in the given data
+  // according to the given parameters. For example, for an RGBA pixel, by group
+  // in this context, we refer to a single pixel and by element, we refer to
+  // channels. So, if we have an RGBA pixel, we have 4 elements per group, i.e.
+  // 4 channels per pixel. We use aElementsPerGroup to randomize at most one of
+  // elements per group, i.e. one channel per pixel.
+  static nsresult RandomizeElements(
+      nsICookieJarSettings* aCookieJarSettings, nsIPrincipal* aPrincipal,
+      uint8_t* aData, uint32_t aSizeInBytes, uint8_t aElementsPerGroup,
+      uint8_t aBytesPerElement, uint8_t aElementOffset, bool aSkipLastElement);
 
   // --------------------------------------------------------------------------
 
@@ -416,6 +431,17 @@ class nsRFPService final : public nsIObserver, public nsIRFPService {
 
   static uint64_t GetSpoofedStorageLimit();
 
+  static bool ExposeWebCodecsAPI(JSContext* aCx, JSObject* aObj);
+  static bool ExposeWebCodecsAPIImageDecoder(JSContext* aCx, JSObject* aObj);
+  static bool IsWebCodecsRFPTargetEnabled(JSContext* aCx);
+
+  static uint32_t CollapseMaxTouchPoints(uint32_t aMaxTouchPoints);
+
+  static void CalculateFontLocaleAllowlist();
+  static bool FontIsAllowedByLocale(const nsACString& aName);
+
+  static Maybe<RFPTarget> TextToRFPTarget(const nsAString& aText);
+
  private:
   nsresult Init();
 
@@ -428,8 +454,6 @@ class nsRFPService final : public nsIObserver, public nsIRFPService {
 
   void PrefChanged(const char* aPref);
   static void PrefChanged(const char* aPref, void* aSelf);
-
-  static Maybe<RFPTarget> TextToRFPTarget(const nsAString& aText);
 
   // --------------------------------------------------------------------------
 
@@ -520,7 +544,7 @@ class nsRFPService final : public nsIObserver, public nsIRFPService {
   static FingerprintingProtectionType GetFingerprintingProtectionType(
       bool aIsPrivateMode);
 
-  static Maybe<bool> HandleExeptionalRFPTargets(
+  static Maybe<bool> HandleExceptionalRFPTargets(
       RFPTarget aTarget, bool aIsPrivateMode,
       FingerprintingProtectionType aMode);
 

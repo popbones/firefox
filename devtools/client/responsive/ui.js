@@ -192,7 +192,7 @@ class ResponsiveUI {
       );
       InspectorUtils.setVerticalClipping(
         this.tab.linkedBrowser.browsingContext,
-        -DYNAMIC_TOOLBAR_MAX_HEIGHT
+        0
       );
     }
 
@@ -293,8 +293,7 @@ class ResponsiveUI {
     // If our tab is about to be closed, there's not enough time to exit
     // gracefully, but that shouldn't be a problem since the tab will go away.
     // So, skip any waiting when we're about to close the tab.
-    const isTabDestroyed =
-      !this.tab.linkedBrowser || this.responsiveFront?.isDestroyed();
+    const isTabDestroyed = !this.tab.linkedBrowser;
     const isWindowClosing = options?.reason === "unload" || isTabDestroyed;
     const isTabContentDestroying =
       isWindowClosing || options?.reason === "TabClose";
@@ -399,7 +398,7 @@ class ResponsiveUI {
     if (!isTabContentDestroying) {
       await commandsDestroyed;
     }
-    this.commands = this.responsiveFront = null;
+    this.commands = null;
     this.destroyed = true;
 
     return true;
@@ -718,8 +717,8 @@ class ResponsiveUI {
   }
 
   async onRotateViewport(event) {
-    const { orientationType: type, angle, isViewportRotated } = event.data;
-    await this.updateScreenOrientation(type, angle, isViewportRotated);
+    const { orientationType: type, angle } = event.data;
+    await this.updateScreenOrientation(type, angle);
   }
 
   async onScreenshot() {
@@ -954,21 +953,12 @@ class ResponsiveUI {
    *        The orientation type to update the current device screen to.
    * @param {Number} angle
    *        The rotation angle to update the current device screen to.
-   * @param {Boolean} isViewportRotated
-   *        Whether or not the reason for updating the screen orientation is a result
-   *        of actually rotating the device via the RDM toolbar. If true, then an
-   *        "orientationchange" event is simulated. Otherwise, the screen orientation is
-   *        updated because of changing devices, opening RDM, or the page has been
-   *        reloaded/navigated to, so we should not be simulating "orientationchange".
    */
-  async updateScreenOrientation(type, angle, isViewportRotated = false) {
-    await this.commands.targetConfigurationCommand.simulateScreenOrientationChange(
-      {
-        type,
-        angle,
-        isViewportRotated,
-      }
-    );
+  async updateScreenOrientation(type, angle) {
+    // We need to call the method on the parent process
+    await this.commands.targetConfigurationCommand.updateConfiguration({
+      rdmPaneOrientation: { type, angle },
+    });
   }
 
   /**
@@ -1098,9 +1088,10 @@ class ResponsiveUI {
       currentHeight + deltaY
     );
     this.dynamicToolbar.style.height = newHeight + "px";
+    const offset = newHeight - DYNAMIC_TOOLBAR_MAX_HEIGHT;
     InspectorUtils.setVerticalClipping(
       this.tab.linkedBrowser.browsingContext,
-      -newHeight
+      offset
     );
   }
 
@@ -1110,12 +1101,6 @@ class ResponsiveUI {
     }
 
     if (targetFront.isTopLevel) {
-      this.responsiveFront = await targetFront.getFront("responsive");
-
-      if (this.destroying) {
-        return;
-      }
-
       await this.restoreActorState(isTargetSwitching);
       this.emitForTests("responsive-ui-target-switch-done");
     }
@@ -1124,6 +1109,11 @@ class ResponsiveUI {
       targetFront.on("contentScrolled", this.onContentScrolled);
     }
   }
+
+  async setElementPickerState(state, pickerType) {
+    this.commands.responsiveCommand.setElementPickerState(state, pickerType);
+  }
+
   // This just needed to setup watching for network resources,
   // to support network throttling.
   onNetworkResourceAvailable() {}

@@ -7,7 +7,7 @@
 "use strict";
 
 ChromeUtils.defineESModuleGetters(this, {
-  MLSuggest: "resource:///modules/urlbar/private/MLSuggest.sys.mjs",
+  MLSuggest: "moz-src:///browser/components/urlbar/private/MLSuggest.sys.mjs",
 });
 
 const REMOTE_SETTINGS_RECORDS = [
@@ -560,6 +560,9 @@ function makeExpectedResult({
   provider = "yelp_intent",
   originalUrl = undefined,
   displayUrl = undefined,
+  // Expect index -1 for amp results because we test
+  // without the search suggestions provider.
+  suggestedIndex = -1,
 }) {
   return QuickSuggestTestUtils.yelpResult({
     url,
@@ -568,5 +571,6 @@ function makeExpectedResult({
     provider,
     originalUrl,
     displayUrl,
+    suggestedIndex,
   });
 }

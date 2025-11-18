@@ -75,7 +75,7 @@ object GeckoProvider {
         geckoRuntime.crashPullDelegate = GeckoCrashPullDelegate(
             dispatcher = { crashIDs ->
                 context.components.appStore.dispatch(
-                    AppAction.CrashActionWrapper(CrashAction.PullCrashes(crashIDs)),
+                    AppAction.CrashActionWrapper(CrashAction.CheckDeferred(crashIDs.toList())),
                 )
             },
         )
@@ -110,6 +110,10 @@ object GeckoProvider {
                     context.settings().queryParameterStrippingAllowList,
                     queryParameterStrippingStripList =
                     context.settings().queryParameterStrippingStripList,
+                    allowListBaselineTrackingProtection =
+                    context.settings().strictAllowListBaselineTrackingProtection,
+                    allowListConvenienceTrackingProtection =
+                    context.settings().strictAllowListConvenienceTrackingProtection,
                 ),
             )
             .consoleOutput(context.components.settings.enableGeckoLogs)
@@ -127,6 +131,7 @@ object GeckoProvider {
             .setSameDocumentNavigationOverridesLoadTypeForceDisable(
                 FxNimbus.features.sameDocumentNavigationOverridesLoadType.value().forceDisableUri,
             )
+            .isolatedProcessEnabled(context.settings().isIsolatedProcessEnabled)
             .build()
     }
 }

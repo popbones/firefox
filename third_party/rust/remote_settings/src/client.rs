@@ -91,6 +91,7 @@ impl<C: ApiClient> RemoteSettingsClient<C> {
         ("main", "search-config-icons"),
         ("main", "search-config-v2"),
         ("main", "search-telemetry-v2"),
+        ("main", "summarizer-models-config"),
         ("main", "regions"),
     }
 
@@ -1277,7 +1278,7 @@ mod test {
 
     #[test]
     fn test_attachment_can_be_downloaded() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let server_info_m = mock("GET", "/v1/")
             .with_body(attachment_metadata(mockito::server_url()))
             .with_status(200)
@@ -1316,7 +1317,7 @@ mod test {
 
     #[test]
     fn test_attachment_errors_if_server_not_configured_for_attachments() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let server_info_m = mock("GET", "/v1/")
             .with_body(NO_ATTACHMENTS_METADATA)
             .with_status(200)
@@ -1352,7 +1353,7 @@ mod test {
 
     #[test]
     fn test_backoff() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let m = mock(
             "GET",
             "/v1/buckets/the-bucket/collections/the-collection/records",
@@ -1381,7 +1382,7 @@ mod test {
 
     #[test]
     fn test_500_retry_after() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let m = mock(
             "GET",
             "/v1/buckets/the-bucket/collections/the-collection/records",
@@ -1407,7 +1408,7 @@ mod test {
 
     #[test]
     fn test_options() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let m = mock(
             "GET",
             "/v1/buckets/the-bucket/collections/the-collection/records",
@@ -1478,15 +1479,9 @@ mod test {
                             },
                         ),
                         fields: {
-                            "title": String(
-                                "jpg-attachment",
-                            ),
-                            "content": String(
-                                "content",
-                            ),
-                            "schema": Number(
-                                1677694447771,
-                            ),
+                            "title": String("jpg-attachment"),
+                            "content": String("content"),
+                            "schema": Number(1677694447771),
                         },
                     },
                     RemoteSettingsRecord {
@@ -1503,15 +1498,9 @@ mod test {
                             },
                         ),
                         fields: {
-                            "title": String(
-                                "with-attachment",
-                            ),
-                            "content": String(
-                                "content",
-                            ),
-                            "schema": Number(
-                                1677694447771,
-                            ),
+                            "title": String("with-attachment"),
+                            "content": String("content"),
+                            "schema": Number(1677694447771),
                         },
                     },
                     RemoteSettingsRecord {
@@ -1520,15 +1509,9 @@ mod test {
                         deleted: false,
                         attachment: None,
                         fields: {
-                            "title": String(
-                                "no-attachment",
-                            ),
-                            "content": String(
-                                "content",
-                            ),
-                            "schema": Number(
-                                1677694447771,
-                            ),
+                            "title": String("no-attachment"),
+                            "content": String("content"),
+                            "schema": Number(1677694447771),
                         },
                     },
                     RemoteSettingsRecord {
@@ -1549,7 +1532,7 @@ mod test {
 
     #[test]
     fn test_backoff_recovery() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let m = mock(
             "GET",
             "/v1/buckets/the-bucket/collections/the-collection/records",
@@ -1592,7 +1575,7 @@ mod test {
 
     #[test]
     fn test_record_fields() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let m = mock(
             "GET",
             "/v1/buckets/the-bucket/collections/the-collection/records",
@@ -1629,15 +1612,9 @@ mod test {
                             },
                         ),
                         fields: {
-                            "title": String(
-                                "jpg-attachment",
-                            ),
-                            "content": String(
-                                "content",
-                            ),
-                            "schema": Number(
-                                1677694447771,
-                            ),
+                            "title": String("jpg-attachment"),
+                            "content": String("content"),
+                            "schema": Number(1677694447771),
                         },
                     },
                     RemoteSettingsRecord {
@@ -1654,15 +1631,9 @@ mod test {
                             },
                         ),
                         fields: {
-                            "title": String(
-                                "with-attachment",
-                            ),
-                            "content": String(
-                                "content",
-                            ),
-                            "schema": Number(
-                                1677694447771,
-                            ),
+                            "title": String("with-attachment"),
+                            "content": String("content"),
+                            "schema": Number(1677694447771),
                         },
                     },
                     RemoteSettingsRecord {
@@ -1671,15 +1642,9 @@ mod test {
                         deleted: false,
                         attachment: None,
                         fields: {
-                            "title": String(
-                                "no-attachment",
-                            ),
-                            "content": String(
-                                "content",
-                            ),
-                            "schema": Number(
-                                1677694447771,
-                            ),
+                            "title": String("no-attachment"),
+                            "content": String("content"),
+                            "schema": Number(1677694447771),
                         },
                     },
                     RemoteSettingsRecord {
@@ -1698,7 +1663,7 @@ mod test {
 
     #[test]
     fn test_missing_etag() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let m = mock(
             "GET",
             "/v1/buckets/the-bucket/collections/the-collection/records",
@@ -1729,7 +1694,7 @@ mod test {
 
     #[test]
     fn test_invalid_etag() {
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
         let m = mock(
             "GET",
             "/v1/buckets/the-bucket/collections/the-collection/records",

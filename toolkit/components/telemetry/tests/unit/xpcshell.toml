@@ -39,6 +39,8 @@ tags = "addons"
 ["test_PingSender.js"]
 skip-if = ["os == 'android'"]
 
+["test_PrefMigrationForTOU.js"]
+
 ["test_RDDScalars.js"]
 skip-if = ["os == 'android'"] # RDD is not a thing on Android?
 
@@ -50,6 +52,8 @@ tags = "addons"
 
 ["test_SyncPingIntegration.js"]
 skip-if = ["os == 'android'"]
+
+["test_TOUNotificationFlow.js"]
 
 ["test_TelemetryClientID_reset.js"]
 skip-if = ["os == 'android'"] # Disabled as Android/GeckoView doesn't run TelemetryController
@@ -79,10 +83,6 @@ skip-if = [
 ]
 
 ["test_TelemetryHistograms.js"]
-
-["test_TelemetryLateWrites.js"]
-
-["test_TelemetryLockCount.js"]
 
 ["test_TelemetryReportingPolicy.js"]
 tags = "addons"
@@ -115,7 +115,7 @@ skip-if = ["os == 'android'"]
 ["test_TelemetryUtils.js"]
 
 ["test_ThirdPartyModulesPing.js"]
-run-if = ["(os == 'win' && !msix)"] # Disabled for MSIX due to https://bugzilla.mozilla.org/show_bug.cgi?id=1807929
+run-if = ["(os == 'win' && !msix && !artifact)"] # Disabled for MSIX due to https://bugzilla.mozilla.org/show_bug.cgi?id=1807929, disabled for artifact for bug 1982870.
 
 ["test_UninstallPing.js"]
 support-files = ["file_UninstallPing.worker.js"]

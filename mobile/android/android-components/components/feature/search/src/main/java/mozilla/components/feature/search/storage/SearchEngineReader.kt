@@ -63,6 +63,7 @@ internal class SearchEngineReader(
     private class SearchEngineBuilder(
         private val type: SearchEngine.Type,
         private val identifier: String,
+        private val telemetrySuffix: String? = null,
     ) {
         var resultsUrls: MutableList<String> = mutableListOf()
         var suggestUrl: String? = null
@@ -71,6 +72,7 @@ internal class SearchEngineReader(
         var icon: Bitmap? = null
         var inputEncoding: String? = null
         var isGeneral: Boolean = false
+        var isOptional: Boolean = false
 
         fun toSearchEngine() = SearchEngine(
             id = identifier,
@@ -82,6 +84,8 @@ internal class SearchEngineReader(
             trendingUrl = trendingUrl,
             inputEncoding = inputEncoding,
             isGeneral = isGeneralSearchEngine(identifier, type), // Will be replaced with builder.isGeneral
+            isOptional = isOptional,
+            telemetrySuffix = telemetrySuffix,
         )
 
         /**
@@ -270,10 +274,16 @@ internal class SearchEngineReader(
         require(engineDefinition.name.isNotBlank()) { "Search engine name cannot be empty" }
         require(engineDefinition.charset.isNotBlank()) { "Search engine charset cannot be empty" }
         require(engineDefinition.identifier.isNotBlank()) { "Search engine identifier cannot be empty" }
-        val builder = SearchEngineBuilder(type, engineDefinition.identifier)
+
+        val builder = SearchEngineBuilder(
+            type,
+            engineDefinition.identifier,
+            engineDefinition.telemetrySuffix,
+        )
         builder.name = engineDefinition.name
         builder.inputEncoding = engineDefinition.charset
         builder.isGeneral = engineDefinition.classification == SearchEngineClassification.GENERAL
+        builder.isOptional = engineDefinition.optional
         readUrlAPI(engineDefinition, builder)
         readImageAPI(attachmentModel, mimetype, builder, defaultIcon)
 

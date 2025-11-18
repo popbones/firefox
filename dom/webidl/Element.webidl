@@ -187,7 +187,7 @@ interface mixin HTMLOrForeignElement {
 // https://drafts.csswg.org/cssom/#the-elementcssinlinestyle-mixin
 interface mixin ElementCSSInlineStyle {
   [SameObject, PutForwards=cssText]
-  readonly attribute CSSStyleDeclaration style;
+  readonly attribute CSSStyleProperties style;
 };
 
 // https://drafts.csswg.org/cssom-view/
@@ -279,6 +279,10 @@ dictionary ShadowRootInit {
   SlotAssignmentMode slotAssignment = "named";
   boolean clonable = false;
   boolean serializable = false;
+
+  // https://github.com/whatwg/dom/pull/1353
+  [Pref="dom.shadowdom.referenceTarget.enabled"]
+  DOMString referenceTarget;
 };
 
 // https://dom.spec.whatwg.org/#element
@@ -416,3 +420,14 @@ partial interface Element {
 
 // https://w3c.github.io/trusted-types/dist/spec/#integrations
 typedef (TrustedHTML or TrustedScript or TrustedScriptURL) TrustedType;
+
+// https://drafts.css-houdini.org/css-typed-om-1/#computed-stylepropertymapreadonly-objects
+partial interface Element {
+    [Pref="layout.css.typed-om.enabled"]
+    StylePropertyMapReadOnly computedStyleMap();
+};
+
+// https://drafts.css-houdini.org/css-typed-om-1/#declared-stylepropertymap-objects
+partial interface mixin ElementCSSInlineStyle {
+  [SameObject, Pref="layout.css.typed-om.enabled"] readonly attribute StylePropertyMap attributeStyleMap;
+};

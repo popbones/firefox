@@ -84,6 +84,7 @@ comments:
     searchInInnerObject: true
     searchInInnerInterface: true
     searchInProtectedClass: false
+    ignoreDefaultCompanionObject: true
   UndocumentedPublicFunction:
     active: true # Enabled in https://github.com/mozilla-mobile/android-components/issues/76
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**']
@@ -597,8 +598,8 @@ style:
       - reason: 'println does not allow you to configure the output stream. Use a logger instead.'
         value: 'kotlin.io.println'
   ForbiddenSuppress:
-    active: false
-    rules: []
+    active: true
+    rules: ['LongMethod', 'ComplexMethod', 'MagicNumber']
   ForbiddenVoid:
     active: false # (Default: true)
     ignoreOverridden: false
@@ -619,14 +620,16 @@ style:
       - '0'
       - '1'
       - '2'
+      - '60' # seconds in minute / minutes in hour
+      - '1000' # millis in second
     ignoreHashCodeFunction: true
     ignorePropertyDeclaration: true # Enabled for Compose in https://github.com/mozilla-mobile/android-components/issues/11864
-    ignoreLocalVariableDeclaration: false
+    ignoreLocalVariableDeclaration: true
     ignoreConstantDeclaration: true
     ignoreCompanionObjectPropertyDeclaration: true
     ignoreAnnotation: false
     ignoreNamedArgument: true
-    ignoreEnums: false
+    ignoreEnums: true
     ignoreRanges: false
     ignoreExtensionFunctions: true
   MandatoryBracesLoops:
@@ -734,7 +737,7 @@ style:
   UntilInsteadOfRangeTo:
     active: false
   UnusedImports:
-    active: false
+    active: true
   UnusedParameter:
     active: true
     allowedNames: 'ignored|expected'
@@ -802,4 +805,8 @@ mozilla-detekt-rules:
   MozillaRunBlockingCheck:
     active: true
   MozillaUseLazyMonitored:
+    active: true
+
+mozilla-rules:
+  ForbiddenSuppression:
     active: true

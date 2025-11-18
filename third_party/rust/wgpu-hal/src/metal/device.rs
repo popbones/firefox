@@ -128,176 +128,194 @@ impl super::Device {
         primitive_class: MTLPrimitiveTopologyClass,
         naga_stage: naga::ShaderStage,
     ) -> Result<CompiledShader, crate::PipelineError> {
-        let naga_shader = if let ShaderModuleSource::Naga(naga) = &stage.module.source {
-            naga
-        } else {
-            panic!("load_shader required a naga shader");
-        };
-        let stage_bit = map_naga_stage(naga_stage);
-        let (module, module_info) = naga::back::pipeline_constants::process_overrides(
-            &naga_shader.module,
-            &naga_shader.info,
-            Some((naga_stage, stage.entry_point)),
-            stage.constants,
-        )
-        .map_err(|e| crate::PipelineError::PipelineConstants(stage_bit, format!("MSL: {:?}", e)))?;
+        match stage.module.source {
+            ShaderModuleSource::Naga(ref naga_shader) => {
+                let stage_bit = map_naga_stage(naga_stage);
+                let (module, module_info) = naga::back::pipeline_constants::process_overrides(
+                    &naga_shader.module,
+                    &naga_shader.info,
+                    Some((naga_stage, stage.entry_point)),
+                    stage.constants,
+                )
+                .map_err(|e| {
+                    crate::PipelineError::PipelineConstants(stage_bit, format!("MSL: {e:?}"))
+                })?;
 
-        let ep_resources = &layout.per_stage_map[naga_stage];
+                let ep_resources = &layout.per_stage_map[naga_stage];
 
-        let bounds_check_policy = if stage.module.bounds_checks.bounds_checks {
-            naga::proc::BoundsCheckPolicy::Restrict
-        } else {
-            naga::proc::BoundsCheckPolicy::Unchecked
-        };
+                let bounds_check_policy = if stage.module.bounds_checks.bounds_checks {
+                    naga::proc::BoundsCheckPolicy::Restrict
+                } else {
+                    naga::proc::BoundsCheckPolicy::Unchecked
+                };
 
-        let options = naga::back::msl::Options {
-            lang_version: match self.shared.private_caps.msl_version {
-                MTLLanguageVersion::V1_0 => (1, 0),
-                MTLLanguageVersion::V1_1 => (1, 1),
-                MTLLanguageVersion::V1_2 => (1, 2),
-                MTLLanguageVersion::V2_0 => (2, 0),
-                MTLLanguageVersion::V2_1 => (2, 1),
-                MTLLanguageVersion::V2_2 => (2, 2),
-                MTLLanguageVersion::V2_3 => (2, 3),
-                MTLLanguageVersion::V2_4 => (2, 4),
-                MTLLanguageVersion::V3_0 => (3, 0),
-                MTLLanguageVersion::V3_1 => (3, 1),
-            },
-            inline_samplers: Default::default(),
-            spirv_cross_compatibility: false,
-            fake_missing_bindings: false,
-            per_entry_point_map: naga::back::msl::EntryPointResourceMap::from([(
-                stage.entry_point.to_owned(),
-                ep_resources.clone(),
-            )]),
-            bounds_check_policies: naga::proc::BoundsCheckPolicies {
-                index: bounds_check_policy,
-                buffer: bounds_check_policy,
-                image_load: bounds_check_policy,
-                // TODO: support bounds checks on binding arrays
-                binding_array: naga::proc::BoundsCheckPolicy::Unchecked,
-            },
-            zero_initialize_workgroup_memory: stage.zero_initialize_workgroup_memory,
-            force_loop_bounding: stage.module.bounds_checks.force_loop_bounding,
-        };
+                let options = naga::back::msl::Options {
+                    lang_version: match self.shared.private_caps.msl_version {
+                        MTLLanguageVersion::V1_0 => (1, 0),
+                        MTLLanguageVersion::V1_1 => (1, 1),
+                        MTLLanguageVersion::V1_2 => (1, 2),
+                        MTLLanguageVersion::V2_0 => (2, 0),
+                        MTLLanguageVersion::V2_1 => (2, 1),
+                        MTLLanguageVersion::V2_2 => (2, 2),
+                        MTLLanguageVersion::V2_3 => (2, 3),
+                        MTLLanguageVersion::V2_4 => (2, 4),
+                        MTLLanguageVersion::V3_0 => (3, 0),
+                        MTLLanguageVersion::V3_1 => (3, 1),
+                    },
+                    inline_samplers: Default::default(),
+                    spirv_cross_compatibility: false,
+                    fake_missing_bindings: false,
+                    per_entry_point_map: naga::back::msl::EntryPointResourceMap::from([(
+                        stage.entry_point.to_owned(),
+                        ep_resources.clone(),
+                    )]),
+                    bounds_check_policies: naga::proc::BoundsCheckPolicies {
+                        index: bounds_check_policy,
+                        buffer: bounds_check_policy,
+                        image_load: bounds_check_policy,
+                        // TODO: support bounds checks on binding arrays
+                        binding_array: naga::proc::BoundsCheckPolicy::Unchecked,
+                    },
+                    zero_initialize_workgroup_memory: stage.zero_initialize_workgroup_memory,
+                    force_loop_bounding: stage.module.bounds_checks.force_loop_bounding,
+                };
 
-        let pipeline_options = naga::back::msl::PipelineOptions {
-            entry_point: Some((naga_stage, stage.entry_point.to_owned())),
-            allow_and_force_point_size: match primitive_class {
-                MTLPrimitiveTopologyClass::Point => true,
-                _ => false,
-            },
-            vertex_pulling_transform: true,
-            vertex_buffer_mappings: vertex_buffer_mappings.to_vec(),
-        };
-
-        let (source, info) =
-            naga::back::msl::write_string(&module, &module_info, &options, &pipeline_options)
-                .map_err(|e| crate::PipelineError::Linkage(stage_bit, format!("MSL: {:?}", e)))?;
-
-        log::debug!(
-            "Naga generated shader for entry point '{}' and stage {:?}\n{}",
-            stage.entry_point,
-            naga_stage,
-            &source
-        );
-
-        let options = metal::CompileOptions::new();
-        options.set_language_version(self.shared.private_caps.msl_version);
-
-        if self.shared.private_caps.supports_preserve_invariance {
-            options.set_preserve_invariance(true);
-        }
-
-        let library = self
-            .shared
-            .device
-            .lock()
-            .new_library_with_source(source.as_ref(), &options)
-            .map_err(|err| {
-                log::warn!("Naga generated shader:\n{}", source);
-                crate::PipelineError::Linkage(stage_bit, format!("Metal: {}", err))
-            })?;
-
-        let ep_index = module
-            .entry_points
-            .iter()
-            .position(|ep| ep.stage == naga_stage && ep.name == stage.entry_point)
-            .ok_or(crate::PipelineError::EntryPoint(naga_stage))?;
-        let ep = &module.entry_points[ep_index];
-        let translated_ep_name = info.entry_point_names[0]
-            .as_ref()
-            .map_err(|e| crate::PipelineError::Linkage(stage_bit, format!("{}", e)))?;
-
-        let wg_size = MTLSize {
-            width: ep.workgroup_size[0] as _,
-            height: ep.workgroup_size[1] as _,
-            depth: ep.workgroup_size[2] as _,
-        };
-
-        let function = library
-            .get_function(translated_ep_name, None)
-            .map_err(|e| {
-                log::error!("get_function: {:?}", e);
-                crate::PipelineError::EntryPoint(naga_stage)
-            })?;
-
-        // collect sizes indices, immutable buffers, and work group memory sizes
-        let ep_info = &module_info.get_entry_point(ep_index);
-        let mut wg_memory_sizes = Vec::new();
-        let mut sized_bindings = Vec::new();
-        let mut immutable_buffer_mask = 0;
-        for (var_handle, var) in module.global_variables.iter() {
-            match var.space {
-                naga::AddressSpace::WorkGroup => {
-                    if !ep_info[var_handle].is_empty() {
-                        let size = module.types[var.ty].inner.size(module.to_ctx());
-                        wg_memory_sizes.push(size);
-                    }
-                }
-                naga::AddressSpace::Uniform | naga::AddressSpace::Storage { .. } => {
-                    let br = match var.binding {
-                        Some(br) => br,
-                        None => continue,
-                    };
-                    let storage_access_store = match var.space {
-                        naga::AddressSpace::Storage { access } => {
-                            access.contains(naga::StorageAccess::STORE)
-                        }
+                let pipeline_options = naga::back::msl::PipelineOptions {
+                    entry_point: Some((naga_stage, stage.entry_point.to_owned())),
+                    allow_and_force_point_size: match primitive_class {
+                        MTLPrimitiveTopologyClass::Point => true,
                         _ => false,
-                    };
+                    },
+                    vertex_pulling_transform: true,
+                    vertex_buffer_mappings: vertex_buffer_mappings.to_vec(),
+                };
 
-                    // check for an immutable buffer
-                    if !ep_info[var_handle].is_empty() && !storage_access_store {
-                        let slot = ep_resources.resources[&br].buffer.unwrap();
-                        immutable_buffer_mask |= 1 << slot;
-                    }
+                let (source, info) = naga::back::msl::write_string(
+                    &module,
+                    &module_info,
+                    &options,
+                    &pipeline_options,
+                )
+                .map_err(|e| crate::PipelineError::Linkage(stage_bit, format!("MSL: {e:?}")))?;
 
-                    let mut dynamic_array_container_ty = var.ty;
-                    if let naga::TypeInner::Struct { ref members, .. } = module.types[var.ty].inner
-                    {
-                        dynamic_array_container_ty = members.last().unwrap().ty;
-                    }
-                    if let naga::TypeInner::Array {
-                        size: naga::ArraySize::Dynamic,
-                        ..
-                    } = module.types[dynamic_array_container_ty].inner
-                    {
-                        sized_bindings.push(br);
+                log::debug!(
+                    "Naga generated shader for entry point '{}' and stage {:?}\n{}",
+                    stage.entry_point,
+                    naga_stage,
+                    &source
+                );
+
+                let options = metal::CompileOptions::new();
+                options.set_language_version(self.shared.private_caps.msl_version);
+
+                if self.shared.private_caps.supports_preserve_invariance {
+                    options.set_preserve_invariance(true);
+                }
+
+                let library = self
+                    .shared
+                    .device
+                    .lock()
+                    .new_library_with_source(source.as_ref(), &options)
+                    .map_err(|err| {
+                        log::warn!("Naga generated shader:\n{source}");
+                        crate::PipelineError::Linkage(stage_bit, format!("Metal: {err}"))
+                    })?;
+
+                let ep_index = module
+                    .entry_points
+                    .iter()
+                    .position(|ep| ep.stage == naga_stage && ep.name == stage.entry_point)
+                    .ok_or(crate::PipelineError::EntryPoint(naga_stage))?;
+                let ep = &module.entry_points[ep_index];
+                let translated_ep_name = info.entry_point_names[0]
+                    .as_ref()
+                    .map_err(|e| crate::PipelineError::Linkage(stage_bit, format!("{e}")))?;
+
+                let wg_size = MTLSize {
+                    width: ep.workgroup_size[0] as _,
+                    height: ep.workgroup_size[1] as _,
+                    depth: ep.workgroup_size[2] as _,
+                };
+
+                let function = library
+                    .get_function(translated_ep_name, None)
+                    .map_err(|e| {
+                        log::error!("get_function: {e:?}");
+                        crate::PipelineError::EntryPoint(naga_stage)
+                    })?;
+
+                // collect sizes indices, immutable buffers, and work group memory sizes
+                let ep_info = &module_info.get_entry_point(ep_index);
+                let mut wg_memory_sizes = Vec::new();
+                let mut sized_bindings = Vec::new();
+                let mut immutable_buffer_mask = 0;
+                for (var_handle, var) in module.global_variables.iter() {
+                    match var.space {
+                        naga::AddressSpace::WorkGroup => {
+                            if !ep_info[var_handle].is_empty() {
+                                let size = module.types[var.ty].inner.size(module.to_ctx());
+                                wg_memory_sizes.push(size);
+                            }
+                        }
+                        naga::AddressSpace::Uniform | naga::AddressSpace::Storage { .. } => {
+                            let br = match var.binding {
+                                Some(br) => br,
+                                None => continue,
+                            };
+                            let storage_access_store = match var.space {
+                                naga::AddressSpace::Storage { access } => {
+                                    access.contains(naga::StorageAccess::STORE)
+                                }
+                                _ => false,
+                            };
+
+                            // check for an immutable buffer
+                            if !ep_info[var_handle].is_empty() && !storage_access_store {
+                                let slot = ep_resources.resources[&br].buffer.unwrap();
+                                immutable_buffer_mask |= 1 << slot;
+                            }
+
+                            let mut dynamic_array_container_ty = var.ty;
+                            if let naga::TypeInner::Struct { ref members, .. } =
+                                module.types[var.ty].inner
+                            {
+                                dynamic_array_container_ty = members.last().unwrap().ty;
+                            }
+                            if let naga::TypeInner::Array {
+                                size: naga::ArraySize::Dynamic,
+                                ..
+                            } = module.types[dynamic_array_container_ty].inner
+                            {
+                                sized_bindings.push(br);
+                            }
+                        }
+                        _ => {}
                     }
                 }
-                _ => {}
-            }
-        }
 
-        Ok(CompiledShader {
-            library,
-            function,
-            wg_size,
-            wg_memory_sizes,
-            sized_bindings,
-            immutable_buffer_mask,
-        })
+                Ok(CompiledShader {
+                    library,
+                    function,
+                    wg_size,
+                    wg_memory_sizes,
+                    sized_bindings,
+                    immutable_buffer_mask,
+                })
+            }
+            ShaderModuleSource::Passthrough(ref shader) => Ok(CompiledShader {
+                library: shader.library.clone(),
+                function: shader.function.clone(),
+                wg_size: MTLSize {
+                    width: shader.num_workgroups.0 as u64,
+                    height: shader.num_workgroups.1 as u64,
+                    depth: shader.num_workgroups.2 as u64,
+                },
+                wg_memory_sizes: vec![],
+                sized_bindings: vec![],
+                immutable_buffer_mask: 0,
+            }),
+        }
     }
 
     fn set_buffers_mutability(
@@ -747,7 +765,19 @@ impl crate::Device for super::Device {
                                 };
                             }
                             wgt::BindingType::AccelerationStructure { .. } => unimplemented!(),
-                            wgt::BindingType::ExternalTexture => unimplemented!(),
+                            wgt::BindingType::ExternalTexture => {
+                                target.external_texture =
+                                    Some(naga::back::msl::BindExternalTextureTarget {
+                                        planes: [
+                                            info.counters.textures as _,
+                                            (info.counters.textures + 1) as _,
+                                            (info.counters.textures + 2) as _,
+                                        ],
+                                        params: info.counters.buffers as _,
+                                    });
+                                info.counters.textures += 3;
+                                info.counters.buffers += 1;
+                            }
                         }
                     }
 
@@ -777,7 +807,7 @@ impl crate::Device for super::Device {
                 || info.counters.textures > self.shared.private_caps.max_textures_per_stage
                 || info.counters.samplers > self.shared.private_caps.max_samplers_per_stage
             {
-                log::error!("Resource limit exceeded: {:?}", info);
+                log::error!("Resource limit exceeded: {info:?}");
                 return Err(crate::DeviceError::OutOfMemory);
             }
         }
@@ -980,7 +1010,28 @@ impl crate::Device for super::Device {
                                 counter.textures += 1;
                             }
                             wgt::BindingType::AccelerationStructure { .. } => unimplemented!(),
-                            wgt::BindingType::ExternalTexture => unimplemented!(),
+                            wgt::BindingType::ExternalTexture => {
+                                // We don't yet support binding arrays of external textures.
+                                // https://github.com/gfx-rs/wgpu/issues/8027
+                                assert_eq!(entry.count, 1);
+                                let external_texture =
+                                    &desc.external_textures[entry.resource_index as usize];
+                                bg.textures.extend(
+                                    external_texture
+                                        .planes
+                                        .iter()
+                                        .map(|plane| plane.view.as_raw()),
+                                );
+                                bg.buffers.push(super::BufferResource {
+                                    ptr: external_texture.params.buffer.as_raw(),
+                                    offset: external_texture.params.offset,
+                                    dynamic_index: None,
+                                    binding_size: None,
+                                    binding_location: layout.binding,
+                                });
+                                counter.textures += 3;
+                                counter.buffers += 1;
+                            }
                         }
                     }
                 }
@@ -1017,12 +1068,11 @@ impl crate::Device for super::Device {
                 // Obtain the locked device from shared
                 let device = self.shared.device.lock();
                 let library = device
-                    .new_library_with_source(&source, &options)
-                    .map_err(|e| crate::ShaderError::Compilation(format!("MSL: {:?}", e)))?;
+                    .new_library_with_source(source, &options)
+                    .map_err(|e| crate::ShaderError::Compilation(format!("MSL: {e:?}")))?;
                 let function = library.get_function(&entry_point, None).map_err(|_| {
                     crate::ShaderError::Compilation(format!(
-                        "Entry point '{}' not found",
-                        entry_point
+                        "Entry point '{entry_point}' not found"
                     ))
                 })?;
 
@@ -1036,9 +1086,10 @@ impl crate::Device for super::Device {
                     bounds_checks: desc.runtime_checks,
                 })
             }
-            crate::ShaderInput::SpirV(_) => {
-                panic!("SPIRV_SHADER_PASSTHROUGH is not enabled for this backend")
-            }
+            crate::ShaderInput::SpirV(_)
+            | crate::ShaderInput::Dxil { .. }
+            | crate::ShaderInput::Hlsl { .. }
+            | crate::ShaderInput::Glsl { .. } => unreachable!(),
         }
     }
 
@@ -1054,6 +1105,14 @@ impl crate::Device for super::Device {
             super::PipelineCache,
         >,
     ) -> Result<super::RenderPipeline, crate::PipelineError> {
+        let (desc_vertex_stage, desc_vertex_buffers) = match &desc.vertex_processor {
+            crate::VertexProcessor::Standard {
+                vertex_buffers,
+                vertex_stage,
+            } => (vertex_stage, *vertex_buffers),
+            crate::VertexProcessor::Mesh { .. } => unreachable!(),
+        };
+
         objc::rc::autoreleasepool(|| {
             let descriptor = metal::RenderPipelineDescriptor::new();
 
@@ -1072,7 +1131,7 @@ impl crate::Device for super::Device {
             // Vertex shader
             let (vs_lib, vs_info) = {
                 let mut vertex_buffer_mappings = Vec::<naga::back::msl::VertexBufferMapping>::new();
-                for (i, vbl) in desc.vertex_buffers.iter().enumerate() {
+                for (i, vbl) in desc_vertex_buffers.iter().enumerate() {
                     let mut attributes = Vec::<naga::back::msl::AttributeMapping>::new();
                     for attribute in vbl.attributes.iter() {
                         attributes.push(naga::back::msl::AttributeMapping {
@@ -1101,7 +1160,7 @@ impl crate::Device for super::Device {
                 }
 
                 let vs = self.load_shader(
-                    &desc.vertex_stage,
+                    desc_vertex_stage,
                     &vertex_buffer_mappings,
                     desc.layout,
                     primitive_class,
@@ -1214,12 +1273,12 @@ impl crate::Device for super::Device {
                 None => None,
             };
 
-            if desc.layout.total_counters.vs.buffers + (desc.vertex_buffers.len() as u32)
+            if desc.layout.total_counters.vs.buffers + (desc_vertex_buffers.len() as u32)
                 > self.shared.private_caps.max_vertex_buffers
             {
                 let msg = format!(
                     "pipeline needs too many buffers in the vertex stage: {} vertex and {} layout",
-                    desc.vertex_buffers.len(),
+                    desc_vertex_buffers.len(),
                     desc.layout.total_counters.vs.buffers
                 );
                 return Err(crate::PipelineError::Linkage(
@@ -1228,9 +1287,9 @@ impl crate::Device for super::Device {
                 ));
             }
 
-            if !desc.vertex_buffers.is_empty() {
+            if !desc_vertex_buffers.is_empty() {
                 let vertex_descriptor = metal::VertexDescriptor::new();
-                for (i, vb) in desc.vertex_buffers.iter().enumerate() {
+                for (i, vb) in desc_vertex_buffers.iter().enumerate() {
                     let buffer_index =
                         self.shared.private_caps.max_vertex_buffers as u64 - 1 - i as u64;
                     let buffer_desc = vertex_descriptor.layouts().object_at(buffer_index).unwrap();
@@ -1286,7 +1345,7 @@ impl crate::Device for super::Device {
                 .map_err(|e| {
                     crate::PipelineError::Linkage(
                         wgt::ShaderStages::VERTEX | wgt::ShaderStages::FRAGMENT,
-                        format!("new_render_pipeline_state: {:?}", e),
+                        format!("new_render_pipeline_state: {e:?}"),
                     )
                 })?;
 
@@ -1314,17 +1373,6 @@ impl crate::Device for super::Device {
                 depth_stencil,
             })
         })
-    }
-
-    unsafe fn create_mesh_pipeline(
-        &self,
-        _desc: &crate::MeshPipelineDescriptor<
-            <Self::A as crate::Api>::PipelineLayout,
-            <Self::A as crate::Api>::ShaderModule,
-            <Self::A as crate::Api>::PipelineCache,
-        >,
-    ) -> Result<<Self::A as crate::Api>::RenderPipeline, crate::PipelineError> {
-        unreachable!()
     }
 
     unsafe fn destroy_render_pipeline(&self, _pipeline: super::RenderPipeline) {
@@ -1394,7 +1442,7 @@ impl crate::Device for super::Device {
                 .map_err(|e| {
                     crate::PipelineError::Linkage(
                         wgt::ShaderStages::COMPUTE,
-                        format!("new_compute_pipeline_state: {:?}", e),
+                        format!("new_compute_pipeline_state: {e:?}"),
                     )
                 })?;
 
@@ -1460,7 +1508,7 @@ impl crate::Device for super::Device {
                             Some(counter) => counter,
                             None => {
                                 log::error!("Failed to obtain timestamp counter set.");
-                                return Err(crate::DeviceError::ResourceCreationFailed);
+                                return Err(crate::DeviceError::Unexpected);
                             }
                         };
                     csb_desc.set_counter_set(timestamp_counter);
@@ -1469,8 +1517,8 @@ impl crate::Device for super::Device {
                         match device.new_counter_sample_buffer_with_descriptor(&csb_desc) {
                             Ok(buffer) => buffer,
                             Err(err) => {
-                                log::error!("Failed to create counter sample buffer: {:?}", err);
-                                return Err(crate::DeviceError::ResourceCreationFailed);
+                                log::error!("Failed to create counter sample buffer: {err:?}");
+                                return Err(crate::DeviceError::Unexpected);
                             }
                         };
 
@@ -1537,7 +1585,7 @@ impl crate::Device for super::Device {
         {
             Some((_, cmd_buf)) => cmd_buf,
             None => {
-                log::error!("No active command buffers for fence value {}", wait_value);
+                log::error!("No active command buffers for fence value {wait_value}");
                 return Err(crate::DeviceError::Lost);
             }
         };

@@ -7,34 +7,34 @@
 #ifndef nsLayoutUtils_h__
 #define nsLayoutUtils_h__
 
-#include <limits>
 #include <algorithm>
+#include <limits>
 
-#include "gfxPoint.h"
 #include "LayoutConstants.h"
+#include "Units.h"
+#include "gfxPoint.h"
 #include "mozilla/ArrayUtils.h"
-#include "mozilla/gfx/2D.h"
-#include "mozilla/layers/LayersTypes.h"
-#include "mozilla/layers/ScrollableLayerGuid.h"
 #include "mozilla/LayoutStructs.h"
 #include "mozilla/LookAndFeel.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/MemoryReporting.h"
 #include "mozilla/RelativeTo.h"
+#include "mozilla/SVGImageContext.h"
 #include "mozilla/Span.h"
 #include "mozilla/StaticPrefs_nglayout.h"
 #include "mozilla/SurfaceFromElementResult.h"
-#include "mozilla/SVGImageContext.h"
 #include "mozilla/ToString.h"
 #include "mozilla/TypedEnumBits.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/WritingModes.h"
+#include "mozilla/gfx/2D.h"
+#include "mozilla/layers/LayersTypes.h"
+#include "mozilla/layers/ScrollableLayerGuid.h"
 #include "nsBoundingMetrics.h"
 #include "nsCSSPropertyIDSet.h"
 #include "nsFrameList.h"
 #include "nsPoint.h"
 #include "nsThreadUtils.h"
-#include "Units.h"
 // If you're thinking of adding a new include here, please try hard to not.
 // This header file gets included just about everywhere and adding headers here
 // can dramatically increase avoidable build activity. Try instead:
@@ -303,12 +303,17 @@ class nsLayoutUtils {
    * @param aFrame the frame to start at
    * @param aFrameType the frame type to look for
    * @param aStopAt a frame to stop at after we checked it
-   * @return a frame of the given type or nullptr if no
-   *         such ancestor exists
+   * @return a frame of the given type or nullptr if no such ancestor exists
+   *
+   * Note: prefer the const overload if possible; the non-const wrapper exists
+   * for legacy callers.
    */
+  static const nsIFrame* GetClosestFrameOfType(
+      const nsIFrame* aFrame, mozilla::LayoutFrameType aFrameType,
+      const nsIFrame* aStopAt = nullptr);
   static nsIFrame* GetClosestFrameOfType(nsIFrame* aFrame,
                                          mozilla::LayoutFrameType aFrameType,
-                                         nsIFrame* aStopAt = nullptr);
+                                         const nsIFrame* aStopAt = nullptr);
 
   /**
    * Given a frame, search up the frame tree until we find an
@@ -388,7 +393,7 @@ class nsLayoutUtils {
 
   static int32_t CompareTreePosition(
       const nsIFrame* aFrame1, const nsIFrame* aFrame2,
-      nsTArray<const nsIFrame*>& aFrame2Ancestors,
+      const nsTArray<const nsIFrame*>& aFrame2Ancestors,
       const nsIFrame* aCommonAncestor = nullptr) {
     return DoCompareTreePosition(aFrame1, aFrame2, aFrame2Ancestors,
                                  aCommonAncestor);
@@ -403,7 +408,7 @@ class nsLayoutUtils {
                                        const nsIFrame* aCommonAncestor);
   static int32_t DoCompareTreePosition(
       const nsIFrame* aFrame1, const nsIFrame* aFrame2,
-      nsTArray<const nsIFrame*>& aFrame2Ancestors,
+      const nsTArray<const nsIFrame*>& aFrame2Ancestors,
       const nsIFrame* aCommonAncestor);
 
   /**
@@ -1102,7 +1107,7 @@ class nsLayoutUtils {
    * smaller rect than necessary.
    */
   static nsRegion RoundedRectIntersectRect(const nsRect& aRoundedRect,
-                                           const nscoord aRadii[8],
+                                           const nsRectCornerRadii&,
                                            const nsRect& aContainedRect);
   static nsIntRegion RoundedRectIntersectIntRect(
       const nsIntRect& aRoundedRect, const RectCornerRadii& aCornerRadii,
@@ -1114,7 +1119,7 @@ class nsLayoutUtils {
    * enum HalfCorner constants in gfx/2d/Types.h). This is precise.
    */
   static bool RoundedRectIntersectsRect(const nsRect& aRoundedRect,
-                                        const nscoord aRadii[8],
+                                        const nsRectCornerRadii&,
                                         const nsRect& aTestRect);
 
   enum class PaintFrameFlags : uint32_t {
@@ -1495,7 +1500,6 @@ class nsLayoutUtils {
   enum {
     IGNORE_PADDING = 0x01,
     BAIL_IF_REFLOW_NEEDED = 0x02,  // returns NS_INTRINSIC_ISIZE_UNKNOWN if so
-    MIN_INTRINSIC_ISIZE = 0x04,  // use min-width/height instead of width/height
   };
   static nscoord IntrinsicForAxis(
       mozilla::PhysicalAxis aAxis, gfxContext* aRenderingContext,

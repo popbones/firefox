@@ -12,11 +12,11 @@
 #include "mozilla/RefPtr.h"
 #include "mozilla/dom/ContentFrameMessageManager.h"
 #include "mozilla/dom/MessageManagerCallback.h"
+#include "nsCOMArray.h"
 #include "nsCOMPtr.h"
+#include "nsDocShell.h"
 #include "nsIScriptContext.h"
 #include "nsIScriptObjectPrincipal.h"
-#include "nsDocShell.h"
-#include "nsCOMArray.h"
 #include "nsWeakReference.h"
 
 class nsFrameMessageManager;
@@ -75,7 +75,7 @@ class InProcessBrowserChildMessageManager final
    */
   virtual bool DoSendBlockingMessage(
       const nsAString& aMessage, StructuredCloneData& aData,
-      nsTArray<StructuredCloneData>* aRetVal) override;
+      nsTArray<UniquePtr<StructuredCloneData>>* aRetVal) override;
   virtual nsresult DoSendAsyncMessage(const nsAString& aMessage,
                                       StructuredCloneData& aData) override;
 

@@ -30,6 +30,7 @@
 #include "vm/SymbolType.h"
 #include "wasm/WasmJS.h"
 
+#include "gc/BufferAllocator-inl.h"
 #include "gc/Marking-inl.h"
 #include "vm/StringType-inl.h"
 
@@ -203,6 +204,13 @@ inline void js::WasmInstanceScope::RuntimeData::trace(JSTracer* trc) {
 inline void js::Scope::traceChildren(JSTracer* trc) {
   TraceNullableEdge(trc, &environmentShape_, "scope env shape");
   TraceNullableEdge(trc, &enclosingScope_, "scope enclosing");
+  BaseScopeData* data = rawData();
+  if (data) {
+    TraceBufferEdge(trc, this, &data, "Scope data");
+    if (data != rawData()) {
+      setHeaderPtr(data);
+    }
+  }
   applyScopeDataTyped([trc](auto data) { data->trace(trc); });
 }
 
@@ -211,6 +219,9 @@ void js::GCMarker::eagerlyMarkChildren(Scope* scope) {
   do {
     if (Shape* shape = scope->environmentShape()) {
       markAndTraverseEdge<opts>(scope, shape);
+    }
+    if (BaseScopeData* data = scope->rawData()) {
+      MarkTenuredBuffer(scope->zone(), data);
     }
     mozilla::Span<AbstractBindingName<JSAtom>> names;
     switch (scope->kind()) {
@@ -378,7 +389,11 @@ void js::GCMarker::eagerlyMarkChildren(PropMap* map) {
   } while (map && mark<opts>(map));
 }
 
-inline void JS::BigInt::traceChildren(JSTracer* trc) {}
+inline void JS::BigInt::traceChildren(JSTracer* trc) {
+  if (!hasInlineDigits()) {
+    js::TraceBufferEdge(trc, this, &heapDigits_, "BigInt::heapDigits_");
+  }
+}
 
 // JitCode::traceChildren is not defined inline due to its dependence on
 // MacroAssembler.

@@ -7,57 +7,55 @@
 #ifndef nsGlobalWindowInner_h___
 #define nsGlobalWindowInner_h___
 
-#include "nsPIDOMWindow.h"
-
 #include "nsHashKeys.h"
+#include "nsPIDOMWindow.h"
 
 // Local Includes
 // Helper Classes
 #include "mozilla/WeakPtr.h"
 #include "nsCOMPtr.h"
-#include "nsWeakReference.h"
-#include "nsTHashMap.h"
 #include "nsCycleCollectionParticipant.h"
+#include "nsTHashMap.h"
+#include "nsWeakReference.h"
 
 // Interfaces Needed
-#include "nsIBrowserDOMWindow.h"
-#include "nsIInterfaceRequestor.h"
-#include "nsIScriptGlobalObject.h"
-#include "nsIScriptObjectPrincipal.h"
+#include "Units.h"
+#include "mozilla/Attributes.h"
+#include "mozilla/CallState.h"
 #include "mozilla/EventListenerManager.h"
-#include "nsIPrincipal.h"
-#include "nsSize.h"
 #include "mozilla/FlushType.h"
-#include "prclist.h"
+#include "mozilla/LinkedList.h"
+#include "mozilla/MozPromise.h"
+#include "mozilla/StorageAccess.h"
+#include "mozilla/TimeStamp.h"
+#include "mozilla/UniquePtr.h"
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/ChromeMessageBroadcaster.h"
 #include "mozilla/dom/DebuggerNotificationManager.h"
+#include "mozilla/dom/EventTarget.h"
 #include "mozilla/dom/GamepadHandle.h"
+#include "mozilla/dom/ImageBitmapBinding.h"
+#include "mozilla/dom/ImageBitmapSource.h"
 #include "mozilla/dom/Location.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/StorageEvent.h"
-#include "mozilla/CallState.h"
-#include "mozilla/Attributes.h"
-#include "mozilla/LinkedList.h"
-#include "mozilla/StorageAccess.h"
-#include "mozilla/TimeStamp.h"
-#include "nsWrapperCacheInlines.h"
-#include "mozilla/dom/EventTarget.h"
 #include "mozilla/dom/WindowBinding.h"
 #include "mozilla/dom/WindowProxyHolder.h"
-#include "Units.h"
 #include "nsCheapSets.h"
-#include "mozilla/dom/ImageBitmapBinding.h"
-#include "mozilla/dom/ImageBitmapSource.h"
-#include "mozilla/UniquePtr.h"
+#include "nsIBrowserDOMWindow.h"
+#include "nsIInterfaceRequestor.h"
+#include "nsIPrincipal.h"
+#include "nsIScriptGlobalObject.h"
+#include "nsIScriptObjectPrincipal.h"
+#include "nsSize.h"
 #include "nsThreadUtils.h"
-#include "mozilla/MozPromise.h"
+#include "nsWrapperCacheInlines.h"
+#include "prclist.h"
 
 class nsIArray;
 class nsIBaseWindow;
 class nsIContent;
 class nsICookieJarSettings;
-class nsICSSDeclaration;
 class nsIDocShellTreeOwner;
 class nsIDOMWindowUtils;
 class nsIControllers;
@@ -86,8 +84,10 @@ class PromiseDocumentFlushedResolver;
 
 namespace mozilla {
 class AbstractThread;
-class ScrollContainerFrame;
 class ErrorResult;
+template <class T>
+class OwningNonNull;
+class ScrollContainerFrame;
 
 namespace glean {
 class Glean;
@@ -117,7 +117,6 @@ class ContentMediaController;
 enum class ImageBitmapFormat : uint8_t;
 class IdleRequest;
 class IdleRequestCallback;
-class InstallTriggerImpl;
 class IntlUtils;
 class MediaQueryList;
 class OwningExternalOrWindowProxy;
@@ -135,6 +134,7 @@ class SpeechSynthesis;
 class Timeout;
 class TrustedTypePolicyFactory;
 class VisualViewport;
+class VoidFunction;
 class VRDisplay;
 enum class VRDisplayEventReason : uint8_t;
 class VREventObserver;
@@ -365,9 +365,9 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
   mozilla::Maybe<mozilla::dom::ServiceWorkerDescriptor> GetController()
       const override;
 
-  void SetCsp(nsIContentSecurityPolicy* aCsp);
+  void SetPolicyContainer(nsIPolicyContainer* aPolicyContainer);
+  nsIPolicyContainer* GetPolicyContainer();
   void SetPreloadCsp(nsIContentSecurityPolicy* aPreloadCsp);
-  nsIContentSecurityPolicy* GetCsp();
 
   virtual already_AddRefed<mozilla::dom::ServiceWorkerContainer>
   GetServiceWorkerContainer() override;
@@ -753,7 +753,7 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
   mozilla::dom::Selection* GetSelection(mozilla::ErrorResult& aError);
   mozilla::dom::IDBFactory* GetIndexedDB(JSContext* aCx,
                                          mozilla::ErrorResult& aError);
-  already_AddRefed<nsICSSDeclaration> GetComputedStyle(
+  already_AddRefed<nsDOMCSSDeclaration> GetComputedStyle(
       mozilla::dom::Element& aElt, const nsAString& aPseudoElt,
       mozilla::ErrorResult& aError) override;
   mozilla::dom::VisualViewport* VisualViewport();
@@ -846,7 +846,7 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
   mozilla::glean::Glean* Glean();
   mozilla::glean::GleanPings* GleanPings();
 
-  already_AddRefed<nsICSSDeclaration> GetDefaultComputedStyle(
+  already_AddRefed<nsDOMCSSDeclaration> GetDefaultComputedStyle(
       mozilla::dom::Element& aElt, const nsAString& aPseudoElt,
       mozilla::ErrorResult& aError);
   void SizeToContent(const mozilla::dom::SizeToContentConstraints&,
@@ -919,6 +919,7 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
   void Restore();
   void GetWorkspaceID(nsAString& workspaceID);
   void MoveToWorkspace(const nsAString& workspaceID);
+  bool IsCloaked() const;
   void NotifyDefaultButtonLoaded(mozilla::dom::Element& aDefaultButton,
                                  mozilla::ErrorResult& aError);
   mozilla::dom::ChromeMessageBroadcaster* MessageManager();
@@ -937,7 +938,7 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
 
   bool ShouldReportForServiceWorkerScope(const nsAString& aScope);
 
-  mozilla::dom::InstallTriggerImpl* GetInstallTrigger();
+  void GetInstallTrigger(JSContext* aCx, JS::MutableHandle<JSObject*> aResult);
 
   nsIDOMWindowUtils* GetWindowUtils(mozilla::ErrorResult& aRv);
 
@@ -972,6 +973,14 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
     return mWebTaskSchedulingState;
   }
 
+  MOZ_CAN_RUN_SCRIPT bool SynthesizeMouseEvent(
+      const nsAString& aType, float aOffsetX, float aOffsetY,
+      const mozilla::dom::SynthesizeMouseEventData& aMouseEventData,
+      const mozilla::dom::SynthesizeMouseEventOptions& aOptions,
+      const mozilla::dom::Optional<
+          mozilla::OwningNonNull<mozilla::dom::VoidFunction>>& aCallback,
+      mozilla::ErrorResult& aError);
+
  protected:
   // Web IDL helpers
 
@@ -982,12 +991,12 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
                         JS::Handle<JS::Value> aValue,
                         mozilla::ErrorResult& aError);
 
-  nsresult GetInnerWidth(double* aWidth) override;
-  nsresult GetInnerHeight(double* aHeight) override;
+  MOZ_CAN_RUN_SCRIPT nsresult GetInnerWidth(double* aWidth) override;
+  MOZ_CAN_RUN_SCRIPT nsresult GetInnerHeight(double* aHeight) override;
 
  public:
-  double GetInnerWidth(mozilla::ErrorResult& aError);
-  double GetInnerHeight(mozilla::ErrorResult& aError);
+  MOZ_CAN_RUN_SCRIPT double GetInnerWidth(mozilla::ErrorResult& aError);
+  MOZ_CAN_RUN_SCRIPT double GetInnerHeight(mozilla::ErrorResult& aError);
   int32_t GetScreenX(mozilla::dom::CallerType aCallerType,
                      mozilla::ErrorResult& aError);
   int32_t GetScreenY(mozilla::dom::CallerType aCallerType,
@@ -1101,7 +1110,7 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
   void ScrollTo(const mozilla::CSSPoint& aScroll,
                 const mozilla::dom::ScrollOptions& aOptions);
 
-  already_AddRefed<nsIWidget> GetMainWidget();
+  already_AddRefed<nsIWidget> GetMainWidget() const;
   nsIWidget* GetNearestWidget() const;
 
   bool IsInModalState();
@@ -1150,7 +1159,7 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
       mozilla::ErrorResult& aRv);
 
  protected:
-  already_AddRefed<nsICSSDeclaration> GetComputedStyleHelper(
+  already_AddRefed<nsDOMCSSDeclaration> GetComputedStyleHelper(
       mozilla::dom::Element& aElt, const nsAString& aPseudoElt,
       bool aDefaultStylesOnly, mozilla::ErrorResult& aError);
 
@@ -1315,7 +1324,6 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
   // Indicates that the current document has never received a document focus
   // event.
   bool mNeedsFocus : 1;
-  bool mHasFocus : 1;
 
   // true if tab navigation has occurred for this window. Focus rings
   // should be displayed.
@@ -1385,7 +1393,6 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
   RefPtr<mozilla::dom::CookieStore> mCookieStore;
   RefPtr<mozilla::dom::Worklet> mPaintWorklet;
   RefPtr<mozilla::dom::External> mExternal;
-  RefPtr<mozilla::dom::InstallTriggerImpl> mInstallTrigger;
 
   RefPtr<mozilla::dom::Storage> mLocalStorage;
   RefPtr<mozilla::dom::Storage> mSessionStorage;
@@ -1399,13 +1406,13 @@ class nsGlobalWindowInner final : public mozilla::dom::EventTarget,
 
   RefPtr<mozilla::dom::VisualViewport> mVisualViewport;
 
-  // The document's principals and CSP are only stored if
+  // The document's principals and policyContainer are only stored if
   // FreeInnerObjects has been called.
   nsCOMPtr<nsIPrincipal> mDocumentPrincipal;
   nsCOMPtr<nsIPrincipal> mDocumentCookiePrincipal;
   nsCOMPtr<nsIPrincipal> mDocumentStoragePrincipal;
   nsCOMPtr<nsIPrincipal> mDocumentPartitionedPrincipal;
-  nsCOMPtr<nsIContentSecurityPolicy> mDocumentCsp;
+  nsCOMPtr<nsIPolicyContainer> mDocumentPolicyContainer;
 
   // Used to cache the result of StorageAccess::StorageAllowedForWindow.
   // Don't use this field directly, use StorageAccess::StorageAllowedForWindow

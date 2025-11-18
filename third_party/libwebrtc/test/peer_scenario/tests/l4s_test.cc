@@ -9,8 +9,16 @@
  */
 
 #include <atomic>
+#include <string>
 
+#include "absl/strings/str_cat.h"
+#include "api/jsep.h"
+#include "api/make_ref_counted.h"
+#include "api/scoped_refptr.h"
+#include "api/stats/rtc_stats_report.h"
 #include "api/stats/rtcstats_objects.h"
+#include "api/test/network_emulation/network_emulation_interfaces.h"
+#include "api/transport/ecn_marking.h"
 #include "api/units/data_rate.h"
 #include "api/units/time_delta.h"
 #include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
@@ -19,8 +27,10 @@
 #include "modules/rtp_rtcp/source/rtcp_packet/transport_feedback.h"
 #include "modules/rtp_rtcp/source/rtp_util.h"
 #include "pc/test/mock_peer_connection_observers.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/network_constants.h"
 #include "test/create_frame_generator_capturer.h"
-#include "test/field_trial.h"
 #include "test/gmock.h"
 #include "test/gtest.h"
 #include "test/peer_scenario/peer_scenario.h"
@@ -91,11 +101,10 @@ class RtcpFeedbackCounter {
   int ce_ = 0;
 };
 
-rtc::scoped_refptr<const RTCStatsReport> GetStatsAndProcess(
+scoped_refptr<const RTCStatsReport> GetStatsAndProcess(
     PeerScenario& s,
     PeerScenarioClient* client) {
-  auto stats_collector =
-      rtc::make_ref_counted<webrtc::MockRTCStatsCollectorCallback>();
+  auto stats_collector = make_ref_counted<MockRTCStatsCollectorCallback>();
   client->pc()->GetStats(stats_collector.get());
   s.ProcessMessages(TimeDelta::Millis(0));
   RTC_CHECK(stats_collector->called());
@@ -103,7 +112,7 @@ rtc::scoped_refptr<const RTCStatsReport> GetStatsAndProcess(
 }
 
 DataRate GetAvailableSendBitrate(
-    const rtc::scoped_refptr<const RTCStatsReport>& report) {
+    const scoped_refptr<const RTCStatsReport>& report) {
   auto stats = report->GetStatsOfType<RTCIceCandidatePairStats>();
   if (stats.empty()) {
     return DataRate::Zero();
@@ -112,11 +121,10 @@ DataRate GetAvailableSendBitrate(
 }
 
 TEST(L4STest, NegotiateAndUseCcfbIfEnabled) {
-  test::ScopedFieldTrials trials(
-      "WebRTC-RFC8888CongestionControlFeedback/Enabled/");
   PeerScenario s(*test_info_);
 
-  PeerScenarioClient::Config config = PeerScenarioClient::Config();
+  PeerScenarioClient::Config config;
+  config.field_trials.Set("WebRTC-RFC8888CongestionControlFeedback", "Enabled");
   config.disable_encryption = true;
   PeerScenarioClient* caller = s.CreateClient(config);
   PeerScenarioClient* callee = s.CreateClient(config);
@@ -188,11 +196,10 @@ TEST(L4STest, NegotiateAndUseCcfbIfEnabled) {
 }
 
 TEST(L4STest, CallerAdaptToLinkCapacityWithoutEcn) {
-  test::ScopedFieldTrials trials(
-      "WebRTC-RFC8888CongestionControlFeedback/Enabled/");
   PeerScenario s(*test_info_);
 
-  PeerScenarioClient::Config config = PeerScenarioClient::Config();
+  PeerScenarioClient::Config config;
+  config.field_trials.Set("WebRTC-RFC8888CongestionControlFeedback", "Enabled");
   PeerScenarioClient* caller = s.CreateClient(config);
   PeerScenarioClient* callee = s.CreateClient(config);
 
@@ -227,11 +234,10 @@ TEST(L4STest, CallerAdaptToLinkCapacityWithoutEcn) {
 }
 
 TEST(L4STest, SendsEct1UntilFirstFeedback) {
-  test::ScopedFieldTrials trials(
-      "WebRTC-RFC8888CongestionControlFeedback/Enabled/");
   PeerScenario s(*test_info_);
 
-  PeerScenarioClient::Config config = PeerScenarioClient::Config();
+  PeerScenarioClient::Config config;
+  config.field_trials.Set("WebRTC-RFC8888CongestionControlFeedback", "Enabled");
   config.disable_encryption = true;
   PeerScenarioClient* caller = s.CreateClient(config);
   PeerScenarioClient* callee = s.CreateClient(config);
@@ -282,17 +288,16 @@ TEST(L4STest, SendsEct1UntilFirstFeedback) {
 }
 
 TEST(L4STest, SendsEct1AfterRouteChange) {
-  test::ScopedFieldTrials trials(
-      "WebRTC-RFC8888CongestionControlFeedback/Enabled/");
   PeerScenario s(*test_info_);
 
   PeerScenarioClient::Config config;
+  config.field_trials.Set("WebRTC-RFC8888CongestionControlFeedback", "Enabled");
   config.disable_encryption = true;
-  config.endpoints = {{0, {.type = rtc::AdapterType::ADAPTER_TYPE_WIFI}}};
+  config.endpoints = {{0, {.type = AdapterType::ADAPTER_TYPE_WIFI}}};
   PeerScenarioClient* caller = s.CreateClient(config);
   // Callee has booth wifi and cellular adapters.
-  config.endpoints = {{0, {.type = rtc::AdapterType::ADAPTER_TYPE_WIFI}},
-                      {1, {.type = rtc::AdapterType::ADAPTER_TYPE_CELLULAR}}};
+  config.endpoints = {{0, {.type = AdapterType::ADAPTER_TYPE_WIFI}},
+                      {1, {.type = AdapterType::ADAPTER_TYPE_CELLULAR}}};
   PeerScenarioClient* callee = s.CreateClient(config);
 
   // Create network path from caller to callee.

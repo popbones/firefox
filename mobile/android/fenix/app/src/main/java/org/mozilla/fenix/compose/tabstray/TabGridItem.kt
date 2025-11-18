@@ -5,7 +5,6 @@
 package org.mozilla.fenix.compose.tabstray
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -56,20 +56,17 @@ import androidx.compose.ui.unit.sp
 import androidx.core.text.BidiFormatter
 import mozilla.components.browser.state.state.TabSessionState
 import mozilla.components.browser.state.state.createTab
-import mozilla.components.compose.base.Divider
 import mozilla.components.support.base.utils.MAX_URI_LENGTH
 import mozilla.components.ui.colors.PhotonColors
-import org.mozilla.fenix.FeatureFlags
 import org.mozilla.fenix.R
 import org.mozilla.fenix.compose.HorizontalFadingEdgeBox
-import org.mozilla.fenix.compose.SwipeToDismissBox
 import org.mozilla.fenix.compose.SwipeToDismissBox2
-import org.mozilla.fenix.compose.SwipeToDismissState
 import org.mozilla.fenix.compose.SwipeToDismissState2
 import org.mozilla.fenix.compose.TabThumbnail
 import org.mozilla.fenix.tabstray.TabsTrayTestTag
 import org.mozilla.fenix.tabstray.ext.toDisplayTitle
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * Tab grid item used to display a tab that supports clicks,
@@ -84,7 +81,6 @@ import org.mozilla.fenix.theme.FirefoxTheme
  * option.
  * @param shouldClickListen Whether or not the item should stop listening to click events.
  * @param swipeState The swipe state of the item.
- * @param swipeState2 The swipe state of the item.
  * @param onCloseClick Callback to handle the click event of the close button.
  * @param onMediaClick Callback to handle when the media item is clicked.
  * @param onClick Callback to handle when item is clicked.
@@ -98,59 +94,34 @@ fun TabGridItem(
     multiSelectionEnabled: Boolean = false,
     multiSelectionSelected: Boolean = false,
     shouldClickListen: Boolean = true,
-    swipeState: SwipeToDismissState,
-    swipeState2: SwipeToDismissState2,
+    swipeState: SwipeToDismissState2,
     onCloseClick: (tab: TabSessionState) -> Unit,
     onMediaClick: (tab: TabSessionState) -> Unit,
     onClick: (tab: TabSessionState) -> Unit,
     onLongClick: ((tab: TabSessionState) -> Unit)? = null,
 ) {
-    if (FeatureFlags.SWIPE_TO_DISMISS_2) {
-        SwipeToDismissBox2(
-            state = swipeState2,
-            backgroundContent = {},
-            onItemDismiss = {
-                onCloseClick(tab)
-            },
-        ) {
-            TabContent(
-                tab = tab,
-                thumbnailSize = thumbnailSize,
-                isSelected = isSelected,
-                multiSelectionEnabled = multiSelectionEnabled,
-                multiSelectionSelected = multiSelectionSelected,
-                shouldClickListen = shouldClickListen,
-                onCloseClick = onCloseClick,
-                onMediaClick = onMediaClick,
-                onClick = onClick,
-                onLongClick = onLongClick,
-            )
-        }
-    } else {
-        SwipeToDismissBox(
-            state = swipeState,
-            backgroundContent = {},
-            onItemDismiss = {
-                onCloseClick(tab)
-            },
-        ) {
-            TabContent(
-                tab = tab,
-                thumbnailSize = thumbnailSize,
-                isSelected = isSelected,
-                multiSelectionEnabled = multiSelectionEnabled,
-                multiSelectionSelected = multiSelectionSelected,
-                shouldClickListen = shouldClickListen,
-                onCloseClick = onCloseClick,
-                onMediaClick = onMediaClick,
-                onClick = onClick,
-                onLongClick = onLongClick,
-            )
-        }
+    SwipeToDismissBox2(
+        state = swipeState,
+        backgroundContent = {},
+        onItemDismiss = {
+            onCloseClick(tab)
+        },
+    ) {
+        TabContent(
+            tab = tab,
+            thumbnailSize = thumbnailSize,
+            isSelected = isSelected,
+            multiSelectionEnabled = multiSelectionEnabled,
+            multiSelectionSelected = multiSelectionSelected,
+            shouldClickListen = shouldClickListen,
+            onCloseClick = onCloseClick,
+            onMediaClick = onMediaClick,
+            onClick = onClick,
+            onLongClick = onLongClick,
+        )
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Suppress("LongMethod")
 @Composable
 private fun TabContent(
@@ -242,7 +213,7 @@ private fun TabContent(
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.mozac_ic_globe_24),
+                                painter = painterResource(id = iconsR.drawable.mozac_ic_globe_24),
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
                                 tint = FirefoxTheme.colors.iconPrimary,
@@ -283,7 +254,7 @@ private fun TabContent(
                             },
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.mozac_ic_cross_20),
+                                painter = painterResource(id = iconsR.drawable.mozac_ic_cross_20),
                                 contentDescription = stringResource(
                                     id = R.string.close_tab_title,
                                     tab.toDisplayTitle(),
@@ -294,7 +265,7 @@ private fun TabContent(
                     }
                 }
 
-                Divider()
+                HorizontalDivider()
 
                 Thumbnail(
                     tab = tab,
@@ -364,7 +335,7 @@ private fun Thumbnail(
                 colors = CardDefaults.cardColors(containerColor = FirefoxTheme.colors.layerAccent),
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.mozac_ic_checkmark_24),
+                    painter = painterResource(id = iconsR.drawable.mozac_ic_checkmark_24),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(all = 8.dp),

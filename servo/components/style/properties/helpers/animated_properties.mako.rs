@@ -23,7 +23,7 @@ use crate::properties::{
 };
 use std::ptr;
 use std::mem;
-use fxhash::FxHashMap;
+use rustc_hash::FxHashMap;
 use super::ComputedValues;
 use crate::properties::OwnedPropertyDeclarationId;
 use crate::values::animated::{Animate, Procedure, ToAnimatedValue, ToAnimatedZero};
@@ -179,7 +179,7 @@ impl PartialEq for AnimationValue {
 impl AnimationValue {
     /// Returns the longhand id this animated value corresponds to.
     #[inline]
-    pub fn id(&self) -> PropertyDeclarationId {
+    pub fn id(&self) -> PropertyDeclarationId<'_> {
         if let AnimationValue::Custom(animated_value) = self {
             return PropertyDeclarationId::Custom(&animated_value.name);
         }

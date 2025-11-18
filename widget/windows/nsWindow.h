@@ -133,8 +133,7 @@ void SetWindowStyles(HWND, const WindowStyles&);
 
 }  // namespace mozilla::widget
 
-class nsWindow final : public nsBaseWidget,
-                       public mozilla::SupportsThreadSafeWeakPtr<nsWindow> {
+class nsWindow final : public nsBaseWidget {
  public:
   using Styles = mozilla::widget::WindowStyles;
   using WindowHook = mozilla::widget::WindowHook;
@@ -142,7 +141,6 @@ class nsWindow final : public nsBaseWidget,
   using WidgetEventTime = mozilla::WidgetEventTime;
 
   NS_INLINE_DECL_REFCOUNTING_INHERITED(nsWindow, nsBaseWidget)
-  MOZ_DECLARE_REFCOUNTED_TYPENAME(nsWindow)
 
   nsWindow();
 
@@ -365,7 +363,7 @@ class nsWindow final : public nsBaseWidget,
 
   bool HasTaskbarIconBeenCreated() { return mHasTaskbarIconBeenCreated; }
   // Called when either the nsWindow or an nsITaskbarTabPreview receives the
-  // noticiation that this window has its icon placed on the taskbar.
+  // notification that this window has its icon placed on the taskbar.
   void SetHasTaskbarIconBeenCreated(bool created = true) {
     mHasTaskbarIconBeenCreated = created;
   }
@@ -440,13 +438,6 @@ class nsWindow final : public nsBaseWidget,
   using MSGResult = mozilla::widget::MSGResult;
   using PlatformCompositorWidgetDelegate =
       mozilla::widget::PlatformCompositorWidgetDelegate;
-
-  struct Desktop {
-    // Cached GUID of the virtual desktop this window should be on.
-    // This value may be stale.
-    nsString mID;
-    bool mUpdateIsQueued = false;
-  };
 
   class PointerInfo {
    public:
@@ -556,7 +547,7 @@ class nsWindow final : public nsBaseWidget,
   }
   bool IsForegroundWindow() const { return mWnd == ::GetForegroundWindow(); }
   bool IsPopup() const { return mWindowType == WindowType::Popup; }
-  bool IsCloaked() const { return mIsCloaked; }
+  bool IsCloaked() const override { return mIsCloaked; }
 
   /**
    * Event processing helpers
@@ -673,7 +664,7 @@ class nsWindow final : public nsBaseWidget,
 
   bool NeedsToTrackWindowOcclusionState();
 
-  void AsyncUpdateWorkspaceID(Desktop& aDesktop);
+  void AsyncUpdateWorkspaceID();
 
   // See bug 603793
   static bool HasBogusPopupsDropShadowOnMultiMonitor();
@@ -736,9 +727,9 @@ class nsWindow final : public nsBaseWidget,
   static HWND sRollupMsgWnd;
   static UINT sHookTimerId;
 
-  // Used to prevent dispatching mouse events that do not originate from user
-  // input.
-  static POINT sLastMouseMovePoint;
+  // Handle the last mouse point and the last non-mouse pointer point to stop
+  // dispatching redundant eMouseMove events.
+  class LastMouseMoveData;
 
   nsClassHashtable<nsUint32HashKey, PointerInfo> mActivePointers;
 
@@ -930,7 +921,7 @@ class nsWindow final : public nsBaseWidget,
                            size_t(WindowButtonType::Count)>
       mWindowBtnRect;
 
-  mozilla::DataMutex<Desktop> mDesktopId;
+  nsString mDesktopId MOZ_GUARDED_BY(mozilla::sMainThreadCapability);
 
   friend class nsWindowGfx;
 

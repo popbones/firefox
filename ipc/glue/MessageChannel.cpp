@@ -962,7 +962,7 @@ class IPCFlowMarker : public BaseMarkerType<IPCFlowMarker> {
   static constexpr MS::Location Locations[] = {MS::Location::MarkerChart,
                                                MS::Location::MarkerTable};
   static constexpr const char* TableLabel =
-      "{marker.name} - {marker.data.name}(flow={marker.data.flow})";
+      "{marker.data.name}(flow={marker.data.flow})";
   static constexpr const char* ChartLabel = "{marker.name}";
 
   static constexpr MS::ETWMarkerGroup Group = MS::ETWMarkerGroup::Generic;
@@ -1517,6 +1517,8 @@ NS_IMPL_ISUPPORTS_INHERITED(MessageChannel::MessageTask, CancelableRunnable,
 
 static uint32_t ToRunnablePriority(IPC::Message::PriorityValue aPriority) {
   switch (aPriority) {
+    case IPC::Message::LOW_PRIORITY:
+      return nsIRunnablePriority::PRIORITY_LOW;
     case IPC::Message::NORMAL_PRIORITY:
       return nsIRunnablePriority::PRIORITY_NORMAL;
     case IPC::Message::INPUT_PRIORITY:
@@ -2240,7 +2242,7 @@ void MessageChannel::AddProfilerMarker(const IPC::Message& aMessage,
     if (pid != base::kInvalidProcessId &&
         !profiler_is_locked_on_current_thread()) {
       // The current timestamp must be given to the `IPCMarker` payload.
-      [[maybe_unused]] const TimeStamp now = TimeStamp::Now();
+      const TimeStamp now = TimeStamp::Now();
       bool isThreadBeingProfiled =
           profiler_thread_is_being_profiled_for_markers();
       PROFILER_MARKER(

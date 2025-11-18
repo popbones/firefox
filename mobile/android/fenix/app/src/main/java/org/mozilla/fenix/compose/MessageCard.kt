@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -30,13 +31,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import mozilla.components.compose.base.button.PrimaryButton
+import mozilla.components.compose.base.button.FilledButton
 import mozilla.components.service.nimbus.messaging.Message
 import org.mozilla.fenix.R
 import org.mozilla.fenix.home.fake.FakeHomepagePreview
 import org.mozilla.fenix.theme.FirefoxTheme
 import org.mozilla.fenix.wallpapers.Wallpaper
 import org.mozilla.fenix.wallpapers.WallpaperState
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * State-based Message Card.
@@ -154,11 +156,11 @@ fun MessageCard(
             if (!buttonText.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                PrimaryButton(
+                FilledButton(
                     text = buttonText,
                     modifier = Modifier.fillMaxWidth(),
-                    textColor = messageColors.buttonTextColor,
-                    backgroundColor = messageColors.buttonColor,
+                    contentColor = messageColors.buttonTextColor,
+                    containerColor = messageColors.buttonColor,
                     onClick = onClick,
                 )
             }
@@ -182,7 +184,7 @@ private fun MessageCardIconButton(
         onClick = onCloseButtonClick,
     ) {
         Icon(
-            painter = painterResource(R.drawable.mozac_ic_cross_20),
+            painter = painterResource(iconsR.drawable.mozac_ic_cross_20),
             contentDescription = stringResource(
                 R.string.content_description_close_button,
             ),
@@ -215,6 +217,7 @@ data class MessageCardColors(
          * Builder function used to construct an instance of [MessageCardColors].
          */
         @Composable
+        @ReadOnlyComposable
         fun buildMessageCardColors(
             backgroundColor: Color = FirefoxTheme.colors.layer2,
             titleTextColor: Color = FirefoxTheme.colors.textPrimary,
@@ -320,6 +323,7 @@ data class MessageCardState(
          * @param wallpaperState [WallpaperState] specifying the colors to be used.
          */
         @Composable
+        @ReadOnlyComposable
         fun build(message: Message, wallpaperState: WallpaperState): MessageCardState {
             val isWallpaperNotDefault =
                 !Wallpaper.nameIsDefault(wallpaperState.currentWallpaper.name)

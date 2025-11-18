@@ -169,6 +169,21 @@ pub fn update_prim_visibility(
                 raster_config.surface_index,
             );
 
+            if let Some(parent_surface_index) = parent_surface_index {
+                let parent_culling_rect = frame_state
+                    .surfaces[parent_surface_index.0]
+                    .culling_rect;
+
+                let surface = &mut frame_state
+                    .surfaces[raster_config.surface_index.0 as usize];
+
+                surface.update_culling_rect(
+                    parent_culling_rect,
+                    &raster_config.composite_mode,
+                    frame_context,
+                );
+            }
+
             let surface_local_rect = frame_state.surfaces[raster_config.surface_index.0]
                 .unclipped_local_rect
                 .cast_unit();
@@ -362,6 +377,18 @@ pub fn update_prim_visibility(
                     }
                 }
             };
+        }
+    }
+
+    if let Some(snapshot) = &pic.snapshot {
+        if snapshot.detached {
+            // If the snapshot is detached, then the contents of the stacking
+            // context will only be shown via the snapshot, so there is no point
+            // to rendering anything outside of the snapshot area.
+            let prim_surface_index = frame_state.surface_stack.last().unwrap().1;
+            let surface = &mut frame_state.surfaces[prim_surface_index.0];
+            let clip = snapshot.area.round_out().cast_unit();
+            surface.clipped_local_rect = surface.clipped_local_rect.intersection_unchecked(&clip);
         }
     }
 

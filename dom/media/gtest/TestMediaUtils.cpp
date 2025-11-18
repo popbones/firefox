@@ -3,9 +3,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "gtest/gtest.h"
-
 #include "MediaUtils.h"
+#include "gtest/gtest.h"
 #include "mozilla/AppShutdown.h"
 #include "mozilla/SyncRunnable.h"
 #include "mozilla/gtest/MozHelpers.h"
@@ -32,7 +31,7 @@ void DoCreateTicketBeforeAppShutdownOnMain() {
   bool pastAppShutdown = false;
   bool backgroundTaskFinished = false;
 
-  UniquePtr ticket = ShutdownBlockingTicket::Create(
+  auto ticket = ShutdownBlockingTicket::Create(
       u"Test"_ns, NS_LITERAL_STRING_FROM_CSTRING(__FILE__), __LINE__);
 
   MOZ_ALWAYS_SUCCEEDS(
@@ -193,7 +192,8 @@ void DoTwoTicketsWithSameNameBothBlockShutdown() {
   TimeStamp before = TimeStamp::Now();
   auto timerResult = NS_NewTimerWithCallback(
       [t = std::move(ticket2Holder)](nsITimer* aTimer) {},
-      waitBeforeDestroyingTicket, nsITimer::TYPE_ONE_SHOT, __func__);
+      waitBeforeDestroyingTicket, nsITimer::TYPE_ONE_SHOT,
+      "DoTwoTicketsWithSameNameBothBlockShutdown"_ns);
   ASSERT_TRUE(timerResult.isOk());
 
   AppShutdown::AdvanceShutdownPhase(ShutdownPhase::AppShutdownNetTeardown);

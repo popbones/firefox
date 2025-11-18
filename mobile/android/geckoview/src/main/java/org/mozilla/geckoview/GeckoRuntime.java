@@ -29,6 +29,7 @@ import android.util.Log;
 import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.annotation.StringDef;
 import androidx.annotation.UiThread;
 import androidx.lifecycle.Lifecycle;
@@ -59,6 +60,7 @@ import org.mozilla.gecko.util.EventCallback;
 import org.mozilla.gecko.util.GeckoBundle;
 import org.mozilla.gecko.util.ThreadUtils;
 
+/** Runtime environment for Gecko-based applications. */
 public final class GeckoRuntime implements Parcelable {
   private static final String LOGTAG = "GeckoRuntime";
   private static final boolean DEBUG = false;
@@ -146,6 +148,7 @@ public final class GeckoRuntime implements Parcelable {
 
   private final MemoryController mMemoryController = new MemoryController();
 
+  /** Crashed process visibility type definitions for process crash handling. */
   @Retention(RetentionPolicy.SOURCE)
   @StringDef(
       value = {
@@ -198,10 +201,12 @@ public final class GeckoRuntime implements Parcelable {
       // OnPrimaryClipChangedListener() won’t be triggered for a background
       // application, so update the clipboard sequence number once the
       // application returns to the foreground.
-      ThreadUtils.sGeckoHandler.post(
-          () -> {
-            Clipboard.updateSequenceNumber(GeckoAppShell.getApplicationContext());
-          });
+      if (GeckoThread.isStateAtLeast(GeckoThread.State.PROFILE_READY)) {
+        ThreadUtils.sGeckoHandler.post(
+            () -> {
+              Clipboard.updateSequenceNumber(GeckoAppShell.getApplicationContext());
+            });
+      }
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
@@ -247,7 +252,10 @@ public final class GeckoRuntime implements Parcelable {
   private GeckoRuntimeSettings mSettings;
   private Delegate mDelegate;
   private ServiceWorkerDelegate mServiceWorkerDelegate;
+
+  @OptIn(markerClass = ExperimentalGeckoViewApi.class)
   private GeckoPreferenceController.Observer.Delegate mPreferencesObserverDelegate;
+
   private WebNotificationDelegate mNotificationDelegate;
   private ActivityDelegate mActivityDelegate;
   private OrientationController mOrientationController;
@@ -315,6 +323,7 @@ public final class GeckoRuntime implements Parcelable {
     }
   }
 
+  @OptIn(markerClass = ExperimentalGeckoViewApi.class)
   private final BundleEventListener mEventListener =
       new BundleEventListener() {
         @Override
@@ -434,8 +443,7 @@ public final class GeckoRuntime implements Parcelable {
       final File minidumps = new File(context.getFilesDir(), "minidumps");
       context.bindService(
           i,
-          CrashHelper.createConnection(
-              pipes.mBreakpadServer, minidumps.getPath(), pipes.mListener, pipes.mServer),
+          CrashHelper.createConnection(pipes.mBreakpadServer, minidumps.getPath(), pipes.mServer),
           Context.BIND_AUTO_CREATE);
     } catch (final ClassNotFoundException e) {
       Log.w(LOGTAG, "Couldn't find the crash helper class");
@@ -457,6 +465,10 @@ public final class GeckoRuntime implements Parcelable {
 
     if (!settings.getLowMemoryDetection()) {
       flags |= GeckoThread.FLAG_DISABLE_LOW_MEMORY_DETECTION;
+    }
+
+    if (settings.getIsolatedProcessEnabled()) {
+      flags |= GeckoThread.FLAG_CONTENT_ISOLATED;
     }
 
     final Class<?> crashHandler = settings.getCrashHandler();
@@ -675,6 +687,7 @@ public final class GeckoRuntime implements Parcelable {
     GeckoThread.forceQuit();
   }
 
+  /** Delegate for handling GeckoRuntime lifecycle events. */
   public interface Delegate {
     /**
      * This is called when the runtime shuts down. Any GeckoSession instances that were opened with
@@ -753,6 +766,7 @@ public final class GeckoRuntime implements Parcelable {
     return mCrashPullProxy.getDelegate();
   }
 
+  /** Delegate for handling service worker events and requests. */
   @UiThread
   public interface ServiceWorkerDelegate {
 
@@ -777,6 +791,7 @@ public final class GeckoRuntime implements Parcelable {
    *
    * @param delegate The delegate to set on the runtime.
    */
+  @ExperimentalGeckoViewApi
   @AnyThread
   public void setPreferencesObserverDelegate(
       @Nullable final GeckoPreferenceController.Observer.Delegate delegate) {
@@ -789,6 +804,7 @@ public final class GeckoRuntime implements Parcelable {
    *
    * @return The {@link GeckoPreferenceController.Observer.Delegate} set on this runtime.
    */
+  @ExperimentalGeckoViewApi
   @AnyThread
   public @Nullable GeckoPreferenceController.Observer.Delegate getPreferencesObserverDelegate() {
     return mPreferencesObserverDelegate;
@@ -963,8 +979,12 @@ public final class GeckoRuntime implements Parcelable {
     return result;
   }
 
+  /**
+   * Get the runtime settings.
+   *
+   * @return The GeckoRuntimeSettings for this runtime
+   */
   @AnyThread
-  @SuppressWarnings("checkstyle:javadocmethod")
   public @NonNull GeckoRuntimeSettings getSettings() {
     return mSettings;
   }
@@ -1163,12 +1183,17 @@ public final class GeckoRuntime implements Parcelable {
   }
 
   // AIDL code may call readFromParcel even though it's not part of Parcelable.
+  /**
+   * Read runtime settings from a Parcel.
+   *
+   * @param source The Parcel to read from
+   */
   @AnyThread
-  @SuppressWarnings("checkstyle:javadocmethod")
   public void readFromParcel(final @NonNull Parcel source) {
     mSettings = source.readParcelable(getClass().getClassLoader());
   }
 
+  /** Parcelable creator for GeckoRuntime instances. */
   public static final Parcelable.Creator<GeckoRuntime> CREATOR =
       new Parcelable.Creator<GeckoRuntime>() {
         @Override

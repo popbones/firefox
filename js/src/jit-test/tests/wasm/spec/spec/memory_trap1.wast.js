@@ -19,78 +19,78 @@
 let $0 = instantiate(`(module
   (memory 0)
   (memory 0)
-  (memory $$m 1)
+  (memory \$m 1)
   (data (memory 2) (i32.const 0) "abcdefgh")
   (data (memory 2) (i32.const 0xfff8) "abcdefgh")
 
-  (func (export "i32.load") (param $$a i32) (result i32)
-    (i32.load $$m (local.get $$a))
+  (func (export "i32.load") (param \$a i32) (result i32)
+    (i32.load \$m (local.get \$a))
   )
-  (func (export "i64.load") (param $$a i32) (result i64)
-    (i64.load $$m (local.get $$a))
+  (func (export "i64.load") (param \$a i32) (result i64)
+    (i64.load \$m (local.get \$a))
   )
-  (func (export "f32.load") (param $$a i32) (result f32)
-    (f32.load $$m (local.get $$a))
+  (func (export "f32.load") (param \$a i32) (result f32)
+    (f32.load \$m (local.get \$a))
   )
-  (func (export "f64.load") (param $$a i32) (result f64)
-    (f64.load $$m (local.get $$a))
+  (func (export "f64.load") (param \$a i32) (result f64)
+    (f64.load \$m (local.get \$a))
   )
-  (func (export "i32.load8_s") (param $$a i32) (result i32)
-    (i32.load8_s $$m (local.get $$a))
+  (func (export "i32.load8_s") (param \$a i32) (result i32)
+    (i32.load8_s \$m (local.get \$a))
   )
-  (func (export "i32.load8_u") (param $$a i32) (result i32)
-    (i32.load8_u $$m (local.get $$a))
+  (func (export "i32.load8_u") (param \$a i32) (result i32)
+    (i32.load8_u \$m (local.get \$a))
   )
-  (func (export "i32.load16_s") (param $$a i32) (result i32)
-    (i32.load16_s $$m (local.get $$a))
+  (func (export "i32.load16_s") (param \$a i32) (result i32)
+    (i32.load16_s \$m (local.get \$a))
   )
-  (func (export "i32.load16_u") (param $$a i32) (result i32)
-    (i32.load16_u $$m (local.get $$a))
+  (func (export "i32.load16_u") (param \$a i32) (result i32)
+    (i32.load16_u \$m (local.get \$a))
   )
-  (func (export "i64.load8_s") (param $$a i32) (result i64)
-    (i64.load8_s $$m (local.get $$a))
+  (func (export "i64.load8_s") (param \$a i32) (result i64)
+    (i64.load8_s \$m (local.get \$a))
   )
-  (func (export "i64.load8_u") (param $$a i32) (result i64)
-    (i64.load8_u $$m (local.get $$a))
+  (func (export "i64.load8_u") (param \$a i32) (result i64)
+    (i64.load8_u \$m (local.get \$a))
   )
-  (func (export "i64.load16_s") (param $$a i32) (result i64)
-    (i64.load16_s $$m (local.get $$a))
+  (func (export "i64.load16_s") (param \$a i32) (result i64)
+    (i64.load16_s \$m (local.get \$a))
   )
-  (func (export "i64.load16_u") (param $$a i32) (result i64)
-    (i64.load16_u $$m (local.get $$a))
+  (func (export "i64.load16_u") (param \$a i32) (result i64)
+    (i64.load16_u \$m (local.get \$a))
   )
-  (func (export "i64.load32_s") (param $$a i32) (result i64)
-    (i64.load32_s $$m (local.get $$a))
+  (func (export "i64.load32_s") (param \$a i32) (result i64)
+    (i64.load32_s \$m (local.get \$a))
   )
-  (func (export "i64.load32_u") (param $$a i32) (result i64)
-    (i64.load32_u $$m (local.get $$a))
+  (func (export "i64.load32_u") (param \$a i32) (result i64)
+    (i64.load32_u \$m (local.get \$a))
   )
-  (func (export "i32.store") (param $$a i32) (param $$v i32)
-    (i32.store $$m (local.get $$a) (local.get $$v))
+  (func (export "i32.store") (param \$a i32) (param \$v i32)
+    (i32.store \$m (local.get \$a) (local.get \$v))
   )
-  (func (export "i64.store") (param $$a i32) (param $$v i64)
-    (i64.store $$m (local.get $$a) (local.get $$v))
+  (func (export "i64.store") (param \$a i32) (param \$v i64)
+    (i64.store \$m (local.get \$a) (local.get \$v))
   )
-  (func (export "f32.store") (param $$a i32) (param $$v f32)
-    (f32.store $$m (local.get $$a) (local.get $$v))
+  (func (export "f32.store") (param \$a i32) (param \$v f32)
+    (f32.store \$m (local.get \$a) (local.get \$v))
   )
-  (func (export "f64.store") (param $$a i32) (param $$v f64)
-    (f64.store $$m (local.get $$a) (local.get $$v))
+  (func (export "f64.store") (param \$a i32) (param \$v f64)
+    (f64.store \$m (local.get \$a) (local.get \$v))
   )
-  (func (export "i32.store8") (param $$a i32) (param $$v i32)
-    (i32.store8 $$m (local.get $$a) (local.get $$v))
+  (func (export "i32.store8") (param \$a i32) (param \$v i32)
+    (i32.store8 \$m (local.get \$a) (local.get \$v))
   )
-  (func (export "i32.store16") (param $$a i32) (param $$v i32)
-    (i32.store16 $$m (local.get $$a) (local.get $$v))
+  (func (export "i32.store16") (param \$a i32) (param \$v i32)
+    (i32.store16 \$m (local.get \$a) (local.get \$v))
   )
-  (func (export "i64.store8") (param $$a i32) (param $$v i64)
-    (i64.store8 $$m (local.get $$a) (local.get $$v))
+  (func (export "i64.store8") (param \$a i32) (param \$v i64)
+    (i64.store8 \$m (local.get \$a) (local.get \$v))
   )
-  (func (export "i64.store16") (param $$a i32) (param $$v i64)
-    (i64.store16 $$m (local.get $$a) (local.get $$v))
+  (func (export "i64.store16") (param \$a i32) (param \$v i64)
+    (i64.store16 \$m (local.get \$a) (local.get \$v))
   )
-  (func (export "i64.store32") (param $$a i32) (param $$v i64)
-    (i64.store32 $$m (local.get $$a) (local.get $$v))
+  (func (export "i64.store32") (param \$a i32) (param \$v i64)
+    (i64.store32 \$m (local.get \$a) (local.get \$v))
   )
 )`);
 
@@ -562,11 +562,13 @@ assert_trap(() => invoke($0, `i64.load32_u`, [-3]), `out of bounds memory access
 // ./test/core/multi-memory/memory_trap1.wast:234
 assert_trap(() => invoke($0, `i64.load32_u`, [-4]), `out of bounds memory access`);
 
-// ./test/core/multi-memory/memory_trap1.wast:237
-assert_return(() => invoke($0, `i64.load`, [65528]), [value("i64", 7523094288207667809n)]);
+if (!partialOobWriteMayWritePartialData()) {
+  // ./test/core/multi-memory/memory_trap1.wast:237
+  assert_return(() => invoke($0, `i64.load`, [65528]), [value("i64", 7523094288207667809n)]);
 
-// ./test/core/multi-memory/memory_trap1.wast:238
-assert_return(() => invoke($0, `i64.load`, [0]), [value("i64", 7523094288207667809n)]);
+  // ./test/core/multi-memory/memory_trap1.wast:238
+  assert_return(() => invoke($0, `i64.load`, [0]), [value("i64", 7523094288207667809n)]);
+}
 
 // ./test/core/multi-memory/memory_trap1.wast:242
 assert_return(() => invoke($0, `i64.store`, [65528, 0n]), []);
@@ -574,14 +576,18 @@ assert_return(() => invoke($0, `i64.store`, [65528, 0n]), []);
 // ./test/core/multi-memory/memory_trap1.wast:243
 assert_trap(() => invoke($0, `i32.store`, [65533, 305419896]), `out of bounds memory access`);
 
-// ./test/core/multi-memory/memory_trap1.wast:244
-assert_return(() => invoke($0, `i32.load`, [65532]), [value("i32", 0)]);
+if (!partialOobWriteMayWritePartialData()) {
+  // ./test/core/multi-memory/memory_trap1.wast:244
+  assert_return(() => invoke($0, `i32.load`, [65532]), [value("i32", 0)]);
+}
 
 // ./test/core/multi-memory/memory_trap1.wast:245
 assert_trap(() => invoke($0, `i64.store`, [65529, 1311768467294899695n]), `out of bounds memory access`);
 
-// ./test/core/multi-memory/memory_trap1.wast:246
-assert_return(() => invoke($0, `i64.load`, [65528]), [value("i64", 0n)]);
+if (!partialOobWriteMayWritePartialData()) {
+  // ./test/core/multi-memory/memory_trap1.wast:246
+  assert_return(() => invoke($0, `i64.load`, [65528]), [value("i64", 0n)]);
+}
 
 // ./test/core/multi-memory/memory_trap1.wast:247
 assert_trap(
@@ -589,8 +595,10 @@ assert_trap(
   `out of bounds memory access`,
 );
 
-// ./test/core/multi-memory/memory_trap1.wast:248
-assert_return(() => invoke($0, `f32.load`, [65532]), [value("f32", 0)]);
+if (!partialOobWriteMayWritePartialData()) {
+  // ./test/core/multi-memory/memory_trap1.wast:248
+  assert_return(() => invoke($0, `f32.load`, [65532]), [value("f32", 0)]);
+}
 
 // ./test/core/multi-memory/memory_trap1.wast:249
 assert_trap(
@@ -598,5 +606,7 @@ assert_trap(
   `out of bounds memory access`,
 );
 
-// ./test/core/multi-memory/memory_trap1.wast:250
-assert_return(() => invoke($0, `f64.load`, [65528]), [value("f64", 0)]);
+if (!partialOobWriteMayWritePartialData()) {
+  // ./test/core/multi-memory/memory_trap1.wast:250
+  assert_return(() => invoke($0, `f64.load`, [65528]), [value("f64", 0)]);
+}

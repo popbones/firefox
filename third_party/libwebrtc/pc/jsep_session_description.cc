@@ -10,23 +10,30 @@
 
 #include "api/jsep_session_description.h"
 
+#include <cstddef>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
+#include <vector>
 
+#include "absl/strings/string_view.h"
+#include "api/candidate.h"
+#include "api/jsep.h"
 #include "p2p/base/p2p_constants.h"
-#include "p2p/base/port.h"
 #include "p2p/base/transport_description.h"
 #include "p2p/base/transport_info.h"
 #include "pc/media_session.h"  // IWYU pragma: keep
+#include "pc/session_description.h"
 #include "pc/webrtc_sdp.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/ip_address.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/net_helper.h"
+#include "rtc_base/net_helpers.h"
 #include "rtc_base/socket_address.h"
 
-using cricket::Candidate;
+using webrtc::Candidate;
 using ::webrtc::SessionDescription;
 
 namespace webrtc {
@@ -46,13 +53,13 @@ void UpdateConnectionAddress(
   int current_preference = 0;  // Start with lowest preference.
   int current_family = AF_UNSPEC;
   for (size_t i = 0; i < candidate_collection.count(); ++i) {
-    const IceCandidateInterface* jsep_candidate = candidate_collection.at(i);
+    const IceCandidate* jsep_candidate = candidate_collection.at(i);
     if (jsep_candidate->candidate().component() !=
-        cricket::ICE_CANDIDATE_COMPONENT_RTP) {
+        ICE_CANDIDATE_COMPONENT_RTP) {
       continue;
     }
     // Default destination should be UDP only.
-    if (jsep_candidate->candidate().protocol() != cricket::UDP_PROTOCOL_NAME) {
+    if (jsep_candidate->candidate().protocol() != UDP_PROTOCOL_NAME) {
       continue;
     }
     const int preference = jsep_candidate->candidate().type_preference();
@@ -211,20 +218,17 @@ std::unique_ptr<SessionDescriptionInterface> JsepSessionDescription::Clone()
   return new_description;
 }
 
-bool JsepSessionDescription::AddCandidate(
-    const IceCandidateInterface* candidate) {
+bool JsepSessionDescription::AddCandidate(const IceCandidate* candidate) {
   if (!candidate)
     return false;
   size_t mediasection_index = 0;
   if (!GetMediasectionIndex(candidate, &mediasection_index)) {
     return false;
   }
-  if (mediasection_index >= number_of_mediasections())
-    return false;
-  const std::string& content_name =
+  const std::string& mediasection_mid =
       description_->contents()[mediasection_index].mid();
-  const cricket::TransportInfo* transport_info =
-      description_->GetTransportInfoByName(content_name);
+  const TransportInfo* transport_info =
+      description_->GetTransportInfoByName(mediasection_mid);
   if (!transport_info) {
     return false;
   }
@@ -237,19 +241,40 @@ bool JsepSessionDescription::AddCandidate(
     updated_candidate.set_password(transport_info->description.ice_pwd);
   }
 
-  std::unique_ptr<JsepIceCandidate> updated_candidate_wrapper(
-      new JsepIceCandidate(candidate->sdp_mid(),
-                           static_cast<int>(mediasection_index),
-                           updated_candidate));
+  // Use `mediasection_mid` as the mid for the updated candidate. The
+  // `candidate->sdp_mid()` property *should* be the same. However, in some
+  // cases specifying an empty mid but a valid index is a way to add a candidate
+  // without knowing (or caring about) the mid. This is done in several tests.
+  RTC_DCHECK(candidate->sdp_mid().empty() ||
+             candidate->sdp_mid() == mediasection_mid)
+      << "sdp_mid='" << candidate->sdp_mid() << "' mediasection_mid='"
+      << mediasection_mid << "'";
+  auto updated_candidate_wrapper = std::make_unique<IceCandidate>(
+      mediasection_mid, static_cast<int>(mediasection_index),
+      updated_candidate);
   if (!candidate_collection_[mediasection_index].HasCandidate(
           updated_candidate_wrapper.get())) {
     candidate_collection_[mediasection_index].add(
-        updated_candidate_wrapper.release());
+        std::move(updated_candidate_wrapper));
     UpdateConnectionAddress(
         candidate_collection_[mediasection_index],
         description_->contents()[mediasection_index].media_description());
   }
 
+  return true;
+}
+
+bool JsepSessionDescription::RemoveCandidate(const IceCandidate* candidate) {
+  size_t mediasection_index = 0u;
+  if (!GetMediasectionIndex(candidate, &mediasection_index)) {
+    return false;
+  }
+  if (!candidate_collection_[mediasection_index].remove(candidate)) {
+    return false;
+  }
+  UpdateConnectionAddress(
+      candidate_collection_[mediasection_index],
+      description_->contents()[mediasection_index].media_description());
   return true;
 }
 
@@ -279,7 +304,7 @@ size_t JsepSessionDescription::number_of_mediasections() const {
 const IceCandidateCollection* JsepSessionDescription::candidates(
     size_t mediasection_index) const {
   if (mediasection_index >= candidate_collection_.size())
-    return NULL;
+    return nullptr;
   return &candidate_collection_[mediasection_index];
 }
 
@@ -291,9 +316,8 @@ bool JsepSessionDescription::ToString(std::string* out) const {
   return !out->empty();
 }
 
-bool JsepSessionDescription::GetMediasectionIndex(
-    const IceCandidateInterface* candidate,
-    size_t* index) {
+bool JsepSessionDescription::GetMediasectionIndex(const IceCandidate* candidate,
+                                                  size_t* index) {
   if (!candidate || !index) {
     return false;
   }

@@ -20,6 +20,7 @@ import {
 import { BackupError } from "resource:///modules/backup/BackupError.mjs";
 
 const BACKUP_DIR_PREF_NAME = "browser.backup.location";
+const BACKUP_ERROR_CODE_PREF_NAME = "browser.backup.errorCode";
 const SCHEDULED_BACKUPS_ENABLED_PREF_NAME = "browser.backup.scheduled.enabled";
 const IDLE_THRESHOLD_SECONDS_PREF_NAME =
   "browser.backup.scheduled.idle-threshold-seconds";
@@ -29,6 +30,10 @@ const LAST_BACKUP_TIMESTAMP_PREF_NAME =
   "browser.backup.scheduled.last-backup-timestamp";
 const LAST_BACKUP_FILE_NAME_PREF_NAME =
   "browser.backup.scheduled.last-backup-file";
+const BACKUP_RETRY_LIMIT_PREF_NAME = "browser.backup.backup-retry-limit";
+const DISABLED_ON_IDLE_RETRY_PREF_NAME =
+  "browser.backup.disabled-on-idle-backup-retry";
+const BACKUP_DEBUG_INFO_PREF_NAME = "browser.backup.backup-debug-info";
 
 const SCHEMAS = Object.freeze({
   BACKUP_MANIFEST: 1,
@@ -104,10 +109,6 @@ ChromeUtils.defineLazyGetter(lazy, "gDOMLocalization", function () {
   ]);
 });
 
-ChromeUtils.defineLazyGetter(lazy, "defaultParentDirPath", function () {
-  return Services.dirsvc.get("Docs", Ci.nsIFile).path;
-});
-
 XPCOMUtils.defineLazyPreferenceGetter(
   lazy,
   "scheduledBackupsPref",
@@ -153,7 +154,21 @@ XPCOMUtils.defineLazyPreferenceGetter(
   lazy,
   "minimumTimeBetweenBackupsSeconds",
   MINIMUM_TIME_BETWEEN_BACKUPS_SECONDS_PREF_NAME,
-  3600 /* 1 hour */
+  86400 /* 1 day */
+);
+
+XPCOMUtils.defineLazyPreferenceGetter(
+  lazy,
+  "backupRetryLimit",
+  BACKUP_RETRY_LIMIT_PREF_NAME,
+  100
+);
+
+XPCOMUtils.defineLazyPreferenceGetter(
+  lazy,
+  "isRetryDisabledOnIdle",
+  DISABLED_ON_IDLE_RETRY_PREF_NAME,
+  false
 );
 
 XPCOMUtils.defineLazyServiceGetter(
@@ -565,6 +580,11 @@ export class BackupService extends EventTarget {
   static #backupFileName = null;
 
   /**
+   * Number of retries that have occured in this session on error
+   */
+  static #errorRetries = 0;
+
+  /**
    * Set to true if a backup is currently in progress. Causes stateUpdate()
    * to be called.
    *
@@ -701,7 +721,10 @@ export class BackupService extends EventTarget {
    * @returns {string} The path of the default parent directory
    */
   static get DEFAULT_PARENT_DIR_PATH() {
-    return lazy.defaultParentDirPath;
+    return (
+      BackupService.oneDriveFolderPath?.path ||
+      Services.dirsvc.get("Docs", Ci.nsIFile).path
+    );
   }
 
   /**
@@ -907,6 +930,22 @@ export class BackupService extends EventTarget {
   }
 
   /**
+   * The user's personal OneDrive folder, or null if none exists.
+   *
+   * @returns {nsIFile|null} The OneDrive folder or null
+   */
+  static get oneDriveFolderPath() {
+    try {
+      let oneDriveDir = Services.dirsvc.get("OneDrPD", Ci.nsIFile);
+      // This check should be redundant -- the OneDrive folder should exist.
+      return oneDriveDir.exists() ? oneDriveDir : null;
+    } catch {
+      // Ignore exceptions.  The OneDrive folder not existing is an exception.
+    }
+    return null;
+  }
+
+  /**
    * Returns a reference to a BackupService singleton. If this is the first time
    * that this getter is accessed, this causes the BackupService singleton to be
    * be instantiated.
@@ -1035,7 +1074,6 @@ export class BackupService extends EventTarget {
     } catch (e) {
       lazy.logConsole.warn("Could not create configured destination path: ", e);
     }
-
     lazy.logConsole.warn(
       "The destination directory was invalid. Attempting to fall back to " +
         "default parent folder: ",
@@ -1072,11 +1110,52 @@ export class BackupService extends EventTarget {
       return homeDirPath;
     } catch (e) {
       lazy.logConsole.warn("Could not create Home destination path: ", e);
-      throw new Error(
+      throw new BackupError(
         "Could not resolve to a writable destination folder path.",
-        { cause: ERRORS.FILE_SYSTEM_ERROR }
+        ERRORS.FILE_SYSTEM_ERROR
       );
     }
+  }
+
+  /**
+   * Attempts to resolve an existing folder path to use for archives,
+   * following the same fallback order as `resolveArchiveDestFolderPath`.
+   *
+   * Order of resolution:
+   * 1. Configured destination folder
+   * 2. Default parent folder
+   * 3. Home directory
+   *
+   * @param {string} configuredDestFolderPath
+   * @returns {Promise<string, Error>}
+   */
+  async resolveExistingArchiveDestFolderPath(configuredDestFolderPath) {
+    if (
+      configuredDestFolderPath &&
+      (await IOUtils.exists(configuredDestFolderPath))
+    ) {
+      return configuredDestFolderPath;
+    }
+
+    let fallbackFolderPath = PathUtils.join(
+      BackupService.DEFAULT_PARENT_DIR_PATH,
+      BackupService.BACKUP_DIR_NAME
+    );
+    if (await IOUtils.exists(fallbackFolderPath)) {
+      return fallbackFolderPath;
+    }
+
+    let homeDirPath = PathUtils.join(
+      Services.dirsvc.get("Home", Ci.nsIFile).path,
+      BackupService.BACKUP_DIR_NAME
+    );
+    if (await IOUtils.exists(homeDirPath)) {
+      return homeDirPath;
+    }
+
+    throw new Error("Could not resolve an existing destination folder path.", {
+      cause: ERRORS.FILE_SYSTEM_ERROR,
+    });
   }
 
   /**
@@ -1148,6 +1227,10 @@ export class BackupService extends EventTarget {
         let currentStep = STEPS.CREATE_BACKUP_ENTRYPOINT;
         this.#backupInProgress = true;
         const backupTimer = Glean.browserBackup.totalBackupTime.start();
+
+        // reset the error state prefs
+        Services.prefs.clearUserPref(BACKUP_DEBUG_INFO_PREF_NAME);
+        Services.prefs.setIntPref(BACKUP_ERROR_CODE_PREF_NAME, ERRORS.NONE);
 
         try {
           lazy.logConsole.debug(
@@ -1349,7 +1432,7 @@ export class BackupService extends EventTarget {
             manifest.meta
           );
 
-          let nowSeconds = Math.floor(Date.now() / 1000);
+          let nowSeconds = Math.floor(ChromeUtils.now() / 1000);
           Services.prefs.setIntPref(
             LAST_BACKUP_TIMESTAMP_PREF_NAME,
             nowSeconds
@@ -1359,6 +1442,10 @@ export class BackupService extends EventTarget {
 
           Glean.browserBackup.created.record();
 
+          // we should reset any values that were set for retry error handling
+          Services.prefs.clearUserPref(DISABLED_ON_IDLE_RETRY_PREF_NAME);
+          BackupService.#errorRetries = 0;
+
           return { manifest, archivePath };
         } catch (e) {
           Glean.browserBackup.totalBackupTime.cancel(backupTimer);
@@ -1366,7 +1453,23 @@ export class BackupService extends EventTarget {
             error_code: String(e.cause || ERRORS.UNKNOWN),
             backup_step: String(currentStep),
           });
-          return null;
+
+          // TODO: show more specific error messages to the user
+          Services.prefs.setIntPref(
+            BACKUP_ERROR_CODE_PREF_NAME,
+            ERRORS.UNKNOWN
+          );
+
+          Services.prefs.setStringPref(
+            BACKUP_DEBUG_INFO_PREF_NAME,
+            JSON.stringify({
+              lastBackupAttempt: Math.floor(ChromeUtils.now() / 1000),
+              errorCode: e instanceof BackupError ? e : ERRORS.UNKNOWN,
+              lastRunStep: currentStep,
+            })
+          );
+
+          throw e;
         } finally {
           this.#backupInProgress = false;
         }
@@ -2873,6 +2976,11 @@ export class BackupService extends EventTarget {
       SCHEDULED_BACKUPS_ENABLED_PREF_NAME,
       shouldEnableScheduledBackups
     );
+
+    if (shouldEnableScheduledBackups) {
+      // reset the error states when reenabling backup
+      Services.prefs.setIntPref(BACKUP_ERROR_CODE_PREF_NAME, ERRORS.NONE);
+    }
   }
 
   /**
@@ -2915,7 +3023,10 @@ export class BackupService extends EventTarget {
 
     const USING_DEFAULT_DIR_PATH =
       lazy.backupDirPref ==
-      PathUtils.join(lazy.defaultParentDirPath, BackupService.BACKUP_DIR_NAME);
+      PathUtils.join(
+        BackupService.DEFAULT_PARENT_DIR_PATH,
+        BackupService.BACKUP_DIR_NAME
+      );
     Glean.browserBackup.locationOnDevice.set(USING_DEFAULT_DIR_PATH ? 1 : 2);
 
     // Next, we'll measure the available disk space on the storage
@@ -3361,7 +3472,7 @@ export class BackupService extends EventTarget {
 
     if (lazy.scheduledBackupsPref) {
       lazy.logConsole.debug("Scheduled backups enabled.");
-      let now = Math.floor(Date.now() / 1000);
+      let now = Math.floor(ChromeUtils.now() / 1000);
       let lastBackupDate = this.#_state.lastBackupDate;
       if (lastBackupDate && lastBackupDate > now) {
         lazy.logConsole.error(
@@ -3410,11 +3521,43 @@ export class BackupService extends EventTarget {
    * into its own method to make it easier to stub out in tests.
    */
   createBackupOnIdleDispatch() {
+    let now = Math.floor(ChromeUtils.now() / 1000);
+    let errorStateDebugInfo = Services.prefs.getStringPref(
+      BACKUP_DEBUG_INFO_PREF_NAME,
+      ""
+    );
+
+    // we retry failing backups every minimumTimeBetweenBackupsSeconds if
+    // isRetryDisabledOnIdle is true. If isRetryDisabledOnIdle is false,
+    // we retry on next idle until we hit backupRetryLimit and switch isRetryDisabledOnIdle to true
+    if (
+      lazy.isRetryDisabledOnIdle &&
+      errorStateDebugInfo &&
+      now - JSON.parse(errorStateDebugInfo).lastBackupAttempt <
+        lazy.minimumTimeBetweenBackupsSeconds
+    ) {
+      lazy.logConsole.debug(
+        `We've already retried in the last ${lazy.minimumTimeBetweenBackupsSeconds}s. Waiting for next valid idleDispatch to try again.`
+      );
+      return;
+    }
+
     ChromeUtils.idleDispatch(() => {
       lazy.logConsole.debug(
         "idleDispatch fired. Attempting to create a backup."
       );
-      this.createBackup();
+
+      this.createBackup().catch(e => {
+        lazy.logConsole.debug(
+          `There was an error creating backup on idle dispatch: ${e}`
+        );
+
+        BackupService.#errorRetries += 1;
+        if (BackupService.#errorRetries > lazy.backupRetryLimit) {
+          // We've had too many error's with retries, let's only backup on next timestamp
+          Services.prefs.setBoolPref(DISABLED_ON_IDLE_RETRY_PREF_NAME, true);
+        }
+      });
     });
   }
 
@@ -3481,6 +3624,16 @@ export class BackupService extends EventTarget {
     this.stateUpdate();
   }
 
+  /**
+   * TEST ONLY: reset's lastBackup state's for testing purposes
+   */
+  resetLastBackupInternalState() {
+    this.#_state.backupFileToRestore = null;
+    this.#_state.lastBackupFileName = "";
+    this.#_state.lastBackupDate = null;
+    this.stateUpdate();
+  }
+
   /*
    * Attempts to open a native file explorer window at the last backup file's
    * location on the filesystem.
@@ -3498,6 +3651,149 @@ export class BackupService extends EventTarget {
       );
       new lazy.nsLocalFile(archiveDestFolderPath).reveal();
     }
+  }
+
+  /**
+   * Searches for a valid backup file in the default backup folder.
+   *
+   * This function checks the possible backup directory's for `.html` backup files.
+   * If multiple backups are present and `multipleFiles` is false, it will not select one.
+   * Optionally validates each candidate file before selecting it.
+   *
+   * @param {object} [options={}] - Configuration options.
+   * @param {boolean} [options.validateFile=true] - Whether to validate each backup file before selecting it.
+   * @param {boolean} [options.multipleFiles=false] - Whether to allow selecting when multiple backup files are found.
+   * @param {boolean} [options.speedUpHeuristic=false] - Whether we want to avoid performance bottlenecks in exchange for
+   *                              possibly missing valid files.
+   *
+   * @returns {Promise<object>} A result object with the following properties:
+   * - {boolean} multipleBackupsFound — True if more than one backup candidate was found and `multipleFiles` is false.
+   */
+  async findIfABackupFileExists({
+    validateFile = true,
+    multipleFiles = false,
+    speedUpHeuristic = false,
+  } = {}) {
+    // Do we already have a backup for this browser? if so, we don't need to do any searching!
+    if (this.#_state.lastBackupFileName) {
+      return {
+        found: true,
+        multipleBackupsFound: false,
+      };
+    }
+
+    try {
+      // Check if the default folder exists
+      let archiveDestPath = await this.resolveExistingArchiveDestFolderPath(
+        this.#_state.backupDirPath
+      );
+
+      let dirExists = await this.#infalliblePathExists(archiveDestPath);
+      if (!dirExists) {
+        return {
+          multipleBackupsFound: false,
+        };
+      }
+
+      let files = await IOUtils.getChildren(archiveDestPath);
+      // filtering is an O(N) operation, we can return early if there's too many files
+      // in this folder to filter to avoid a performance bottleneck
+      if (speedUpHeuristic && files && files.length > 1000) {
+        return {
+          multipleBackupsFound: false,
+        };
+      }
+
+      // The backup is always a html file and starts with "FirefoxBackup_"
+      // disregard any other files in the folder
+      let maybeBackupFiles = files.filter(f => {
+        let name = PathUtils.filename(f);
+
+        // Note: The Firefox backup filename is localized (see BackupService.BACKUP_FILE_NAME).
+        // For now, we use a hardcoded regex string directly for performance reasons.
+        return /^FirefoxBackup_.*\.html$/.test(name);
+      });
+
+      // if we aren't validating files, and there's more than 1 html file, we decide
+      // that there's no valid backup file found
+      if (!multipleFiles && maybeBackupFiles.length > 1 && !validateFile) {
+        return { multipleBackupsFound: true };
+      }
+
+      for (const file of maybeBackupFiles) {
+        if (validateFile) {
+          try {
+            await this.getBackupFileInfo(file);
+          } catch (e) {
+            lazy.logConsole.log(
+              "Not a valid backup file in the default folder",
+              file,
+              e
+            );
+
+            // If this was previously selected but is no longer valid, unbind it
+            if (this.#_state.backupFileToRestore === file) {
+              this.#_state.backupFileToRestore = null;
+              this.#_state.backupFileInfo = null;
+              this.stateUpdate();
+            }
+
+            // let's move on to finding another file
+            continue;
+          }
+        }
+
+        this.#_state.backupFileToRestore = file;
+        this.stateUpdate();
+
+        // TODO: support multiple valid backups for different profiles.
+        // Currently, we break out of the loop and select the first profile that works.
+        // We want to eventually support showing multiple valid profiles to the user.
+        return { multipleBackupsFound: false };
+      }
+    } catch (e) {
+      lazy.logConsole.error(
+        "There was an error while looking for backups: ",
+        e
+      );
+    }
+
+    return { multipleBackupsFound: false };
+  }
+
+  /**
+   * Searches for backup files in predefined "well-known" locations.
+   *
+   * This function wraps findIfABackupFileExists to present the result
+   * in an object for processing in the frontend.
+   *
+   * Assumptions:
+   * - Intended to be called before `about:welcome` opens.
+   * - Clears any existing `lastBackupFileName` and `backupFileToRestore`
+   *   in the internal state prior to searching.
+   *
+   * @returns {Promise<object>} A result object with the following properties:
+   * - {boolean} found — Whether a backup file was found.
+   * - {string|null} backupFileToRestore — Path or identifier of the backup file (if found).
+   * - {boolean} multipleBackupsFound — Currently always `false`, reserved for future use.
+   */
+  async findBackupsInWellKnownLocations() {
+    this.#_state.lastBackupFileName = "";
+    this.#_state.backupFileToRestore = null;
+
+    let { multipleBackupsFound } = await this.findIfABackupFileExists({
+      validateFile: false,
+    });
+
+    // if a valid backup file was found, backupFileToRestore should be set
+    if (this.#_state.backupFileToRestore) {
+      return {
+        found: true,
+        backupFileToRestore: this.#_state.backupFileToRestore,
+        multipleBackupsFound,
+      };
+    }
+    return { found: false, backupFileToRestore: null, multipleBackupsFound };
   }
 
   /**

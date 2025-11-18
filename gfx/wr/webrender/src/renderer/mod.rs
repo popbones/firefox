@@ -58,6 +58,8 @@ use crate::composite::{CompositeState, CompositeTileSurface, CompositorInputLaye
 use crate::composite::{CompositorKind, Compositor, NativeTileId, CompositeFeatures, CompositeSurfaceFormat, ResolvedExternalSurfaceColorData};
 use crate::composite::{CompositorConfig, NativeSurfaceOperationDetails, NativeSurfaceId, NativeSurfaceOperation, ClipRadius};
 use crate::composite::TileKind;
+#[cfg(feature = "debugger")]
+use api::debugger::CompositorDebugInfo;
 use crate::segment::SegmentBuilder;
 use crate::{debug_colors, CompositorInputConfig, CompositorSurfaceUsage};
 use crate::device::{DepthFunction, Device, DrawTarget, ExternalTexture, GpuFrameId, UploadPBOPool};
@@ -71,14 +73,14 @@ use glyph_rasterizer::GlyphFormat;
 use crate::gpu_cache::{GpuCacheUpdate, GpuCacheUpdateList};
 use crate::gpu_cache::{GpuCacheDebugChunk, GpuCacheDebugCmd};
 use crate::gpu_types::{ScalingInstance, SvgFilterInstance, SVGFEFilterInstance, CopyInstance, PrimitiveInstanceData};
-use crate::gpu_types::{BlurInstance, ClearInstance, CompositeInstance};
+use crate::gpu_types::{BlurInstance, ClearInstance, CompositeInstance, ZBufferId};
 use crate::internal_types::{TextureSource, TextureSourceExternal, TextureCacheCategory, FrameId, FrameVec};
 #[cfg(any(feature = "capture", feature = "replay"))]
 use crate::internal_types::DebugOutput;
 use crate::internal_types::{CacheTextureId, FastHashMap, FastHashSet, RenderedDocument, ResultMsg};
 use crate::internal_types::{TextureCacheAllocInfo, TextureCacheAllocationKind, TextureUpdateList};
 use crate::internal_types::{RenderTargetInfo, Swizzle, DeferredResolveIndex};
-use crate::picture::ResolvedSurfaceTexture;
+use crate::picture::{ResolvedSurfaceTexture, TileId};
 use crate::prim_store::DeferredResolve;
 use crate::profiler::{self, GpuProfileTag, TransactionProfile};
 use crate::profiler::{Profiler, add_event_marker, add_text_marker, thread_is_being_profiled};
@@ -93,6 +95,8 @@ use crate::telemetry::Telemetry;
 use crate::tile_cache::PictureCacheDebugInfo;
 use crate::util::drain_filter;
 use crate::rectangle_occlusion as occlusion;
+#[cfg(feature = "debugger")]
+use crate::debugger::{Debugger, DebugQueryKind};
 use upload::{upload_to_texture_cache, UploadTexturePool};
 use init::*;
 
@@ -115,7 +119,6 @@ use std::{
 };
 #[cfg(any(feature = "capture", feature = "replay"))]
 use std::collections::hash_map::Entry;
-use time::precise_time_ns;
 
 mod debug;
 mod gpu_buffer;
@@ -128,7 +131,8 @@ pub(crate) mod init;
 pub use debug::DebugRenderer;
 pub use shade::{PendingShadersToPrecache, Shaders, SharedShaders};
 pub use vertex::{desc, VertexArrayKind, MAX_VERTEX_TEXTURE_WIDTH};
-pub use gpu_buffer::{GpuBuffer, GpuBufferF, GpuBufferBuilderF, GpuBufferI, GpuBufferBuilderI, GpuBufferAddress, GpuBufferBuilder};
+pub use gpu_buffer::{GpuBuffer, GpuBufferF, GpuBufferBuilderF, GpuBufferI, GpuBufferBuilderI};
+pub use gpu_buffer::{GpuBufferAddress, GpuBufferBuilder, GpuBufferWriterF};
 
 /// The size of the array of each type of vertex data texture that
 /// is round-robin-ed each frame during bind_frame_data. Doing this
@@ -191,6 +195,10 @@ const GPU_TAG_CACHE_FAST_LINEAR_GRADIENT: GpuProfileTag = GpuProfileTag {
 };
 const GPU_TAG_CACHE_LINEAR_GRADIENT: GpuProfileTag = GpuProfileTag {
     label: "C_LinearGradient",
+    color: debug_colors::BROWN,
+};
+const GPU_TAG_GRADIENT: GpuProfileTag = GpuProfileTag {
+    label: "C_Gradient",
     color: debug_colors::BROWN,
 };
 const GPU_TAG_RADIAL_GRADIENT: GpuProfileTag = GpuProfileTag {
@@ -283,6 +291,32 @@ struct SwapChainLayer {
     clear_tiles: Vec<occlusion::Item<OcclusionItemKey>>,
 }
 
+// Store rects state of tile used for compositing with layer compositor
+struct CompositeTileState {
+    pub local_rect: PictureRect,
+    pub local_valid_rect: PictureRect,
+    pub device_clip_rect: DeviceRect,
+    pub z_id: ZBufferId,
+    pub device_tile_box: DeviceRect,
+    pub visible_rects: Vec<DeviceRect>,
+}
+
+impl CompositeTileState {
+    pub fn same_state(&self, other: &CompositeTileState) -> bool {
+        self.local_rect == other.local_rect &&
+        self.local_valid_rect == other.local_valid_rect &&
+        self.device_clip_rect == other.device_clip_rect &&
+        self.z_id == other.z_id &&
+        self.device_tile_box == other.device_tile_box
+    }
+}
+
+/// The list of tiles and rects used for compositing to a frame with layer compositor
+struct LayerCompositorFrameState {
+    tile_states: FastHashMap<TileId, CompositeTileState>,
+    pub rects_without_id: Vec<DeviceRect>,
+}
+
 /// The clear color used for the texture cache when the debug display is enabled.
 /// We use a shade of blue so that we can still identify completely blue items in
 /// the texture cache.
@@ -305,6 +339,7 @@ impl BatchKind {
             }
             BatchKind::TextRun(_) => GPU_TAG_PRIM_TEXT_RUN,
             BatchKind::Quad(PatternKind::ColorOrTexture) => GPU_TAG_PRIMITIVE,
+            BatchKind::Quad(PatternKind::Gradient) => GPU_TAG_GRADIENT,
             BatchKind::Quad(PatternKind::RadialGradient) => GPU_TAG_RADIAL_GRADIENT,
             BatchKind::Quad(PatternKind::ConicGradient) => GPU_TAG_CONIC_GRADIENT,
             BatchKind::Quad(PatternKind::Mask) => GPU_TAG_INDIRECT_MASK,
@@ -812,6 +847,8 @@ pub struct Renderer {
     resource_upload_time: f64,
     gpu_cache_upload_time: f64,
     profiler: Profiler,
+    #[cfg(feature = "debugger")]
+    debugger: Debugger,
 
     last_time: u64,
 
@@ -917,6 +954,9 @@ pub struct Renderer {
 
     /// Hold a next ResultMsg that will be handled by update().
     pending_result_msg: Option<ResultMsg>,
+
+    /// Hold previous frame compositing state with layer compositor.
+    layer_compositor_frame_state_in_prev_frame: Option<LayerCompositorFrameState>,
 }
 
 #[derive(Debug)]
@@ -1240,8 +1280,40 @@ impl Renderer {
     fn handle_debug_command(&mut self, command: DebugCommand) {
         match command {
             DebugCommand::SetPictureTileSize(_) |
-            DebugCommand::SetMaximumSurfaceSize(_) => {
+            DebugCommand::SetMaximumSurfaceSize(_) |
+            DebugCommand::GenerateFrame => {
                 panic!("Should be handled by render backend");
+            }
+            #[cfg(feature = "debugger")]
+            DebugCommand::Query(ref query) => {
+                match query.kind {
+                    DebugQueryKind::SpatialTree { .. } => {
+                        panic!("Should be handled by render backend");
+                    }
+                    DebugQueryKind::CompositorConfig { .. } => {
+                        let result = match self.active_documents.iter().last() {
+                            Some((_, doc)) => {
+                                doc.frame.composite_state.print_to_string()
+                            }
+                            None => {
+                                "No active documents".into()
+                            }
+                        };
+                        query.result.send(result).ok();
+                    }
+                    DebugQueryKind::CompositorView { .. } => {
+                        let result = match self.active_documents.iter().last() {
+                            Some((_, doc)) => {
+                                let info = CompositorDebugInfo::from(&doc.frame.composite_state);
+                                serde_json::to_string(&info).unwrap()
+                            }
+                            None => {
+                                "No active documents".into()
+                            }
+                        };
+                        query.result.send(result).ok();
+                    }
+                }
             }
             DebugCommand::SaveCapture(..) |
             DebugCommand::LoadCapture(..) |
@@ -1258,6 +1330,17 @@ impl Renderer {
             }
             DebugCommand::SetFlags(flags) => {
                 self.set_debug_flags(flags);
+            }
+            DebugCommand::GetDebugFlags(tx) => {
+                tx.send(self.debug_flags).unwrap();
+            }
+            #[cfg(feature = "debugger")]
+            DebugCommand::AddDebugClient(client) => {
+                self.debugger.add_client(
+                    client,
+                    self.debug_flags,
+                    &self.profiler,
+                );
             }
         }
     }
@@ -1325,7 +1408,7 @@ impl Renderer {
                 result
             }
             None => {
-                self.last_time = precise_time_ns();
+                self.last_time = zeitstempel::now();
                 Ok(RenderResults::default())
             }
         };
@@ -1660,7 +1743,7 @@ impl Renderer {
         let t = self.profile.end_time(profiler::RENDERER_TIME);
         self.profile.end_time_if_started(profiler::TOTAL_FRAME_CPU_TIME);
 
-        let current_time = precise_time_ns();
+        let current_time = zeitstempel::now();
         if device_size.is_some() {
             let time = profiler::ns_to_ms(current_time - self.last_time);
             self.profile.set(profiler::FRAME_TIME, time);
@@ -1755,6 +1838,14 @@ impl Renderer {
 
         // Note: this clears the values in self.profile.
         self.profiler.set_counters(&mut self.profile);
+
+        // If debugger is enabled, collect any profiler updates before value is overwritten
+        // during update below.
+        #[cfg(feature = "debugger")]
+        self.debugger.update(
+            self.debug_flags,
+            &self.profiler,
+        );
 
         // Note: profile counters must be set before this or they will count for next frame.
         self.profiler.update();
@@ -1979,12 +2070,12 @@ impl Renderer {
 
             // Now that we've saved as many deletions for reuse as we can, actually delete whatever is left.
             if !pending_deletes.is_empty() {
-                let delete_texture_start = precise_time_ns();
+                let delete_texture_start = zeitstempel::now();
                 for (texture, _) in pending_deletes {
                     add_event_marker("TextureCacheFree");
                     self.device.delete_texture(texture);
                 }
-                delete_cache_texture_time += precise_time_ns() - delete_texture_start;
+                delete_cache_texture_time += zeitstempel::now() - delete_texture_start;
             }
 
             for allocation in update_list.allocations {
@@ -1996,7 +2087,7 @@ impl Renderer {
                 match allocation.kind {
                     TextureCacheAllocationKind::Alloc(ref info) |
                     TextureCacheAllocationKind::Reset(ref info) => {
-                        let create_cache_texture_start = precise_time_ns();
+                        let create_cache_texture_start = zeitstempel::now();
                         // Create a new native texture, as requested by the texture cache.
                         // If we managed to reuse a deleted texture, then prefer that instead.
                         //
@@ -2036,7 +2127,7 @@ impl Renderer {
                             }
                         }
 
-                        create_cache_texture_time += precise_time_ns() - create_cache_texture_start;
+                        create_cache_texture_time += zeitstempel::now() - create_cache_texture_start;
 
                         self.texture_resolver.texture_cache_map.insert(allocation.id, CacheTexture {
                             texture,
@@ -2293,7 +2384,8 @@ impl Renderer {
     ) {
         self.device.disable_depth_write();
 
-        {
+        let has_prim_instances = prim_instances.iter().any(|map| !map.is_empty());
+        if has_prim_instances || !prim_instances_with_scissor.is_empty() {
             let _timer = self.gpu_profiler.start_timer(GPU_TAG_INDIRECT_PRIM);
 
             self.set_blend(false, FramebufferKind::Other);
@@ -2689,6 +2781,16 @@ impl Renderer {
                 _ => panic!("bug: not a picture"),
             };
             let dest_task_rect = dest_task.get_target_rect().to_f32();
+
+            // If the dest picture is going to a blur target, it may have been
+            // expanded in size so that the downsampling passes don't introduce
+            // sampling error. In this case, we need to ensure we use the
+            // content size rather than the render task size to work out
+            // the intersecting rect to use for the resolve copy.
+            let dest_task_rect = DeviceRect::from_origin_and_size(
+                dest_task_rect.min,
+                dest_info.content_size.to_f32(),
+            );
 
             // Get the rect that we ideally want, in space of the parent surface
             let wanted_rect = DeviceRect::from_origin_and_size(
@@ -3574,7 +3676,11 @@ impl Renderer {
         let cap = composite_state.tiles.len();
         let mut segment_builder = SegmentBuilder::new();
         let mut tile_index_to_layer_index = vec![None; composite_state.tiles.len()];
-        let mut use_external_composite = false;
+        let mut full_render_occlusion = occlusion::FrontToBackBuilder::with_capacity(cap, cap);
+        let mut layer_compositor_frame_state = LayerCompositorFrameState{
+            tile_states: FastHashMap::default(),
+            rects_without_id: Vec::new(),
+        };
 
         // Calculate layers with full device rect
 
@@ -3602,6 +3708,27 @@ impl Renderer {
                 &tile.local_rect,
                 tile.transform_index
             );
+
+            if let Some(ref _compositor) = self.compositor_config.layer_compositor() {
+                match tile.tile_id {
+                    Some(tile_id) => {
+                        layer_compositor_frame_state.
+                            tile_states
+                            .insert(
+                            tile_id,
+                            CompositeTileState {
+                                local_rect: tile.local_rect,
+                                local_valid_rect: tile.local_valid_rect,
+                                device_clip_rect: tile.device_clip_rect,
+                                z_id: tile.z_id,
+                                device_tile_box: device_tile_box,
+                                visible_rects: Vec::new(),
+                            },
+                        );
+                    }
+                    None => {}
+                }
+            }
 
             // Simple compositor needs the valid rect in device space to match clip rect
             let device_valid_rect = composite_state
@@ -3658,6 +3785,18 @@ impl Renderer {
                 }
             };
 
+            if let Some(ref _compositor) = self.compositor_config.layer_compositor() {
+                if let CompositeTileSurface::ExternalSurface { .. } = tile.surface {
+                    assert!(tile.tile_id.is_none());
+                    // ExternalSurface is not promoted to external composite.
+                    if let CompositorSurfaceUsage::Content = usage {
+                        layer_compositor_frame_state.rects_without_id.push(rect);
+                    }
+                } else {
+                    assert!(tile.tile_id.is_some());
+                }
+            }
+
             // Determine whether we need a new layer, and if so, what kind
             let new_layer_kind = match input_layers.last() {
                 Some(curr_layer) => {
@@ -3702,7 +3841,6 @@ impl Renderer {
                         )
                     }
                     CompositorSurfaceUsage::External { .. } => {
-                        use_external_composite = true;
                         let rect = composite_state.get_device_rect(
                             &tile.local_rect,
                             tile.transform_index
@@ -3729,18 +3867,58 @@ impl Renderer {
                 })
             }
             tile_index_to_layer_index[idx] = Some(input_layers.len() - 1);
+
+            // Caluclate actual visible tile's rects
+
+            match tile.kind {
+                TileKind::Opaque | TileKind::Alpha => {
+                    let is_opaque = tile.kind != TileKind::Alpha;
+
+                    match tile.clip_index {
+                        Some(clip_index) => {
+                            let clip = composite_state.get_compositor_clip(clip_index);
+
+                            // TODO(gw): Make segment builder generic on unit to avoid casts below.
+                            segment_builder.initialize(
+                                rect.cast_unit(),
+                                None,
+                                rect.cast_unit(),
+                            );
+                            segment_builder.push_clip_rect(
+                                clip.rect.cast_unit(),
+                                Some(clip.radius),
+                                ClipMode::Clip,
+                            );
+                            segment_builder.build(|segment| {
+                                let key = OcclusionItemKey { tile_index: idx, needs_mask: segment.has_mask };
+
+                                full_render_occlusion.add(
+                                    &segment.rect.cast_unit(),
+                                    is_opaque && !segment.has_mask,
+                                    key,
+                                );
+                            });
+                        }
+                        None => {
+                            full_render_occlusion.add(&rect, is_opaque, OcclusionItemKey {
+                                tile_index: idx,
+                                needs_mask: false,
+                            });
+                        }
+                    }
+                }
+                TileKind::Clear => {}
+            }
         }
 
         assert_eq!(swapchain_layers.len(), input_layers.len());
 
         if window_is_opaque {
-            match input_layers.first_mut() {
+            match input_layers.last_mut() {
                 Some(_layer) => {
-                    // If the window is opaque, and the first layer is a content layer
-                    // then mark that as opaque.
-                    // TODO(gw): This causes flickering in some cases when changing
-                    //           layer count. We need to find out why so we can enable
-                    //           selecting an opaque swapchain where possible.
+                    // If the window is opaque, and the last(back) layer is
+                    //  a content layer then mark that as opaque.
+                    // TODO: This causes talos performance regressions.
                     // if let CompositorSurfaceUsage::Content = layer.usage {
                     //     layer.is_opaque = true;
                     // }
@@ -3784,63 +3962,128 @@ impl Renderer {
 
         assert_eq!(swapchain_layers.len(), input_layers.len());
 
-        // Recalculate dirty rect if external composite is used with layer compositor
+        // Recalculate dirty rect for layer compositor
         if let Some(ref _compositor) = self.compositor_config.layer_compositor() {
-            if partial_present_mode.is_some() && use_external_composite {
-                let mut combined_dirty_rect = DeviceRect::zero();
-                let fb_rect = DeviceRect::from_size(frame_device_size.to_f32());
+            // Set visible rests of current frame to each tile's CompositeTileState.
+            for item in full_render_occlusion
+            .opaque_items()
+            .iter()
+            .chain(full_render_occlusion.alpha_items().iter()) {
+                let tile = &composite_state.tiles[item.key.tile_index];
+                match tile.tile_id {
+                    Some(tile_id) => {
+                        if let Some(tile_state) = layer_compositor_frame_state.tile_states.get_mut(&tile_id) {
+                            tile_state.visible_rects.push(item.rectangle);
+                        } else {
+                            unreachable!();
+                        }
+                    }
+                    None => {}
+                }
+            }
 
-                // Work out how many dirty rects WR produced, and if that's more than
-                // what the device supports.
-                for (idx, tile) in composite_state.tiles.iter().enumerate() {
+            let can_use_partial_present =
+                !self.force_redraw && !full_render &&
+                self.layer_compositor_frame_state_in_prev_frame.is_some();
+
+            if can_use_partial_present {
+                let mut combined_dirty_rect = DeviceRect::zero();
+
+                for tile in composite_state.tiles.iter() {
                     if tile.kind == TileKind::Clear {
                         continue;
                     }
 
-                    let layer_index = match tile_index_to_layer_index[idx] {
-                        None => {
-                            continue;
+                    if tile.tile_id.is_none() {
+                        match tile.surface {
+                            CompositeTileSurface::ExternalSurface { .. } => {}
+                            CompositeTileSurface::Texture { .. }  |
+                            CompositeTileSurface::Color { .. } |
+                            CompositeTileSurface::Clear => {
+                                unreachable!();
+                            },
                         }
-                        Some(layer_index) => layer_index,
-                    };
-
-                    let layer = &mut input_layers[layer_index];
-                    // Skip compositing external images
-                    match layer.usage {
-                        CompositorSurfaceUsage::Content | CompositorSurfaceUsage::DebugOverlay => {}
-                        CompositorSurfaceUsage::External { .. } => {
-                            match tile.surface {
-                                CompositeTileSurface::ExternalSurface { .. } => {}
-                                CompositeTileSurface::Texture { .. }  |
-                                CompositeTileSurface::Color { .. } |
-                                CompositeTileSurface::Clear => {
-                                    unreachable!();
-                                },
-                            }
-                            continue;
-                        }
+                        continue;
                     }
 
-                    let dirty_rect = composite_state.get_device_rect(
-                        &tile.local_dirty_rect,
-                        tile.transform_index,
-                    );
+                    assert!(tile.tile_id.is_some());
 
-                    // In pathological cases where a tile is extremely zoomed, it
-                    // may end up with device coords outside the range of an i32,
-                    // so clamp it to the frame buffer rect here, before it gets
-                    // casted to an i32 rect below.
-                    if let Some(dirty_rect) = dirty_rect.intersection(&fb_rect) {
-                        combined_dirty_rect = combined_dirty_rect.union(&dirty_rect);
+                    let tiles_exists_in_prev_frame =
+                        self.layer_compositor_frame_state_in_prev_frame
+                        .as_ref()
+                        .unwrap()
+                        .tile_states
+                        .contains_key(&tile.tile_id.unwrap());
+                    let tile_id = tile.tile_id.unwrap();
+                    let tile_state = layer_compositor_frame_state.tile_states.get(&tile_id).unwrap();
+
+                    if tiles_exists_in_prev_frame {
+                        let prev_tile_state = self.layer_compositor_frame_state_in_prev_frame
+                            .as_ref()
+                            .unwrap()
+                            .tile_states
+                            .get(&tile_id)
+                            .unwrap();
+
+                        if tile_state.same_state(prev_tile_state) {
+                            // Case that tile is same state in previous frame and current frame.
+                            // Intersection of tile's dirty rect and tile's visible rects are actual dirty rects.
+                            let dirty_rect = composite_state.get_device_rect(
+                                &tile.local_dirty_rect,
+                                tile.transform_index,
+                            );
+                            for rect in tile_state.visible_rects.iter()  {
+                                let visible_dirty_rect = rect.intersection(&dirty_rect);
+                                if visible_dirty_rect.is_some() {
+                                    combined_dirty_rect = combined_dirty_rect.union(&visible_dirty_rect.unwrap());
+                                }
+                            }
+                        } else {
+                            // If tile is rendered in previous frame, but its state is different,
+                            // both visible rects in previous frame and current frame are dirty rects.
+                            for rect in tile_state.visible_rects
+                                .iter()
+                                .chain(prev_tile_state.visible_rects.iter())  {
+                                combined_dirty_rect = combined_dirty_rect.union(&rect);
+                            }
+                        }
+                    } else {
+                        // If tile is not rendered in previous frame, its all visible rects are dirty rects.
+                        for rect in &tile_state.visible_rects {
+                            combined_dirty_rect = combined_dirty_rect.union(&rect);
+                        }
                     }
                 }
 
-                let combined_dirty_rect = combined_dirty_rect.round();
-                // layer compositor does not expect to draw previsou partial present regtions
+                // Case that tile is rendered in pervious frame, but not in current frame.
+                for (tile_id, tile_state) in self.layer_compositor_frame_state_in_prev_frame
+                    .as_ref()
+                    .unwrap()
+                    .tile_states
+                    .iter() {
+                    if !layer_compositor_frame_state.tile_states.contains_key(&tile_id) {
+                        for rect in tile_state.visible_rects.iter()  {
+                            combined_dirty_rect = combined_dirty_rect.union(&rect);
+                        }
+                    }
+                }
+
+                // Case that ExternalSurface is not promoted to external composite.
+                for rect in layer_compositor_frame_state
+                    .rects_without_id
+                    .iter()
+                    .chain(self.layer_compositor_frame_state_in_prev_frame.as_ref().unwrap().rects_without_id.iter())  {
+                    combined_dirty_rect = combined_dirty_rect.union(&rect);
+                }
+
                 partial_present_mode = Some(PartialPresentMode::Single {
                     dirty_rect: combined_dirty_rect,
                 });
+            } else {
+                partial_present_mode = None;
             }
+
+            self.layer_compositor_frame_state_in_prev_frame = Some(layer_compositor_frame_state);
         }
 
         // Check tiles handling with partial_present_mode
@@ -3935,6 +4178,7 @@ impl Renderer {
         }
 
         assert_eq!(swapchain_layers.len(), input_layers.len());
+        let mut content_clear_color = Some(self.clear_color);
 
         for (layer_index, (layer, swapchain_layer)) in input_layers.iter().zip(swapchain_layers.iter()).enumerate() {
             self.device.reset_state();
@@ -3947,11 +4191,8 @@ impl Renderer {
                 }
             }
 
-            let clear_color = if layer_index == 0 {
-                self.clear_color
-            } else {
-                ColorF::TRANSPARENT
-            };
+            // Only use supplied clear color for first content layer we encounter
+            let clear_color = content_clear_color.take().unwrap_or(ColorF::TRANSPARENT);
 
             if let Some(ref mut _compositor) = self.compositor_config.layer_compositor() {
                 if let Some(PartialPresentMode::Single { dirty_rect }) = partial_present_mode {
@@ -4513,13 +4754,16 @@ impl Renderer {
         );
 
         // Draw the clip items into the tiled alpha mask.
-        {
+        let has_primary_clips = !target.clip_batcher.primary_clips.is_empty();
+        let has_secondary_clips = !target.clip_batcher.secondary_clips.is_empty();
+        let has_clip_masks = !target.clip_masks.is_empty();
+        if has_primary_clips | has_secondary_clips | has_clip_masks {
             let _timer = self.gpu_profiler.start_timer(GPU_TAG_CACHE_CLIP);
 
             // TODO(gw): Consider grouping multiple clip masks per shader
             //           invocation here to reduce memory bandwith further?
 
-            if !target.clip_batcher.primary_clips.is_empty() {
+            if has_primary_clips {
                 // Draw the primary clip mask - since this is the first mask
                 // for the task, we can disable blending, knowing that it will
                 // overwrite every pixel in the mask area.
@@ -4531,7 +4775,7 @@ impl Renderer {
                 );
             }
 
-            if !target.clip_batcher.secondary_clips.is_empty() {
+            if has_secondary_clips {
                 // switch to multiplicative blending for secondary masks, using
                 // multiplicative blending to accumulate clips into the mask.
                 self.set_blend(true, FramebufferKind::Other);
@@ -4543,12 +4787,14 @@ impl Renderer {
                 );
             }
 
-            self.handle_clips(
-                &draw_target,
-                &target.clip_masks,
-                &projection,
-                stats,
-            );
+            if has_clip_masks {
+                self.handle_clips(
+                    &draw_target,
+                    &target.clip_masks,
+                    &projection,
+                    stats,
+                );
+            }
         }
 
         if needs_depth {
@@ -4671,7 +4917,7 @@ impl Renderer {
                 .external_image
                 .expect("BUG: Deferred resolves must be external images!");
             // Provide rendering information for NativeTexture external images.
-            let image = handler.lock(ext_image.id, ext_image.channel_index);
+            let image = handler.lock(ext_image.id, ext_image.channel_index, deferred_resolve.is_composited);
             let texture_target = match ext_image.image_type {
                 ExternalImageType::TextureHandle(target) => target,
                 ExternalImageType::Buffer => {
@@ -4757,6 +5003,12 @@ impl Renderer {
         draw_target_dimensions: DeviceIntSize,
         results: &mut RenderResults,
     ) -> Option<PartialPresentMode> {
+
+        if let Some(ref _compositor) = self.compositor_config.layer_compositor() {
+            // Calculate dirty rects of layer compositor in composite_simple()
+            return None;
+        }
+
         let mut partial_present_mode = None;
 
         let (max_partial_present_rects, draw_previous_partial_present_regions) = match self.current_compositor_kind {
@@ -4771,7 +5023,7 @@ impl Renderer {
                 (max_partial_present_rects, draw_previous_partial_present_regions)
             }
             CompositorKind::Layer { .. } => {
-                (1, false)
+                unreachable!();
             }
         };
 
@@ -4853,8 +5105,6 @@ impl Renderer {
                     self.buffer_damage_tracker.push_dirty_rect(&fb_rect.to_f32());
                 }
             }
-
-            self.force_redraw = false;
         }
 
         partial_present_mode
@@ -5299,10 +5549,12 @@ impl Renderer {
                     );
                 }
             }
+            // Reset force_redraw. It was used in composite_simple() with layer compositor.
+            self.force_redraw = false;
         } else {
             // Rendering a frame without presenting it will confuse the partial
             // present logic, so force a full present for the next frame.
-            self.force_redraw();
+            self.force_redraw = true;
         }
     }
 
@@ -6005,7 +6257,7 @@ struct DummyExternalImageHandler {
 
 #[cfg(feature = "replay")]
 impl ExternalImageHandler for DummyExternalImageHandler {
-    fn lock(&mut self, key: ExternalImageId, channel_index: u8) -> ExternalImage {
+    fn lock(&mut self, key: ExternalImageId, channel_index: u8, _is_composited: bool) -> ExternalImage {
         let (ref captured_data, ref uv) = self.data[&(key, channel_index)];
         ExternalImage {
             uv: *uv,
@@ -6140,7 +6392,7 @@ impl Renderer {
                 info!("\t{}", def.short_path);
                 let ExternalImageData { id, channel_index, image_type, .. } = def.external;
                 // The image rendering parameter is irrelevant because no filtering happens during capturing.
-                let ext_image = handler.lock(id, channel_index);
+                let ext_image = handler.lock(id, channel_index, false);
                 let (data, short_path) = match ext_image.source {
                     ExternalImageSource::RawData(data) => {
                         let arc_id = arc_map.len() + 1;

@@ -56,11 +56,7 @@ pref("security.remote_settings.intermediates.enabled", true);
 pref("security.remote_settings.intermediates.downloads_per_poll", 5000);
 pref("security.remote_settings.intermediates.parallel_downloads", 8);
 
-#if !defined(MOZ_WIDGET_ANDROID)
-  pref("security.remote_settings.crlite_filters.enabled", true);
-#else
-  pref("security.remote_settings.crlite_filters.enabled", false);
-#endif
+pref("security.remote_settings.crlite_filters.enabled", true);
 
 pref("security.osreauthenticator.blank_password", false);
 pref("security.osreauthenticator.password_last_changed_lo", 0);
@@ -229,8 +225,8 @@ pref("media.videocontrols.keyboard-tab-to-all-controls", true);
   // Whether to expose the resizeMode constraint/setting/capability to content.
   // Kept false while implementing the feature in bug 1286945 and dependencies,
   // to allow for gradually gaining support and test coverage.
-  pref("media.navigator.video.resize_mode.enabled", false);
-  pref("media.navigator.video.default_resize_mode", 0); // 0=none, 1=crop-and-scale
+  pref("media.navigator.video.resize_mode.enabled", true);
+  pref("media.navigator.video.default_resize_mode", 1); // 0=none, 1=crop-and-scale
   pref("media.navigator.video.use_remb", true);
   pref("media.navigator.video.use_transport_cc", true);
   pref("media.peerconnection.video.use_rtx", true);
@@ -370,6 +366,9 @@ pref("media.video-queue.default-size", 10);
 pref("media.video-queue.send-to-compositor-size", 9999);
 
 pref("media.cubeb.output_voice_routing", true);
+
+// Force cubeb to use the mock context, which exposes only fake devices.
+pref("media.cubeb.force_mock_context", false);
 
 // APZ preferences. For documentation/details on what these prefs do, check
 // gfx/layers/apz/src/AsyncPanZoomController.cpp.
@@ -790,10 +789,6 @@ pref("dom.disable_window_flip",             false);
 pref("dom.disable_window_move_resize",      false);
 
 pref("dom.allow_scripts_to_close_windows",          false);
-
-// List of urls for which mutation events are enabled even if mutation events
-// in general are disabled. See nsContentUtils::IsURIInPrefList.
-pref("dom.mutation_events.forceEnable", "");
 
 pref("dom.popup_allowed_events", "change click dblclick auxclick mousedown mouseup pointerdown pointerup notificationclick reset submit touchend contextmenu");
 
@@ -1792,7 +1787,7 @@ pref("extensions.browser_style_mv3.same_as_mv2", false);
 
 // If set to true, browser.cookies.set() will throw exceptions if the cookie is
 // invalid. Otherwise, a warning message will be shown in the console.
-pref("extensions.cookie.rejectWhenInvalid", false);
+pref("extensions.cookie.rejectWhenInvalid", true);
 
 // Experimental Inference API
 pref("extensions.ml.enabled", true);
@@ -2156,7 +2151,7 @@ pref("font.size.monospace.x-math", 13);
   pref("font.name-list.monospace.x-armn", "Arial AMU");
 
   pref("font.name-list.serif.x-beng", "Vrinda, Akaash, Likhan, Ekushey Punarbhaba");
-  pref("font.name-list.sans-serif.x-beng", "Vrinda, Akaash, Likhan, Ekushey Punarbhaba");
+  pref("font.name-list.sans-serif.x-beng", "Nirmala Text, Vrinda, Akaash, Likhan, Ekushey Punarbhaba");
   pref("font.name-list.monospace.x-beng", "Mitra Mono, Likhan, Mukti Narrow");
 
   pref("font.name-list.serif.x-cans", "Aboriginal Serif, BJCree Uni");
@@ -2489,7 +2484,6 @@ pref("font.size.monospace.x-math", 13);
   // XP_MACOSX changes to default font sizes
   pref("font.minimum-size.th", 10);
 
-  // Apple's Symbol is Unicode so use it
   pref("font.name-list.serif.x-math", "Latin Modern Math, STIX Two Math, XITS Math, Cambria Math, Libertinus Math, DejaVu Math TeX Gyre, TeX Gyre Bonum Math, TeX Gyre Pagella Math, TeX Gyre Schola, TeX Gyre Termes Math, STIX Math, Asana Math, STIXGeneral, DejaVu Serif, DejaVu Sans, Symbol, Times");
   pref("font.name-list.sans-serif.x-math", "Helvetica");
   pref("font.name-list.monospace.x-math", "Menlo");
@@ -3118,7 +3112,7 @@ pref("extensions.webextensions.keepStorageOnUninstall", false);
 pref("extensions.webextensions.keepUuidOnUninstall", false);
 // Redirect basedomain used by identity api
 pref("extensions.webextensions.identity.redirectDomain", "extensions.allizom.org");
-pref("extensions.webextensions.restrictedDomains", "accounts-static.cdn.mozilla.net,accounts.firefox.com,addons.cdn.mozilla.net,addons.mozilla.org,api.accounts.firefox.com,content.cdn.mozilla.net,discovery.addons.mozilla.org,install.mozilla.org,oauth.accounts.firefox.com,profile.accounts.firefox.com,support.mozilla.org,sync.services.mozilla.com");
+pref("extensions.webextensions.restrictedDomains", "accounts-static.cdn.mozilla.net,accounts.firefox.com,addons.cdn.mozilla.net,addons.mozilla.org,api.accounts.firefox.com,content.cdn.mozilla.net,discovery.addons.mozilla.org,oauth.accounts.firefox.com,profile.accounts.firefox.com,support.mozilla.org,sync.services.mozilla.com");
 
 // Extensions are prevented from accessing Quarantined Domains by default.
 pref("extensions.quarantinedDomains.enabled", true);
@@ -3131,10 +3125,6 @@ pref("extensions.originControls.grantByDefault", true);
 // purposes only. Setting this to false will break moz-extension URI loading
 // unless other process sandboxing and extension remoting prefs are changed.
 pref("extensions.webextensions.protocol.remote", true);
-
-// Enable userScripts API by default.
-pref("extensions.webextensions.userScripts.enabled", true);
-pref("extensions.userScripts.mv3.enabled", true);
 
 // Whether or not the installed extensions should be migrated to the storage.local IndexedDB backend.
 pref("extensions.webextensions.ExtensionStorageIDB.enabled", true);
@@ -3336,6 +3326,15 @@ pref("privacy.rejectForeign.allowList", "");
 // The list of email webapp sites
 pref("privacy.trackingprotection.emailtracking.webapp.domains", "mail.163.com,mail.aol.com,fastmail.com,webmail.gandi.net,mail.google.com,navigator-bs.gmx.com,app.hey.com,horde.org/apps/webmail,hushmail.com,icloud.com/mail,kolabnow.com,laposte.net/accueil,mail.lycos.com,mail.com/mail/,mail.ru,mailfence.com,outlook.live.com,email-postaci.com/,posteo.de,mail.protonmail.com,app.rackspace.com,mail.rediff.com,emailmg.ipage.com,runbox.com,mail.sina.com.cn,tutanota.com,mail.yahoo.com,mail.yandex.com,mail.zimbra.com,zoho.com/mail/");
 
+// The migration for this pref disables both allow-list categories (convenience
+// and baseline) for users in ETP "strict" and "custom" mode.
+pref("privacy.trackingprotection.allow_list.hasMigratedCategoryPrefs", false);
+
+// Indicates if the user has interacted with the ETP category, tracking protection baseline exceptions, 
+// or convenience exceptions by changing them in the prefs or in the UI. This is used to determine 
+// if we should show the ETP Strict exceptions onboarding message again.
+pref("privacy.trackingprotection.allow_list.hasUserInteractedWithETPSettings", false);
+
 // Number of random entries to send with a gethash request
 pref("urlclassifier.gethashnoise", 4);
 
@@ -3396,6 +3395,17 @@ pref("browser.safebrowsing.provider.google4.advisoryName", "Google Safe Browsing
 pref("browser.safebrowsing.provider.google4.dataSharingURL", "https://safebrowsing.googleapis.com/v4/threatHits?$ct=application/x-protobuf&key=%GOOGLE_SAFEBROWSING_API_KEY%&$httpMethod=POST");
 pref("browser.safebrowsing.provider.google4.dataSharing.enabled", false);
 
+// Google Safe Browsing V5 prefs.
+pref("browser.safebrowsing.provider.google5.enabled", false);
+pref("browser.safebrowsing.provider.google5.lists", "goog-phish-proto,googpub-phish-proto,goog-malware-proto,goog-unwanted-proto,goog-harmful-proto");
+pref("browser.safebrowsing.provider.google5.updateURL", "https://safebrowsing.googleapis.com/v5/hashLists:batchGet?key=%GOOGLE_SAFEBROWSING_API_KEY%");
+pref("browser.safebrowsing.provider.google5.gethashURL", "https://safebrowsing.googleapis.com/v5/hashes:search?key=%GOOGLE_SAFEBROWSING_API_KEY%");
+pref("browser.safebrowsing.provider.google5.reportURL", "https://safebrowsing.google.com/safebrowsing/diagnostic?site=");
+pref("browser.safebrowsing.provider.google5.reportPhishMistakeURL", "https://%LOCALE%.phish-error.mozilla.com/?url=");
+pref("browser.safebrowsing.provider.google5.reportMalwareMistakeURL", "https://%LOCALE%.malware-error.mozilla.com/?url=");
+pref("browser.safebrowsing.provider.google5.advisoryURL", "https://developers.google.com/safe-browsing/v4/advisory");
+pref("browser.safebrowsing.provider.google5.advisoryName", "Google Safe Browsing");
+
 #endif // ifndef MOZ_WIDGET_ANDROID
 
 pref("browser.safebrowsing.reportPhishURL", "https://%LOCALE%.phish-report.mozilla.com/?url=");
@@ -3436,9 +3446,6 @@ pref("browser.search.suggest.enabled.private", false);
 pref("browser.search.separatePrivateDefault", true);
 pref("browser.search.separatePrivateDefault.ui.enabled", false);
 pref("browser.search.removeEngineInfobar.enabled", true);
-// Temporary preference to allow switching between the Rust based search engine
-// selector and the JavaScript one (bug 1914143).
-pref("browser.search.rustSelector.featureGate", true);
 
 // GMPInstallManager prefs
 
@@ -3535,10 +3542,10 @@ pref("reader.content_width", 3);
 pref("reader.line_height", 4);
 
 // The default character spacing in reader mode (1-9)
-pref("reader.character_spacing", 0);
+pref("reader.character_spacing", 1);
 
 // The default word spacing in reader mode (1-9)
-pref("reader.word_spacing", 0);
+pref("reader.word_spacing", 1);
 
 // The default text alignment direction in reader mode
 pref("reader.text_alignment", "start");
@@ -3576,6 +3583,9 @@ pref("narrate.voice", " { \"default\": \"automatic\" }");
 pref("narrate.filter-voices", true);
 
 pref("memory.report_concurrency", 10);
+
+// Enable logging downloads operations to the Console.
+pref("toolkit.download.loglevel", "Error");
 
 pref("toolkit.pageThumbs.screenSizeDivisor", 7);
 pref("toolkit.pageThumbs.minWidth", 0);
@@ -3740,11 +3750,7 @@ pref("toolkit.legacyUserProfileCustomizations.stylesheets", false);
   pref("datareporting.policy.minimumPolicyVersion", 1);
   pref("datareporting.policy.minimumPolicyVersion.channel-beta", 2);
   pref("datareporting.policy.firstRunURL", "https://www.mozilla.org/privacy/firefox/");
-  #ifdef MOZILLA_OFFICIAL
-    pref("datareporting.policy.dataSubmissionPolicyBypassNotification", false);
-  #else
-    pref("datareporting.policy.dataSubmissionPolicyBypassNotification", true);
-  #endif
+  pref("datareporting.policy.dataSubmissionPolicyBypassNotification", false);
 #endif
 
 #ifdef MOZ_SERVICES_HEALTHREPORT
@@ -3905,9 +3911,6 @@ pref("services.common.log.logger.tokenserverclient", "Debug");
   // Enable retrying to execute commands in the child process in case the
   // JSWindowActor gets destroyed.
   pref("remote.retry-on-abort", true);
-
-  // Enable the NavigationManager using parent process WebProgress listeners
-  pref("remote.parent-navigation.enabled", true);
 #endif
 
 // Enable the JSON View tool (an inspector for application/json documents).
@@ -4013,7 +4016,7 @@ pref("extensions.formautofill.addresses.capture.enabled", true);
 #endif
 pref("extensions.formautofill.addresses.ignoreAutocompleteOff", true);
 // Supported countries need to follow ISO 3166-1 to align with "browser.search.region"
-pref("extensions.formautofill.addresses.supportedCountries", "US,CA,GB,FR,DE");
+pref("extensions.formautofill.addresses.supportedCountries", "US,CA,GB,FR,DE,BR,ES,JP");
 pref("extensions.formautofill.creditCards.supported", "on");
 pref("extensions.formautofill.creditCards.enabled", true);
 pref("extensions.formautofill.creditCards.ignoreAutocompleteOff", true);
@@ -4029,8 +4032,6 @@ pref("extensions.formautofill.creditCards.heuristics.mode", 2);
 pref("extensions.formautofill.creditCards.heuristics.fathom.types", "cc-number,cc-name");
 // Defines the threshold to identify whether a field is a cc field
 pref("extensions.formautofill.creditCards.heuristics.fathom.confidenceThreshold", "0.5");
-// Defineis the threshold to mark fields that are "high-confidence", see `isValidSection` for details
-pref("extensions.formautofill.creditCards.heuristics.fathom.highConfidenceThreshold", "0.95");
 // This is Only for testing! Set the confidence value (> 0 && <= 1) after a field is identified by fathom
 pref("extensions.formautofill.creditCards.heuristics.fathom.testConfidence", "0");
 
@@ -4048,11 +4049,6 @@ pref("extensions.formautofill.heuristics.refillOnSiteClearingFields", true);
 pref("extensions.formautofill.heuristics.refillOnSiteClearingFields.timeout", 500);
 
 pref("extensions.formautofill.heuristics.autofillSameOriginWithTop", true);
-
-#ifdef NIGHTLY_BUILD
-  pref("extensions.formautofill.ml.experiment.enabled", true);
-  pref("extensions.formautofill.ml.experiment.modelRevision", "v0.1.3");
-#endif
 
 pref("toolkit.osKeyStore.loglevel", "Warn");
 

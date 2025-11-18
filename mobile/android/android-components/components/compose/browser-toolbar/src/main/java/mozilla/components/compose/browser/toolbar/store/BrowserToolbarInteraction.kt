@@ -21,6 +21,14 @@ sealed interface BrowserToolbarInteraction {
      */
     interface BrowserToolbarEvent : BrowserToolbarInteraction, BrowserToolbarAction {
         /**
+         * The interaction source of this event.
+         *
+         * @see [Source]
+         */
+        val source: Source
+            get() = Source.AddressBar
+
+        /**
          * Convenience method to combine dispatching a [BrowserToolbarEvent] with
          * showing a [BrowserToolbarMenu] for the same user interaction.
          *
@@ -30,6 +38,21 @@ sealed interface BrowserToolbarInteraction {
             event = this,
             menu = menu,
         )
+
+        /**
+         * Possible sources of a [BrowserToolbarEvent].
+         */
+        sealed interface Source {
+            /**
+             * The user interacted with a address bar element.
+             */
+            data object AddressBar : Source
+
+            /**
+             * The user interacted with a navigation bar element.
+             */
+            data object NavigationBar : Source
+        }
     }
 
     /**
@@ -94,7 +117,7 @@ sealed class BrowserToolbarMenuItem {
              * The [DrawableRes] as icon for this menu item.
              */
             @JvmInline
-            value class DrawableResIcon(@DrawableRes val resourceId: Int) : Icon
+            value class DrawableResIcon(@param:DrawableRes val resourceId: Int) : Icon
         }
 
         /**
@@ -111,7 +134,7 @@ sealed class BrowserToolbarMenuItem {
              * The [StringRes] to display as text in this menu item.
              */
             @JvmInline
-            value class StringResText(@StringRes val resourceId: Int) : Text
+            value class StringResText(@param:StringRes val resourceId: Int) : Text
         }
 
         /**
@@ -128,7 +151,7 @@ sealed class BrowserToolbarMenuItem {
              * The [StringRes] to use as content description of this menu item.
              */
             @JvmInline
-            value class StringResContentDescription(@StringRes val resourceId: Int) : ContentDescription
+            value class StringResContentDescription(@param:StringRes val resourceId: Int) : ContentDescription
         }
     }
 

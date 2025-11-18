@@ -24,9 +24,9 @@
 #include "mozilla/Components.h"
 #include "mozilla/InputStreamLengthHelper.h"
 #include "mozilla/IntegerPrintfMacros.h"
-#include "mozilla/Preferences.h"
 #include "mozilla/ProfilerLabels.h"
 #include "mozilla/ProfilerMarkers.h"
+#include "mozilla/StaticPrefs_network.h"
 #include "mozilla/StoragePrincipalHelper.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Unused.h"
@@ -85,9 +85,8 @@ struct ChannelMarker {
   static MarkerSchema MarkerTypeDisplay() {
     using MS = MarkerSchema;
     MS schema(MS::Location::MarkerChart, MS::Location::MarkerTable);
-    schema.SetTableLabel("{marker.name} - {marker.data.url}");
-    schema.AddKeyFormatSearchable("url", MS::Format::Url,
-                                  MS::Searchable::Searchable);
+    schema.SetTableLabel("{marker.data.url}");
+    schema.AddKeyFormat("url", MS::Format::Url, MS::PayloadFlags::Searchable);
     schema.AddStaticLabelValue(
         "Description",
         "Timestamp capturing various phases of a network channel's lifespan.");
@@ -171,8 +170,8 @@ bool HttpChannelParent::Init(const HttpChannelCreationArgs& aArgs) {
           a.requestContextID(), a.preflightArgs(), a.initialRwin(),
           a.blockAuthPrompt(), a.allowStaleCacheContent(),
           a.preferCacheLoadOverBypass(), a.contentTypeHint(), a.requestMode(),
-          a.redirectMode(), a.channelId(), a.integrityMetadata(),
-          a.contentWindowId(), a.preferredAlternativeTypes(), a.browserId(),
+          a.redirectMode(), a.channelId(), a.contentWindowId(),
+          a.preferredAlternativeTypes(), a.browserId(),
           a.launchServiceWorkerStart(), a.launchServiceWorkerEnd(),
           a.dispatchFetchEventStart(), a.dispatchFetchEventEnd(),
           a.handleFetchEventStart(), a.handleFetchEventEnd(),
@@ -433,7 +432,7 @@ bool HttpChannelParent::DoAsyncOpen(
     const bool& aAllowStaleCacheContent, const bool& aPreferCacheLoadOverBypass,
     const nsCString& aContentTypeHint, const dom::RequestMode& aRequestMode,
     const uint32_t& aRedirectMode, const uint64_t& aChannelId,
-    const nsString& aIntegrityMetadata, const uint64_t& aContentWindowId,
+    const uint64_t& aContentWindowId,
     const nsTArray<PreferredAlternativeDataTypeParams>&
         aPreferredAlternativeTypes,
     const uint64_t& aBrowserId, const TimeStamp& aLaunchServiceWorkerStart,
@@ -484,12 +483,6 @@ bool HttpChannelParent::DoAsyncOpen(
                   aURI->GetSpecOrDefault(), aChannelId);
 
   nsresult rv;
-
-  nsCOMPtr<nsIIOService> ios(do_GetIOService(&rv));
-  if (NS_FAILED(rv)) {
-    return SendFailedAsyncOpen(rv);
-  }
-
   nsAutoCString remoteType;
   rv = GetRemoteType(remoteType);
   if (NS_FAILED(rv)) {
@@ -504,8 +497,8 @@ bool HttpChannelParent::DoAsyncOpen(
   }
 
   nsCOMPtr<nsIChannel> channel;
-  rv = NS_NewChannelInternal(getter_AddRefs(channel), aURI, loadInfo, nullptr,
-                             nullptr, nullptr, aLoadFlags, ios);
+  rv = mHttpHandler->NewProxiedChannel(aURI, nullptr, 0, nullptr, loadInfo,
+                                       getter_AddRefs(channel));
   if (NS_FAILED(rv)) {
     return SendFailedAsyncOpen(rv);
   }
@@ -523,8 +516,6 @@ bool HttpChannelParent::DoAsyncOpen(
   httpChannel->SetChannelId(aChannelId);
   httpChannel->SetTopLevelContentWindowId(aContentWindowId);
   httpChannel->SetBrowserId(aBrowserId);
-
-  httpChannel->SetIntegrityMetadata(aIntegrityMetadata);
 
   RefPtr<nsHttpChannel> httpChannelImpl = do_QueryObject(httpChannel);
   if (httpChannelImpl) {
@@ -1200,6 +1191,7 @@ HttpChannelParent::OnStartRequest(nsIRequest* aRequest) {
 
   if (httpChannelImpl) {
     httpChannelImpl->IsFromCache(&args.isFromCache());
+    httpChannelImpl->GetCacheDisposition(&args.cacheDisposition());
     httpChannelImpl->IsRacing(&args.isRacing());
     httpChannelImpl->GetCacheEntryId(&args.cacheEntryId());
     httpChannelImpl->GetCacheTokenFetchCount(&args.cacheFetchCount());
@@ -1297,7 +1289,7 @@ HttpChannelParent::OnStartRequest(nsIRequest* aRequest) {
   if (mOverrideReferrerInfo) {
     args.overrideReferrerInfo() = ToRefPtr(std::move(mOverrideReferrerInfo));
   }
-  args.cookieHeaders().SwapElements(mCookieHeaders);
+  args.cookieChanges().SwapElements(mCookieChanges);
 
   nsHttpRequestHead* requestHead = chan->GetRequestHead();
   // !!! We need to lock headers and please don't forget to unlock them !!!
@@ -2192,23 +2184,22 @@ void HttpChannelParent::SetHttpChannelFromEarlyHintPreloader(
   mChannel = aChannel;
 }
 
-void HttpChannelParent::SetCookieHeaders(
-    const nsTArray<nsCString>& aCookieHeaders) {
+void HttpChannelParent::SetCookieChanges(nsTArray<CookieChange>&& aChanges) {
   LOG(("HttpChannelParent::SetCookie [this=%p]", this));
   MOZ_ASSERT(!mAfterOnStartRequestBegun);
-  MOZ_ASSERT(mCookieHeaders.IsEmpty());
+  MOZ_ASSERT(mCookieChanges.IsEmpty());
 
   // The loadGroup of the channel in the parent process could be null in the
   // XPCShell content process test, see test_cookiejars_wrap.js. In this case,
   // we cannot explicitly set the loadGroup for the parent channel because it's
   // created from the content process. To workaround this, we add a testing pref
   // to skip this check.
-  if (!Preferences::GetBool(
-          "network.cookie.skip_browsing_context_check_in_parent_for_testing") &&
+  if (!StaticPrefs::
+          network_cookie_skip_browsing_context_check_in_parent_for_testing() &&
       mChannel->IsBrowsingContextDiscarded()) {
     return;
   }
-  mCookieHeaders.AppendElements(aCookieHeaders);
+  mCookieChanges.AppendElements(aChanges);
 }
 
 }  // namespace mozilla::net

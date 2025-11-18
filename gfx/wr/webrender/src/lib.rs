@@ -41,7 +41,13 @@ doesn't only contain trivial geometry, it can also store another
 [stacking_contexts]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
 */
 
-#![allow(clippy::unreadable_literal, clippy::new_without_default, clippy::too_many_arguments)]
+#![allow(
+    clippy::unreadable_literal,
+    clippy::new_without_default,
+    clippy::too_many_arguments,
+    unknown_lints,
+    mismatched_lifetime_syntaxes
+)]
 
 
 // Cribbed from the |matches| crate, for simplicity.
@@ -147,7 +153,7 @@ pub mod shader_source {
 extern crate bincode;
 extern crate byteorder;
 pub extern crate euclid;
-extern crate fxhash;
+extern crate rustc_hash;
 extern crate gleam;
 extern crate num_traits;
 extern crate plane_split;
@@ -156,7 +162,6 @@ extern crate rayon;
 extern crate ron;
 #[macro_use]
 extern crate smallvec;
-extern crate time;
 #[cfg(all(feature = "capture", feature = "png"))]
 extern crate png;
 #[cfg(test)]
@@ -198,3 +203,6 @@ pub use bump_allocator::ChunkPool;
 
 #[cfg(feature = "sw_compositor")]
 pub use crate::compositor::sw_compositor;
+
+#[cfg(feature = "debugger")]
+mod debugger;

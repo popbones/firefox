@@ -6,13 +6,13 @@
 #ifndef nsStyleUtil_h___
 #define nsStyleUtil_h___
 
-#include "nsCoord.h"
-#include "nsCSSPropertyID.h"
-#include "nsTArrayForwardDeclare.h"
-#include "nsStringFwd.h"
 #include "nsCRT.h"
+#include "nsCSSPropertyID.h"
 #include "nsColor.h"
+#include "nsCoord.h"
 #include "nsGkAtoms.h"
+#include "nsStringFwd.h"
+#include "nsTArrayForwardDeclare.h"
 
 class nsCSSValue;
 class nsIContent;
@@ -44,10 +44,10 @@ class nsStyleUtil {
                             const nsStringComparator& aComparator);
 
   // Append a quoted (with 'quoteChar') and escaped version of aString
-  // to aResult.  'quoteChar' must be ' or ".
-  static void AppendEscapedCSSString(const nsAString& aString,
-                                     nsAString& aResult,
-                                     char16_t quoteChar = '"');
+  // to aResult.  'aQuoteChar' must be ' or ".
+  static void AppendEscapedCSSString(const nsACString& aString,
+                                     nsACString& aResult,
+                                     char aQuoteChar = '"');
 
   // Append the identifier given by |aIdent| to |aResult|, with
   // appropriate escaping so that it can be reparsed to the same

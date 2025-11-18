@@ -10,10 +10,6 @@
     Content description (not visible, for screen readers etc.): "Three dot" menu button.
   -->
   <string name="content_description_menu">Wiyncyj ôpcyjōw</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">Załōncz prywatne przeglōndanie</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_disable_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">Wyłōncz prywatne przeglōndanie</string>
   <!-- Placeholder text shown in the search bar before a user enters text for the default engine -->
   <string name="search_hint">Szukej abo wkludź adresa</string>
   <!-- Placeholder text shown in the search bar before a user enters text for a general engine -->
@@ -44,13 +40,7 @@
   <string name="tab_tray_collection_button_multiselect_content_description">Spamiyntej ôbrane karty we kolekcyji</string>
   <!-- About content. %1$s is the name of the app (for example "Firefox"). -->
   <string name="about_content">%1$s produkuje Mozilla.</string>
-  <!--
-    Private Browsing
-
-    Explanation for private browsing displayed to users on home view when they first enable private mode.
-    %1$s is the name of the app (for example "Firefox").
-  -->
-  <string name="private_browsing_placeholder_description_2" moz:removedIn="141" tools:ignore="UnusedResources">%1$s ôprōżnio historyjo wyszukowanio i przeglōndanio ze prywatnych kart, jak zawrzisz je abo aplikacyjo. Skuli tego niy je sie anonimowym do strōn ani dostowcōw necowych usug. Snadnij ale możesz skryć swoja aktywność w internecie przed inkszymi, co używajōm tyj masziny.</string>
+  <!-- Private Browsing -->
   <string name="private_browsing_common_myths">Czynste mity ô prywatnym przeglōndaniu</string>
   <!--
     Open in App "contextual feature recommendation" (CFR)
@@ -62,6 +52,8 @@
   <string name="open_in_app_cfr_positive_button_text">Idź do sztalōnkōw</string>
   <!-- Text for the negative action button -->
   <string name="open_in_app_cfr_negative_button_text">Ôdkoż</string>
+  <!-- Private browsing erase action "contextual feature recommendation" (CFR) -->
+
   <!-- Text for the info dialog when camera permissions have been denied but user tries to access a camera feature. -->
   <string name="camera_permissions_needed_message">Trza dostympu do kamery. Idź do sztalōnkōw Androida, tyknij \"dozwolyństwa\" i tyknij \"zgoda\".</string>
   <!-- Text for the positive action button to go to Android Settings to grant permissions. -->
@@ -240,24 +232,8 @@
   <!--
     Home onboarding
 
-    Home onboarding dialog welcome screen title text.
+    Content description (not visible, for screen readers etc.): Close button for the home onboarding dialog
   -->
-  <string name="onboarding_home_welcome_title_2" moz:removedIn="141" tools:ignore="UnusedResources">Witej we prywatniyjszym internecie</string>
-  <!-- Home onboarding dialog welcome screen description text. -->
-  <string name="onboarding_home_welcome_description" moz:removedIn="141" tools:ignore="UnusedResources">Wiyncyj farbōw. Lepszo prywatnoś. Te same stowianie ludzi nad profitym.</string>
-  <!-- Home onboarding dialog sign into sync screen title text. -->
-  <string name="onboarding_home_sync_title_3" moz:removedIn="141" tools:ignore="UnusedResources">Przełōnczanie ekranōw jeszcze żodyn roz niy było take leke</string>
-  <!-- Home onboarding dialog sign into sync screen description text. -->
-  <string name="onboarding_home_sync_description" moz:removedIn="141" tools:ignore="UnusedResources">Na swojij dōmowyj strōnie rōb dalij na kartach, co mosz ôtwarte na inkszych maszinach.</string>
-  <!-- Text for the button to continue the onboarding on the home onboarding dialog. -->
-  <string name="onboarding_home_get_started_button" moz:removedIn="141" tools:ignore="UnusedResources">Zaczynōmy</string>
-  <!-- Text for the button to navigate to the sync sign in screen on the home onboarding dialog. -->
-  <string name="onboarding_home_sign_in_button" moz:removedIn="141" tools:ignore="UnusedResources">Wloguj sie</string>
-  <!-- Text for the button to skip the onboarding on the home onboarding dialog. -->
-  <string name="onboarding_home_skip_button" moz:removedIn="141" tools:ignore="UnusedResources">Przeskocz</string>
-  <!-- Onboarding home screen sync popup dialog message, shown on top of Recent Synced Tabs in the Jump back in section. -->
-  <string name="sync_cfr_message" moz:removedIn="142" tools:ignore="UnusedResources">Twoje karty sie synchrōnizujōm! Rōb dalij na kartach, co mosz ôtwarte na inkszyj maszinie.</string>
-  <!-- Content description (not visible, for screen readers etc.): Close button for the home onboarding dialog -->
   <string name="onboarding_home_content_description_close_button">Zawrzij</string>
   <!-- Text for the button to set firefox as default browser on the device -->
   <string name="juno_onboarding_default_browser_positive_button" tools:ignore="UnusedResources">Nastow za bazowo przeglōndarka</string>
@@ -321,9 +297,9 @@
   <!-- Preference for opening links in a private tab -->
   <string name="preferences_open_links_in_a_private_tab">Ôtwiyrej linki we prywatnych kartach</string>
   <!-- Preference for allowing screenshots to be taken while in a private tab -->
-  <string name="preferences_allow_screenshots_in_private_mode">Przizwōl na chytanie ekranu przi prywatnym przeglōndaniu</string>
+  <string name="preferences_allow_screenshots_in_private_mode" tools:ignore="UnusedResources" moz:removedIn="144">Przizwōl na chytanie ekranu przi prywatnym przeglōndaniu</string>
   <!-- Will inform the user of the risk of activating Allow screenshots in private browsing option -->
-  <string name="preferences_screenshots_in_private_mode_disclaimer">Jak przizwolisz, to prywatne karty pōdzie tyż ôboczyć przi poru ôtwartych aplikacyjach</string>
+  <string name="preferences_screenshots_in_private_mode_disclaimer" tools:ignore="UnusedResources" moz:removedIn="144">Jak przizwolisz, to prywatne karty pōdzie tyż ôboczyć przi poru ôtwartych aplikacyjach</string>
   <!-- Preference for adding private browsing shortcut -->
   <string name="preferences_add_private_browsing_shortcut">Przidej skrōt do prywatnego przeglōndanio</string>
   <!-- Preference for enabling "HTTPS-Only" mode -->
@@ -379,15 +355,13 @@
   <!-- Preference for settings related to visual options -->
   <string name="preferences_customize">Przipasuj</string>
   <!-- Preference description for banner about signing in -->
-  <string name="preferences_sign_in_description_2">Wluguj sie, coby synchrōnizować karty, zokłodki, hasła i inksze.</string>
+  <string name="preferences_sign_in_description_2" tools:ignore="UnusedResources" moz:removedIn="145">Wluguj sie, coby synchrōnizować karty, zokłodki, hasła i inksze.</string>
   <!-- Preference text for account title when there was an error syncing FxA -->
   <string name="preferences_account_sync_error">Połōncz sie zaś, coby durch synchrōnizować</string>
   <!-- Preference for language -->
   <string name="preferences_language">Godka</string>
   <!-- Preference for translations -->
   <string name="preferences_translations">Przekłady</string>
-  <!-- Preference for data choices -->
-  <string name="preferences_data_choices">Możności udostympnianio</string>
   <!-- Preference for data collection -->
   <string name="preferences_data_collection">Zbiyranie danych</string>
   <!-- Preference for developers -->
@@ -418,8 +392,6 @@
   <string name="preferences_open_links_in_apps_ask">Pytej przed ôtwarciym</string>
   <!-- Preference for open links in third party apps never open in apps option -->
   <string name="preferences_open_links_in_apps_never">Żodyn roz</string>
-  <!-- Preference for open download with an external download manager app -->
-  <string name="preferences_external_download_manager" tools:ignore="UnusedResources" moz:removedIn="141">Zewnyntrzny menedżer pobiyranio</string>
   <!-- Preference for enabling gecko engine logs -->
   <string name="preferences_enable_gecko_logs">Załōncz protokōł Gecko</string>
   <!-- Message to indicate users that we are quitting the application to apply the changes -->
@@ -451,10 +423,6 @@
     a section where users see a list of tabs that they have visited in the past few days
   -->
   <string name="customize_toggle_recently_visited">Niydowno nawiedzōne</string>
-  <!-- Title for the customize home screen section with Pocket. -->
-  <string name="customize_toggle_pocket_2" tools:ignore="UnusedResources" moz:removedIn="140">Historyje do pōmedykowanio</string>
-  <!-- Summary for the customize home screen section with Pocket. %s is "Pocket". -->
-  <string name="customize_toggle_pocket_summary" tools:ignore="UnusedResources" moz:removedIn="140">Historyje z usugi %s</string>
   <!-- Title for the customize home screen section with sponsored Pocket stories. -->
   <string name="customize_toggle_pocket_sponsored">Spōnsorowane nowiny</string>
   <!-- Title for the opening wallpaper settings screen -->
@@ -468,9 +436,9 @@
   -->
   <string name="wallpapers_item_name_content_description">Tapeta: %1$s</string>
   <!-- Snackbar message for when wallpaper is selected -->
-  <string name="wallpaper_updated_snackbar_message">Tapeta je nastawiōno!</string>
+  <string name="wallpaper_updated_snackbar_message" tools:ignore="UnusedResources" moz:removedIn="144">Tapeta je nastawiōno!</string>
   <!-- Snackbar label for action to view selected wallpaper -->
-  <string name="wallpaper_updated_snackbar_action">Pokoż</string>
+  <string name="wallpaper_updated_snackbar_action" tools:ignore="UnusedResources" moz:removedIn="144">Pokoż</string>
   <!-- Snackbar message for when wallpaper couldn't be downloaded -->
   <string name="wallpaper_download_error_snackbar_message">Niy szło pobrać tapety</string>
   <!-- Snackbar label for action to retry downloading the wallpaper -->
@@ -794,9 +762,9 @@
   <!-- Text for the button to clear all history -->
   <string name="history_delete_all">Skasuj historyjo</string>
   <!-- Text for the snackbar to confirm that multiple browsing history items has been deleted -->
-  <string name="history_delete_multiple_items_snackbar">Historyjo je skasowano</string>
+  <string name="history_delete_multiple_items_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">Historyjo je skasowano</string>
   <!-- Text for the snackbar to confirm that a single browsing history item has been deleted. %1$s is the shortened URL of the deleted history item. -->
-  <string name="history_delete_single_item_snackbar">%1$s je skasowane</string>
+  <string name="history_delete_single_item_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">%1$s je skasowane</string>
   <!-- Context description text for the button to delete a single history item -->
   <string name="history_delete_item">Skasuj</string>
   <!--
@@ -838,9 +806,9 @@
 
     Confirmation message for a dialog confirming if the user wants to delete the selected folder
   -->
-  <string name="bookmark_delete_folder_confirmation_dialog">Na zicher chcesz skasować tyn katalog?</string>
+  <string name="bookmark_delete_folder_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">Na zicher chcesz skasować tyn katalog?</string>
   <!-- Confirmation message for a dialog confirming if the user wants to delete multiple items including folders. %s is the name of the app (for example "Firefox"). -->
-  <string name="bookmark_delete_multiple_folders_confirmation_dialog">%s skasuje ôbrane elymynty.</string>
+  <string name="bookmark_delete_multiple_folders_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">%s skasuje ôbrane elymynty.</string>
   <!-- Text for the cancel button on delete bookmark dialog -->
   <string name="bookmark_delete_negative">Pociep</string>
   <!-- Screen title for adding a bookmarks folder -->
@@ -864,7 +832,7 @@
   <!-- Bookmark overflow menu delete button -->
   <string name="bookmark_menu_delete_button">Skasuj</string>
   <!-- Bookmark overflow menu save button -->
-  <string name="bookmark_menu_save_button">Spamiyntej</string>
+  <string name="bookmark_menu_save_button" tools:ignore="UnusedResources" moz:removedIn="143">Spamiyntej</string>
   <!--
     Bookmark multi select title in app bar
     %1$d is the number of bookmarks selected
@@ -875,7 +843,7 @@
   <!-- Bookmark folder editing screen title -->
   <string name="edit_bookmark_folder_fragment_title">Edytuj katalog</string>
   <!-- Bookmark sign in button message -->
-  <string name="bookmark_sign_in_button">Wloguj sie, coby ôboczyć synchrōnizowane zokłodki</string>
+  <string name="bookmark_sign_in_button" tools:ignore="UnusedResources" moz:removedIn="143">Wloguj sie, coby ôboczyć synchrōnizowane zokłodki</string>
   <!-- Bookmark URL editing field label -->
   <string name="bookmark_url_label">URL</string>
   <!-- Bookmark FOLDER editing field label -->
@@ -883,28 +851,28 @@
   <!-- Bookmark NAME editing field label -->
   <string name="bookmark_name_label">MIANO</string>
   <!-- Bookmark add folder screen title -->
-  <string name="bookmark_add_folder_fragment_label">Przidej katalog</string>
+  <string name="bookmark_add_folder_fragment_label" tools:ignore="UnusedResources" moz:removedIn="143">Przidej katalog</string>
   <!-- Bookmark select folder screen title -->
   <string name="bookmark_select_folder_fragment_label">Ôbier katalog</string>
   <!-- Bookmark editing error missing title -->
-  <string name="bookmark_empty_title_error">Zokłodka musi mieć miano</string>
+  <string name="bookmark_empty_title_error" tools:ignore="UnusedResources" moz:removedIn="143">Zokłodka musi mieć miano</string>
   <!-- Bookmark editing error missing or improper URL -->
   <string name="bookmark_invalid_url_error">Zło adresa URL</string>
   <!-- Bookmark screen message for empty bookmarks folder -->
-  <string name="bookmarks_empty_message">Niy ma sam żodnych zokłodek</string>
+  <string name="bookmarks_empty_message" tools:ignore="UnusedResources" moz:removedIn="143">Niy ma sam żodnych zokłodek</string>
   <!--
     Bookmark snackbar message on deletion
     %1$s is the host part of the URL of the bookmark deleted, if any
   -->
   <string name="bookmark_deletion_snackbar_message">Skasowane: %1$s</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks not including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_2">Zokłodki sōm wyciepane</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_2" tools:ignore="UnusedResources" moz:removedIn="143">Zokłodki sōm wyciepane</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_3">Kasowanie ôbranych katalogōw</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_3" tools:ignore="UnusedResources" moz:removedIn="143">Kasowanie ôbranych katalogōw</string>
   <!-- Bookmark undo button for deletion snackbar action -->
   <string name="bookmark_undo_deletion">COFNIJ AKCYJO</string>
   <!-- Text for the button to search all bookmarks -->
-  <string name="bookmark_search">Wkludź szukane wyrazy</string>
+  <string name="bookmark_search" tools:ignore="UnusedResources" moz:removedIn="143">Wkludź szukane wyrazy</string>
   <!--
     Site Permissions
 
@@ -1025,12 +993,10 @@
     %d is a placeholder for the number of tabs selected.
   -->
   <string name="create_collection_save_to_collection_tab_selected">Ôbrane karty: %d</string>
-  <!-- Text shown in snackbar when multiple tabs have been saved in a collection -->
-  <string name="create_collection_tabs_saved">Karty sōm spamiyntane!</string>
   <!-- Text shown in snackbar when one or multiple tabs have been saved in a new collection -->
-  <string name="create_collection_tabs_saved_new_collection">Kolekcyjo je spamiyntano!</string>
+  <string name="create_collection_tabs_saved_new_collection" tools:ignore="UnusedResources" moz:removedIn="144">Kolekcyjo je spamiyntano!</string>
   <!-- Text shown in snackbar when one tab has been saved in a collection -->
-  <string name="create_collection_tab_saved">Karta je spamiyntano!</string>
+  <string name="create_collection_tab_saved" tools:ignore="UnusedResources" moz:removedIn="144">Karta je spamiyntano!</string>
   <!-- Content description (not visible, for screen readers etc.): button to close the collection creator -->
   <string name="create_collection_close">Zawrzij</string>
   <!-- Button to save currently selected tabs in the "select tabs" step of the collection creator -->
@@ -1073,7 +1039,7 @@
   <!-- An option from the share dialog to sign into sync -->
   <string name="sync_sign_in">Wloguj sie do synchrōnizacyje</string>
   <!-- An option from the three dot menu to sync and save data -->
-  <string name="sync_menu_sync_and_save_data">Synchrōnizuj i spamiyntej dane</string>
+  <string name="sync_menu_sync_and_save_data" tools:ignore="UnusedResources" moz:removedIn="145">Synchrōnizuj i spamiyntej dane</string>
   <!-- An option from the share dialog to send link to all other sync devices -->
   <string name="sync_send_to_all">Poślij na wszyske masziny</string>
   <!-- An option from the share dialog to reconnect to sync -->
@@ -1121,9 +1087,7 @@
 
     Text shown in snackbar when user deletes a collection
   -->
-  <string name="snackbar_collection_deleted">Kolekcyjo je skasowano</string>
-  <!-- Text shown in snackbar when user renames a collection -->
-  <string name="snackbar_collection_renamed">Kolekcyjo mo zmiyniōne miano</string>
+  <string name="snackbar_collection_deleted" tools:ignore="UnusedResources" moz:removedIn="143">Kolekcyjo je skasowano</string>
   <!-- Text shown in snackbar when user closes a tab -->
   <string name="snackbar_tab_closed">Karta je zawarto</string>
   <!-- Text shown in snackbar when user closes all tabs -->
@@ -1132,12 +1096,10 @@
   <string name="snackbar_added_to_shortcuts">Przidane do skrōtōw!</string>
   <!-- Text shown in snackbar when user closes a private tab -->
   <string name="snackbar_private_tab_closed">Prywatno karta je zawarto</string>
-  <!-- Text shown in snackbar when user closes all private tabs -->
-  <string name="snackbar_private_tabs_closed" moz:removedIn="141" tools:ignore="UnusedResources">Prywatne karty sōm zawarte</string>
   <!-- Text shown in snackbar to undo deleting a tab, top site or collection -->
   <string name="snackbar_deleted_undo">COFNIJ AKCYJO</string>
   <!-- Text shown in snackbar when user removes a top site -->
-  <string name="snackbar_top_site_removed">Strōna je skasowano</string>
+  <string name="snackbar_top_site_removed" moz:removedIn="144" tools:ignore="UnusedResources">Strōna je skasowano</string>
   <!--
     QR code scanner prompt which appears after scanning a code, but before navigating to it
     %1$s is the name of the app (for example "Firefox"), %2$s is the URL or text scanned
@@ -1154,9 +1116,7 @@
   <!-- Tab collection deletion prompt dialog message. %1$s is the collection name. -->
   <string name="tab_collection_dialog_message">Na zicher chcesz skasować %1$s?</string>
   <!-- Tab collection deletion prompt dialog option to delete the collection -->
-  <string name="tab_collection_dialog_positive">Skasuj</string>
-  <!-- Message for copying the URL via long press on the toolbar -->
-  <string name="url_copied">Adresa je skopiowano</string>
+  <string name="tab_collection_dialog_positive" tools:ignore="UnusedResources" moz:removedIn="143">Skasuj</string>
   <!-- Sample text for accessibility font size -->
   <string name="accessibility_text_size_sample_text_1">To je przikładowy tekst. Je sam na to, coby pokozać, jak bydzie wyglōndoł, jak go zwiynkszysz abo zmyńszysz z tym sztalōnkym.</string>
   <!-- Summary for Accessibility Text Size Scaling Preference -->
@@ -1235,9 +1195,9 @@
 
     Text shown in snackbar when multiple tabs have been sent to device
   -->
-  <string name="sync_sent_tabs_snackbar">Karty sōm posłane!</string>
+  <string name="sync_sent_tabs_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">Karty sōm posłane!</string>
   <!-- Text shown in snackbar when one tab has been sent to device -->
-  <string name="sync_sent_tab_snackbar">Karta je posłano!</string>
+  <string name="sync_sent_tab_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">Karta je posłano!</string>
   <!-- Text shown in snackbar when sharing tabs failed -->
   <string name="sync_sent_tab_error_snackbar">Niy idzie posłać</string>
   <!-- Text shown in snackbar for the "retry" action that the user has after sharing tabs failed -->

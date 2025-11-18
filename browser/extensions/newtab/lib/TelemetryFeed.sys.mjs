@@ -10,10 +10,13 @@
 // environment already stubs out XPCOMUtils, AppConstants and RemoteSettings,
 // and overrides importESModule to be a no-op (which can't be done for a static
 // import statement).
-
 // eslint-disable-next-line mozilla/use-static-import
 const { XPCOMUtils } = ChromeUtils.importESModule(
   "resource://gre/modules/XPCOMUtils.sys.mjs"
+);
+// eslint-disable-next-line mozilla/use-static-import
+const { AppConstants } = ChromeUtils.importESModule(
+  "resource://gre/modules/AppConstants.sys.mjs"
 );
 
 import {
@@ -33,6 +36,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
   ContextId: "moz-src:///browser/modules/ContextId.sys.mjs",
   ExtensionSettingsStore:
     "resource://gre/modules/ExtensionSettingsStore.sys.mjs",
+  ExtensionUtils: "resource://gre/modules/ExtensionUtils.sys.mjs",
   HomePage: "resource:///modules/HomePage.sys.mjs",
   ObliviousHTTP: "resource://gre/modules/ObliviousHTTP.sys.mjs",
   Region: "resource://gre/modules/Region.sys.mjs",
@@ -41,7 +45,6 @@ ChromeUtils.defineESModuleGetters(lazy, {
   NewTabContentPing: "resource://newtab/lib/NewTabContentPing.sys.mjs",
   NewTabUtils: "resource://gre/modules/NewTabUtils.sys.mjs",
   NimbusFeatures: "resource://nimbus/ExperimentAPI.sys.mjs",
-  pktApi: "chrome://pocket/content/pktApi.sys.mjs",
 });
 
 XPCOMUtils.defineLazyPreferenceGetter(
@@ -72,6 +75,8 @@ const PREF_USER_INFERRED_PERSONALIZATION =
   "discoverystream.sections.personalization.inferred.user.enabled";
 const PREF_SYSTEM_INFERRED_PERSONALIZATION =
   "discoverystream.sections.personalization.inferred.enabled";
+const PREF_SECTIONS_PERSONALIZATION_ENABLED =
+  "discoverystream.sections.personalization.enabled";
 
 // This is a mapping table between the user preferences and its encoding code
 export const USER_PREFS_ENCODING = {
@@ -85,10 +90,12 @@ export const USER_PREFS_ENCODING = {
   [PREF_SHOW_SPONSORED_TOPSITES]: 1 << 8,
 };
 
-const SURFACE_COUNTRY_MAP = {
+const PRIVATE_PING_SURFACE_COUNTRY_MAP = {
   // This will be expanded to other surfaces as we expand the reach of the private content ping
   NEW_TAB_EN_US: ["US", "CA"],
   NEW_TAB_DE_DE: ["DE", "CH", "AT"],
+  NEW_TAB_EN_GB: ["GB", "IE"],
+  NEW_TAB_FR_FR: ["FR", "BE"],
 };
 
 // Used as the missing value for timestamps in the session ping
@@ -103,6 +110,8 @@ const ONBOARDING_ALLOWED_PAGE_VALUES = [
 ];
 
 const PREF_SURFACE_ID = "telemetry.surfaceId";
+
+const CONTENT_PING_VERSION = 2;
 
 const ACTIVITY_STREAM_PREF_BRANCH = "browser.newtabpage.activity-stream.";
 const NEWTAB_PING_PREFS = {
@@ -165,6 +174,10 @@ export class TelemetryFeed {
       this._prefs.get(PREF_USER_INFERRED_PERSONALIZATION) &&
       this._prefs.get(PREF_SYSTEM_INFERRED_PERSONALIZATION)
     );
+  }
+
+  get sectionsPersonalizationEnabled() {
+    return this._prefs.get(PREF_SECTIONS_PERSONALIZATION_ENABLED);
   }
 
   get inferredInterests() {
@@ -238,7 +251,9 @@ export class TelemetryFeed {
   }
 
   browserOpenNewtabStart() {
-    let now = Cu.now();
+    // This shim can be removed once Firefox 144 makes it to the release
+    // channel.
+    let now = ChromeUtils.now?.() || Cu.now();
     this._browserOpenNewtabStart = Math.round(this.processStartTs + now);
 
     ChromeUtils.addProfilerMarker(
@@ -335,6 +350,25 @@ export class TelemetryFeed {
   }
 
   /**
+   * Removes fields for users with a 143 major version of firefox
+   * This should be removed once 143 lands in release
+   * @param {*} pingDict
+   * @returns {*} possibly redacted pingDict
+   */
+  redactPingFor143(pingDict) {
+    const isMajor143 =
+      Services.vc.compare(AppConstants.MOZ_APP_VERSION, "143.0a1") >= 0 &&
+      Services.vc.compare(AppConstants.MOZ_APP_VERSION, "144.0a1") < 0;
+    if (isMajor143) {
+      // eslint-disable-next-line no-unused-vars
+      const { is_pinned, layout_name, visible_topsites, ...rest } = pingDict;
+      return rest;
+    }
+
+    return pingDict;
+  }
+
+  /**
    * Removes fields that link to any user content preference.
    * Redactions only occur if the appropriate pref is enabled.
    * @param {*} pingDict Input dictionary
@@ -358,8 +392,24 @@ export class TelemetryFeed {
         topic,
         ...result
       } = pingDict;
+      result.content_redacted = true;
       return result;
     }
+    // For spocs we need to retain the tile id.
+    if (this.redactNewTabPingEnabled && isSponsored) {
+      const {
+        // eslint-disable-next-line no-unused-vars
+        section,
+        // eslint-disable-next-line no-unused-vars
+        selected_topics,
+        // eslint-disable-next-line no-unused-vars
+        topic,
+        ...result
+      } = pingDict;
+      result.content_redacted = true;
+      return result;
+    }
+
     return pingDict; // No modification
   }
 
@@ -444,7 +494,9 @@ export class TelemetryFeed {
     }
 
     if (session.perf.visibility_event_rcvd_ts) {
-      let absNow = this.processStartTs + Cu.now();
+      // @backward-compat { version 144 } This newtab train-hop compatibility
+      // shim can be removed once Firefox 144 makes it to the release channel.
+      let absNow = this.processStartTs + (ChromeUtils.now?.() || Cu.now());
       session.session_duration = Math.round(
         absNow - session.perf.visibility_event_rcvd_ts
       );
@@ -546,6 +598,7 @@ export class TelemetryFeed {
       source,
       advertiser: advertiser_name,
       tile_id,
+      visible_topsites,
     } = data;
     // Legacy telemetry expects 1-based tile positions.
     const legacyTelemetryPosition = position + 1;
@@ -555,21 +608,24 @@ export class TelemetryFeed {
     );
 
     let pingType;
-
     const session = this.sessions.get(au.getPortIdOfSender(action));
+
     if (type === "impression") {
       pingType = "topsites-impression";
       Glean.contextualServicesTopsites.impression[
         `${source}_${legacyTelemetryPosition}`
       ].add(1);
       if (session) {
-        Glean.topsites.impression.record({
-          advertiser_name,
-          tile_id,
-          newtab_visit_id: session.session_id,
-          is_sponsored: true,
-          position,
-        });
+        Glean.topsites.impression.record(
+          this.redactPingFor143({
+            advertiser_name,
+            tile_id,
+            newtab_visit_id: session.session_id,
+            is_sponsored: true,
+            position,
+            visible_topsites,
+          })
+        );
       }
     } else if (type === "click") {
       pingType = "topsites-click";
@@ -577,13 +633,16 @@ export class TelemetryFeed {
         `${source}_${legacyTelemetryPosition}`
       ].add(1);
       if (session) {
-        Glean.topsites.click.record({
-          advertiser_name,
-          tile_id,
-          newtab_visit_id: session.session_id,
-          is_sponsored: true,
-          position,
-        });
+        Glean.topsites.click.record(
+          this.redactPingFor143({
+            advertiser_name,
+            tile_id,
+            newtab_visit_id: session.session_id,
+            is_sponsored: true,
+            position,
+            visible_topsites,
+          })
+        );
       }
     } else {
       console.error("Unknown ping type for sponsored TopSites impression");
@@ -615,22 +674,31 @@ export class TelemetryFeed {
     if (!session) {
       return;
     }
+    const visible_topsites = action.data?.visible_topsites;
 
     switch (action.data?.type) {
       case "impression":
-        Glean.topsites.impression.record({
-          newtab_visit_id: session.session_id,
-          is_sponsored: false,
-          position: action.data.position,
-        });
+        Glean.topsites.impression.record(
+          this.redactPingFor143({
+            newtab_visit_id: session.session_id,
+            is_sponsored: false,
+            position: action.data.position,
+            is_pinned: !!action.data.isPinned,
+            visible_topsites,
+          })
+        );
         break;
 
       case "click":
-        Glean.topsites.click.record({
-          newtab_visit_id: session.session_id,
-          is_sponsored: false,
-          position: action.data.position,
-        });
+        Glean.topsites.click.record(
+          this.redactPingFor143({
+            newtab_visit_id: session.session_id,
+            is_sponsored: false,
+            position: action.data.position,
+            is_pinned: !!action.data.isPinned,
+            visible_topsites,
+          })
+        );
         break;
 
       default:
@@ -688,15 +756,12 @@ export class TelemetryFeed {
   }
 
   handleDiscoveryStreamUserEvent(action) {
-    const pocket_logged_in_status = lazy.pktApi.isUserLoggedIn();
-    Glean.pocket.isSignedIn.set(pocket_logged_in_status);
     this.handleUserEvent({
       ...action,
       data: {
         ...(action.data || {}),
         value: {
           ...(action.data?.value || {}),
-          pocket_logged_in_status,
         },
       },
     });
@@ -717,6 +782,7 @@ export class TelemetryFeed {
           format,
           is_list_card,
           is_section_followed,
+          layout_name,
           matches_selected_topic,
           received_rank,
           recommendation_id,
@@ -753,7 +819,10 @@ export class TelemetryFeed {
               ? {
                   section,
                   section_position,
-                  is_section_followed,
+                  ...(this.sectionsPersonalizationEnabled
+                    ? { is_section_followed: !!is_section_followed }
+                    : {}),
+                  layout_name,
                 }
               : {}),
             matches_selected_topic,
@@ -775,13 +844,15 @@ export class TelemetryFeed {
                   recommendation_id,
                 }),
           };
-
           Glean.pocket.click.record({
-            ...this.redactNewTabPing(gleanData, is_sponsored),
+            ...this.redactNewTabPing(
+              this.redactPingFor143(gleanData),
+              is_sponsored
+            ),
             newtab_visit_id: session.session_id,
           });
 
-          if (this.privatePingEnabled && !is_sponsored) {
+          if (this.privatePingEnabled) {
             this.newtabContentPing.recordEvent("click", gleanData);
           }
           if (shim) {
@@ -814,6 +885,7 @@ export class TelemetryFeed {
           corpus_item_id,
           format,
           is_section_followed,
+          action_position,
           received_rank,
           recommendation_id,
           recommended_at,
@@ -825,8 +897,10 @@ export class TelemetryFeed {
           tile_id,
           topic,
         } = action.data.value ?? {};
+
         const gleanData = {
           tile_id,
+          position: action_position,
           // We conditionally add in a few props.
           ...(corpus_item_id ? { corpus_item_id } : {}),
           ...(scheduled_corpus_item_id ? { scheduled_corpus_item_id } : {}),
@@ -846,7 +920,9 @@ export class TelemetryFeed {
             ? {
                 section,
                 section_position,
-                is_section_followed,
+                ...(this.sectionsPersonalizationEnabled
+                  ? { is_section_followed: !!is_section_followed }
+                  : {}),
               }
             : {}),
         };
@@ -855,6 +931,7 @@ export class TelemetryFeed {
           newtab_visit_id: session.session_id,
         });
         if (this.privatePingEnabled) {
+          // eslint-disable-next-line no-unused-vars
           this.newtabContentPing.recordEvent(
             "thumbVotingInteraction",
             gleanData
@@ -885,6 +962,12 @@ export class TelemetryFeed {
       case "FEATURE_HIGHLIGHT_OPEN": {
         // Note that Feature Highlight CLICK events are covered via newtab.tooltipClick Glean event
         const { feature } = action.data.value ?? {};
+
+        if (!feature) {
+          throw new Error(
+            `Feature ID parameter is missing from ${action.data?.event}`
+          );
+        }
 
         if (action.data.event === "FEATURE_HIGHLIGHT_DISMISS") {
           Glean.newtab.featureHighlightDismiss.record({
@@ -1023,7 +1106,9 @@ export class TelemetryFeed {
         newtabCategory = "enabled";
         if (
           lazy.AboutNewTab.newTabURLOverridden &&
-          !lazy.AboutNewTab.newTabURL.startsWith("moz-extension://")
+          ((Object.hasOwn(lazy.ExtensionUtils, "isExtensionUrl") &&
+            !lazy.ExtensionUtils.isExtensionUrl(lazy.AboutNewTab.newTabURL)) ||
+            !lazy.AboutNewTab.newTabURL.startsWith("moz-extension://"))
         ) {
           value.newtab_url_category = await this._classifySite(
             lazy.AboutNewTab.newTabURL
@@ -1047,7 +1132,9 @@ export class TelemetryFeed {
         !["about:home", "about:blank", BLANK_HOMEPAGE_URL].includes(
           homePageURL
         ) &&
-        !homePageURL.startsWith("moz-extension://")
+        ((Object.hasOwn(lazy.ExtensionUtils, "isExtensionUrl") &&
+          !lazy.ExtensionUtils.isExtensionUrl(homePageURL)) ||
+          !homePageURL.startsWith("moz-extension://"))
       ) {
         value.home_url_category = await this._classifySite(homePageURL);
         homeAffected = true;
@@ -1084,20 +1171,18 @@ export class TelemetryFeed {
    */
   async configureContentPing() {
     let privateMetrics = {};
-
+    const prefs = this.store.getState()?.Prefs.values; // Needed for experimenter configs
     const inferredInterests =
       this.privatePingInferredInterestsEnabled && this.inferredInterests;
     if (inferredInterests) {
       privateMetrics.inferredInterests = inferredInterests;
     }
-
     // When we have a coarse interest vector we want to make sure there isn't
     // anything additionaly identifable as a unique identifier. Therefore,
     // when interest vectors are used we reduce our context profile somewhat.
     const reduceTrackingInformation = !!inferredInterests;
 
     if (!reduceTrackingInformation) {
-      privateMetrics.coarseOs = lazy.NewTabUtils.normalizeOs();
       const followed = this.getFollowedSections();
       privateMetrics.followedSections = followed;
     }
@@ -1105,22 +1190,26 @@ export class TelemetryFeed {
     privateMetrics.surfaceId = surfaceId;
 
     const curCountry = lazy.Region.home;
-    if (
-      SURFACE_COUNTRY_MAP[surfaceId] &&
-      SURFACE_COUNTRY_MAP[surfaceId].includes(curCountry)
-    ) {
-      // Only include supported current countries for the surface to reduce identifiability
-      privateMetrics.country = curCountry;
+    if (PRIVATE_PING_SURFACE_COUNTRY_MAP[surfaceId]) {
+      // This is a market that supports inferred
+      // Only include supported current countries for the surface to reduce identifiability.
+      // Default to first country on the list
+      privateMetrics.country = PRIVATE_PING_SURFACE_COUNTRY_MAP[
+        surfaceId
+      ].includes(curCountry)
+        ? curCountry
+        : PRIVATE_PING_SURFACE_COUNTRY_MAP[surfaceId][0];
     }
-    privateMetrics.utcOffset = lazy.NewTabUtils.getUtcOffset(surfaceId);
 
-    // To prevent fingerprinting we only send current experiment / branch
+    if (prefs.inferredPersonalizationConfig?.normalized_time_zone_offset) {
+      privateMetrics.utcOffset = lazy.NewTabUtils.getUtcOffset(surfaceId);
+    }
+    // To prevent fingerprinting we only send one current experiment / branch
     const experimentMetadata =
       lazy.NimbusFeatures.pocketNewtab.getEnrollmentMetadata();
     privateMetrics.experimentName = experimentMetadata?.slug ?? "";
-
     privateMetrics.experimentBranch = experimentMetadata?.branch ?? "";
-
+    privateMetrics.pingVersion = CONTENT_PING_VERSION;
     this.newtabContentPing.scheduleSubmission(privateMetrics);
   }
 
@@ -1248,6 +1337,68 @@ export class TelemetryFeed {
         if (!action.data.collapsed) {
           this.handleTrendingSearchUserEvent(action);
         }
+        break;
+      case at.WIDGETS_LISTS_USER_EVENT:
+      case at.WIDGETS_LISTS_USER_IMPRESSION:
+      case at.WIDGETS_TIMER_USER_EVENT:
+      case at.WIDGETS_TIMER_USER_IMPRESSION:
+        this.handleWidgetsUserEvent(action);
+        break;
+      case at.PROMO_CARD_CLICK:
+      case at.PROMO_CARD_DISMISS:
+      case at.PROMO_CARD_IMPRESSION:
+        this.handlePromoCardUserEvent(action);
+        break;
+    }
+  }
+
+  handlePromoCardUserEvent(action) {
+    const session = this.sessions.get(au.getPortIdOfSender(action));
+    if (session) {
+      const payload = {
+        newtab_visit_id: session.visit_id,
+      };
+
+      switch (action.type) {
+        case at.PROMO_CARD_CLICK:
+          Glean.newtab.promoCardClick.record(payload);
+          break;
+        case at.PROMO_CARD_DISMISS:
+          Glean.newtab.promoCardDismiss.record(payload);
+          break;
+        case at.PROMO_CARD_IMPRESSION:
+          Glean.newtab.promoCardImpression.record(payload);
+          break;
+      }
+    }
+  }
+
+  handleWidgetsUserEvent(action) {
+    const session = this.sessions.get(au.getPortIdOfSender(action));
+    if (session) {
+      const payload = {
+        newtab_visit_id: session.visit_id,
+      };
+      switch (action.type) {
+        case "WIDGETS_LISTS_USER_EVENT":
+          Glean.newtab.widgetsListsUserEvent.record({
+            ...payload,
+            user_action: action.data.userAction,
+          });
+          break;
+        case "WIDGETS_LISTS_USER_IMPRESSION":
+          Glean.newtab.widgetsListsImpression.record(payload);
+          break;
+        case "WIDGETS_TIMER_USER_EVENT":
+          Glean.newtab.widgetsTimerUserEvent.record({
+            ...payload,
+            user_action: action.data.userAction,
+          });
+          break;
+        case "WIDGETS_TIMER_USER_IMPRESSION":
+          Glean.newtab.widgetsTimerImpression.record(payload);
+          break;
+      }
     }
   }
 
@@ -1307,9 +1458,6 @@ export class TelemetryFeed {
     const {
       card_type,
       corpus_item_id,
-      is_section_followed,
-      received_rank,
-      recommended_at,
       report_reason,
       scheduled_corpus_item_id,
       section_position,
@@ -1321,19 +1469,24 @@ export class TelemetryFeed {
 
     if (session) {
       switch (action.type) {
-        case "REPORT_CONTENT_OPEN":
-          Glean.newtab.reportContentOpen.record({
-            newtab_visit_id: session.session_id,
-          });
+        case "REPORT_CONTENT_OPEN": {
+          if (!this.privatePingEnabled) {
+            return;
+          }
+
+          const gleanData = {
+            corpus_item_id,
+            scheduled_corpus_item_id,
+          };
+
+          Glean.newtabContent.reportContentOpen.record(gleanData);
+
           break;
-        case "REPORT_CONTENT_SUBMIT":
-          Glean.newtab.reportContentSubmit.record({
+        }
+        case "REPORT_CONTENT_SUBMIT": {
+          const gleanData = {
             card_type,
             corpus_item_id,
-            is_section_followed,
-            newtab_visit_id: session.session_id,
-            received_rank,
-            recommended_at,
             report_reason,
             scheduled_corpus_item_id,
             section_position,
@@ -1341,8 +1494,13 @@ export class TelemetryFeed {
             title,
             topic,
             url,
-          });
+          };
+
+          if (this.privatePingEnabled) {
+            Glean.newtabContent.reportContentSubmit.record(gleanData);
+          }
           break;
+        }
       }
     }
   }
@@ -1350,8 +1508,13 @@ export class TelemetryFeed {
   handleCardSectionUserEvent(action) {
     const session = this.sessions.get(au.getPortIdOfSender(action));
     if (session) {
-      const { section, section_position, event_source, is_section_followed } =
-        action.data;
+      const {
+        section,
+        section_position,
+        event_source,
+        is_section_followed,
+        layout_name,
+      } = action.data;
       const gleanDataForPrivatePing = {
         section,
         section_position,
@@ -1387,20 +1550,28 @@ export class TelemetryFeed {
           }
           break;
         case "CARD_SECTION_IMPRESSION":
-          Glean.newtab.sectionsImpression.record(
-            this.redactNewTabPing({
+          {
+            const gleanData = this.redactPingFor143({
               newtab_visit_id: session.session_id,
               section,
               section_position,
-              is_section_followed,
-            })
-          );
-          if (this.privatePingEnabled) {
-            this.newtabContentPing.recordEvent("sectionsImpression", {
-              section,
-              section_position,
-              is_section_followed,
+              ...(this.sectionsPersonalizationEnabled
+                ? { is_section_followed: !!is_section_followed }
+                : {}),
+              layout_name,
             });
+            Glean.newtab.sectionsImpression.record(
+              this.redactNewTabPing(gleanData)
+            );
+            if (this.privatePingEnabled) {
+              this.newtabContentPing.recordEvent("sectionsImpression", {
+                section,
+                section_position,
+                ...(this.sectionsPersonalizationEnabled
+                  ? { is_section_followed: !!is_section_followed }
+                  : {}),
+              });
+            }
           }
           break;
         case "FOLLOW_SECTION": {
@@ -1508,6 +1679,18 @@ export class TelemetryFeed {
           });
         }
         break;
+      case "widgets.lists.enabled":
+        Glean.newtab.widgetsListsChangeDisplay.record({
+          newtab_visit_id: session.session_id,
+          display_status: action.data.value,
+        });
+        break;
+      case "widgets.focusTimer.enabled":
+        Glean.newtab.widgetsTimerChangeDisplay.record({
+          newtab_visit_id: session.session_id,
+          display_status: action.data.value,
+        });
+        break;
     }
   }
 
@@ -1606,18 +1789,21 @@ export class TelemetryFeed {
     const { data } = action;
     for (const datum of data) {
       const { corpus_item_id, scheduled_corpus_item_id } = datum;
+
       if (datum.is_pocket_card) {
         const gleanData = {
           is_sponsored: datum.card_type === "spoc",
           ...(datum.format ? { format: datum.format } : {}),
-          position: datum.pos,
+          position: datum.position,
           tile_id: datum.id || datum.tile_id,
           is_list_card: datum.is_list_card,
           ...(datum.section
             ? {
                 section: datum.section,
                 section_position: datum.section_position,
-                is_section_followed: datum.is_section_followed,
+                ...(this.sectionsPersonalizationEnabled
+                  ? { is_section_followed: !!datum.is_section_followed }
+                  : {}),
               }
             : {}),
           // We conditionally add in a few props.
@@ -1633,7 +1819,7 @@ export class TelemetryFeed {
               }),
         };
         Glean.pocket.dismiss.record({
-          ...gleanData,
+          ...this.redactNewTabPing(gleanData, gleanData.is_sponsored),
           newtab_visit_id: session.session_id,
         });
         if (this.privatePingEnabled) {
@@ -1705,7 +1891,10 @@ export class TelemetryFeed {
             ? {
                 section: tile.section,
                 section_position: tile.section_position,
-                is_section_followed: tile.is_section_followed,
+                ...(this.sectionsPersonalizationEnabled
+                  ? { is_section_followed: !!tile.is_section_followed }
+                  : {}),
+                layout_name: tile.layout_name,
               }
             : {}),
           position: tile.pos,
@@ -1726,10 +1915,12 @@ export class TelemetryFeed {
               }),
         };
         Glean.pocket.impression.record({
-          ...this.redactNewTabPing(gleanData, is_sponsored),
+          ...this.redactNewTabPing(
+            this.redactPingFor143(gleanData),
+            is_sponsored
+          ),
           newtab_visit_id: session.session_id,
         });
-
         if (this.privatePingEnabled) {
           this.newtabContentPing.recordEvent("impression", gleanData);
         }
@@ -1824,7 +2015,6 @@ export class TelemetryFeed {
       const fullPrefName = ACTIVITY_STREAM_PREF_BRANCH + pref;
       this._setNewtabPrefMetrics(fullPrefName, false);
     }
-    Glean.pocket.isSignedIn.set(lazy.pktApi.isUserLoggedIn());
 
     Services.prefs.addObserver(TOP_SITES_BLOCKED_SPONSORS_PREF, this);
     this._setBlockedSponsorsMetrics();

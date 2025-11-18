@@ -55,11 +55,11 @@ class nsMathMLmspaceFrame final : public nsMathMLContainerFrame {
   Attribute mDepth;
 
   nsresult AttributeChanged(int32_t aNameSpaceID, nsAtom* aAttribute,
-                            int32_t aModType) final;
+                            AttrModType aModType) final;
   nscoord CalculateAttributeValue(nsAtom* aAtom, Attribute& aAttribute,
                                   uint32_t aFlags, float aFontSizeInflation);
-  nsresult Place(DrawTarget* aDrawTarget, const PlaceFlags& aFlags,
-                 ReflowOutput& aDesiredSize) final;
+  void Place(DrawTarget* aDrawTarget, const PlaceFlags& aFlags,
+             ReflowOutput& aDesiredSize) final;
 };
 
 #endif /* nsMathMLmspaceFrame_h___ */

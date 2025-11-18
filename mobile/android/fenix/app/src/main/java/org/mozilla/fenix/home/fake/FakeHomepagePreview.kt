@@ -10,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import mozilla.components.browser.state.state.ContentState
 import mozilla.components.browser.state.state.TabSessionState
 import mozilla.components.browser.state.state.recover.RecoverableTab
+import mozilla.components.compose.base.SelectableChipColors
 import mozilla.components.concept.engine.Engine
 import mozilla.components.concept.sync.DeviceType
 import mozilla.components.feature.tab.collections.Tab
@@ -24,13 +25,13 @@ import mozilla.components.service.pocket.PocketStory.PocketRecommendedStory
 import mozilla.components.service.pocket.PocketStory.PocketSponsoredStory
 import mozilla.components.service.pocket.PocketStory.PocketSponsoredStoryCaps
 import mozilla.components.service.pocket.PocketStory.PocketSponsoredStoryShim
+import mozilla.components.service.pocket.PocketStory.SponsoredContent
 import org.mozilla.fenix.R
 import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.components.appstate.AppState
 import org.mozilla.fenix.components.appstate.setup.checklist.ChecklistItem
 import org.mozilla.fenix.compose.MessageCardColors
 import org.mozilla.fenix.compose.MessageCardState
-import org.mozilla.fenix.compose.SelectableChipColors
 import org.mozilla.fenix.home.bookmarks.Bookmark
 import org.mozilla.fenix.home.bookmarks.interactor.BookmarksInteractor
 import org.mozilla.fenix.home.collections.CollectionColors
@@ -38,6 +39,7 @@ import org.mozilla.fenix.home.collections.CollectionsState
 import org.mozilla.fenix.home.interactor.HomepageInteractor
 import org.mozilla.fenix.home.pocket.PocketRecommendedStoriesCategory
 import org.mozilla.fenix.home.pocket.PocketState
+import org.mozilla.fenix.home.pocket.interactor.PocketStoriesInteractor
 import org.mozilla.fenix.home.privatebrowsing.interactor.PrivateBrowsingInteractor
 import org.mozilla.fenix.home.recentsyncedtabs.RecentSyncedTab
 import org.mozilla.fenix.home.recentsyncedtabs.interactor.RecentSyncedTabInteractor
@@ -49,8 +51,8 @@ import org.mozilla.fenix.home.recentvisits.RecentlyVisitedItem.RecentHistoryHigh
 import org.mozilla.fenix.home.recentvisits.interactor.RecentVisitsInteractor
 import org.mozilla.fenix.home.search.HomeSearchInteractor
 import org.mozilla.fenix.home.sessioncontrol.CollectionInteractor
-import org.mozilla.fenix.home.sessioncontrol.TopSiteInteractor
 import org.mozilla.fenix.home.store.NimbusMessageState
+import org.mozilla.fenix.home.topsites.interactor.TopSiteInteractor
 import org.mozilla.fenix.search.toolbar.SearchSelectorMenu
 import org.mozilla.fenix.theme.FirefoxTheme
 import org.mozilla.fenix.wallpapers.WallpaperState
@@ -74,7 +76,8 @@ internal object FakeHomepagePreview {
             BookmarksInteractor by bookmarksInteractor,
             RecentVisitsInteractor by recentVisitsInteractor,
             HomeSearchInteractor by homeSearchInteractor,
-            CollectionInteractor by collectionInteractor {
+            CollectionInteractor by collectionInteractor,
+            PocketStoriesInteractor by storiesInteractor {
             override fun reportSessionMetrics(state: AppState) { /* no op */ }
 
             override fun onPasteAndGo(clipboardText: String) { /* no op */ }
@@ -87,6 +90,19 @@ internal object FakeHomepagePreview {
 
             override fun onMessageClosedClicked(message: Message) { /* no op */ }
 
+            override fun onMenuItemTapped(item: SearchSelectorMenu.Item) { /* no op */ }
+
+            override fun showWallpapersOnboardingDialog(state: WallpaperState): Boolean {
+                return false
+            }
+
+            override fun onChecklistItemClicked(item: ChecklistItem) { /* no op */ }
+
+            override fun onRemoveChecklistButtonClicked() { /* no op */ }
+        }
+
+    internal val storiesInteractor
+        get() = object : PocketStoriesInteractor {
             override fun onStoryShown(
                 storyShown: PocketStory,
                 storyPosition: Triple<Int, Int, Int>,
@@ -101,15 +117,7 @@ internal object FakeHomepagePreview {
                 storyPosition: Triple<Int, Int, Int>,
             ) { /* no op */ }
 
-            override fun onMenuItemTapped(item: SearchSelectorMenu.Item) { /* no op */ }
-
-            override fun showWallpapersOnboardingDialog(state: WallpaperState): Boolean {
-                return false
-            }
-
-            override fun onChecklistItemClicked(item: ChecklistItem) { /* no op */ }
-
-            override fun onRemoveChecklistButtonClicked() { /* no op */ }
+            override fun onDiscoverMoreClicked() { /* no op */ }
         }
 
     internal val privateBrowsingInteractor
@@ -138,6 +146,8 @@ internal object FakeHomepagePreview {
             override fun onSponsorPrivacyClicked() { /* no op */ }
 
             override fun onTopSiteLongClicked(topSite: TopSite) { /* no op */ }
+
+            override fun onShowAllTopSitesClicked() { /* no op */ }
         }
 
     internal val recentTabInteractor
@@ -395,55 +405,79 @@ internal object FakeHomepagePreview {
         categoryColors = SelectableChipColors.buildColors(),
         textColor = FirefoxTheme.colors.textPrimary,
         linkTextColor = FirefoxTheme.colors.textAccent,
+        showDiscoverMoreButton = false,
+    )
+
+    internal fun contentRecommendation(index: Int = 0): ContentRecommendation =
+        ContentRecommendation(
+            corpusItemId = "corpusItemId$index",
+            scheduledCorpusItemId = "scheduledCorpusItemId$index",
+            url = "https://story$index.com",
+            title = "Recommendation - This is a ${"very ".repeat(index)} long title",
+            excerpt = "Excerpt",
+            topic = null,
+            publisher = "Publisher",
+            isTimeSensitive = false,
+            imageUrl = URL,
+            tileId = index.toLong(),
+            receivedRank = index,
+            recommendedAt = index.toLong(),
+            impressions = index.toLong(),
+        )
+
+    internal fun pocketRecommendedStory(index: Int = 0) = PocketRecommendedStory(
+            title = "Story - This is a ${"very ".repeat(index)} long title",
+            publisher = "Publisher",
+            url = "https://story$index.com",
+            imageUrl = URL,
+            timeToRead = index,
+            category = "Category #$index",
+            timesShown = index.toLong(),
+        )
+
+    internal fun pocketSponsoredStory(index: Int = 0) = PocketSponsoredStory(
+        id = index,
+        title = "This is a ${"very ".repeat(index)} long title",
+        url = "https://sponsored-story$index.com",
+        imageUrl = URL,
+        sponsor = "Mozilla",
+        shim = PocketSponsoredStoryShim("", ""),
+        priority = index,
+        caps = PocketSponsoredStoryCaps(
+            flightCount = index,
+            flightPeriod = index * 2,
+            lifetimeCount = index * 3,
+        ),
+    )
+
+    internal fun sponsoredContent(index: Int = 0) = SponsoredContent(
+        url = "https://sponsored-story$index.com",
+        title = "This is a ${"very ".repeat(index)}long title",
+        callbacks = PocketStory.SponsoredContentCallbacks(clickUrl = "", impressionUrl = ""),
+        imageUrl = URL,
+        domain = "domain",
+        excerpt = "excerpt",
+        sponsor = "Mozilla",
+        blockKey = "",
+        priority = index,
+        caps = PocketStory.SponsoredContentFrequencyCaps(flightPeriod = 1, flightCount = 0),
     )
 
     @Suppress("MagicNumber")
-    internal fun pocketStories(limit: Int = 1) = mutableListOf<PocketStory>().apply {
+    internal fun pocketStories(limit: Int = 5) = mutableListOf<PocketStory>().apply {
         for (index in 0 until limit) {
             when {
+                (index % 4 == 0) -> add(
+                    sponsoredContent(index),
+                )
                 (index % 3 == 0) -> add(
-                    ContentRecommendation(
-                        corpusItemId = "corpusItemId$index",
-                        scheduledCorpusItemId = "scheduledCorpusItemId$index",
-                        url = "https://story$index.com",
-                        title = "Recommendation - This is a ${"very ".repeat(index)} long title",
-                        excerpt = "Excerpt",
-                        topic = null,
-                        publisher = "Publisher",
-                        isTimeSensitive = false,
-                        imageUrl = URL,
-                        tileId = index.toLong(),
-                        receivedRank = index,
-                        recommendedAt = index.toLong(),
-                        impressions = index.toLong(),
-                    ),
+                    contentRecommendation(index),
                 )
                 (index % 2 == 0) -> add(
-                    PocketRecommendedStory(
-                        title = "Story - This is a ${"very ".repeat(index)} long title",
-                        publisher = "Publisher",
-                        url = "https://story$index.com",
-                        imageUrl = URL,
-                        timeToRead = index,
-                        category = "Category #$index",
-                        timesShown = index.toLong(),
-                    ),
+                    pocketRecommendedStory(index),
                 )
                 else -> add(
-                    PocketSponsoredStory(
-                        id = index,
-                        title = "This is a ${"very ".repeat(index)} long title",
-                        url = "https://sponsored-story$index.com",
-                        imageUrl = URL,
-                        sponsor = "Mozilla",
-                        shim = PocketSponsoredStoryShim("", ""),
-                        priority = index,
-                        caps = PocketSponsoredStoryCaps(
-                            flightCount = index,
-                            flightPeriod = index * 2,
-                            lifetimeCount = index * 3,
-                        ),
-                    ),
+                    pocketSponsoredStory(index),
                 )
             }
         }

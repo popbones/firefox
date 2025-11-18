@@ -16,6 +16,8 @@ ChromeUtils.defineLazyGetter(lazy, "logConsole", function () {
   });
 });
 
+const EXTRA_ARGS_TYPES_ALLOWLIST = ["event", "memory_distribution"];
+
 /**
  * Module for managing Glean telemetry metrics and pings in the New Tab page.
  * This object provides functionality to:
@@ -62,7 +64,7 @@ export const NewTabGleanUtils = {
         for (const [pingName, pingConfig] of Object.entries(data.pings)) {
           await this.registerPingIfNeeded({
             name: pingName,
-            ...pingConfig,
+            ...this.convertToCamelCase(pingConfig),
           });
         }
       }
@@ -122,9 +124,13 @@ export const NewTabGleanUtils = {
         return;
       }
 
-      // Convert extraArgs to JSON string for metrics type event
+      // Convert extraArgs to JSON string for metrics types in allowlist
       let extraArgsJson = null;
-      if (type === "event" && extraArgs && Object.keys(extraArgs).length) {
+      if (
+        EXTRA_ARGS_TYPES_ALLOWLIST.includes(type) &&
+        extraArgs &&
+        Object.keys(extraArgs).length
+      ) {
         extraArgsJson = JSON.stringify(extraArgs);
       }
 
@@ -275,5 +281,14 @@ export const NewTabGleanUtils = {
       }
     }
     return camel;
+  },
+
+  // Convert all properties in an object from snake_case to camelCase
+  convertToCamelCase(obj) {
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[this.dottedSnakeToCamel(key)] = value;
+    }
+    return result;
   },
 };

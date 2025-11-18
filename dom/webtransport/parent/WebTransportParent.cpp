@@ -5,6 +5,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "WebTransportParent.h"
+
 #include "Http3WebTransportSession.h"
 #include "mozilla/StaticPrefs_network.h"
 #include "mozilla/TimeStamp.h"
@@ -12,14 +13,14 @@
 #include "mozilla/dom/ClientInfo.h"
 #include "mozilla/dom/WebTransportBinding.h"
 #include "mozilla/dom/WebTransportLog.h"
-#include "mozilla/net/WebTransportHash.h"
 #include "mozilla/ipc/BackgroundParent.h"
+#include "mozilla/net/WebTransportHash.h"
 #include "nsIEventTarget.h"
 #include "nsIOService.h"
 #include "nsIPrincipal.h"
 #include "nsIWebTransport.h"
-#include "nsStreamUtils.h"
 #include "nsIWebTransportStream.h"
+#include "nsStreamUtils.h"
 
 using IPCResult = mozilla::ipc::IPCResult;
 
@@ -52,13 +53,6 @@ void WebTransportParent::Create(
                       (uint32_t)dom::WebTransportCongestionControl::Low_latency
                   ? "Low-Latency"
                   : "Default")));
-
-  if (!StaticPrefs::network_webtransport_enabled()) {
-    aResolver(ResolveType(
-        NS_ERROR_DOM_NOT_ALLOWED_ERR,
-        static_cast<uint8_t>(WebTransportReliabilityMode::Pending)));
-    return;
-  }
 
   if (!aParentEndpoint.IsValid()) {
     aResolver(ResolveType(

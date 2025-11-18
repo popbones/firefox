@@ -34,9 +34,9 @@
 namespace dcsctp {
 namespace dcsctp_fuzzers {
 namespace {
-static constexpr int kRandomValue = FuzzerCallbacks::kRandomValue;
-static constexpr size_t kMinInputLength = 5;
-static constexpr size_t kMaxInputLength = 1024;
+constexpr int kRandomValue = FuzzerCallbacks::kRandomValue;
+constexpr size_t kMinInputLength = 5;
+constexpr size_t kMaxInputLength = 1024;
 
 // A starting state for the socket, when fuzzing.
 enum class StartingState : int {
@@ -60,7 +60,7 @@ enum class StartingState : int {
 // State about the current fuzzing iteration
 class FuzzState {
  public:
-  explicit FuzzState(rtc::ArrayView<const uint8_t> data) : data_(data) {}
+  explicit FuzzState(webrtc::ArrayView<const uint8_t> data) : data_(data) {}
 
   uint8_t GetByte() {
     uint8_t value = 0;
@@ -79,7 +79,7 @@ class FuzzState {
  private:
   uint32_t tsn_ = kRandomValue;
   uint32_t mid_ = 0;
-  rtc::ArrayView<const uint8_t> data_;
+  webrtc::ArrayView<const uint8_t> data_;
   size_t offset_ = 0;
 };
 
@@ -397,7 +397,7 @@ std::vector<uint8_t> GeneratePacket(FuzzState& state) {
 
 void FuzzSocket(DcSctpSocketInterface& socket,
                 FuzzerCallbacks& cb,
-                rtc::ArrayView<const uint8_t> data) {
+                webrtc::ArrayView<const uint8_t> data) {
   if (data.size() < kMinInputLength || data.size() > kMaxInputLength) {
     return;
   }

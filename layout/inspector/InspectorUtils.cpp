@@ -4,61 +4,64 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/ArrayUtils.h"
+#include "mozilla/dom/InspectorUtils.h"
 
-#include "inLayoutUtils.h"
-
-#include "gfxTextRun.h"
-#include "mozilla/RefPtr.h"
-#include "mozilla/dom/HTMLSlotElement.h"
-#include "nsArray.h"
-#include "nsContentList.h"
-#include "nsString.h"
-#include "nsIContentInlines.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/dom/HTMLTemplateElement.h"
 #include "ChildIterator.h"
-#include "nsComputedDOMStyle.h"
+#include "Units.h"
+#include "gfxTextRun.h"
+#include "inLayoutUtils.h"
+#include "mozilla/ArrayUtils.h"
+#include "mozilla/DeclarationBlock.h"
 #include "mozilla/EventStateManager.h"
-#include "nsAtom.h"
-#include "nsBlockFrame.h"
-#include "nsPresContext.h"
-#include "nsRange.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/PresShellInlines.h"
+#include "mozilla/RefPtr.h"
+#include "mozilla/RelativeLuminanceUtils.h"
 #include "mozilla/ScrollContainerFrame.h"
+#include "mozilla/ServoBindings.h"
+#include "mozilla/ServoCSSParser.h"
+#include "mozilla/ServoStyleRuleMap.h"
+#include "mozilla/ServoStyleSet.h"
+#include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/StyleSheetInlines.h"
 #include "mozilla/dom/BrowserParent.h"
+#include "mozilla/dom/CSSBinding.h"
+#include "mozilla/dom/CSSKeyframesRule.h"
+#include "mozilla/dom/CSSStylePropertiesBinding.h"
+#include "mozilla/dom/CSSStyleRule.h"
 #include "mozilla/dom/CanonicalBrowsingContext.h"
 #include "mozilla/dom/CharacterData.h"
-#include "mozilla/dom/CSSBinding.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
 #include "mozilla/dom/Element.h"
-#include "mozilla/dom/CSSStyleRule.h"
-#include "mozilla/dom/CSSKeyframesRule.h"
+#include "mozilla/dom/HTMLSlotElement.h"
+#include "mozilla/dom/HTMLTemplateElement.h"
 #include "mozilla/dom/Highlight.h"
 #include "mozilla/dom/HighlightRegistry.h"
+#include "mozilla/dom/InspectorFontFace.h"
 #include "mozilla/dom/InspectorUtilsBinding.h"
-#include "mozilla/dom/CSS2PropertiesBinding.h"
 #include "mozilla/dom/LinkStyle.h"
 #include "mozilla/dom/ToJSValue.h"
-#include "mozilla/DeclarationBlock.h"
+#include "mozilla/gfx/Matrix.h"
+#include "nsArray.h"
+#include "nsAtom.h"
+#include "nsBlockFrame.h"
 #include "nsCSSProps.h"
 #include "nsCSSValue.h"
 #include "nsColor.h"
+#include "nsComputedDOMStyle.h"
+#include "nsContentList.h"
+#include "nsFieldSetFrame.h"
 #include "nsGlobalWindowInner.h"
-#include "mozilla/ServoStyleSet.h"
+#include "nsGridContainerFrame.h"
+#include "nsIContentInlines.h"
 #include "nsLayoutUtils.h"
 #include "nsNameSpaceManager.h"
-#include "nsStyleUtil.h"
+#include "nsPresContext.h"
 #include "nsQueryObject.h"
-#include "mozilla/ServoBindings.h"
-#include "mozilla/ServoStyleRuleMap.h"
-#include "mozilla/ServoCSSParser.h"
-#include "mozilla/StaticPrefs_layout.h"
-#include "mozilla/dom/InspectorUtils.h"
-#include "mozilla/dom/InspectorFontFace.h"
-#include "mozilla/gfx/Matrix.h"
+#include "nsRange.h"
+#include "nsString.h"
+#include "nsStyleUtil.h"
 
 using namespace mozilla;
 using namespace mozilla::css;
@@ -84,10 +87,24 @@ static nsPresContext* EnsureSafeToHandOutRules(Element& aElement) {
 }
 
 static already_AddRefed<const ComputedStyle> GetStartingStyle(
-    Element& aElement) {
+    Element& aElement, const PseudoStyleRequest& aPseudo) {
+  Element* elementOrPseudoElement = aElement.GetPseudoElement(aPseudo);
+  if (!elementOrPseudoElement) {
+    // For the pseudo elements which doesn't support animations or transitions,
+    // this returns nullptr. This is probably fine because @starting-style
+    // doesn't work on these pseudo elements neither.
+    //
+    // FIXME: If we still want to retrieve the @starting-style rules for those
+    // pseudo-elements which don't support animations, we may have to rework
+    // Servo_ResolveStartingStyle() because now @starting-style doesn't work on
+    // eagerly-cascaded pseudo-elements, and the above function,
+    // GetPseudoElement(), only works on the pseudo-elements which support
+    // animations.
+    return nullptr;
+  }
   // If this element is unstyled, or it doesn't have matched rules in
   // @starting-style, we return.
-  if (!Servo_Element_MayHaveStartingStyle(&aElement)) {
+  if (!Servo_Element_MayHaveStartingStyle(elementOrPseudoElement)) {
     return nullptr;
   }
   if (!EnsureSafeToHandOutRules(aElement)) {
@@ -102,7 +119,7 @@ static already_AddRefed<const ComputedStyle> GetStartingStyle(
   if (!ps) {
     return nullptr;
   }
-  return ps->StyleSet()->ResolveStartingStyle(aElement);
+  return ps->StyleSet()->ResolveStartingStyle(*elementOrPseudoElement);
 }
 
 static already_AddRefed<const ComputedStyle> GetCleanComputedStyleForElement(
@@ -308,7 +325,7 @@ class ReadOnlyInspectorDeclaration final : public nsDOMCSSDeclaration {
   css::Rule* GetParentRule() final { return nullptr; }
   JSObject* WrapObject(JSContext* aCx,
                        JS::Handle<JSObject*> aGivenProto) final {
-    return CSS2Properties_Binding::Wrap(aCx, this, aGivenProto);
+    return CSSStyleProperties_Binding::Wrap(aCx, this, aGivenProto);
   }
   // These ones are a bit sad, but matches e.g. nsComputedDOMStyle.
   nsresult SetCSSDeclaration(DeclarationBlock* aDecl,
@@ -436,12 +453,13 @@ void InspectorUtils::GetMatchingCSSRules(
 
   RefPtr<const ComputedStyle> computedStyle;
   if (aWithStartingStyle) {
-    computedStyle = GetStartingStyle(aElement);
+    computedStyle = GetStartingStyle(aElement, *pseudo);
   }
 
   // Note: GetStartingStyle() return nullptr if this element doesn't have rules
-  // inside @starting-style. For this case, we would like to return the primay
-  // rules of this element.
+  // inside @starting-style, or the pseudo-element doesn't support animations or
+  // transitions. For this case, we would like to return the primay rules of
+  // this element.
   if (!computedStyle) {
     computedStyle = GetCleanComputedStyleForElement(&aElement, *pseudo);
   }
@@ -746,11 +764,58 @@ void InspectorUtils::RgbToColorName(GlobalObject&, uint8_t aR, uint8_t aG,
   Servo_SlowRgbToColorName(aR, aG, aB, &aColorName);
 }
 
+void InspectorUtils::RgbToNearestColorName(GlobalObject&, float aR, float aG,
+                                           float aB,
+                                           InspectorNearestColor& aResult) {
+  bool exact = Servo_SlowRgbToNearestColorName(
+      aR, aG, aB, StyleColorSpace::Srgb, &aResult.mColorName);
+  aResult.mExact = exact;
+}
+
+/* static */
+void InspectorUtils::RgbToHsv(GlobalObject&, float aR, float aG, float aB,
+                              nsTArray<float>& aResult) {
+  StyleAbsoluteColor input{
+      .components = StyleColorComponents{aR, aG, aB},
+      .alpha = 1.0,
+      .color_space = StyleColorSpace::Srgb,
+  };
+  StyleAbsoluteColor result = input.ToColorSpace(StyleColorSpace::Hwb);
+  float h = result.components._0 / 360.0f;
+  float v = 1 - result.components._2 / 100.0f;
+  float s = 0;
+  if (v != 0.0) {
+    s = 1 - (result.components._1 / 100.0f) / v;
+  }
+  aResult = {h, s, v};
+}
+
+/* static */
+void InspectorUtils::HsvToRgb(GlobalObject&, float aH, float aS, float aV,
+                              nsTArray<float>& aResult) {
+  float h = aH * 360;
+  float w = aV * (1 - aS) * 100;
+  float b = (1 - aV) * 100;
+  StyleAbsoluteColor input{
+      .components = StyleColorComponents{h, w, b},
+      .alpha = 1.0,
+      .color_space = StyleColorSpace::Hwb,
+  };
+  StyleAbsoluteColor result = input.ToColorSpace(StyleColorSpace::Srgb);
+  aResult = {result.components._0, result.components._1, result.components._2};
+}
+
+/* static */
+float InspectorUtils::RelativeLuminance(GlobalObject&, float aR, float aG,
+                                        float aB) {
+  return RelativeLuminanceUtils::Compute(aR, aG, aB);
+}
+
 /* static */
 void InspectorUtils::ColorToRGBA(GlobalObject& aGlobal,
                                  const nsACString& aColorString,
                                  Nullable<InspectorRGBATuple>& aResult) {
-  auto* styleSet = [&]() -> ServoStyleSet* {
+  const auto* styleData = [&]() -> const StylePerDocumentStyleData* {
     nsCOMPtr<nsIGlobalObject> global =
         do_QueryInterface(aGlobal.GetAsSupports());
     if (!global) {
@@ -768,11 +833,11 @@ void InspectorUtils::ColorToRGBA(GlobalObject& aGlobal,
     if (!ps) {
       return nullptr;
     }
-    return ps->StyleSet();
+    return ps->StyleSet()->RawData();
   }();
 
   nscolor color = NS_RGB(0, 0, 0);
-  if (!ServoCSSParser::ComputeColor(styleSet, NS_RGB(0, 0, 0), aColorString,
+  if (!ServoCSSParser::ComputeColor(styleData, NS_RGB(0, 0, 0), aColorString,
                                     &color)) {
     aResult.SetNull();
     return;
@@ -992,6 +1057,37 @@ Element* InspectorUtils::ContainingBlockOf(GlobalObject&, Element& aElement) {
   return Element::FromNodeOrNull(cb->GetContent());
 }
 
+bool InspectorUtils::IsBlockContainer(GlobalObject&, Element& aElement) {
+  nsIFrame* frame = aElement.GetPrimaryFrame(FlushType::Frames);
+  if (!frame) {
+    return false;
+  }
+
+  // For fieldset elements, we need to check the inner frame.
+  if (nsFieldSetFrame* fieldsetFrame = do_QueryFrame(frame)) {
+    frame = fieldsetFrame->GetInner();
+  }
+
+  if (frame->IsBlockFrameOrSubclass()) {
+    return true;
+  }
+  // ScrollContainerFrame::GetContentInsertionFrame() jumps across the block and
+  // returns the ruby inside (because it calls GetContentInsertionFrame on its
+  // own). So we have to account for that here.
+  if (auto* sc = frame->GetScrollTargetFrame()) {
+    if (sc->GetScrolledFrame()->IsBlockFrameOrSubclass()) {
+      return true;
+    }
+  }
+  if (nsIFrame* inner = frame->GetContentInsertionFrame()) {
+    if (inner->IsBlockFrameOrSubclass()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void InspectorUtils::GetBlockLineCounts(GlobalObject& aGlobal,
                                         Element& aElement,
                                         Nullable<nsTArray<uint32_t>>& aResult) {
@@ -1033,10 +1129,8 @@ static bool FrameHasSpecifiedSize(const nsIFrame* aFrame) {
   const nsStylePosition* stylePos = aFrame->StylePosition();
   const auto anchorResolutionParams = AnchorPosResolutionParams::From(aFrame);
 
-  return stylePos->ISize(wm, anchorResolutionParams.mPosition)
-             ->IsLengthPercentage() ||
-         stylePos->BSize(wm, anchorResolutionParams.mPosition)
-             ->IsLengthPercentage();
+  return stylePos->ISize(wm, anchorResolutionParams)->IsLengthPercentage() ||
+         stylePos->BSize(wm, anchorResolutionParams)->IsLengthPercentage();
 }
 
 static bool IsFrameOutsideOfAncestor(const nsIFrame* aFrame,
@@ -1215,7 +1309,7 @@ void InspectorUtils::ReplaceBlockRuleBodyTextInStylesheet(
 
 void InspectorUtils::SetVerticalClipping(GlobalObject&,
                                          BrowsingContext* aContext,
-                                         mozilla::ScreenIntCoord aOffset) {
+                                         mozilla::CSSCoord aOffset) {
   MOZ_ASSERT(XRE_IsParentProcess());
   if (!aContext) {
     return;
@@ -1230,17 +1324,23 @@ void InspectorUtils::SetVerticalClipping(GlobalObject&,
   if (!parent) {
     return;
   }
-  parent->DynamicToolbarOffsetChanged(aOffset);
+  const LayoutDeviceToCSSScale scale = parent->GetLayoutDeviceToCSSScale();
+  const mozilla::LayoutDeviceCoord layoutOffset = aOffset / scale;
+  const mozilla::ScreenCoord screenOffset = ViewAs<ScreenPixel>(
+      layoutOffset, PixelCastJustification::LayoutDeviceIsScreenForBounds);
+  const mozilla::ScreenIntCoord offset = screenOffset.Rounded();
+  parent->DynamicToolbarOffsetChanged(offset);
 
   RefPtr<nsIWidget> widget = canonical->GetParentProcessWidgetContaining();
   if (!widget) {
     return;
   }
-  widget->DynamicToolbarOffsetChanged(aOffset);
+  widget->DynamicToolbarOffsetChanged(offset);
 }
 
-void InspectorUtils::SetDynamicToolbarMaxHeight(
-    GlobalObject&, BrowsingContext* aContext, mozilla::ScreenIntCoord aHeight) {
+void InspectorUtils::SetDynamicToolbarMaxHeight(GlobalObject&,
+                                                BrowsingContext* aContext,
+                                                mozilla::CSSCoord aHeight) {
   MOZ_ASSERT(XRE_IsParentProcess());
   if (!aContext) {
     return;
@@ -1256,6 +1356,29 @@ void InspectorUtils::SetDynamicToolbarMaxHeight(
     return;
   }
 
-  parent->DynamicToolbarMaxHeightChanged(aHeight);
+  const LayoutDeviceToCSSScale scale = parent->GetLayoutDeviceToCSSScale();
+  const mozilla::LayoutDeviceCoord layoutOffset = aHeight / scale;
+  const mozilla::ScreenCoord screenOffset = ViewAs<ScreenPixel>(
+      layoutOffset, PixelCastJustification::LayoutDeviceIsScreenForBounds);
+  const mozilla::ScreenIntCoord height = screenOffset.Rounded();
+  parent->DynamicToolbarMaxHeightChanged(height);
 }
+
+uint16_t InspectorUtils::GetGridContainerType(GlobalObject&,
+                                              Element& aElement) {
+  auto* f = nsGridContainerFrame::GetGridContainerFrame(
+      aElement.GetPrimaryFrame(FlushType::Frames));
+  if (!f) {
+    return InspectorUtils_Binding::GRID_NONE;
+  }
+  uint16_t result = InspectorUtils_Binding::GRID_CONTAINER;
+  if (f->IsRowSubgrid()) {
+    result |= InspectorUtils_Binding::GRID_SUBGRID_ROW;
+  }
+  if (f->IsColSubgrid()) {
+    result |= InspectorUtils_Binding::GRID_SUBGRID_COL;
+  }
+  return result;
+}
+
 }  // namespace mozilla::dom

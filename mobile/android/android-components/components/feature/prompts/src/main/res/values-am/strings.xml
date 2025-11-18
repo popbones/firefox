@@ -110,12 +110,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">የይለፍ ቃል ተጠቀም</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">አሁን አይሆንም</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">የይለፍ ቃል ተቀምጧል</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">የይለፍ ቃል ዘምኗል</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">የተጠቃሚ ስም ዘምኗል</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">ውሂብ ወደዚህ ድረ-ገፅ እንደገና ይላክ?</string>
   <string name="mozac_feature_prompt_repost_message">ይህን ገጽ ማደስ እንደ ክፍያ መላክ ወይም አስተያየት መለጠፍ ያሉ የቅርብ ጊዜ ድርጊቶችን ሁለት ጊዜ ማባዛት ይችላል።</string>
@@ -123,6 +119,14 @@
   <string name="mozac_feature_prompt_repost_positive_button_text">ውሂብ እንደገና ላክ</string>
   <!-- Pressing this will dismiss the dialog and not refresh the webpage -->
   <string name="mozac_feature_prompt_repost_negative_button_text">ተወው</string>
+  <!-- Strings show in a dialog that appear when user confirm folder upload -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_title">ፋይሎች ይጫኑ?</string>
+  <!-- Prompt message displayed when user selects a specific folder. %1$s is a folder / directory name. -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_message">ከ“%1$s” ከመስቀልዎ በፊት ይህን ጣቢያ ማመንዎን ያረጋግጡ።</string>
+  <!-- Pressing this will dismiss the dialog and allow to upload folder -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_positive_button_text">ጫን</string>
+  <!-- Pressing this will dismiss the dialog and disallow to upload folder -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_negative_button_text">ተወው</string>
   <!--
     Credit Card Autofill
 

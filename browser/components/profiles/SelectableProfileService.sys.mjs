@@ -17,10 +17,12 @@ const PROFILES_PREF_NAME = "browser.profiles.enabled";
 const GROUPID_PREF_NAME = "toolkit.telemetry.cachedProfileGroupID";
 const DEFAULT_THEME_ID = "default-theme@mozilla.org";
 const PROFILES_CREATED_PREF_NAME = "browser.profiles.created";
+const DAU_GROUPID_PREF_NAME = "datareporting.dau.cachedUsageProfileGroupID";
 
 ChromeUtils.defineESModuleGetters(lazy, {
   ClientID: "resource://gre/modules/ClientID.sys.mjs",
-  CryptoUtils: "resource://services-crypto/utils.sys.mjs",
+  CryptoUtils: "moz-src:///services/crypto/modules/utils.sys.mjs",
+  DownloadPaths: "resource://gre/modules/DownloadPaths.sys.mjs",
   EveryWindow: "resource:///modules/EveryWindow.sys.mjs",
   ExperimentAPI: "resource://nimbus/ExperimentAPI.sys.mjs",
   NimbusFeatures: "resource://nimbus/ExperimentAPI.sys.mjs",
@@ -30,7 +32,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
 });
 
 ChromeUtils.defineLazyGetter(lazy, "profilesLocalization", () => {
-  return new Localization(["browser/profiles.ftl"], true);
+  return new Localization(["browser/profiles.ftl"]);
 });
 
 XPCOMUtils.defineLazyPreferenceGetter(
@@ -55,60 +57,48 @@ const COMMAND_LINE_ACTIVATE = "profiles-activate";
 
 const gSupportsBadging = "nsIMacDockSupport" in Ci || "nsIWinTaskbar" in Ci;
 
-function loadBuiltInAvatarImage(uri, channel) {
-  return new Promise((resolve, reject) => {
-    let imageTools = Cc["@mozilla.org/image/tools;1"].getService(Ci.imgITools);
-    let imageContainer;
-    let observer = imageTools.createScriptedObserver({
-      sizeAvailable() {
-        resolve(imageContainer);
-        imageContainer = null;
-      },
-    });
+class ChannelListener {
+  #request = null;
+  #imageListener = null;
+  #rejector = null;
 
-    imageTools.decodeImageFromChannelAsync(
-      uri,
-      channel,
-      (image, status) => {
-        if (!Components.isSuccessCode(status)) {
-          reject(new Components.Exception("Image loading failed", status));
-        } else {
-          imageContainer = image;
-        }
-      },
-      observer
-    );
-  });
-}
+  constructor(rejector) {
+    this.#rejector = rejector;
+  }
 
-async function getCustomAvatarImageType(blob, channel) {
-  let octets = await new Promise((resolve, reject) => {
-    let reader = new FileReader();
-    reader.addEventListener("load", () => {
-      resolve(Array.from(reader.result).map(c => c.charCodeAt(0)));
-    });
-    reader.addEventListener("error", reject);
-    reader.readAsBinaryString(blob);
-  });
+  setImageListener(imageListener) {
+    this.#imageListener = imageListener;
+    if (this.#request) {
+      this.#imageListener.onStartRequest(this.#request);
+    }
+  }
 
-  let sniffer = Cc["@mozilla.org/image/loader;1"].createInstance(
-    Ci.nsIContentSniffer
-  );
-  let type = sniffer.getMIMETypeFromContent(channel, octets, octets.length);
+  onStartRequest(request) {
+    this.#request = request;
+    if (this.#imageListener) {
+      this.#imageListener.onStartRequest(request);
+    }
+  }
 
-  return type;
-}
+  onStopRequest(request, status) {
+    if (this.#imageListener) {
+      this.#imageListener.onStopRequest(request, status);
+    }
 
-async function loadCustomAvatarImage(profile, channel) {
-  let blob = await profile.getAvatarFile();
+    if (!Components.isSuccessCode(status)) {
+      this.#rejector(new Components.Exception("Image loading failed", status));
+    }
 
-  const imageTools = Cc["@mozilla.org/image/tools;1"].getService(Ci.imgITools);
-  let type = await getCustomAvatarImageType(blob, channel);
+    this.#imageListener = null;
+    this.#rejector = null;
+    this.#request = null;
+  }
 
-  let buffer = await blob.arrayBuffer();
-  const image = imageTools.decodeImageFromArrayBuffer(buffer, type);
-
-  return image;
+  onDataAvailable(request, inputStream, offset, count) {
+    if (this.#imageListener) {
+      this.#imageListener.onDataAvailable(request, inputStream, offset, count);
+    }
+  }
 }
 
 async function loadImage(profile) {
@@ -130,11 +120,37 @@ async function loadImage(profile) {
     Ci.nsIContentPolicy.TYPE_IMAGE
   );
 
-  if (profile.hasCustomAvatar) {
-    return loadCustomAvatarImage(profile, channel);
-  }
+  return new Promise((resolve, reject) => {
+    let imageTools = Cc["@mozilla.org/image/tools;1"].getService(Ci.imgITools);
 
-  return loadBuiltInAvatarImage(uri, channel);
+    // Despite the docs it is fine to pass null here, we then just get a global loader.
+    let imageLoader = imageTools.getImgLoaderForDocument(null);
+    let observer = imageTools.createScriptedObserver({
+      decodeComplete() {
+        request.cancel(Cr.NS_BINDING_ABORTED);
+        resolve(request.image);
+      },
+    });
+
+    let channelListener = new ChannelListener(reject);
+    channel.asyncOpen(channelListener);
+
+    let streamListener = {};
+    let request = imageLoader.loadImageWithChannelXPCOM(
+      channel,
+      observer,
+      null,
+      streamListener
+    );
+    // Force image decoding to start when the container is available.
+    request.startDecoding(Ci.imgIContainer.FLAG_ASYNC_NOTIFY);
+
+    // If the request is coming from the cache then there will be no listener
+    // and the channel will have been automatically cancelled.
+    if (streamListener.value) {
+      channelListener.setImageListener(streamListener.value);
+    }
+  });
 }
 
 /**
@@ -167,7 +183,9 @@ class SelectableProfileServiceClass extends EventEmitter {
     "app.shield.optoutstudies.enabled",
     "browser.crashReports.unsubmittedCheck.autoSubmit2",
     "browser.discovery.enabled",
+    "browser.shell.checkDefaultBrowser",
     "browser.urlbar.quicksuggest.dataCollection.enabled",
+    DAU_GROUPID_PREF_NAME,
     "datareporting.healthreport.uploadEnabled",
     "datareporting.policy.currentPolicyVersion",
     "datareporting.policy.dataSubmissionEnabled",
@@ -177,6 +195,11 @@ class SelectableProfileServiceClass extends EventEmitter {
     "datareporting.policy.minimumPolicyVersion",
     "datareporting.policy.minimumPolicyVersion.channel-beta",
     "datareporting.usage.uploadEnabled",
+    "termsofuse.acceptedDate",
+    "termsofuse.acceptedVersion",
+    "termsofuse.bypassNotification",
+    "termsofuse.currentVersion",
+    "termsofuse.minimumVersion",
     GROUPID_PREF_NAME,
   ];
 
@@ -420,6 +443,9 @@ class SelectableProfileServiceClass extends EventEmitter {
     if (this.#currentProfile) {
       // Assume that settings in the database may have changed while we weren't running.
       await this.databaseChanged("startup");
+
+      // We only need to migrate if we are in an existing profile group.
+      await this.#maybeAddDAUGroupIDToDB();
     }
   }
 
@@ -437,6 +463,8 @@ class SelectableProfileServiceClass extends EventEmitter {
     this.#currentProfile = null;
     this.#badge = null;
     this.#connection = null;
+
+    this.clearPrefObservers();
 
     lazy.EveryWindow.unregisterCallback(this.#everyWindowCallbackId);
 
@@ -739,7 +767,7 @@ class SelectableProfileServiceClass extends EventEmitter {
     let themeBgColor = computedStyles.getPropertyValue("--toolbar-bgcolor");
 
     let bg = window.InspectorUtils.colorToRGBA(themeBgColor);
-    let themeBg = `rgba(${bg.r}, ${bg.r}, ${bg.b}, ${bg.a})`;
+    let themeBg = `rgba(${bg.r}, ${bg.g}, ${bg.b}, ${bg.a})`;
 
     let fg = window.InspectorUtils.colorToRGBA(themeFgColor);
     let themeFg = `rgba(${fg.r}, ${fg.g}, ${fg.b}, ${fg.a})`;
@@ -861,16 +889,83 @@ class SelectableProfileServiceClass extends EventEmitter {
     await this.#setDBPref(prefName, value);
   }
 
+  clearPrefObservers() {
+    for (let prefName of this.#observedPrefs) {
+      Services.prefs.removeObserver(prefName, this.prefObserver);
+    }
+    this.#observedPrefs.clear();
+  }
+
+  /**
+   * The "datareporting.dau.cachedUsageProfileGroupID" pref is different in
+   * every profile before this migration was created. We now need the entire
+   * group of profiles to share one group id. To migrate to one shared
+   * group id, we need to get the pref into the db for existing group. This
+   * function handles this by adding the pref to the db if it doesn't
+   * already exist OR if our pref value is better than the value from the db.
+   * Consolidation on one group id is also handled in `#maybeSetDAUGroupID`
+   * where we overwrite the pref value if the db value is better.
+   *
+   * New profile groups will automatically start tracking this pref and keep
+   * the UUID from the original profile. We need to migrate because the db in
+   * existing profile groups will not contain the pref and every profile will
+   * have a different group id.
+   */
+  async #maybeAddDAUGroupIDToDB() {
+    let writeToDB = false;
+    let prefValue = Services.prefs.getStringPref(DAU_GROUPID_PREF_NAME, "");
+    try {
+      let dbValue = await this.getDBPref(DAU_GROUPID_PREF_NAME);
+
+      // We found a DAU group id in the db. If our pref value is smaller
+      // alphanumerically, we will overwrite the db value.
+      if (prefValue < dbValue) {
+        // Pref value is smaller alphanumerically so overwrite the db.
+        writeToDB = true;
+      }
+    } catch {
+      // The pref is not in the db
+      writeToDB = true;
+    } finally {
+      if (writeToDB) {
+        // The pref is not in the db
+        // OR
+        // our pref value is better so overwrite the db.
+        this.#setDBPref(DAU_GROUPID_PREF_NAME, prefValue);
+      }
+    }
+  }
+
+  /**
+   * To consolidate on one group id, we compare the pref value from the db and
+   * this profiles pref value alphanumerically to converge on the smallest
+   * alphanumeric UUID. The `#maybeAddDAUGroupIDToDB` function handles the
+   * initial tracking of the "datareporting.dau.cachedUsageProfileGroupID" pref
+   * for an existing profile group. New profile groups will keep the original
+   * profiles group id.
+   *
+   * @param {string} dbValue The pref value of
+   *   "datareporting.dau.cachedUsageProfileGroupID" from the db
+   */
+  async #maybeSetDAUGroupID(dbValue) {
+    if (dbValue < Services.prefs.getStringPref(DAU_GROUPID_PREF_NAME, "")) {
+      try {
+        // The value from the db is better so we overwrite our group id.
+        await lazy.ClientID.setUsageProfileGroupID(dbValue); // Sets the pref for us.
+      } catch (e) {
+        // This may throw if the group ID is invalid. This happens in some tests.
+        console.error(e);
+      }
+    }
+  }
+
   /**
    * Fetch all prefs from the DB and write to the current instance.
    */
   async loadSharedPrefsFromDatabase() {
     // This stops us from observing the change during the load and means we stop observing any prefs
     // no longer in the database.
-    for (let prefName of this.#observedPrefs) {
-      Services.prefs.removeObserver(prefName, this.prefObserver);
-    }
-    this.#observedPrefs.clear();
+    this.clearPrefObservers();
 
     for (let { name, value, type } of await this.getAllDBPrefs()) {
       if (SelectableProfileServiceClass.ignoredSharedPrefs.includes(name)) {
@@ -891,6 +986,14 @@ class SelectableProfileServiceClass extends EventEmitter {
           // This may throw if the group ID is invalid. This happens in some tests.
           console.error(e);
         }
+        continue;
+      }
+
+      if (name === DAU_GROUPID_PREF_NAME) {
+        await this.#maybeSetDAUGroupID(value);
+
+        Services.prefs.addObserver(name, this.prefObserver);
+        this.#observedPrefs.add(name);
         continue;
       }
 
@@ -967,7 +1070,13 @@ class SelectableProfileServiceClass extends EventEmitter {
     // directory name. So we match only word characters for the directory name.
     const safeSalt = salt.match(/\w/g).join("").slice(0, 8);
 
-    const profileDir = `${safeSalt}.${aProfileName}`;
+    const profileDir = lazy.DownloadPaths.sanitize(
+      `${safeSalt}.${aProfileName}`,
+      {
+        compressWhitespaces: false,
+        allowDirectoryNames: true,
+      }
+    );
 
     // Handle errors in bug 1909919
     await Promise.all([
@@ -1026,23 +1135,7 @@ class SelectableProfileServiceClass extends EventEmitter {
 
     const sharedPrefs = await this.getAllDBPrefs();
 
-    const LINEBREAK = AppConstants.platform === "win" ? "\r\n" : "\n";
-
-    const prefsJs = [
-      "// Mozilla User Preferences",
-      LINEBREAK,
-      "// DO NOT EDIT THIS FILE.",
-      "//",
-      "// If you make changes to this file while the application is running,",
-      "// the changes will be overwritten when the application exits.",
-      "//",
-      "// To change a preference value, you can either:",
-      "// - modify it via the UI (e.g. via about:config in the browser); or",
-      "// - set it within a user.js file in your profile.",
-      LINEBREAK,
-      'user_pref("browser.profiles.profile-name.updated", false);',
-    ];
-
+    const prefsJs = [];
     for (let pref of sharedPrefs) {
       prefsJs.push(
         `user_pref("${pref.name}", ${
@@ -1052,11 +1145,19 @@ class SelectableProfileServiceClass extends EventEmitter {
     }
 
     // Preferences that must be set in newly created profiles.
+    prefsJs.push(`user_pref("browser.profiles.profile-name.updated", false);`);
     prefsJs.push(`user_pref("browser.profiles.enabled", true);`);
     prefsJs.push(`user_pref("browser.profiles.created", true);`);
     prefsJs.push(`user_pref("toolkit.profiles.storeID", "${this.storeID}");`);
+    prefsJs.push(
+      `user_pref("${DAU_GROUPID_PREF_NAME}", "${await this.getDBPref(DAU_GROUPID_PREF_NAME)}");`
+    );
 
-    await IOUtils.writeUTF8(prefsJsFilePath, prefsJs.join(LINEBREAK));
+    const LINEBREAK = AppConstants.platform === "win" ? "\r\n" : "\n";
+    await IOUtils.writeUTF8(
+      prefsJsFilePath,
+      Services.prefs.prefsJsPreamble + prefsJs.join(LINEBREAK) + LINEBREAK
+    );
   }
 
   /**
@@ -1093,7 +1194,7 @@ class SelectableProfileServiceClass extends EventEmitter {
       ...(await this.getAllProfiles()).map(p => p.id)
     );
     let [defaultName, originalName] =
-      lazy.profilesLocalization.formatMessagesSync([
+      await lazy.profilesLocalization.formatMessages([
         { id: "default-profile-name", args: { number: nextProfileNumber } },
         { id: "original-profile-name" },
       ]);
@@ -1289,7 +1390,7 @@ class SelectableProfileServiceClass extends EventEmitter {
    * @param {SelectableProfile} aSelectableProfile The SelectableProfile to be updated
    */
   async updateProfile(aSelectableProfile) {
-    let profileObj = await aSelectableProfile.toDbObject();
+    let profileObj = aSelectableProfile.toDbObject();
 
     await this.#connection.execute(
       `UPDATE Profiles
@@ -1491,6 +1592,14 @@ class SelectableProfileServiceClass extends EventEmitter {
     return this.getPrefValueFromRow(rows[0]);
   }
 
+  async setDBPref(aPrefName, aPrefValue) {
+    if (!Cu.isInAutomation) {
+      return;
+    }
+
+    await this.#setDBPref(aPrefName, aPrefValue);
+  }
+
   /**
    * Insert or update a pref value in the database, then notify() other running instances.
    *
@@ -1643,7 +1752,7 @@ export class CommandLineHandler {
       cmdLine.handleFlag(COMMAND_LINE_ACTIVATE, true) &&
       cmdLine.state != Ci.nsICommandLine.STATE_INITIAL_LAUNCH
     ) {
-      let win = Services.wm.getMostRecentWindow(null);
+      let win = Services.wm.getMostRecentBrowserWindow();
       if (win) {
         win.focus();
         cmdLine.preventDefault = true;

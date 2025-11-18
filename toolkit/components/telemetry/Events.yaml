@@ -126,11 +126,11 @@ aboutprivatebrowsing:
     record_in_processes: ["content"]
     description: >
       This is recorded when a user clicks a link on the private browsing newtab.
-    bug_numbers: [1709344, 1754635, 1781973, 1811146, 1841925, 1871197, 1922596, 1952111]
+    bug_numbers: [1709344, 1754635, 1781973, 1811146, 1841925, 1871197, 1922596, 1952111, 1984459]
     notification_emails:
       - "emz@mozilla.com"
       - "tihuang@mozilla.com"
-    expiry_version: "145"
+    expiry_version: "149"
     products:
       - "firefox"
 
@@ -193,7 +193,7 @@ addonsManager:
         "about:debugging", "about:preferences", "amo", "browser-import", "disco", "distribution",
         "extension", "enterprise-policy", "file-url", "geckoview-app", "gmp-plugin",
         "internal", "plugin", "rtamo", "siteperm-addon-provider" "sync", "system-addon",
-        "temporary-addon", "unknown", "about:editprofile", "about:newprofile".
+        "temporary-addon", "unknown", "about:editprofile", "about:newprofile", "nimbus-newtabTrainhopAddon".
         For events with method set to "sideload", the source value is derived from the XPIProvider
         location name (e.g. possible values are "app-builtin", "app-global", "app-profile",
         "app-system-addons", "app-system-defaults", "app-system-local", "app-system-profile",
@@ -2624,24 +2624,6 @@ security:
       - all
     extra_keys:
       fileinfo: Information about the file that triggered eval
-  javascriptLoad:
-    objects: ["parentProcess"]
-    bug_numbers:
-      - 1582512
-    description: >
-      The javascript engine requested to load a filename that was not allowed.
-      Expected values, and fileinfo key, are the same possible values as above in 'evalUsage'
-    notification_emails:
-      - tom@mozilla.com
-      - gijs@mozilla.com
-    release_channel_collection: opt-out
-    products:
-      - firefox
-    expiry_version: "never"
-    record_in_processes:
-      - main
-    extra_keys:
-      fileinfo: Information about the filename that was requested to be loaded
   unexpectedload:
     objects: ["systemprincipal"]
     bug_numbers:

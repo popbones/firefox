@@ -13,30 +13,11 @@
 #include "mozilla/MathAlgorithms.h"
 
 #include "ds/SlimLinkedList.h"
-#include "gc/BufferAllocatorInternals.h"
-#include "gc/Cell.h"
 #include "js/HeapAPI.h"
 
 #include "gc/Allocator-inl.h"
 
 namespace js::gc {
-
-// todo: rename
-static constexpr size_t MinAllocSize = MinCellSize;  // 16 bytes
-
-static constexpr size_t MaxSmallAllocSize =
-    1 << (BufferAllocator::MinMediumAllocShift - 1);
-static constexpr size_t MinMediumAllocSize =
-    1 << BufferAllocator::MinMediumAllocShift;
-static constexpr size_t MaxMediumAllocSize =
-    1 << BufferAllocator::MaxMediumAllocShift;
-
-static constexpr size_t MediumAllocGranularityShift =
-    BufferAllocator::MinMediumAllocShift;
-static constexpr size_t MediumAllocGranularity = 1
-                                                 << MediumAllocGranularityShift;
-
-using MediumBufferSize = EncodedSize<MediumAllocGranularityShift>;
 
 /* static */
 inline bool BufferAllocator::IsSmallAllocSize(size_t bytes) {
@@ -56,12 +37,11 @@ inline size_t BufferAllocator::GetGoodAllocSize(size_t requiredBytes) {
     return RoundUp(requiredBytes, ChunkSize);
   }
 
-  // TODO: Support more sizes than powers of 2
   if (IsSmallAllocSize(requiredBytes)) {
-    return mozilla::RoundUpPow2(requiredBytes);
+    return RoundUp(requiredBytes, SmallAllocGranularity);
   }
 
-  return MediumBufferSize(requiredBytes).get();
+  return RoundUp(requiredBytes, MediumAllocGranularity);
 }
 
 /* static */
@@ -133,8 +113,14 @@ inline bool IsBufferAlloc(void* alloc) {
   return BufferAllocator::IsBufferAlloc(alloc);
 }
 
-inline size_t GetAllocSize(JS::Zone* zone, void* alloc) {
-  return zone->bufferAllocator.getAllocSize(alloc);
+#ifdef DEBUG
+inline bool IsBufferAllocInZone(void* alloc, JS::Zone* zone) {
+  return zone->bufferAllocator.hasAlloc(alloc);
+}
+#endif
+
+inline size_t GetAllocSize(JS::Zone* zone, const void* alloc) {
+  return zone->bufferAllocator.getAllocSize(const_cast<void*>(alloc));
 }
 
 inline bool IsNurseryOwned(JS::Zone* zone, void* alloc) {
@@ -149,6 +135,10 @@ inline void TraceBufferEdgeInternal(JSTracer* trc, Cell* owner, void** bufferp,
                                     const char* name) {
   owner->zoneFromAnyThread()->bufferAllocator.traceEdge(trc, owner, bufferp,
                                                         name);
+}
+inline void TraceBufferEdgeInternal(JSTracer* trc, JS::Zone* zone,
+                                    void** bufferp, const char* name) {
+  zone->bufferAllocator.traceEdge(trc, nullptr, bufferp, name);
 }
 
 inline void MarkTenuredBuffer(JS::Zone* zone, void* alloc) {

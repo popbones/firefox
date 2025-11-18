@@ -6,12 +6,12 @@
 
 #include "PostTraversalTask.h"
 
+#include "ServoStyleSet.h"
+#include "gfxPlatformFontList.h"
+#include "gfxTextRun.h"
 #include "mozilla/dom/FontFace.h"
 #include "mozilla/dom/FontFaceSet.h"
 #include "mozilla/dom/FontFaceSetImpl.h"
-#include "gfxPlatformFontList.h"
-#include "gfxTextRun.h"
-#include "ServoStyleSet.h"
 #include "nsPresContext.h"
 
 namespace mozilla {
@@ -25,7 +25,8 @@ void PostTraversalTask::Run() {
       break;
 
     case Type::RejectFontFaceLoadedPromise:
-      static_cast<FontFace*>(mTarget)->MaybeReject(mResult);
+      static_cast<FontFace*>(mTarget)->MaybeReject(mResult.extract(),
+                                                   std::move(mMessage));
       break;
 
     case Type::DispatchLoadingEventAndReplaceReadyPromise:

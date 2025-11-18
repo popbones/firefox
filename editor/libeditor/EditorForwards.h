@@ -93,6 +93,7 @@ class TextEditor;                  // mozilla/TextEditor.h
 
 class AutoClonedRangeArray;               // AutoClonedRangeArray.h
 class AutoClonedSelectionRangeArray;      // AutoClonedRangeArray.h
+class AutoDOMAPIWrapperBase;              // EditorDOMAPIWrapper.h
 class AutoSelectionRestorer;              // AutoSelectionRestorer.h
 class AutoSelectionRangeArray;            // EditorUtils.h
 class CaretPoint;                         // EditorUtils.h
@@ -123,6 +124,8 @@ class JoinNodesResult;                    // HTMLEditHelpers.h
 class JoinNodesTransaction;               // JoinNodesTransaction.h
 class MoveNodeResult;                     // HTMLEditHelpers.h
 class MoveNodeTransaction;                // MoveNodeTransaction.h
+class MoveNodeTransactionBase;            // MoveNodeTransaction.h
+class MoveSiblingsTransaction;            // MoveNodeTransaction.h
 class PlaceholderTransaction;             // PlaceholderTransaction.h
 class ReplaceTextInTextNodeTransaction;   // ReplaceTextTransaction.h
 class ReplaceTextTransaction;             // ReplaceTextTransaction.h

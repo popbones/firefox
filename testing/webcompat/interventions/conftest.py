@@ -43,14 +43,6 @@ def pytest_generate_tests(metafunc):
             if mark.name == "skip_channels":
                 otherargs["skip_channels"] = mark.args
 
-    if "with_interventions" in marks:
-        argvalues.append([dict({"interventions": True}, **otherargs)])
-        ids.append("with_interventions")
-
-    if "without_interventions" in marks:
-        argvalues.append([dict({"interventions": False}, **otherargs)])
-        ids.append("without_interventions")
-
     if "need_visible_scrollbars" in marks:
         for mark in metafunc.function.pytestmark:
             if mark.name == "need_visible_scrollbars":
@@ -62,8 +54,25 @@ def pytest_generate_tests(metafunc):
     if "no_overlay_scrollbars" in marks:
         otherargs["no_overlay_scrollbars"] = True
 
+    if "enable_moztransform" in marks:
+        otherargs["enable_moztransform"] = True
+
     if "disable_moztransform" in marks:
         otherargs["disable_moztransform"] = True
+
+    if "enable_webkit_fill_available" in marks:
+        otherargs["enable_webkit_fill_available"] = True
+
+    if "disable_webkit_fill_available" in marks:
+        otherargs["disable_webkit_fill_available"] = True
+
+    if "with_interventions" in marks:
+        argvalues.append([dict({"interventions": True}, **otherargs)])
+        ids.append("with_interventions")
+
+    if "without_interventions" in marks:
+        argvalues.append([dict({"interventions": False}, **otherargs)])
+        ids.append("without_interventions")
 
     metafunc.parametrize(["session"], argvalues, ids=ids, indirect=True)
 
@@ -82,7 +91,13 @@ async def test_config(request, driver):
     return {
         "actual_platform_required": params.get("actual_platform_required", False),
         "enable_moztransform": params.get("enable_moztransform", False),
+        "enable_webkit_fill_available": params.get(
+            "enable_webkit_fill_available", False
+        ),
         "disable_moztransform": params.get("disable_moztransform", False),
+        "disable_webkit_fill_available": params.get(
+            "disable_webkit_fill_available", False
+        ),
         "need_visible_scrollbars": params.get("need_visible_scrollbars", False),
         "no_overlay_scrollbars": params.get("no_overlay_scrollbars", False),
         "use_interventions": use_interventions,

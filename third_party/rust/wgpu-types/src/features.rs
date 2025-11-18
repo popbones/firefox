@@ -535,7 +535,11 @@ bitflags_array! {
 
     /// Features that are not guaranteed to be supported.
     ///
-    /// These are extension features supported by wgpu when targeting native. For all features see [`Features`]
+    /// Most of these are native-only extension features supported by wgpu only when targeting
+    /// native. A few are intended to align with a proposed WebGPU extension, and one
+    /// (`EXTERNAL_TEXTURE`) controls WebGPU-specified behavior that is not optional in the
+    /// standard, but that we don't want to make a [`crate::DownlevelFlags`] until the
+    /// implementation is more complete. For all features see [`Features`].
     ///
     /// If you want to use a feature, you need to first verify that the adapter supports
     /// the feature. If the adapter does not support the feature, requesting a device with it enabled
@@ -784,28 +788,11 @@ bitflags_array! {
         ///
         /// This is a native only feature.
         const PARTIALLY_BOUND_BINDING_ARRAY = 1 << 13;
-        /// Allows the user to call [`RenderPass::multi_draw_indirect`] and [`RenderPass::multi_draw_indexed_indirect`].
-        ///
-        /// Allows multiple indirect calls to be dispatched from a single buffer.
-        ///
-        /// Natively Supported Platforms:
-        /// - DX12
-        /// - Vulkan
-        ///
-        /// Emulated Platforms:
-        /// - Metal
-        /// - OpenGL
-        /// - WebGPU
-        ///
-        /// Emulation is preformed by looping over the individual indirect draw calls in the backend. This is still significantly
-        /// faster than enulating it yourself, as wgpu only does draw call validation once.
-        ///
-        /// [`RenderPass::multi_draw_indirect`]: ../wgpu/struct.RenderPass.html#method.multi_draw_indirect
-        /// [`RenderPass::multi_draw_indexed_indirect`]: ../wgpu/struct.RenderPass.html#method.multi_draw_indexed_indirect
-        const MULTI_DRAW_INDIRECT = 1 << 14;
         /// Allows the user to call [`RenderPass::multi_draw_indirect_count`] and [`RenderPass::multi_draw_indexed_indirect_count`].
         ///
-        /// This allows the use of a buffer containing the actual number of draw calls.
+        /// This allows the use of a buffer containing the actual number of draw calls. This feature being present also implies
+        /// that all calls to [`RenderPass::multi_draw_indirect`] and [`RenderPass::multi_draw_indexed_indirect`] are not being emulated
+        /// with a series of `draw_indirect` calls.
         ///
         /// Supported platforms:
         /// - DX12
@@ -813,6 +800,8 @@ bitflags_array! {
         ///
         /// This is a native only feature.
         ///
+        /// [`RenderPass::multi_draw_indirect`]: ../wgpu/struct.RenderPass.html#method.multi_draw_indirect
+        /// [`RenderPass::multi_draw_indexed_indirect`]: ../wgpu/struct.RenderPass.html#method.multi_draw_indexed_indirect
         /// [`RenderPass::multi_draw_indirect_count`]: ../wgpu/struct.RenderPass.html#method.multi_draw_indirect_count
         /// [`RenderPass::multi_draw_indexed_indirect_count`]: ../wgpu/struct.RenderPass.html#method.multi_draw_indexed_indirect_count
         const MULTI_DRAW_INDIRECT_COUNT = 1 << 15;
@@ -926,29 +915,6 @@ bitflags_array! {
         ///
         /// This is a native only feature.
         const CLEAR_TEXTURE = 1 << 23;
-        /// Enables creating shader modules from Metal MSL computer shaders (unsafe).
-        ///
-        /// Metal data is not parsed or interpreted in any way
-        ///
-        /// Supported platforms:
-        /// - Metal
-        ///
-        /// This is a native only feature.
-        const MSL_SHADER_PASSTHROUGH = 1 << 24;
-        /// Enables creating shader modules from SPIR-V binary data (unsafe).
-        ///
-        /// SPIR-V data is not parsed or interpreted in any way; you can use
-        /// [`wgpu::make_spirv_raw!`] to check for alignment and magic number when converting from
-        /// raw bytes.
-        ///
-        /// Supported platforms:
-        /// - Vulkan, in case shader's requested capabilities and extensions agree with
-        /// Vulkan implementation.
-        ///
-        /// This is a native only feature.
-        ///
-        /// [`wgpu::make_spirv_raw!`]: https://docs.rs/wgpu/latest/wgpu/macro.include_spirv_raw.html
-        const SPIRV_SHADER_PASSTHROUGH = 1 << 25;
         /// Enables multiview render passes and `builtin(view_index)` in vertex shaders.
         ///
         /// Supported platforms:
@@ -984,18 +950,16 @@ bitflags_array! {
         ///
         /// [`TextureFormat::NV12`]: super::TextureFormat::NV12
         const TEXTURE_FORMAT_NV12 = 1 << 29;
-        /// ***THIS IS EXPERIMENTAL:*** Features enabled by this may have
-        /// major bugs in them and are expected to be subject to breaking changes, suggestions
-        /// for the API exposed by this should be posted on [the ray-tracing issue](https://github.com/gfx-rs/wgpu/issues/1040)
-        ///
-        /// Allows for the creation of ray-tracing acceleration structures. Currently,
-        /// ray-tracing acceleration structures are only useful when used with [Features::EXPERIMENTAL_RAY_QUERY]
+        /// Allows for creation of textures of format [`TextureFormat::P010`]
         ///
         /// Supported platforms:
+        /// - DX12
         /// - Vulkan
         ///
-        /// This is a native-only feature.
-        const EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE = 1 << 30;
+        /// This is a native only feature.
+        ///
+        /// [`TextureFormat::P010`]: super::TextureFormat::P010
+        const TEXTURE_FORMAT_P010 = 1 << 30;
 
         /// Allows for the creation and usage of `ExternalTexture`s, and bind
         /// group layouts containing external texture `BindingType`s.
@@ -1009,7 +973,8 @@ bitflags_array! {
         /// all.
         ///
         /// Supported platforms:
-        /// - None
+        /// - DX12
+        /// - Metal
         const EXTERNAL_TEXTURE = 1 << 31;
 
         // Shader:
@@ -1093,7 +1058,8 @@ bitflags_array! {
         ///
         /// This is a native only feature.
         const SHADER_INT64 = 1 << 37;
-        /// Allows compute and fragment shaders to use the subgroup operation built-ins
+        /// Allows compute and fragment shaders to use the subgroup operation
+        /// built-ins and perform subgroup operations (except barriers).
         ///
         /// Supported Platforms:
         /// - Vulkan
@@ -1102,14 +1068,17 @@ bitflags_array! {
         ///
         /// This is a native only feature.
         const SUBGROUP = 1 << 38;
-        /// Allows vertex shaders to use the subgroup operation built-ins
+        /// Allows vertex shaders to use the subgroup operation built-ins and
+        /// perform subgroup operations (except barriers).
         ///
         /// Supported Platforms:
         /// - Vulkan
         ///
         /// This is a native only feature.
         const SUBGROUP_VERTEX = 1 << 39;
-        /// Allows shaders to use the subgroup barrier
+        /// Allows compute shaders to use the subgroup barrier.
+        ///
+        /// Requires [`Features::SUBGROUP`]. Without it, enables nothing.
         ///
         /// Supported Platforms:
         /// - Vulkan
@@ -1244,11 +1213,29 @@ bitflags_array! {
         ///
         /// [BlasTriangleGeometrySizeDescriptor::vertex_format]: super::BlasTriangleGeometrySizeDescriptor
         const EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS = 1 << 51;
+
+        /// Enables creating shaders from passthrough with reflection info (unsafe)
+        ///
+        /// Allows using [`Device::create_shader_module_passthrough`].
+        /// Shader code isn't parsed or interpreted in any way. It is the user's
+        /// responsibility to ensure the code and reflection (if passed) are correct.
+        ///
+        /// Supported platforms
+        /// - Vulkan
+        /// - DX12
+        /// - Metal
+        /// - WebGPU
+        ///
+        /// Ideally, in the future, all platforms will be supported. For more info, see
+        /// [this comment](https://github.com/gfx-rs/wgpu/issues/3103#issuecomment-2833058367).
+        ///
+        /// [`Device::create_shader_module_passthrough`]: https://docs.rs/wgpu/latest/wgpu/struct.Device.html#method.create_shader_module_passthrough
+        const EXPERIMENTAL_PASSTHROUGH_SHADERS = 1 << 52;
     }
 
     /// Features that are not guaranteed to be supported.
     ///
-    /// These are part of the webgpu standard. For all features see [`Features`]
+    /// These are part of the WebGPU standard. For all features, see [`Features`].
     ///
     /// If you want to use a feature, you need to first verify that the adapter supports
     /// the feature. If the adapter does not support the feature, requesting a device with it enabled
@@ -1515,11 +1502,24 @@ impl Features {
         ]))
     }
 
+    /// Mask of all features which are experimental.
+    #[must_use]
+    pub const fn all_experimental_mask() -> Self {
+        Self::from_bits_truncate(FeatureBits([
+            FeaturesWGPU::EXPERIMENTAL_MESH_SHADER.bits()
+                | FeaturesWGPU::EXPERIMENTAL_MESH_SHADER_MULTIVIEW.bits()
+                | FeaturesWGPU::EXPERIMENTAL_RAY_QUERY.bits()
+                | FeaturesWGPU::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN.bits()
+                | FeaturesWGPU::EXPERIMENTAL_PASSTHROUGH_SHADERS.bits(),
+            FeaturesWebGPU::empty().bits(),
+        ]))
+    }
+
     /// Vertex formats allowed for creating and building BLASes
     #[must_use]
     pub fn allowed_vertex_formats_for_blas(&self) -> Vec<VertexFormat> {
         let mut formats = Vec::new();
-        if self.contains(Self::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE) {
+        if self.intersects(Self::EXPERIMENTAL_RAY_QUERY) {
             formats.push(VertexFormat::Float32x3);
         }
         if self.contains(Self::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
@@ -1577,10 +1577,10 @@ mod tests {
         use alloc::format;
 
         let feature = Features::CLEAR_TEXTURE;
-        assert_eq!(format!("{}", feature), "CLEAR_TEXTURE");
+        assert_eq!(format!("{feature}"), "CLEAR_TEXTURE");
 
         let feature = Features::CLEAR_TEXTURE | Features::BGRA8UNORM_STORAGE;
-        assert_eq!(format!("{}", feature), "CLEAR_TEXTURE | BGRA8UNORM_STORAGE");
+        assert_eq!(format!("{feature}"), "CLEAR_TEXTURE | BGRA8UNORM_STORAGE");
     }
 
     #[test]
@@ -1640,5 +1640,14 @@ mod tests {
                 FeaturesWebGPU::TIMESTAMP_QUERY
             )
         );
+    }
+
+    #[test]
+    fn experimental_features_part_of_experimental_mask() {
+        for (name, feature) in Features::all().iter_names() {
+            let prefixed_with_experimental = name.starts_with("EXPERIMENTAL_");
+            let in_experimental_mask = Features::all_experimental_mask().contains(feature);
+            assert_eq!(in_experimental_mask, prefixed_with_experimental);
+        }
     }
 }

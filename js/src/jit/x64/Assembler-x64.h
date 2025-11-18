@@ -379,7 +379,7 @@ class Assembler : public AssemblerX86Shared {
   void push(const ImmWord ptr) {
     // We often end up with ImmWords that actually fit into int32.
     // Be aware of the sign extension behavior.
-    if (ptr.value <= INT32_MAX) {
+    if (intptr_t(ptr.value) == intptr_t(int32_t(ptr.value))) {
       push(Imm32(ptr.value));
     } else {
       movq(ptr, ScratchReg);
@@ -388,9 +388,14 @@ class Assembler : public AssemblerX86Shared {
   }
   void push(ImmPtr imm) { push(ImmWord(uintptr_t(imm.value))); }
   void push(FloatRegister src) {
-    MOZ_ASSERT(src.isDouble(), "float32 and simd128 not supported");
+    // We allocate space for double even when storing a float.
     subq(Imm32(sizeof(double)), StackPointer);
-    vmovsd(src, Address(StackPointer, 0));
+    if (src.isDouble()) {
+      vmovsd(src, Address(StackPointer, 0));
+    } else {
+      MOZ_ASSERT(src.isSingle(), "simd128 is not supported");
+      vmovss(src, Address(StackPointer, 0));
+    }
   }
   CodeOffset pushWithPatch(ImmWord word) {
     CodeOffset label = movWithPatch(word, ScratchReg);
@@ -399,8 +404,13 @@ class Assembler : public AssemblerX86Shared {
   }
 
   void pop(FloatRegister src) {
-    MOZ_ASSERT(src.isDouble(), "float32 and simd128 not supported");
-    vmovsd(Address(StackPointer, 0), src);
+    if (src.isDouble()) {
+      vmovsd(Address(StackPointer, 0), src);
+    } else {
+      MOZ_ASSERT(src.isSingle(), "simd128 is not supported");
+      vmovss(Address(StackPointer, 0), src);
+    }
+    // We free space for double even when storing a float.
     addq(Imm32(sizeof(double)), StackPointer);
   }
 
@@ -719,6 +729,11 @@ class Assembler : public AssemblerX86Shared {
       default:
         MOZ_CRASH("unexpected operand kind");
     }
+  }
+
+  void andnq(Register src1, Register src2, Register dest) {
+    MOZ_ASSERT(HasBMI1());
+    masm.andnq_rrr(src1.encoding(), src2.encoding(), dest.encoding());
   }
 
   void addq(Imm32 imm, Register dest) {

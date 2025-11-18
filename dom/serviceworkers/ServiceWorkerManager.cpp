@@ -8,34 +8,39 @@
 
 #include <algorithm>
 
-#include "nsCOMPtr.h"
-#include "nsICookieJarSettings.h"
-#include "nsIHttpChannel.h"
-#include "nsIHttpChannelInternal.h"
-#include "nsINamed.h"
-#include "nsINetworkInterceptController.h"
-#include "nsIMutableArray.h"
-#include "nsIPrincipal.h"
-#include "nsITimer.h"
-#include "nsIUploadChannel2.h"
-#include "nsServiceManagerUtils.h"
-#include "nsDebug.h"
-#include "nsIPermissionManager.h"
-#include "nsIPushService.h"
-#include "nsXULAppAPI.h"
-
+#include "ServiceWorker.h"
+#include "ServiceWorkerContainer.h"
+#include "ServiceWorkerEvents.h"
+#include "ServiceWorkerInfo.h"
+#include "ServiceWorkerJobQueue.h"
+#include "ServiceWorkerManagerChild.h"
+#include "ServiceWorkerPrivate.h"
+#include "ServiceWorkerQuotaUtils.h"
+#include "ServiceWorkerRegisterJob.h"
+#include "ServiceWorkerRegistrar.h"
+#include "ServiceWorkerRegistration.h"
+#include "ServiceWorkerScriptCache.h"
+#include "ServiceWorkerShutdownBlocker.h"
+#include "ServiceWorkerUnregisterJob.h"
+#include "ServiceWorkerUpdateJob.h"
+#include "ServiceWorkerUtils.h"
 #include "jsapi.h"
-
 #include "mozilla/AppShutdown.h"
 #include "mozilla/BasePrincipal.h"
-#include "mozilla/ContentBlockingAllowList.h"
 #include "mozilla/ClearOnShutdown.h"
+#include "mozilla/ContentBlockingAllowList.h"
+#include "mozilla/EnumSet.h"
 #include "mozilla/ErrorNames.h"
 #include "mozilla/LoadContext.h"
 #include "mozilla/MozPromise.h"
+#include "mozilla/PermissionManager.h"
 #include "mozilla/Result.h"
 #include "mozilla/ResultExtensions.h"
-#include "mozilla/glean/DomServiceworkersMetrics.h"
+#include "mozilla/ScopeExit.h"
+#include "mozilla/StaticPrefs_extensions.h"
+#include "mozilla/StaticPrefs_privacy.h"
+#include "mozilla/StoragePrincipalHelper.h"
+#include "mozilla/Unused.h"
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/dom/ClientHandle.h"
 #include "mozilla/dom/ClientManager.h"
@@ -51,48 +56,39 @@
 #include "mozilla/dom/PromiseNativeHandler.h"
 #include "mozilla/dom/Request.h"
 #include "mozilla/dom/RootedDictionary.h"
-#include "mozilla/dom/TypedArray.h"
+#include "mozilla/dom/ScriptLoader.h"
 #include "mozilla/dom/SharedWorker.h"
+#include "mozilla/dom/TypedArray.h"
 #include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/dom/WorkerRunnable.h"
 #include "mozilla/dom/WorkerScope.h"
 #include "mozilla/extensions/WebExtensionPolicy.h"
+#include "mozilla/glean/DomServiceworkersMetrics.h"
 #include "mozilla/ipc/BackgroundChild.h"
 #include "mozilla/ipc/PBackgroundChild.h"
 #include "mozilla/ipc/PBackgroundSharedTypes.h"
-#include "mozilla/dom/ScriptLoader.h"
-#include "mozilla/PermissionManager.h"
-#include "mozilla/ScopeExit.h"
-#include "mozilla/StaticPrefs_extensions.h"
-#include "mozilla/StaticPrefs_privacy.h"
-#include "mozilla/StoragePrincipalHelper.h"
-#include "mozilla/Unused.h"
-#include "mozilla/EnumSet.h"
-
+#include "nsCOMPtr.h"
 #include "nsComponentManagerUtils.h"
 #include "nsContentUtils.h"
+#include "nsDebug.h"
+#include "nsICookieJarSettings.h"
 #include "nsIDUtils.h"
+#include "nsIHttpChannel.h"
+#include "nsIHttpChannelInternal.h"
+#include "nsIMutableArray.h"
+#include "nsINamed.h"
+#include "nsINetworkInterceptController.h"
+#include "nsIPermissionManager.h"
+#include "nsIPrincipal.h"
+#include "nsIPushService.h"
+#include "nsITimer.h"
+#include "nsIUploadChannel2.h"
 #include "nsNetUtil.h"
 #include "nsProxyRelease.h"
 #include "nsQueryObject.h"
+#include "nsServiceManagerUtils.h"
 #include "nsTArray.h"
-
-#include "ServiceWorker.h"
-#include "ServiceWorkerContainer.h"
-#include "ServiceWorkerInfo.h"
-#include "ServiceWorkerJobQueue.h"
-#include "ServiceWorkerManagerChild.h"
-#include "ServiceWorkerPrivate.h"
-#include "ServiceWorkerRegisterJob.h"
-#include "ServiceWorkerRegistrar.h"
-#include "ServiceWorkerRegistration.h"
-#include "ServiceWorkerScriptCache.h"
-#include "ServiceWorkerShutdownBlocker.h"
-#include "ServiceWorkerEvents.h"
-#include "ServiceWorkerUnregisterJob.h"
-#include "ServiceWorkerUpdateJob.h"
-#include "ServiceWorkerUtils.h"
-#include "ServiceWorkerQuotaUtils.h"
+#include "nsXULAppAPI.h"
 
 #ifdef PostMessage
 #  undef PostMessage
@@ -211,6 +207,13 @@ nsresult PopulateRegistrationData(
   aData.lastUpdateTime() = aRegistration->GetLastUpdateTime();
 
   aData.navigationPreloadState() = aRegistration->GetNavigationPreloadState();
+
+  aData.numberOfAttemptedActivations() =
+      aRegistration->GetNumberOfAttemptedActivations();
+
+  aData.isBroken() = aRegistration->IsBroken();
+
+  aData.cacheAPIId() = aRegistration->GetCacheAPIId();
 
   MOZ_ASSERT(ServiceWorkerRegistrationDataIsValid(aData));
 
@@ -1184,8 +1187,7 @@ ServiceWorkerManager::SendNotificationClickEvent(
 
   ServiceWorkerPrivate* workerPrivate = info->WorkerPrivate();
 
-  return workerPrivate->SendNotificationClickEvent(aScope, aNotification,
-                                                   aAction);
+  return workerPrivate->SendNotificationClickEvent(aNotification, aAction);
 }
 
 NS_IMETHODIMP
@@ -1205,7 +1207,7 @@ ServiceWorkerManager::SendNotificationCloseEvent(
 
   ServiceWorkerPrivate* workerPrivate = info->WorkerPrivate();
 
-  return workerPrivate->SendNotificationCloseEvent(aScope, aNotification);
+  return workerPrivate->SendNotificationCloseEvent(aNotification);
 }
 
 RefPtr<ServiceWorkerRegistrationPromise> ServiceWorkerManager::WhenReady(

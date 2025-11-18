@@ -175,9 +175,6 @@ with Files("ImageDecoder.webidl"):
 with Files("InputEvent.webidl"):
     BUG_COMPONENT = ("Core", "DOM: UI Events & Focus Handling")
 
-with Files("InstallTrigger.webidl"):
-    BUG_COMPONENT = ("Toolkit", "Add-ons Manager")
-
 with Files("KeyAlgorithm.webidl"):
     BUG_COMPONENT = ("Core", "DOM: Security")
 
@@ -231,9 +228,6 @@ with Files("MIDI*"):
 
 with Files("Mouse*"):
     BUG_COMPONENT = ("Core", "DOM: UI Events & Focus Handling")
-
-with Files("MutationEvent.webidl"):
-    BUG_COMPONENT = ("Core", "DOM: Events")
 
 with Files("NavigationPreloadManager.webidl"):
     BUG_COMPONENT = ("Core", "DOM: Service Workers")
@@ -401,9 +395,9 @@ with Files("WebTransport*"):
     BUG_COMPONENT = ("Core", "Networking")
 
 GENERATED_WEBIDL_FILES = [
-    "CSS2Properties.webidl",
     "CSSPageDescriptors.webidl",
     "CSSPositionTryDescriptors.webidl",
+    "CSSStyleProperties.webidl",
 ]
 
 PREPROCESSED_WEBIDL_FILES = [
@@ -494,6 +488,8 @@ WEBIDL_FILES = [
     "CSPReport.webidl",
     "CSS.webidl",
     "CSSAnimation.webidl",
+    "CSSColor.webidl",
+    "CSSColorValue.webidl",
     "CSSConditionRule.webidl",
     "CSSContainerRule.webidl",
     "CSSCounterStyleRule.webidl",
@@ -501,29 +497,62 @@ WEBIDL_FILES = [
     "CSSFontFeatureValuesRule.webidl",
     "CSSFontPaletteValuesRule.webidl",
     "CSSGroupingRule.webidl",
+    "CSSHSL.webidl",
+    "CSSHWB.webidl",
+    "CSSImageValue.webidl",
     "CSSImportRule.webidl",
     "CSSKeyframeRule.webidl",
     "CSSKeyframesRule.webidl",
+    "CSSKeywordValue.webidl",
+    "CSSLab.webidl",
     "CSSLayerBlockRule.webidl",
     "CSSLayerStatementRule.webidl",
+    "CSSLCH.webidl",
     "CSSMarginRule.webidl",
+    "CSSMathClamp.webidl",
+    "CSSMathInvert.webidl",
+    "CSSMathMax.webidl",
+    "CSSMathMin.webidl",
+    "CSSMathNegate.webidl",
+    "CSSMathProduct.webidl",
+    "CSSMathSum.webidl",
+    "CSSMathValue.webidl",
+    "CSSMatrixComponent.webidl",
     "CSSMediaRule.webidl",
     "CSSMozDocumentRule.webidl",
     "CSSNamespaceRule.webidl",
     "CSSNestedDeclarations.webidl",
+    "CSSNumericArray.webidl",
+    "CSSNumericValue.webidl",
+    "CSSOKLab.webidl",
+    "CSSOKLCH.webidl",
     "CSSPageRule.webidl",
+    "CSSPerspective.webidl",
     "CSSPositionTryRule.webidl",
     "CSSPropertyRule.webidl",
     "CSSPseudoElement.webidl",
+    "CSSRGB.webidl",
+    "CSSRotate.webidl",
     "CSSRule.webidl",
     "CSSRuleList.webidl",
+    "CSSScale.webidl",
     "CSSScopeRule.webidl",
+    "CSSSkew.webidl",
+    "CSSSkewX.webidl",
+    "CSSSkewY.webidl",
     "CSSStartingStyleRule.webidl",
     "CSSStyleDeclaration.webidl",
     "CSSStyleRule.webidl",
     "CSSStyleSheet.webidl",
+    "CSSStyleValue.webidl",
     "CSSSupportsRule.webidl",
+    "CSSTransformComponent.webidl",
+    "CSSTransformValue.webidl",
     "CSSTransition.webidl",
+    "CSSTranslate.webidl",
+    "CSSUnitValue.webidl",
+    "CSSUnparsedValue.webidl",
+    "CSSVariableReferenceValue.webidl",
     "CustomElementRegistry.webidl",
     "DataTransfer.webidl",
     "DataTransferItem.webidl",
@@ -773,7 +802,6 @@ WEBIDL_FILES = [
     "MouseEvent.webidl",
     "MouseScrollEvent.webidl",
     "MozFrameLoaderOwner.webidl",
-    "MutationEvent.webidl",
     "MutationObserver.webidl",
     "NamedNodeMap.webidl",
     "NavigateEvent.webidl",
@@ -880,6 +908,8 @@ WEBIDL_FILES = [
     "StreamFilter.webidl",
     "StreamFilterDataEvent.webidl",
     "StructuredCloneTester.webidl",
+    "StylePropertyMap.webidl",
+    "StylePropertyMapReadOnly.webidl",
     "StyleSheet.webidl",
     "StyleSheetList.webidl",
     "SubtleCrypto.webidl",
@@ -1078,6 +1108,12 @@ WEBIDL_FILES = [
     "XSLTProcessor.webidl",
 ]
 
+# Native llama.cpp for ml engine.
+if CONFIG["MOZ_WIDGET_TOOLKIT"] != "android":
+    WEBIDL_FILES += [
+        "LlamaRunner.webidl",
+    ]
+
 if CONFIG["MOZ_WEBRTC"]:
     WEBIDL_FILES += [
         "PeerConnectionImpl.webidl",
@@ -1162,10 +1198,6 @@ if CONFIG["MOZ_DEBUG"] and CONFIG["ENABLE_TESTS"]:
     XPCOM_MANIFESTS += [
         "components.conf",
     ]
-
-WEBIDL_FILES += [
-    "InstallTrigger.webidl",
-]
 
 if CONFIG["FUZZING"]:
     WEBIDL_FILES += [

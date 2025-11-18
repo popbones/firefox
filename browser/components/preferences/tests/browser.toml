@@ -62,10 +62,6 @@ run-if = ["os == 'win'"] # Windows-specific handler application selection dialog
 ["browser_connection_bug1445991.js"]
 
 ["browser_connection_bug1505330.js"]
-skip-if = [
-  "verify && debug && os == 'linux'",
-  "verify && debug && os == 'mac'",
-]
 
 ["browser_connection_system_wpad.js"]
 run-if = ["os == 'win'"]
@@ -90,6 +86,8 @@ run-if = ["os == 'win'"]
 
 ["browser_dns_over_https_exceptions_subdialog.js"]
 
+["browser_downloads.js"]
+
 ["browser_ensure_prefs_bindings_initted.js"]
 
 ["browser_etp_exceptions_dialog.js"]
@@ -106,9 +104,9 @@ run-if = ["os == 'win'"]
 
 ["browser_extension_controlled.js"]
 skip-if = [
-  "tsan",
   "ccov && os == 'linux'", # Linux: bug 1613530
   "ccov && os == 'win'", # Windows: bug 1437051
+  "tsan",
 ]
 
 ["browser_filetype_dialog.js"]
@@ -159,8 +157,6 @@ support-files = ["empty_pdf_file.pdf"]
 
 ["browser_performance.js"]
 
-["browser_performance_content_process_limit.js"]
-
 ["browser_performance_e10srollout.js"]
 
 ["browser_performance_non_e10s.js"]
@@ -178,6 +174,15 @@ skip-if = ["true"]
 
 ["browser_primaryPassword.js"]
 
+["browser_privacy_allowListPreference.js"]
+skip-if = ["os == 'linux' && os_version == '24.04' && processor == 'x86_64' && tsan"] # Bug 1984525
+
+["browser_privacy_allowListPreference_dialog.js"]
+
+["browser_privacy_allowListPreference_reload.js"]
+
+["browser_privacy_allowListPreference_telemetry.js"]
+
 ["browser_privacy_cookieBannerHandling.js"]
 
 ["browser_privacy_dnsoverhttps.js"]
@@ -191,6 +196,8 @@ skip-if = ["true"]
 ["browser_privacy_relayIntegration.js"]
 
 ["browser_privacy_segmentation_pref.js"]
+
+["browser_privacy_status_card.js"]
 
 ["browser_privacy_syncDataClearing.js"]
 
@@ -269,6 +276,8 @@ skip-if = ["tsan"] # Bug 1678829
 
 ["browser_security-3.js"]
 
+["browser_setting_group_in_progress.js"]
+
 ["browser_site_login_exceptions.js"]
 
 ["browser_site_login_exceptions_policy.js"]
@@ -292,6 +301,8 @@ support-files = [
 ["browser_sync_pairing.js"]
 
 ["browser_trendingsuggestions.js"]
+
+["browser_usage_telemetry.js"]
 
 ["browser_warning_permanent_private_browsing.js"]
 

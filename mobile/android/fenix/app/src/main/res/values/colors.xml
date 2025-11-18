@@ -67,9 +67,9 @@
     <!-- Switch thumb OFF -->
     <color name="fx_mobile_action_color_form_off" tools:ignore="UnusedResources">@color/photonLightGrey05</color>
     <!-- Scroll indicator active -->
-    <color name="fx_mobile_action_color_indicator_active">@color/photonLightGrey50</color>
+    <color name="fx_mobile_action_color_indicator_active" tools:ignore="UnusedResources">@color/photonLightGrey50</color>
     <!-- Scroll indicator inactive -->
-    <color name="fx_mobile_action_color_indicator_inactive">@color/photonLightGrey30</color>
+    <color name="fx_mobile_action_color_indicator_inactive" tools:ignore="UnusedResources">@color/photonLightGrey30</color>
 
     <!-- Text -->
     <!-- Primary text -->
@@ -359,6 +359,9 @@
     <!-- Launcher Icon colors -->
     <color name="ic_launcher_background">#FDFDFD</color>
 
+    <!-- Splash screen colors -->
+    <color name="splash_screen_color">@color/photonOrange50</color>
+
     <!-- Private Browsing Mode Persistent Notification -->
     <color name="pbm_notification_color">@color/photonViolet70</color>
 
@@ -392,4 +395,8 @@
     <!-- Extensions disabled icon fill colors -->
     <color name="mozac_ui_extensions_warning_bg_fill_critical" tools:ignore="UnusedResources">@color/fx_mobile_icon_color_secondary</color>
     <color name="mozac_ui_extensions_warning_fill_critical" tools:ignore="UnusedResources">@color/fx_mobile_icon_color_critical</color>
+
+    <!-- Lock slash critical fill colors for mozac_ic_lock_slash_critical_24 -->
+    <color name="mozac_ui_lock_slash_bg_fill_critical" tools:ignore="UnusedResources">@color/fx_mobile_icon_color_secondary</color>
+    <color name="mozac_ui_lock_slash_fill_critical" tools:ignore="UnusedResources">@color/fx_mobile_icon_color_critical</color>
 </resources>

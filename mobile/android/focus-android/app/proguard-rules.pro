@@ -52,26 +52,8 @@
 # Android architecture components
 ####################################################################################################
 
--dontwarn android.**
--dontwarn androidx.**
--dontwarn com.google.**
 -dontwarn org.mozilla.geckoview.**
 -dontwarn mozilla.components.**
-
-# https://developer.android.com/topic/libraries/architecture/release-notes.html
-# According to the docs this won't be needed when 1.0 of the library is released.
--keep class * implements android.arch.lifecycle.GeneratedAdapter {<init>(...);}
-
-# Temporary fix until we can use androidx
--dontwarn mozilla.components.service.fretboard.scheduler.workmanager.**
-
-# Fix for ViewModels
--keep class * extends androidx.lifecycle.ViewModel {
-    <init>();
-}
--keep class * extends androidx.lifecycle.AndroidViewModel {
-    <init>(android.app.Application);
-}
 
 ####################################################################################################
 # Mozilla Application Services
@@ -121,3 +103,10 @@
 -assumenosideeffects class kotlinx.coroutines.internal.MainDispatcherLoader {
     boolean FAST_SERVICE_LOADER_ENABLED return true;
 }
+
+####################################################################################################
+# Add explicit keep rules for Nimbus RustBuffer and related structs to avoid
+# overly-aggressive optimization when R8 fullMode is enabled, leading to crashes.
+####################################################################################################
+-keepattributes RuntimeVisibleAnnotations,RuntimeInvisibleAnnotations,RuntimeVisibleTypeAnnotations,RuntimeInvisibleTypeAnnotations,AnnotationDefault,InnerClasses,EnclosingMethod,Signature
+-keep class org.mozilla.experiments.nimbus.internal.** { *; }

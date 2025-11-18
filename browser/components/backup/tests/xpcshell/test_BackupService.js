@@ -158,7 +158,11 @@ async function testCreateBackupHelper(sandbox, taskFn) {
   let { manifest, archivePath: backupFilePath } = await bs.createBackup({
     profilePath: fakeProfilePath,
   });
-  Assert.ok(bs.state.lastBackupDate, "The backup date was recorded.");
+  Assert.notStrictEqual(
+    bs.state.lastBackupDate,
+    null,
+    "The backup date was recorded."
+  );
 
   let legacyEvents = TelemetryTestUtils.getEvents(
     { category: "browser.backup", method: "created", object: "BackupService" },
@@ -391,8 +395,9 @@ async function testDeleteLastBackupHelper(taskFn) {
   Services.prefs.clearUserPref(LAST_BACKUP_FILE_NAME_PREF_NAME);
 
   await testCreateBackupHelper(sandbox, async (bs, _manifest) => {
-    Assert.ok(
+    Assert.notStrictEqual(
       bs.state.lastBackupDate,
+      null,
       "Should have a last backup date recorded."
     );
     Assert.ok(
@@ -561,8 +566,7 @@ add_task(
         assertHistogramMeasurementQuantity(backupTimerHistogram, 0);
       })
       .catch(() => {
-        // Trigger failure if there was an uncaught error
-        Assert.ok(false, "Should not have bubbled up an error");
+        // Failure bubbles up an error for handling by the caller
       })
       .finally(async () => {
         await IOUtils.remove(inaccessibleProfilePath, { recursive: true });

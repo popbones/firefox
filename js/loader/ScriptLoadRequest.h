@@ -44,8 +44,7 @@ namespace mozilla::loader {
 class SyncLoadContext;
 }  // namespace mozilla::loader
 
-namespace JS {
-namespace loader {
+namespace JS::loader {
 
 class LoadContextBase;
 class ModuleLoadRequest;
@@ -106,7 +105,7 @@ class ScriptLoadRequest : public nsISupports,
   using super::getNext;
   using super::isInList;
 
-  template <typename T, typename D = JS::DeletePolicy<T>>
+  template <typename T, typename D = DeletePolicy<T>>
   using UniquePtr = mozilla::UniquePtr<T, D>;
 
   bool IsModuleRequest() const { return mKind == ScriptKind::eModule; }
@@ -134,8 +133,6 @@ class ScriptLoadRequest : public nsISupports,
     PendingFetchingError,
     Fetching,
     Compiling,
-    LoadingImports,
-    CancelingImports,
     Ready,
     Canceled
   };
@@ -150,8 +147,6 @@ class ScriptLoadRequest : public nsISupports,
   // the JavaScript engine.
   bool IsFetching() const { return mState == State::Fetching; }
   bool IsCompiling() const { return mState == State::Compiling; }
-  bool IsLoadingImports() const { return mState == State::LoadingImports; }
-  bool IsCancelingImports() const { return mState == State::CancelingImports; }
   bool IsCanceled() const { return mState == State::Canceled; }
 
   bool IsPendingFetchingError() const {
@@ -170,10 +165,6 @@ class ScriptLoadRequest : public nsISupports,
 
   enum mozilla::dom::ReferrerPolicy ReferrerPolicy() const {
     return mReferrerPolicy;
-  }
-
-  void UpdateReferrerPolicy(mozilla::dom::ReferrerPolicy aReferrerPolicy) {
-    mReferrerPolicy = aReferrerPolicy;
   }
 
   enum ParserMetadata ParserMetadata() const {
@@ -197,38 +188,83 @@ class ScriptLoadRequest : public nsISupports,
 
   void SetPendingFetchingError();
 
-  bool PassedConditionForBytecodeEncoding() const {
-    return mBytecodeEncodingPlan == BytecodeEncodingPlan::PassedCondition ||
-           mBytecodeEncodingPlan == BytecodeEncodingPlan::MarkedForEncode;
+  bool PassedConditionForDiskCache() const {
+    return mDiskCachingPlan == CachingPlan::PassedCondition ||
+           mDiskCachingPlan == CachingPlan::MarkedForCache;
   }
 
-  void MarkSkippedBytecodeEncoding() {
-    MOZ_ASSERT(mBytecodeEncodingPlan == BytecodeEncodingPlan::Uninitialized ||
-               mBytecodeEncodingPlan == BytecodeEncodingPlan::PassedCondition);
-    mBytecodeEncodingPlan = BytecodeEncodingPlan::Skipped;
+  bool PassedConditionForMemoryCache() const {
+    return mMemoryCachingPlan == CachingPlan::PassedCondition ||
+           mMemoryCachingPlan == CachingPlan::MarkedForCache;
   }
 
-  void MarkPassedConditionForBytecodeEncoding() {
-    MOZ_ASSERT(mBytecodeEncodingPlan == BytecodeEncodingPlan::Uninitialized);
-    mBytecodeEncodingPlan = BytecodeEncodingPlan::PassedCondition;
+  bool PassedConditionForEitherCache() const {
+    return PassedConditionForDiskCache() || PassedConditionForMemoryCache();
   }
 
-  bool IsMarkedForBytecodeEncoding() const {
-    return mBytecodeEncodingPlan == BytecodeEncodingPlan::MarkedForEncode;
+  void MarkSkippedDiskCaching() {
+    MOZ_ASSERT(mDiskCachingPlan == CachingPlan::Uninitialized ||
+               mDiskCachingPlan == CachingPlan::PassedCondition);
+    mDiskCachingPlan = CachingPlan::Skipped;
+  }
+
+  void MarkSkippedMemoryCaching() {
+    MOZ_ASSERT(mMemoryCachingPlan == CachingPlan::Uninitialized ||
+               mMemoryCachingPlan == CachingPlan::PassedCondition);
+    mMemoryCachingPlan = CachingPlan::Skipped;
+  }
+
+  void MarkSkippedAllCaching() {
+    MarkSkippedDiskCaching();
+    MarkSkippedMemoryCaching();
+  }
+
+  void MarkPassedConditionForDiskCache() {
+    MOZ_ASSERT(mDiskCachingPlan == CachingPlan::Uninitialized);
+    mDiskCachingPlan = CachingPlan::PassedCondition;
+  }
+
+  void MarkPassedConditionForMemoryCache() {
+    MOZ_ASSERT(mMemoryCachingPlan == CachingPlan::Uninitialized);
+    mMemoryCachingPlan = CachingPlan::PassedCondition;
+  }
+
+  bool IsMarkedForDiskCache() const {
+    return mDiskCachingPlan == CachingPlan::MarkedForCache;
+  }
+
+  bool IsMarkedForMemoryCache() const {
+    return mMemoryCachingPlan == CachingPlan::MarkedForCache;
+  }
+
+  bool IsMarkedForEitherCache() const {
+    return IsMarkedForDiskCache() || IsMarkedForMemoryCache();
   }
 
  protected:
-  void MarkForBytecodeEncoding() {
-    MOZ_ASSERT(mBytecodeEncodingPlan == BytecodeEncodingPlan::PassedCondition);
-    mBytecodeEncodingPlan = BytecodeEncodingPlan::MarkedForEncode;
+  void MarkForCache() {
+    MOZ_ASSERT(mDiskCachingPlan == CachingPlan::PassedCondition ||
+               mMemoryCachingPlan == CachingPlan::PassedCondition);
+
+    if (mDiskCachingPlan == CachingPlan::PassedCondition) {
+      mDiskCachingPlan = CachingPlan::MarkedForCache;
+    }
+    if (mMemoryCachingPlan == CachingPlan::PassedCondition) {
+      mMemoryCachingPlan = CachingPlan::MarkedForCache;
+    }
   }
 
  public:
-  void MarkScriptForBytecodeEncoding(JSScript* aScript);
+  void MarkScriptForCache(JSScript* aScript);
 
   mozilla::CORSMode CORSMode() const { return mFetchOptions->mCORSMode; }
 
-  void DropBytecodeCacheReferences();
+  // Check the reference to the cache info channel, which is used by the disk
+  // cache.
+  bool HasDiskCacheReference() const { return !!mCacheInfo; }
+
+  // Drop the reference to the cache info channel.
+  void DropDiskCacheReference();
 
   bool HasLoadContext() const { return mLoadContext; }
   bool HasScriptLoadContext() const;
@@ -259,22 +295,28 @@ class ScriptLoadRequest : public nsISupports,
   State mState;           // Are we still waiting for a load to complete?
   bool mFetchSourceOnly;  // Request source, not cached bytecode.
 
-  enum class BytecodeEncodingPlan : uint8_t {
-    // This is not yet considered for encoding.
+  // Becomes true if this has source map url.
+  //
+  // Do not access directly.
+  // Use HasSourceMapURL(), SetSourceMapURL(), and GetSourceMapURL().
+  bool mHasSourceMapURL_;
+
+  enum class CachingPlan : uint8_t {
+    // This is not yet considered for caching.
     Uninitialized,
 
-    // This is marked for skipping the encoding.
+    // This is marked for skipping the caching.
     Skipped,
 
-    // This fits the condition for the encoding (e.g. file size, fetch count).
+    // This fits the condition for the caching (e.g. file size, fetch count).
     PassedCondition,
 
     // This is marked for encoding, with setting sufficient input,
-    // e.g. mScriptForBytecodeEncoding for script.
-    MarkedForEncode,
+    // e.g. mScriptForCache for script.
+    MarkedForCache,
   };
-  BytecodeEncodingPlan mBytecodeEncodingPlan =
-      BytecodeEncodingPlan::Uninitialized;
+  CachingPlan mDiskCachingPlan = CachingPlan::Uninitialized;
+  CachingPlan mMemoryCachingPlan = CachingPlan::Uninitialized;
 
   // The referrer policy used for the initial fetch and for fetching any
   // imported modules
@@ -286,8 +328,23 @@ class ScriptLoadRequest : public nsISupports,
   RefPtr<mozilla::SubResourceNetworkMetadataHolder> mNetworkMetadata;
   const SRIMetadata mIntegrity;
   const nsCOMPtr<nsIURI> mReferrer;
-  mozilla::Maybe<nsString>
-      mSourceMapURL;  // Holds source map url for loaded scripts
+
+  // Holds source map url for loaded scripts.
+  //
+  // Do not access directly.
+  // Use HasSourceMapURL(), SetSourceMapURL(), and GetSourceMapURL().
+  nsString mMaybeSourceMapURL_;
+
+  bool HasSourceMapURL() const { return mHasSourceMapURL_; }
+  const nsString& GetSourceMapURL() const {
+    MOZ_ASSERT(mHasSourceMapURL_);
+    return mMaybeSourceMapURL_;
+  }
+  void SetSourceMapURL(const nsString& aSourceMapURL) {
+    MOZ_ASSERT(!mHasSourceMapURL_);
+    mMaybeSourceMapURL_ = aSourceMapURL;
+    mHasSourceMapURL_ = true;
+  }
 
   const nsCOMPtr<nsIURI> mURI;
   nsCOMPtr<nsIPrincipal> mOriginPrincipal;
@@ -312,7 +369,7 @@ class ScriptLoadRequest : public nsISupports,
   // it is parsed, and marked to be saved in the bytecode cache.
   //
   // NOTE: This field is not used for ModuleLoadRequest.
-  JS::Heap<JSScript*> mScriptForBytecodeEncoding;
+  JS::Heap<JSScript*> mScriptForCache;
 
   // Holds the Cache information, which is used to register the bytecode
   // on the cache entry, such that we can load it the next time.
@@ -328,59 +385,6 @@ class ScriptLoadRequest : public nsISupports,
   uint64_t mEarlyHintPreloaderId;
 };
 
-class ScriptLoadRequestList : private mozilla::LinkedList<ScriptLoadRequest> {
-  using super = mozilla::LinkedList<ScriptLoadRequest>;
-
- public:
-  ~ScriptLoadRequestList();
-
-  void CancelRequestsAndClear();
-
-#ifdef DEBUG
-  bool Contains(ScriptLoadRequest* aElem) const;
-#endif  // DEBUG
-
-  using super::getFirst;
-  using super::isEmpty;
-
-  void AppendElement(ScriptLoadRequest* aElem) {
-    MOZ_ASSERT(!aElem->isInList());
-    NS_ADDREF(aElem);
-    insertBack(aElem);
-  }
-
-  already_AddRefed<ScriptLoadRequest> Steal(ScriptLoadRequest* aElem) {
-    aElem->removeFrom(*this);
-    return dont_AddRef(aElem);
-  }
-
-  already_AddRefed<ScriptLoadRequest> StealFirst() {
-    MOZ_ASSERT(!isEmpty());
-    return Steal(getFirst());
-  }
-
-  void Remove(ScriptLoadRequest* aElem) {
-    aElem->removeFrom(*this);
-    NS_RELEASE(aElem);
-  }
-};
-
-inline void ImplCycleCollectionUnlink(ScriptLoadRequestList& aField) {
-  while (!aField.isEmpty()) {
-    RefPtr<ScriptLoadRequest> first = aField.StealFirst();
-  }
-}
-
-inline void ImplCycleCollectionTraverse(
-    nsCycleCollectionTraversalCallback& aCallback,
-    ScriptLoadRequestList& aField, const char* aName, uint32_t aFlags) {
-  for (ScriptLoadRequest* request = aField.getFirst(); request;
-       request = request->getNext()) {
-    CycleCollectionNoteChild(aCallback, request, aName, aFlags);
-  }
-}
-
-}  // namespace loader
-}  // namespace JS
+}  // namespace JS::loader
 
 #endif  // js_loader_ScriptLoadRequest_h

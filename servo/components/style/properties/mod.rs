@@ -31,7 +31,7 @@ use crate::stylist::Stylist;
 use crate::values::{computed, serialize_atom_name};
 use arrayvec::{ArrayVec, Drain as ArrayVecDrain};
 use cssparser::{Parser, ParserInput};
-use fxhash::FxHashMap;
+use rustc_hash::FxHashMap;
 use servo_arc::Arc;
 use std::{
     borrow::Cow,
@@ -129,7 +129,7 @@ impl CSSWideKeyword {
 }
 
 /// A declaration using a CSS-wide keyword.
-#[derive(Clone, PartialEq, ToCss, ToShmem, MallocSizeOf)]
+#[derive(Clone, PartialEq, ToCss, ToShmem, MallocSizeOf, ToTyped)]
 pub struct WideKeywordDeclaration {
     #[css(skip)]
     id: LonghandId,
@@ -138,7 +138,7 @@ pub struct WideKeywordDeclaration {
 }
 
 /// An unparsed declaration that contains `var()` functions.
-#[derive(Clone, PartialEq, ToCss, ToShmem, MallocSizeOf)]
+#[derive(Clone, PartialEq, ToCss, ToShmem, MallocSizeOf, ToTyped)]
 pub struct VariableDeclaration {
     /// The id of the property this declaration represents.
     #[css(skip)]
@@ -161,7 +161,7 @@ pub enum CustomDeclarationValue {
 }
 
 /// A custom property declaration with the property name and the declared value.
-#[derive(Clone, PartialEq, ToCss, ToShmem, MallocSizeOf)]
+#[derive(Clone, PartialEq, ToCss, ToShmem, MallocSizeOf, ToTyped)]
 pub struct CustomDeclaration {
     /// The name of the custom property.
     #[css(skip)]
@@ -254,8 +254,8 @@ impl NonCustomPropertyId {
     /// Returns a shorthand id, if this property is one.
     #[inline]
     pub fn as_shorthand(self) -> Option<ShorthandId> {
-        if self.0 >= property_counts::LONGHANDS as u16 &&
-            self.0 < property_counts::LONGHANDS_AND_SHORTHANDS as u16
+        if self.0 >= property_counts::LONGHANDS as u16
+            && self.0 < property_counts::LONGHANDS_AND_SHORTHANDS as u16
         {
             return Some(unsafe { mem::transmute(self.0 - (property_counts::LONGHANDS as u16)) });
         }
@@ -438,7 +438,7 @@ impl PropertyId {
 
     /// Given this property id, get it either as a shorthand or as a
     /// `PropertyDeclarationId`.
-    pub fn as_shorthand(&self) -> Result<ShorthandId, PropertyDeclarationId> {
+    pub fn as_shorthand(&self) -> Result<ShorthandId, PropertyDeclarationId<'_>> {
         match *self {
             Self::NonCustom(id) => match id.longhand_or_shorthand() {
                 Ok(lh) => Err(PropertyDeclarationId::Longhand(lh)),
@@ -490,7 +490,12 @@ impl PropertyId {
     fn allowed_in(&self, context: &ParserContext) -> bool {
         let id = match self.non_custom_id() {
             // Custom properties are allowed everywhere, except `position-try`.
-            None => return !context.nesting_context.rule_types.contains(CssRuleType::PositionTry),
+            None => {
+                return !context
+                    .nesting_context
+                    .rule_types
+                    .contains(CssRuleType::PositionTry)
+            },
             Some(id) => id,
         };
         id.allowed_in(context)
@@ -957,7 +962,7 @@ impl OwnedPropertyDeclarationId {
 
     /// Returns the corresponding PropertyDeclarationId.
     #[inline]
-    pub fn as_borrowed(&self) -> PropertyDeclarationId {
+    pub fn as_borrowed(&self) -> PropertyDeclarationId<'_> {
         match self {
             Self::Longhand(id) => PropertyDeclarationId::Longhand(*id),
             Self::Custom(name) => PropertyDeclarationId::Custom(name),
@@ -1102,7 +1107,7 @@ impl<'a> PropertyDeclarationId<'a> {
         match self {
             Self::Longhand(longhand) => longhand.is_discrete_animatable(),
             // TODO(bug 1885995): Refine this.
-            Self::Custom(_) => cfg!(feature = "gecko")
+            Self::Custom(_) => cfg!(feature = "gecko"),
         }
     }
 
@@ -1188,7 +1193,7 @@ impl LonghandIdSet {
     }
 
     /// Iterate over the current longhand id set.
-    pub fn iter(&self) -> LonghandIdSetIterator {
+    pub fn iter(&self) -> LonghandIdSetIterator<'_> {
         LonghandIdSetIterator {
             chunks: &self.storage,
             cur_chunk: 0,
@@ -1335,7 +1340,7 @@ impl SourcePropertyDeclaration {
     }
 
     /// Similar to Vec::drain: leaves this empty when the return value is dropped.
-    pub fn drain(&mut self) -> SourcePropertyDeclarationDrain {
+    pub fn drain(&mut self) -> SourcePropertyDeclarationDrain<'_> {
         SourcePropertyDeclarationDrain {
             declarations: self.declarations.drain(..),
             all_shorthand: mem::replace(&mut self.all_shorthand, AllShorthand::NotSet),
@@ -1545,7 +1550,7 @@ impl Default for AllShorthand {
 impl AllShorthand {
     /// Iterates property declarations from the given all shorthand value.
     #[inline]
-    pub fn declarations(&self) -> AllShorthandDeclarationIterator {
+    pub fn declarations(&self) -> AllShorthandDeclarationIterator<'_> {
         AllShorthandDeclarationIterator {
             all_shorthand: self,
             longhands: ShorthandId::All.longhands(),

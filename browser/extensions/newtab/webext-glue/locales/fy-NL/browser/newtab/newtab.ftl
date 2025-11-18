@@ -56,6 +56,9 @@ newtab-topsites-add-shortcut-header = Nije fluchkeppeling
 newtab-topsites-edit-topsites-header = Topwebsite tafoegje
 newtab-topsites-edit-shortcut-header = Fluchkeppeling bewurkje
 newtab-topsites-add-shortcut-label = Fluchkeppeling tafoegje
+newtab-topsites-add-shortcut-title =
+    .title = Fluchkeppeling tafoegje
+    .aria-label = Fluchkeppeling tafoegje
 newtab-topsites-title-label = Titel
 newtab-topsites-title-input =
     .placeholder = Titel ynfiere
@@ -84,6 +87,14 @@ newtab-confirm-delete-history-p2 = Dizze aksje kin net ûngedien makke wurde.
 ## Top Sites - Sponsored label
 
 newtab-topsite-sponsored = Sponsore
+
+## Label used by screen readers for pinned top sites
+
+# Variables:
+#   $title (string) - The label or hostname of the site.
+topsite-label-pinned =
+    .aria-label = { $title } (fêstset)
+    .title = { $title }
 
 ## Context Menu - Action Tooltips.
 
@@ -308,19 +319,32 @@ newtab-custom-pocket-subtitle = Utsûnderlike ynhâld, gearstald troch { -pocket
 newtab-custom-stories-toggle =
     .label = Oanrekommandearre ferhalen
     .description = Utsûnderlike ynhâld, sammele troch de { -brand-product-name }-famylje
+newtab-custom-stories-personalized-toggle =
+    .label = Ferhalen
+newtab-custom-stories-personalized-checkbox-label = Personalisearre ferhalen op basis fan jo aktiviteit
 newtab-custom-pocket-sponsored = Sponsore ferhalen
 newtab-custom-pocket-show-recent-saves = Koartlyn bewarre items toane
 newtab-custom-recent-title = Resinte aktiviteit
 newtab-custom-recent-subtitle = In seleksje fan resinte websites en ynhâld
-newtab-custom-recent-toggle =
-    .label = Resinte aktiviteit
-    .description = In seleksje fan resinte websites en ynhâld
 newtab-custom-weather-toggle =
     .label = It waar
     .description = De waarsferwachting fan hjoed yn ien eachopslach
 newtab-custom-trending-search-toggle =
     .label = Trending sykopdrachten
     .description = Populêre en faak sochte ûnderwerpen
+newtab-custom-widget-weather-toggle =
+    .label = It waar
+newtab-custom-widget-trending-search-toggle =
+    .label = Trending sykopdrachten
+newtab-custom-widget-lists-toggle =
+    .label = Listen
+newtab-custom-widget-timer-toggle =
+    .label = Timer
+newtab-custom-widget-section-title = Widgets
+# Tooltip for close button
+newtab-custom-close-menu-button =
+    .title = Slute
+    .aria-label = Menu slute
 newtab-custom-close-button = Slute
 newtab-custom-settings = Mear ynstellingen beheare
 
@@ -333,6 +357,7 @@ newtab-wallpaper-custom-color = Kies in kleur
 # Variables
 #   $file_size (number) - The number of the maximum image file size (in MB) that may be uploaded
 newtab-wallpaper-error-max-file-size = De ôfbylding giet oer de limyt fan { $file_size } MB. Probearje in lytser bestân op te laden.
+newtab-wallpaper-error-upload-file-type = Wy koene jo bestân net oplade. Probearje it opnij mei in ôfbyldingsbestân.
 newtab-wallpaper-error-file-type = Wy koene jo bestân net oplade. Probearje it nochris mei in oar bestânstype.
 newtab-wallpaper-light-red-panda = Reade panda
 newtab-wallpaper-light-mountain = Wite berch
@@ -438,7 +463,6 @@ newtab-weather-menu-change-location = Lokaasje wizigje
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Lokaasje sykje
     .aria-label = Lokaasje sykje
-newtab-weather-change-location-search-input = Lokaasje sykje
 newtab-weather-menu-weather-display = Waarwerjefte
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -504,6 +528,9 @@ newtab-topic-selection-button-pick-interests = Kies jo ynteressen
 newtab-section-follow-button = Folgje
 newtab-section-following-button = Folgjend
 newtab-section-unfollow-button = Untfolgje
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = Jo feed ferfynje
+newtab-section-follow-highlight-subtitle = Folgje jo ynteressen om mear te sjen fan dêr’t jo wol oer meie.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -536,6 +563,12 @@ newtab-custom-wallpaper-title = Hjir fine jo oanpaste eftergrûnen
 newtab-custom-wallpaper-subtitle = Laad jo eigen eftergrûn op of kies in oanpaste kleur om { -brand-product-name } fan josels te meitsjen.
 newtab-custom-wallpaper-cta = Probearje
 
+## Strings for new user activation custom wallpaper highlight
+
+newtab-new-user-custom-wallpaper-title = Kies in eftergrûn om { -brand-product-name } fan jo te meitsjen
+newtab-new-user-custom-wallpaper-subtitle = Lit elk nij ljepblêd as thús fiele mei oanpaste eftergrûnen en kleuren.
+newtab-new-user-custom-wallpaper-cta = No probearje
+
 ## Strings for download mobile highlight
 
 newtab-download-mobile-highlight-title = { -brand-product-name } foar mobyl downloade
@@ -545,6 +578,11 @@ newtab-download-mobile-highlight-body-variant-b = Gean troch wêr’t jo bleaun 
 newtab-download-mobile-highlight-body-variant-c = Wisten jo dat jo { -brand-product-name } ek ûnderweis meinimme kinne? Deselde browser. Yn jo bûse.
 newtab-download-mobile-highlight-image =
     .aria-label = QR-koade om { -brand-product-name } foar mobyl te downloaden
+
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = Jo favoriten foar de hân
+newtab-shortcuts-highlight-subtitle = Foegje in fluchkeppeling ta om jo favorite websites op ien klik ôfstân te hâlden.
 
 ## Strings for reporting ads and content
 
@@ -571,11 +609,84 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
-# "Trending on Google" refers to the trending topics coming from Google Search, usually seen when a user is focused on the search bar
-newtab-trending-searches-trending-on-google = Trending op Google
 newtab-trending-searches-show-trending =
     .title = Trending sykopdrachten toane
 newtab-trending-searches-hide-trending =
     .title = Trending sykopdrachten ferstopje
 newtab-trending-searches-learn-more = Mear ynfo
 newtab-trending-searches-dismiss = Trending sykopdrachten ferstopje
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = Trending sykopdrachten
+
+## Strings for task / to-do list productivity widget
+
+# "Add one" means adding a new task to the list (e.g., "Walk the dog")
+newtab-widget-lists-empty-cta = De mooglikheden binne einleas. Foegje der ien ta.
+# A simple label next to the default list name letting users know this is a new / beta feature
+newtab-widget-lists-label-new =
+    .label = Nij
+newtab-widget-lists-label-beta =
+    .label = Beta
+# When tasks have been previous marked as complete, they will appear in their own separate list beneath incomplete items
+# Variables:
+#   $number (number) - Amount of list items marked complete
+newtab-widget-lists-completed-list = Foltôge ({ $number })
+newtab-widget-task-list-menu-copy = Kopiearje
+newtab-widget-lists-menu-edit = Listnamme bewurkje
+newtab-widget-lists-menu-create = Nije list oanmeitsje
+newtab-widget-lists-menu-delete = Dizze list fuortsmite?
+newtab-widget-lists-menu-copy = List nei klamboerd kopiearje
+newtab-widget-lists-menu-hide = Alle listen ferstopje
+newtab-widget-lists-menu-learn-more = Mear ynfo
+newtab-widget-lists-input-add-an-item =
+    .placeholder = In item tafoegje
+newtab-widget-lists-input-error = Foegje tekst ta om in item ta te foegjen.
+newtab-widget-lists-input-menu-open-link = Keppeling iepenje
+newtab-widget-lists-input-menu-move-up = Omheech ferpleatse
+newtab-widget-lists-input-menu-move-down = Omleech ferpleatse
+newtab-widget-lists-input-menu-delete = Fuortsmite
+newtab-widget-lists-input-menu-edit = Bewurkje
+newtab-widget-lists-name-label-default =
+    .label = Takelist
+newtab-widget-lists-name-placeholder-default =
+    .placeholder = Takelist
+# The placeholder value of the name field for a newly created list
+newtab-widget-lists-name-placeholder-new =
+    .placeholder = Nije list
+
+## Strings for timer productivity widget
+## When the timer ends, a system notification may be shown. Depending on which mode the timer is in, that message would be shown
+
+newtab-widget-timer-notification-title = Timer
+newtab-widget-timer-notification-focus = De fokustiid is foarby. Goed dien. Skoft?
+newtab-widget-timer-notification-break = Jo skoft is foarby. Ree om te fokusjen?
+newtab-widget-timer-notification-warning = Notifikaasjes stean út
+newtab-widget-timer-mode-focus =
+    .label = Fokus
+newtab-widget-timer-mode-break =
+    .label = Skoft
+newtab-widget-timer-play =
+    .title = Ofspylje
+newtab-widget-timer-pause =
+    .title = Pauzearje
+newtab-widget-timer-label-play =
+    .label = Ofspylje
+newtab-widget-timer-label-pause =
+    .label = Pauzearje
+newtab-widget-timer-reset =
+    .title = Opnij inisjalisearje
+newtab-widget-timer-menu-notifications = Notifikaasjes útskeakelje
+newtab-widget-timer-menu-notifications-on = Notifikaasjes ynskeakelje
+newtab-widget-timer-menu-hide = Timer ferstopje
+newtab-widget-timer-menu-learn-more = Mear ynfo
+# Message that appears when widgets are full-height. This reminds users that there is more New Tab content to see if they scroll
+newtab-widget-keep-scrolling = Scrol foar mear
+newtab-widget-message-title = Bliuw fokust mei listen en in ynboude timer
+# to-dos stands for "things to do".
+newtab-widget-message-copy = Fan rappe yn ’t sin bringers oant deistige taken, fokussesjes oant stretchskoft – bliuw by de taak en op tiid.
+newtab-promo-card-title = { -brand-product-name } stypje
+newtab-promo-card-body = Us sponsors stypje ús misje om in better web te bouwen
+newtab-promo-card-cta = Mear ynfo
+newtab-promo-card-dismiss-button =
+    .title = Slute
+    .aria-label = Slute

@@ -118,14 +118,6 @@ class LookAndFeel {
     MacBigSurTheme,
 
     /*
-     * A Boolean value to determine whether macOS is in RTL mode or not.
-     */
-    MacRTL,
-
-    /* Native macOS titlebar height. */
-    MacTitlebarHeight,
-
-    /*
      * AlertNotificationOrigin indicates from which corner of the
      * screen alerts slide in, and from which direction (horizontal/vertical).
      * 0, the default, represents bottom right, sliding vertically.
@@ -302,9 +294,6 @@ class LookAndFeel {
     /** GTK titlebar radius */
     TitlebarRadius,
 
-    /** GTK button-to-button spacing in the inline axis */
-    TitlebarButtonSpacing,
-
     /** GTK tooltip radius */
     TooltipRadius,
 
@@ -337,6 +326,9 @@ class LookAndFeel {
 
     /* Whether the menubar is native / outside the application */
     NativeMenubar,
+
+    // The system's hour cycle, either 0 if unknown, 12, or 24.
+    HourCycle,
 
     /*
      * Not an ID; used to define the range of valid IDs.  Must be last.

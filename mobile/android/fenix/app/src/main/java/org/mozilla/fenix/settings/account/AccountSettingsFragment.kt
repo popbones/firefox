@@ -13,7 +13,6 @@ import android.provider.Settings
 import android.text.InputFilter
 import android.text.format.DateUtils
 import android.view.View
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.edit
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -22,6 +21,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
 import mozilla.appservices.syncmanager.SyncTelemetry
@@ -39,7 +39,6 @@ import mozilla.components.service.fxa.sync.setLastSynced
 import mozilla.components.support.ktx.android.content.getColorFromAttr
 import mozilla.components.ui.widgets.withCenterAlignedButtons
 import mozilla.telemetry.glean.private.NoExtras
-import org.mozilla.fenix.FeatureFlags
 import org.mozilla.fenix.GleanMetrics.SyncAccount
 import org.mozilla.fenix.R
 import org.mozilla.fenix.components.StoreProvider
@@ -48,6 +47,7 @@ import org.mozilla.fenix.compose.snackbar.Snackbar
 import org.mozilla.fenix.compose.snackbar.SnackbarState
 import org.mozilla.fenix.ext.components
 import org.mozilla.fenix.ext.getPreferenceKey
+import org.mozilla.fenix.ext.pixelSizeFor
 import org.mozilla.fenix.ext.requireComponents
 import org.mozilla.fenix.ext.secure
 import org.mozilla.fenix.ext.settings
@@ -194,7 +194,7 @@ class AccountSettingsFragment : PreferenceFragmentCompat() {
             }
             setOnBindEditTextListener { editText ->
                 editText.filters = arrayOf(InputFilter.LengthFilter(DEVICE_NAME_MAX_LENGTH))
-                editText.minHeight = resources.getDimensionPixelSize(R.dimen.account_settings_device_name_min_height)
+                editText.minHeight = pixelSizeFor(R.dimen.account_settings_device_name_min_height)
             }
         }
 
@@ -306,7 +306,7 @@ class AccountSettingsFragment : PreferenceFragmentCompat() {
      */
     private fun showPinDialogWarning(syncEngine: SyncEngine, newValue: Boolean) {
         context?.let {
-            AlertDialog.Builder(it).apply {
+            MaterialAlertDialogBuilder(it).apply {
                 setTitle(getString(R.string.logins_warning_dialog_title_2))
                 setMessage(
                     getString(R.string.logins_warning_dialog_message_2),
@@ -333,6 +333,7 @@ class AccountSettingsFragment : PreferenceFragmentCompat() {
      * Updates the status of all [SyncEngine] states.
      */
     private fun updateSyncEngineStates() {
+        val settings = requireContext().settings()
         val syncEnginesStatus = SyncEnginesStorage(requireContext()).getStatus()
         requirePreference<CheckBoxPreference>(R.string.pref_key_sync_bookmarks).apply {
             isEnabled = syncEnginesStatus.containsKey(SyncEngine.Bookmarks)
@@ -355,7 +356,7 @@ class AccountSettingsFragment : PreferenceFragmentCompat() {
             isChecked = syncEnginesStatus.getOrElse(SyncEngine.Tabs) { true }
         }
         requirePreference<CheckBoxPreference>(R.string.pref_key_sync_address).apply {
-            isVisible = FeatureFlags.SYNC_ADDRESSES_FEATURE
+            isVisible = settings.isAddressSyncEnabled
             isEnabled = syncEnginesStatus.containsKey(SyncEngine.Addresses)
             isChecked = syncEnginesStatus.getOrElse(SyncEngine.Addresses) { true }
         }

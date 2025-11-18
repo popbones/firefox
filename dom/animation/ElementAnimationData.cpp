@@ -5,11 +5,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "ElementAnimationData.h"
+
 #include "mozilla/AnimationCollection.h"
-#include "mozilla/TimelineCollection.h"
 #include "mozilla/EffectSet.h"
-#include "mozilla/dom/CSSTransition.h"
+#include "mozilla/TimelineCollection.h"
 #include "mozilla/dom/CSSAnimation.h"
+#include "mozilla/dom/CSSTransition.h"
 #include "mozilla/dom/ScrollTimeline.h"
 #include "mozilla/dom/ViewTimeline.h"
 
@@ -70,7 +71,7 @@ void ElementAnimationData::ClearAllPseudos(bool aOnlyViewTransitions) {
 
     // Note: We cannot remove EffectSet because we expect there is a valid
     // EffectSet when unregistering the target.
-    // (See KeyframeEffect::UnregisterTarget() for more deatils).
+    // (See KeyframeEffect::UnregisterTarget() for more details).
     // So we rely on EffectSet::Destroy() to clear it.
     data->mAnimations = nullptr;
     data->mTransitions = nullptr;

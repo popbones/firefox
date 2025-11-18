@@ -203,36 +203,11 @@ def set_treeherder_machine_platform(config, tasks):
         if "android" in task["test-platform"] and "pgo/opt" in task["test-platform"]:
             platform_new = task["test-platform"].replace("-pgo/opt", "/pgo")
             task["treeherder-machine-platform"] = platform_new
-        elif "android-em-7.0-x86_64-qr" in task["test-platform"]:
-            task["treeherder-machine-platform"] = task["test-platform"].replace(
-                ".", "-"
-            )
-        elif "android-em-7.0-x86_64-shippable-qr" in task["test-platform"]:
-            task["treeherder-machine-platform"] = task["test-platform"].replace(
-                ".", "-"
-            )
-        elif "android-em-7.0-x86_64-lite-qr" in task["test-platform"]:
-            task["treeherder-machine-platform"] = task["test-platform"].replace(
-                ".", "-"
-            )
-        elif "android-em-7.0-x86_64-shippable-lite-qr" in task["test-platform"]:
-            task["treeherder-machine-platform"] = task["test-platform"].replace(
-                ".", "-"
-            )
-        elif "android-em-7.0-x86-qr" in task["test-platform"]:
-            task["treeherder-machine-platform"] = task["test-platform"].replace(
-                ".", "-"
-            )
+        elif "android-em-" in task["test-platform"]:
+            task["treeherder-machine-platform"] = task["test-platform"]
         elif "android-hw" in task["test-platform"]:
             task["treeherder-machine-platform"] = task["test-platform"]
-        elif "android-em-7.0-x86_64" in task["test-platform"]:
-            task["treeherder-machine-platform"] = task["test-platform"].replace(
-                ".", "-"
-            )
-        elif "android-em-7.0-x86" in task["test-platform"]:
-            task["treeherder-machine-platform"] = task["test-platform"].replace(
-                ".", "-"
-            )
+
         # Bug 1602863 - must separately define linux64/asan and linux1804-64/asan
         # otherwise causes an exception during taskgraph generation about
         # duplicate treeherder platform/symbol.
@@ -398,7 +373,6 @@ def setup_browsertime(config, tasks):
                     "win32-geckodriver",
                     "win32-node",
                 ],
-                "windows.*-32.*": ["browsertime", "win32-geckodriver", "win32-node"],
                 "windows.*-64.*": ["browsertime", "win64-geckodriver", "win64-node"],
             },
         }
@@ -415,7 +389,6 @@ def setup_browsertime(config, tasks):
                 "macosx1400.*": ["mac64-ffmpeg-7.1"],
                 "macosx1500.*": ["mac64-ffmpeg-7.1"],
                 "windows.*aarch64.*": ["win64-ffmpeg-7.1"],
-                "windows.*-32.*": ["win64-ffmpeg-7.1"],
                 "windows.*-64.*": ["win64-ffmpeg-7.1"],
             },
         }
@@ -613,9 +586,6 @@ def enable_code_coverage(config, tasks):
             task["instance-size"] = "xlarge-noscratch"
             if "jittest" in task["test-name"]:
                 task["instance-size"] = "xlarge"
-            elif task["suite"] == "xpcshell" and "linux" in task["build-platform"]:
-                # TODO figure out OOM/timeout issues on d2g (bug 1962414)
-                task["instance-size"] = "large-dw"
 
             # Temporarily disable Mac tests on mozilla-central
             if "mac" in task["build-platform"]:
@@ -734,22 +704,11 @@ def handle_tier(config, tasks):
                 "linux2404-64-devedition/opt",
                 "linux2404-64-asan/opt",
                 "linux2404-64-tsan/opt",
-                "windows10-64/debug",
-                "windows10-64/opt",
-                "windows10-64-shippable/opt",
-                "windows10-64-devedition/opt",
-                "windows10-64-qr/opt",
-                "windows10-64-qr/debug",
-                "windows10-64-shippable-qr/opt",
-                "windows10-64-devedition-qr/opt",
-                "windows10-64-2004-qr/opt",
-                "windows10-64-2004-qr/debug",
-                "windows10-64-2004-shippable-qr/opt",
-                "windows10-64-2004-devedition-qr/opt",
-                "windows10-64-2004-asan-qr/opt",
                 "windows11-32-24h2/debug",
                 "windows11-32-24h2/opt",
                 "windows11-32-24h2-shippable/opt",
+                "windows11-64-24h2-hw-ref/opt",
+                "windows11-64-24h2-hw-ref-shippable/opt",
                 "windows11-64-24h2/opt",
                 "windows11-64-24h2/debug",
                 "windows11-64-24h2-shippable/opt",
@@ -771,21 +730,14 @@ def handle_tier(config, tasks):
                 "macosx1400-64-qr/debug",
                 "macosx1500-64-shippable/opt",
                 "macosx1500-64/debug",
-                "android-em-7.0-x86_64-shippable/opt",
-                "android-em-7.0-x86_64-shippable-lite/opt",
-                "android-em-7.0-x86_64/debug",
-                "android-em-7.0-x86_64/debug-isolated-process",
-                "android-em-7.0-x86_64/opt",
-                "android-em-7.0-x86_64-lite/opt",
-                "android-em-7.0-x86-shippable/opt",
-                "android-em-7.0-x86-shippable-lite/opt",
-                "android-em-7.0-x86_64-shippable-qr/opt",
-                "android-em-7.0-x86_64-qr/debug",
-                "android-em-7.0-x86_64-qr/debug-isolated-process",
-                "android-em-7.0-x86_64-qr/opt",
-                "android-em-7.0-x86_64-shippable-lite-qr/opt",
-                "android-em-7.0-x86_64-lite-qr/debug",
-                "android-em-7.0-x86_64-lite-qr/opt",
+                "android-em-14-x86_64-shippable/opt",
+                "android-em-14-x86_64/opt",
+                "android-em-14-x86_64-shippable-lite/opt",
+                "android-em-14-x86_64-lite/opt",
+                "android-em-14-x86_64/debug",
+                "android-em-14-x86_64/debug-isolated-process",
+                "android-em-14-x86-shippable/opt",
+                "android-em-14-x86/opt",
             ]:
                 task["tier"] = 1
             else:
@@ -1186,5 +1138,22 @@ def enable_parallel_marking_in_tsan_tests(config, tasks):
                 extra_options.append(
                     "--setpref=javascript.options.mem.gc_parallel_marking=true"
                 )
+
+        yield task
+
+
+@transforms.add
+def set_webgpu_ignore_blocklist(config, tasks):
+    """
+    Ignore the WebGPU blocklist on Linux because CI's Mesa is old
+
+    See <https://bugzilla.mozilla.org/show_bug.cgi?id=1985348>
+    """
+    for task in tasks:
+        if "web-platform-tests-webgpu" in task["test-name"] and task[
+            "test-platform"
+        ].startswith("linux"):
+            extra_options = task["mozharness"].setdefault("extra-options", [])
+            extra_options.append("--setpref=gfx.webgpu.ignore-blocklist=true")
 
         yield task

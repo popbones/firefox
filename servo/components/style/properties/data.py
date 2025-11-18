@@ -102,11 +102,12 @@ STYLE_RULE = 1 << 0
 PAGE_RULE = 1 << 1
 KEYFRAME_RULE = 1 << 2
 POSITION_TRY_RULE = 1 << 3
+SCOPE_RULE = 1 << 4
 
-ALL_RULES = STYLE_RULE | PAGE_RULE | KEYFRAME_RULE
-DEFAULT_RULES = STYLE_RULE | KEYFRAME_RULE
+ALL_RULES = STYLE_RULE | PAGE_RULE | KEYFRAME_RULE | SCOPE_RULE
+DEFAULT_RULES = STYLE_RULE | KEYFRAME_RULE | SCOPE_RULE
 DEFAULT_RULES_AND_PAGE = DEFAULT_RULES | PAGE_RULE
-DEFAULT_RULES_EXCEPT_KEYFRAME = STYLE_RULE
+DEFAULT_RULES_EXCEPT_KEYFRAME = STYLE_RULE | SCOPE_RULE
 DEFAULT_RULES_AND_POSITION_TRY = DEFAULT_RULES | POSITION_TRY_RULE
 
 # Rule name to value dict
@@ -115,6 +116,7 @@ RULE_VALUES = {
     "Page": PAGE_RULE,
     "Keyframe": KEYFRAME_RULE,
     "PositionTry": POSITION_TRY_RULE,
+    "Scope": SCOPE_RULE,
 }
 
 
@@ -373,7 +375,7 @@ class Longhand(Property):
         ignored_when_colors_disabled=False,
         simple_vector_bindings=False,
         vector=False,
-        servo_restyle_damage="repaint",
+        servo_restyle_damage="rebuild_box",
         affects=None,
     ):
         Property.__init__(
@@ -549,6 +551,7 @@ class Longhand(Property):
             "SVGStrokeDashArray",
             "SVGWidth",
             "TextDecorationLength",
+            "TextDecorationTrim",
             "TextIndent",
             "WordSpacing",
         }
@@ -650,6 +653,7 @@ class Longhand(Property):
                 "ScrollSnapType",
                 "TextAlign",
                 "TextAlignLast",
+                "TextAutospace",
                 "TextDecorationLine",
                 "TextEmphasisPosition",
                 "TextJustify",
@@ -658,7 +662,6 @@ class Longhand(Property):
                 "TouchAction",
                 "TransformStyle",
                 "UserFocus",
-                "UserInput",
                 "UserSelect",
                 "VectorEffect",
                 "WordBreak",

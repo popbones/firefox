@@ -6,74 +6,73 @@
 
 #include <stdint.h>
 
-#include <vector>
-#include <string>
 #include <algorithm>
-#include <utility>
 #include <iterator>
 #include <set>
 #include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "system_wrappers/include/clock.h"
-#include "call/call.h"
+#include "MainThreadUtils.h"
+#include "PeerConnectionImpl.h"
+#include "RTCRtpTransceiver.h"
+#include "RTCStatsReport.h"
 #include "api/rtp_parameters.h"
 #include "api/units/time_delta.h"
 #include "api/units/timestamp.h"
-#include "api/video_codecs/video_codec.h"
 #include "api/video/video_codec_constants.h"
+#include "api/video_codecs/video_codec.h"
 #include "call/audio_send_stream.h"
+#include "call/call.h"
 #include "call/video_send_stream.h"
+#include "js/RootingAPI.h"
+#include "jsep/JsepTransceiver.h"
+#include "libwebrtcglue/CodecConfig.h"
+#include "libwebrtcglue/MediaConduitControl.h"
+#include "libwebrtcglue/MediaConduitInterface.h"
 #include "modules/rtp_rtcp/include/report_block_data.h"
 #include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
-
-#include "nsPIDOMWindow.h"
-#include "nsString.h"
-#include "MainThreadUtils.h"
+#include "mozilla/AbstractThread.h"
+#include "mozilla/AlreadyAddRefed.h"
+#include "mozilla/Assertions.h"
+#include "mozilla/Attributes.h"
+#include "mozilla/Logging.h"
+#include "mozilla/Maybe.h"
+#include "mozilla/MozPromise.h"
+#include "mozilla/OwningNonNull.h"
+#include "mozilla/RefPtr.h"
+#include "mozilla/StateMirroring.h"
+#include "mozilla/StateWatching.h"
+#include "mozilla/UniquePtr.h"
+#include "mozilla/Unused.h"
+#include "mozilla/dom/MediaStreamTrack.h"
+#include "mozilla/dom/MediaStreamTrackBinding.h"
+#include "mozilla/dom/Nullable.h"
+#include "mozilla/dom/Promise.h"
+#include "mozilla/dom/RTCRtpParametersBinding.h"
+#include "mozilla/dom/RTCRtpScriptTransform.h"
+#include "mozilla/dom/RTCRtpSenderBinding.h"
+#include "mozilla/dom/RTCStatsReportBinding.h"
+#include "mozilla/dom/VideoStreamTrack.h"
+#include "mozilla/fallible.h"
+#include "mozilla/glean/DomMediaWebrtcMetrics.h"
+#include "mozilla/mozalloc_oom.h"
 #include "nsCOMPtr.h"
 #include "nsContentUtils.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsDebug.h"
 #include "nsISupports.h"
 #include "nsLiteralString.h"
+#include "nsPIDOMWindow.h"
+#include "nsString.h"
 #include "nsStringFwd.h"
 #include "nsTArray.h"
 #include "nsThreadUtils.h"
 #include "nsWrapperCache.h"
-#include "mozilla/AbstractThread.h"
-#include "mozilla/AlreadyAddRefed.h"
-#include "mozilla/Assertions.h"
-#include "mozilla/Attributes.h"
-#include "mozilla/fallible.h"
-#include "mozilla/Logging.h"
-#include "mozilla/mozalloc_oom.h"
-#include "mozilla/MozPromise.h"
-#include "mozilla/OwningNonNull.h"
-#include "mozilla/RefPtr.h"
-#include "mozilla/StateWatching.h"
-#include "mozilla/UniquePtr.h"
-#include "mozilla/Unused.h"
-#include "mozilla/StateMirroring.h"
-#include "mozilla/Maybe.h"
-#include "mozilla/dom/MediaStreamTrack.h"
-#include "mozilla/dom/Promise.h"
-#include "mozilla/dom/RTCRtpScriptTransform.h"
-#include "mozilla/dom/VideoStreamTrack.h"
-#include "mozilla/dom/RTCRtpSenderBinding.h"
-#include "mozilla/dom/MediaStreamTrackBinding.h"
-#include "mozilla/dom/Nullable.h"
-#include "mozilla/dom/RTCRtpParametersBinding.h"
-#include "mozilla/dom/RTCStatsReportBinding.h"
-#include "mozilla/glean/DomMediaWebrtcMetrics.h"
-#include "js/RootingAPI.h"
-#include "jsep/JsepTransceiver.h"
-#include "RTCStatsReport.h"
-#include "RTCRtpTransceiver.h"
-#include "PeerConnectionImpl.h"
-#include "libwebrtcglue/CodecConfig.h"
-#include "libwebrtcglue/MediaConduitControl.h"
-#include "libwebrtcglue/MediaConduitInterface.h"
 #include "sdp/SdpAttribute.h"
 #include "sdp/SdpEnum.h"
+#include "system_wrappers/include/clock.h"
 
 namespace mozilla::dom {
 
@@ -1880,21 +1879,22 @@ void RTCRtpSender::SyncToJsep(JsepTransceiver& aJsepTransceiver) const {
 template <typename CodecConfigT>
 CodecConfigT& findMatchingCodec(
     std::vector<CodecConfigT>& aCodecs,
-    const Sequence<RTCRtpEncodingParameters>& aParameters) {
+    Maybe<const RTCRtpEncodingParameters&> aParameters) {
   MOZ_ASSERT(aCodecs.size());
-  if (aParameters.Length()) {
-    const auto& encoding = aParameters[0];
-    if (encoding.mCodec.WasPassed()) {
-      for (auto& codec : aCodecs) {
-        if (encoding.mCodec.Value().mMimeType.EqualsIgnoreCase(
-                codec.MimeType())) {
-          return codec;
-        }
-      }
+
+  if (!aParameters || !aParameters->mCodec.WasPassed()) {
+    return aCodecs[0];
+  }
+
+  for (auto& codec : aCodecs) {
+    if (aParameters->mCodec.Value().mMimeType.EqualsIgnoreCase(
+            codec.MimeType())) {
+      return codec;
     }
   }
+
   return aCodecs[0];
-};
+}
 
 Maybe<RTCRtpSender::VideoConfig> RTCRtpSender::GetNewVideoConfig() {
   // It is possible for SDP to signal that there is a send track, but there not
@@ -1971,14 +1971,12 @@ Maybe<RTCRtpSender::VideoConfig> RTCRtpSender::GetNewVideoConfig() {
     return Nothing();
   }
 
-  newConfig.mVideoCodec =
-      Some(mPendingParameters
-               ? findMatchingCodec(configs, mPendingParameters->mEncodings)
-               : findMatchingCodec(configs, mParameters.mEncodings));
   // Spec says that we start using new parameters right away, _before_ we
   // update the parameters that are visible to JS (ie; mParameters).
-  const RTCRtpSendParameters& parameters =
-      mPendingParameters.isSome() ? *mPendingParameters : mParameters;
+  const auto& parameters = mPendingParameters.refOr(mParameters);
+  const auto& encodings = parameters.mEncodings;
+  newConfig.mVideoCodec = Some(findMatchingCodec(
+      configs, encodings.IsEmpty() ? Nothing() : SomeRef(encodings[0])));
   for (VideoCodecConfig::Encoding& conduitEncoding :
        newConfig.mVideoCodec->mEncodings) {
     for (const RTCRtpEncodingParameters& jsEncoding : parameters.mEncodings) {
@@ -2070,16 +2068,22 @@ Maybe<RTCRtpSender::AudioConfig> RTCRtpSender::GetNewAudioConfig() {
       return Nothing();
     }
 
+    const auto& parameters = mPendingParameters.refOr(mParameters);
+    const auto& encodings = parameters.mEncodings;
+    auto encoding = encodings.IsEmpty() ? Nothing() : SomeRef(encodings[0]);
+    AudioCodecConfig& sendCodec = findMatchingCodec(configs, encoding);
+
+    if (encoding) {
+      if (encoding->mMaxBitrate.WasPassed()) {
+        sendCodec.mEncodingConstraints.maxBitrateBps.emplace(
+            encoding->mMaxBitrate.Value());
+      }
+    }
+
     std::vector<AudioCodecConfig> dtmfConfigs;
     std::copy_if(
         configs.begin(), configs.end(), std::back_inserter(dtmfConfigs),
         [](const auto& value) { return value.mName == "telephone-event"; });
-
-    const AudioCodecConfig& sendCodec =
-        mPendingParameters
-            ? findMatchingCodec(configs, mPendingParameters->mEncodings)
-            : findMatchingCodec(configs, mParameters.mEncodings);
-
     if (!dtmfConfigs.empty()) {
       // There is at least one telephone-event codec.
       // We primarily choose the codec whose frequency matches the send codec.
@@ -2251,7 +2255,7 @@ void RTCRtpSender::SetTransform(RTCRtpScriptTransform* aTransform,
 }
 
 bool RTCRtpSender::GenerateKeyFrame(const Maybe<std::string>& aRid) {
-  if (!mTransform || !mPipeline || !mSenderTrack) {
+  if (!mTransform || !mPipeline) {
     return false;
   }
 

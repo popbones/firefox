@@ -5,13 +5,15 @@
 /* eslint-disable jsdoc/require-param */
 
 ChromeUtils.defineESModuleGetters(this, {
-  QuickSuggest: "resource:///modules/QuickSuggest.sys.mjs",
+  QuickSuggest: "moz-src:///browser/components/urlbar/QuickSuggest.sys.mjs",
   SearchUtils: "moz-src:///toolkit/components/search/SearchUtils.sys.mjs",
   TelemetryTestUtils: "resource://testing-common/TelemetryTestUtils.sys.mjs",
-  UrlbarProviderAutofill: "resource:///modules/UrlbarProviderAutofill.sys.mjs",
+  UrlbarProviderAutofill:
+    "moz-src:///browser/components/urlbar/UrlbarProviderAutofill.sys.mjs",
   UrlbarProviderQuickSuggest:
-    "resource:///modules/UrlbarProviderQuickSuggest.sys.mjs",
-  UrlbarSearchUtils: "resource:///modules/UrlbarSearchUtils.sys.mjs",
+    "moz-src:///browser/components/urlbar/UrlbarProviderQuickSuggest.sys.mjs",
+  UrlbarSearchUtils:
+    "moz-src:///browser/components/urlbar/UrlbarSearchUtils.sys.mjs",
 });
 
 add_setup(async function setUpQuickSuggestXpcshellTest() {
@@ -244,6 +246,8 @@ async function doMigrateTest({
  *   Array of objects: `{ query, expectedResults }`
  *   For each object, the test will perform a search with `query` as the search
  *   string. The query should always match `expectedResults`.
+ * @param {string[]} [options.providers]
+ *   The providers to query.
  */
 async function doDismissOneTest({
   feature,
@@ -251,6 +255,7 @@ async function doDismissOneTest({
   command,
   queriesForDismissals,
   queriesForOthers,
+  providers = [UrlbarProviderQuickSuggest.name],
 }) {
   await QuickSuggest.clearDismissedSuggestions();
   await QuickSuggestTestUtils.forceSync();
@@ -288,7 +293,7 @@ async function doDismissOneTest({
     info("Doing search for dismissed suggestions: " + JSON.stringify(query));
     await check_results({
       context: createContext(query, {
-        providers: [UrlbarProviderQuickSuggest.name],
+        providers,
         isPrivate: false,
       }),
       matches: [],
@@ -301,7 +306,7 @@ async function doDismissOneTest({
     );
     await check_results({
       context: createContext(query, {
-        providers: [UrlbarProviderQuickSuggest.name],
+        providers,
         isPrivate: false,
       }),
       matches: expectedResults,
@@ -329,7 +334,7 @@ async function doDismissOneTest({
     info("Doing search after clearing dismissals: " + JSON.stringify(query));
     await check_results({
       context: createContext(query, {
-        providers: [UrlbarProviderQuickSuggest.name],
+        providers,
         isPrivate: false,
       }),
       matches: expectedResults,
@@ -352,8 +357,8 @@ async function doDismissOneTest({
  *   suggestion type.
  * @param {string} options.pref
  *   The name of the user-controlled pref (relative to `browser.urlbar.`) that
- *   controls the suggestion type. Should be the same as
- *   `feature.primaryUserControlledPreference`.
+ *   controls the suggestion type. Should be included in
+ *   `feature.primaryUserControlledPreferences`.
  * @param {Array} options.queries
  *   Array of objects: `{ query, expectedResults }`
  *   For each object, the test will perform a search with `query` as the search
@@ -361,8 +366,17 @@ async function doDismissOneTest({
  *   results. After clearing dismissals, the query should match the results in
  *   `expectedResults`. If `expectedResults` is omitted, `[result]` will be
  *   used.
+ * @param {string[]} [options.providers]
+ *   The providers to query.
  */
-async function doDismissAllTest({ feature, result, command, pref, queries }) {
+async function doDismissAllTest({
+  feature,
+  result,
+  command,
+  pref,
+  queries,
+  providers = [UrlbarProviderQuickSuggest.name],
+}) {
   await QuickSuggest.clearDismissedSuggestions();
   await QuickSuggestTestUtils.forceSync();
   Assert.ok(
@@ -399,7 +413,7 @@ async function doDismissAllTest({ feature, result, command, pref, queries }) {
     info("Doing search after triggering command: " + JSON.stringify(query));
     await check_results({
       context: createContext(query, {
-        providers: [UrlbarProviderQuickSuggest.name],
+        providers,
         isPrivate: false,
       }),
       matches: [],
@@ -434,7 +448,7 @@ async function doDismissAllTest({ feature, result, command, pref, queries }) {
     info("Doing search after clearing dismissals: " + JSON.stringify(query));
     await check_results({
       context: createContext(query, {
-        providers: [UrlbarProviderQuickSuggest.name],
+        providers,
         isPrivate: false,
       }),
       matches: expectedResults,
@@ -790,6 +804,11 @@ function triggerCommand({
     {
       removeResult() {
         addCall("removeResult");
+      },
+      input: {
+        startQuery() {
+          addCall("startQuery");
+        },
       },
       view: {
         acknowledgeFeedback() {

@@ -11,12 +11,12 @@
 
 #include "mozilla/Assertions.h"
 #include "mozilla/dom/AncestorIterator.h"
+#include "mozilla/dom/CharacterDataBuffer.h"
 
 #include "nsCRT.h"
 #include "nsDebug.h"
 #include "nsIContent.h"
 #include "nsIContentInlines.h"
-#include "nsTextFragment.h"
 
 namespace mozilla {
 
@@ -98,13 +98,13 @@ NS_INSTANTIATE_METHOD_RETURNING_ANY_EDITOR_DOM_POINT(
     IgnoreNonEditableNodes aIgnoreNonEditableNodes,
     const nsIContent* aPrecedingLimiterContent);
 
+// FIXME: I think the scanner should not cross the <button> element boundaries.
 constexpr static const AncestorTypes kScanAnyRootAncestorTypes = {
     // If the point is in a block, we need to scan only in the block
     AncestorType::ClosestBlockElement,
     // So, we want a root element of the (shadow) tree root element of the
-    // point
-    // if there is no parent block
-    AncestorType::AllowRootOrAncestorLimiterElement,
+    // point if there is no parent block
+    AncestorType::ReturnAncestorLimiterIfNoProperAncestor,
     // Basically, given point shouldn't be a void element, so, ignore
     // ancestor
     // void elements
@@ -114,7 +114,7 @@ constexpr static const AncestorTypes kScanEditableRootAncestorTypes = {
     AncestorType::EditableElement,
     // And the others are same as kScanAnyRootAncestorTypes
     AncestorType::ClosestBlockElement,
-    AncestorType::AllowRootOrAncestorLimiterElement,
+    AncestorType::ReturnAncestorLimiterIfNoProperAncestor,
     AncestorType::IgnoreHRElement};
 
 template <typename EditorDOMPointType>
@@ -122,7 +122,9 @@ WSRunScanner::TextFragmentData::TextFragmentData(
     Scan aScanMode, const EditorDOMPointType& aPoint,
     BlockInlineCheck aBlockInlineCheck,
     const Element* aAncestorLimiter /* = nullptr */)
-    : mBlockInlineCheck(aBlockInlineCheck), mScanMode(aScanMode) {
+    : mAncestorLimiter(aAncestorLimiter),
+      mBlockInlineCheck(aBlockInlineCheck),
+      mScanMode(aScanMode) {
   if (NS_WARN_IF(!aPoint.IsInContentNodeAndValidInComposedDoc()) ||
       NS_WARN_IF(!aPoint.GetContainerOrContainerParentElement())) {
     // We don't need to support composing in uncomposed tree.
@@ -176,13 +178,16 @@ Maybe<WSRunScanner::TextFragmentData::BoundaryData> WSRunScanner::
   const bool isWhiteSpaceCollapsible = !EditorUtils::IsWhiteSpacePreformatted(
       *aPoint.template ContainerAs<Text>());
   const bool isNewLineCollapsible =
+      isWhiteSpaceCollapsible &&
       !EditorUtils::IsNewLinePreformatted(*aPoint.template ContainerAs<Text>());
-  const nsTextFragment& textFragment =
-      aPoint.template ContainerAs<Text>()->TextFragment();
-  for (uint32_t i = std::min(aPoint.Offset(), textFragment.GetLength()); i;
-       i--) {
+  const bool isNewLineLineBreak =
+      EditorUtils::IsNewLinePreformatted(*aPoint.template ContainerAs<Text>());
+  const CharacterDataBuffer& characterDataBuffer =
+      aPoint.template ContainerAs<Text>()->DataBuffer();
+  for (uint32_t i = std::min(aPoint.Offset(), characterDataBuffer.GetLength());
+       i; i--) {
     WSType wsTypeOfNonCollapsibleChar;
-    switch (textFragment.CharAt(i - 1)) {
+    switch (characterDataBuffer.CharAt(i - 1)) {
       case HTMLEditUtils::kSpace:
       case HTMLEditUtils::kCarriageReturn:
       case HTMLEditUtils::kTab:
@@ -196,8 +201,10 @@ Maybe<WSRunScanner::TextFragmentData::BoundaryData> WSRunScanner::
         if (isNewLineCollapsible) {
           continue;  // collapsible linefeed.
         }
-        // preformatted linefeed.
-        wsTypeOfNonCollapsibleChar = WSType::PreformattedLineBreak;
+        // preformatted linefeed or replaced with a non-collapsible white-space.
+        wsTypeOfNonCollapsibleChar = isNewLineLineBreak
+                                         ? WSType::PreformattedLineBreak
+                                         : WSType::NonCollapsibleCharacters;
         break;
       case HTMLEditUtils::kNBSP:
         if (isWhiteSpaceCollapsible) {
@@ -213,7 +220,7 @@ Maybe<WSRunScanner::TextFragmentData::BoundaryData> WSRunScanner::
         wsTypeOfNonCollapsibleChar = WSType::NonCollapsibleCharacters;
         break;
       default:
-        MOZ_ASSERT(!nsCRT::IsAsciiSpace(textFragment.CharAt(i - 1)));
+        MOZ_ASSERT(!nsCRT::IsAsciiSpace(characterDataBuffer.CharAt(i - 1)));
         wsTypeOfNonCollapsibleChar = WSType::NonCollapsibleCharacters;
         break;
     }
@@ -327,12 +334,15 @@ Maybe<WSRunScanner::TextFragmentData::BoundaryData> WSRunScanner::
   const bool isWhiteSpaceCollapsible = !EditorUtils::IsWhiteSpacePreformatted(
       *aPoint.template ContainerAs<Text>());
   const bool isNewLineCollapsible =
+      isWhiteSpaceCollapsible &&
       !EditorUtils::IsNewLinePreformatted(*aPoint.template ContainerAs<Text>());
-  const nsTextFragment& textFragment =
-      aPoint.template ContainerAs<Text>()->TextFragment();
-  for (uint32_t i = aPoint.Offset(); i < textFragment.GetLength(); i++) {
+  const bool isNewLineLineBreak =
+      EditorUtils::IsNewLinePreformatted(*aPoint.template ContainerAs<Text>());
+  const CharacterDataBuffer& characterDataBuffer =
+      aPoint.template ContainerAs<Text>()->DataBuffer();
+  for (uint32_t i = aPoint.Offset(); i < characterDataBuffer.GetLength(); i++) {
     WSType wsTypeOfNonCollapsibleChar;
-    switch (textFragment.CharAt(i)) {
+    switch (characterDataBuffer.CharAt(i)) {
       case HTMLEditUtils::kSpace:
       case HTMLEditUtils::kCarriageReturn:
       case HTMLEditUtils::kTab:
@@ -346,8 +356,10 @@ Maybe<WSRunScanner::TextFragmentData::BoundaryData> WSRunScanner::
         if (isNewLineCollapsible) {
           continue;  // collapsible linefeed.
         }
-        // preformatted linefeed.
-        wsTypeOfNonCollapsibleChar = WSType::PreformattedLineBreak;
+        // preformatted linefeed or replaced with a non-collapsible white-space.
+        wsTypeOfNonCollapsibleChar = isNewLineLineBreak
+                                         ? WSType::PreformattedLineBreak
+                                         : WSType::NonCollapsibleCharacters;
         break;
       case HTMLEditUtils::kNBSP:
         if (isWhiteSpaceCollapsible) {
@@ -362,7 +374,7 @@ Maybe<WSRunScanner::TextFragmentData::BoundaryData> WSRunScanner::
         wsTypeOfNonCollapsibleChar = WSType::NonCollapsibleCharacters;
         break;
       default:
-        MOZ_ASSERT(!nsCRT::IsAsciiSpace(textFragment.CharAt(i)));
+        MOZ_ASSERT(!nsCRT::IsAsciiSpace(characterDataBuffer.CharAt(i)));
         wsTypeOfNonCollapsibleChar = WSType::NonCollapsibleCharacters;
         break;
     }
@@ -443,7 +455,7 @@ WSRunScanner::TextFragmentData::BoundaryData::ScanCollapsibleWhiteSpaceEndFrom(
                             : WSType::SpecialContent);
   }
 
-  if (!nextLeafContentOrBlock->AsText()->TextFragment().GetLength()) {
+  if (!nextLeafContentOrBlock->AsText()->DataBuffer().GetLength()) {
     // If it's an empty text node, keep looking for its next leaf content.
     // Note that even if the empty text node is preformatted, we should keep
     // looking for the next one.

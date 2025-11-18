@@ -110,12 +110,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">Përdor fjalëkalim</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">Jo tani</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">Fjalëkalimi u ruajt</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">Fjalëkalimi u përditësua</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">Emri i përdoruesit u përditësua</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">Të ridërgohen të dhëna te ky sajt?</string>
   <string name="mozac_feature_prompt_repost_message">Rifreskimi i kësaj faqeje mund të përsëdytëte veprime tani së fundi, të tilla si dërgimi i një pagese apo postimi i një komenti dy herë.</string>

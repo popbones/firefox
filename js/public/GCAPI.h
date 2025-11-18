@@ -508,6 +508,22 @@ typedef enum JSGCParamKey {
    * Pref: javascript.options.mem.nursery_max_time_goal_ms
    */
   JSGC_NURSERY_MAX_TIME_GOAL_MS = 57,
+
+  /*
+   * Sets the size of the store buffers used for generational GC.
+   *
+   * The JSGC_STORE_BUFFER_ENTRIES parameter sets the number of store buffer
+   * entries that will be used for a nursery size of 16MB. This is further
+   * scaled based on the actual nursery size and the JSGC_STORE_BUFFER_SCALING
+   * parameter according to the formula:
+   *
+   *    size
+   * ( (---- - 1) * JSGC_STORE_BUFFER_SCALING + 1 ) * JSGC_STORE_BUFFER_ENTRIES
+   *    16MB
+   *
+   */
+  JSGC_STORE_BUFFER_ENTRIES = 58,
+  JSGC_STORE_BUFFER_SCALING = 59,
 } JSGCParamKey;
 
 /*
@@ -621,6 +637,7 @@ namespace JS {
   D(RESET, 9)                                                          \
   D(OUT_OF_NURSERY, 10)                                                \
   D(EVICT_NURSERY, 11)                                                 \
+  D(FULL_CELL_PTR_GETTER_SETTER_BUFFER, 12)                            \
   D(SHARED_MEMORY_LIMIT, 13)                                           \
   D(EAGER_NURSERY_COLLECTION, 14)                                      \
   D(BG_TASK_FINISHED, 15)                                              \

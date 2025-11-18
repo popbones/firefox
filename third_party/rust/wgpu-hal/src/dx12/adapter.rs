@@ -17,7 +17,7 @@ use crate::{
         self,
         dxgi::{factory::DxgiAdapter, result::HResult},
     },
-    dx12::{shader_compilation, SurfaceTarget},
+    dx12::{dcomp::DCompLib, shader_compilation, SurfaceTarget},
 };
 
 impl Drop for super::Adapter {
@@ -55,9 +55,11 @@ impl super::Adapter {
     pub(super) fn expose(
         adapter: DxgiAdapter,
         library: &Arc<D3D12Lib>,
+        dcomp_lib: &Arc<DCompLib>,
         instance_flags: wgt::InstanceFlags,
         memory_budget_thresholds: wgt::MemoryBudgetThresholds,
         compiler_container: Arc<shader_compilation::CompilerContainer>,
+        backend_options: wgt::Dx12BackendOptions,
     ) -> Option<crate::ExposedAdapter<super::Api>> {
         // Create the device so that we can get the capabilities.
         let device = {
@@ -328,7 +330,7 @@ impl super::Adapter {
                 tier3_practical_descriptor_limit,
             ),
             other => {
-                log::warn!("Unknown resource binding tier {:?}", other);
+                log::warn!("Unknown resource binding tier {other:?}");
                 (
                     Direct3D12::D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1,
                     8,
@@ -342,7 +344,6 @@ impl super::Adapter {
             | wgt::Features::DEPTH32FLOAT_STENCIL8
             | wgt::Features::INDIRECT_FIRST_INSTANCE
             | wgt::Features::MAPPABLE_PRIMARY_BUFFERS
-            | wgt::Features::MULTI_DRAW_INDIRECT
             | wgt::Features::MULTI_DRAW_INDIRECT_COUNT
             | wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER
             | wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO
@@ -361,7 +362,9 @@ impl super::Adapter {
             | wgt::Features::DUAL_SOURCE_BLENDING
             | wgt::Features::TEXTURE_FORMAT_NV12
             | wgt::Features::FLOAT32_FILTERABLE
-            | wgt::Features::TEXTURE_ATOMIC;
+            | wgt::Features::TEXTURE_ATOMIC
+            | wgt::Features::EXPERIMENTAL_PASSTHROUGH_SHADERS
+            | wgt::Features::EXTERNAL_TEXTURE;
 
         //TODO: in order to expose this, we need to run a compute shader
         // that extract the necessary statistics out of the D3D12 result.
@@ -411,6 +414,35 @@ impl super::Adapter {
             wgt::Features::BGRA8UNORM_STORAGE,
             bgra8unorm_storage_supported,
         );
+
+        let p010_format_supported = {
+            let mut p010_info = Direct3D12::D3D12_FEATURE_DATA_FORMAT_SUPPORT {
+                Format: Dxgi::Common::DXGI_FORMAT_P010,
+                ..Default::default()
+            };
+            let hr = unsafe {
+                device.CheckFeatureSupport(
+                    Direct3D12::D3D12_FEATURE_FORMAT_SUPPORT,
+                    <*mut _>::cast(&mut p010_info),
+                    size_of_val(&p010_info) as u32,
+                )
+            };
+            if hr.is_ok() {
+                let supports_texture2d = p010_info
+                    .Support1
+                    .contains(Direct3D12::D3D12_FORMAT_SUPPORT1_TEXTURE2D);
+                let supports_shader_load = p010_info
+                    .Support1
+                    .contains(Direct3D12::D3D12_FORMAT_SUPPORT1_SHADER_LOAD);
+                let supports_shader_sample = p010_info
+                    .Support1
+                    .contains(Direct3D12::D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE);
+                supports_texture2d && supports_shader_load && supports_shader_sample
+            } else {
+                false
+            }
+        };
+        features.set(wgt::Features::TEXTURE_FORMAT_P010, p010_format_supported);
 
         let mut features1 = Direct3D12::D3D12_FEATURE_DATA_D3D12_OPTIONS1::default();
         let hr = unsafe {
@@ -468,17 +500,15 @@ impl super::Adapter {
         }
         .is_ok();
 
-        // Since all features for raytracing pipeline (geometry index) and ray queries both come
-        // from here, there is no point in adding an extra call here given that there will be no
-        // feature using EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE if all these are not met.
         // Once ray tracing pipelines are supported they also will go here
+        let supports_ray_tracing = features5.RaytracingTier
+            == Direct3D12::D3D12_RAYTRACING_TIER_1_1
+            && shader_model >= naga::back::hlsl::ShaderModel::V6_5
+            && has_features5;
         features.set(
             wgt::Features::EXPERIMENTAL_RAY_QUERY
-                | wgt::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE
                 | wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS,
-            features5.RaytracingTier == Direct3D12::D3D12_RAYTRACING_TIER_1_1
-                && shader_model >= naga::back::hlsl::ShaderModel::V6_5
-                && has_features5,
+            supports_ray_tracing,
         );
 
         let atomic_int64_on_typed_resource_supported = {
@@ -511,16 +541,32 @@ impl super::Adapter {
         let max_color_attachment_bytes_per_sample =
             max_color_attachments * wgt::TextureFormat::MAX_TARGET_PIXEL_BYTE_COST;
 
+        let max_srv_count = match options.ResourceBindingTier {
+            Direct3D12::D3D12_RESOURCE_BINDING_TIER_1 => 128,
+            _ => full_heap_count,
+        };
+
+        // If we also support acceleration structures these are shared so we must halve it.
+        // It's unlikely that this affects anything because most devices that support ray tracing
+        // probably have a higher binding tier than one.
+        let max_sampled_textures_per_shader_stage = if !supports_ray_tracing {
+            max_srv_count
+        } else {
+            max_srv_count / 2
+        };
+
         Some(crate::ExposedAdapter {
             adapter: super::Adapter {
                 raw: adapter,
                 device,
                 library: Arc::clone(library),
+                dcomp_lib: Arc::clone(dcomp_lib),
                 private_caps,
                 presentation_timer,
                 workarounds,
                 memory_budget_thresholds,
                 compiler_container,
+                options: backend_options,
             },
             info,
             features,
@@ -538,10 +584,7 @@ impl super::Adapter {
                         .max_dynamic_uniform_buffers_per_pipeline_layout,
                     max_dynamic_storage_buffers_per_pipeline_layout: base
                         .max_dynamic_storage_buffers_per_pipeline_layout,
-                    max_sampled_textures_per_shader_stage: match options.ResourceBindingTier {
-                        Direct3D12::D3D12_RESOURCE_BINDING_TIER_1 => 128,
-                        _ => full_heap_count,
-                    },
+                    max_sampled_textures_per_shader_stage,
                     max_samplers_per_shader_stage: match options.ResourceBindingTier {
                         Direct3D12::D3D12_RESOURCE_BINDING_TIER_1 => 16,
                         _ => Direct3D12::D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE,
@@ -604,6 +647,32 @@ impl super::Adapter {
                     // store buffer sizes using 32 bit ints (a situation we have already encountered with vulkan).
                     max_buffer_size: i32::MAX as u64,
                     max_non_sampler_bindings: 1_000_000,
+
+                    max_task_workgroup_total_count: 0,
+                    max_task_workgroups_per_dimension: 0,
+                    max_mesh_multiview_count: 0,
+                    max_mesh_output_layers: 0,
+
+                    max_blas_primitive_count: if supports_ray_tracing {
+                        1 << 29 // 2^29
+                    } else {
+                        0
+                    },
+                    max_blas_geometry_count: if supports_ray_tracing {
+                        1 << 24 // 2^24
+                    } else {
+                        0
+                    },
+                    max_tlas_instance_count: if supports_ray_tracing {
+                        1 << 24 // 2^24
+                    } else {
+                        0
+                    },
+                    max_acceleration_structures_per_shader_stage: if supports_ray_tracing {
+                        max_srv_count / 2
+                    } else {
+                        0
+                    },
                 },
                 alignments: crate::Alignments {
                     buffer_copy_offset: wgt::BufferSize::new(
@@ -659,8 +728,10 @@ impl crate::Adapter for super::Adapter {
             memory_hints,
             self.private_caps,
             &self.library,
+            &self.dcomp_lib,
             self.memory_budget_thresholds,
             self.compiler_container.clone(),
+            self.options.clone(),
         )?;
         Ok(crate::OpenDevice {
             device,
@@ -851,7 +922,10 @@ impl crate::Adapter for super::Adapter {
     ) -> Option<crate::SurfaceCapabilities> {
         let current_extent = {
             match surface.target {
-                SurfaceTarget::WndHandle(wnd_handle) => {
+                SurfaceTarget::WndHandle(wnd_handle)
+                | SurfaceTarget::VisualFromWndHandle {
+                    handle: wnd_handle, ..
+                } => {
                     let mut rect = Default::default();
                     if unsafe { WindowsAndMessaging::GetClientRect(wnd_handle, &mut rect) }.is_ok()
                     {
@@ -895,6 +969,7 @@ impl crate::Adapter for super::Adapter {
             composite_alpha_modes: match surface.target {
                 SurfaceTarget::WndHandle(_) => vec![wgt::CompositeAlphaMode::Opaque],
                 SurfaceTarget::Visual(_)
+                | SurfaceTarget::VisualFromWndHandle { .. }
                 | SurfaceTarget::SurfaceHandle(_)
                 | SurfaceTarget::SwapChainPanel(_) => vec![
                     wgt::CompositeAlphaMode::Auto,

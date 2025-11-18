@@ -512,9 +512,6 @@ nsresult NS_CheckPortSafety(int32_t port, const char* scheme,
 // Determine if this URI is using a safe port.
 nsresult NS_CheckPortSafety(nsIURI* uri);
 
-nsresult NS_NewProxyInfo(const nsACString& type, const nsACString& host,
-                         int32_t port, uint32_t flags, nsIProxyInfo** result);
-
 nsresult NS_GetFileProtocolHandler(nsIFileProtocolHandler** result,
                                    nsIIOService* ioService = nullptr);
 
@@ -1189,8 +1186,42 @@ void ParseSimpleURISchemes(const nsACString& schemeList);
 nsresult AddExtraHeaders(nsIHttpChannel* aHttpChannel,
                          const nsACString& aExtraHeaders, bool aMerge = true);
 
-bool IsLocalNetworkAccess(nsILoadInfo::IPAddressSpace aParentIPAddressSpace,
-                          nsILoadInfo::IPAddressSpace aTargetIPAddressSpace);
+bool IsLocalOrPrivateNetworkAccess(
+    nsILoadInfo::IPAddressSpace aParentIPAddressSpace,
+    nsILoadInfo::IPAddressSpace aTargetIPAddressSpace);
+bool IsPrivateNetworkAccess(
+    const nsILoadInfo::IPAddressSpace aParentIPAddressSpace,
+    const nsILoadInfo::IPAddressSpace aTargetIPAddressSpace);
+bool IsLocalHostAccess(const nsILoadInfo::IPAddressSpace aParentIPAddressSpace,
+                       const nsILoadInfo::IPAddressSpace aTargetIPAddressSpace);
+
+enum ActivateStorageAccessVariant {
+  // The server's response instructs the user agent to activate storage access
+  // before continuing with the load of the resource. (This is only relevant
+  // when loading a new document)
+  //     Activate-Storage-Access: load
+  Load,
+  // The server's response instructs the user agent to activate storage access,
+  // then retry the request. The "allowed-origin" parameter allowlists the
+  // request's origin.
+  //     Activate-Storage-Access: retry; allowed-origin="https://foo.bar"
+  RetryOrigin,
+  // Same as above, but using a wildcard instead of explicitly naming the
+  // request's origin.
+  //     Activate-Storage-Access: retry; allowed-origin=*
+  RetryAny,
+};
+
+struct ActivateStorageAccess {
+  ActivateStorageAccessVariant variant;
+  // string from allowed-origin in case ActivateOrigin of ActivateOrigin-Variant
+  // above
+  nsCString origin;
+};
+
+Result<ActivateStorageAccess, nsresult> ParseActivateStorageAccess(
+    const nsACString& aActivateStorageAcess);
+
 }  // namespace net
 }  // namespace mozilla
 

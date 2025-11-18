@@ -7,11 +7,10 @@ package org.mozilla.fenix.search
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.text.SpannableString
 import androidx.annotation.VisibleForTesting
-import androidx.appcompat.app.AlertDialog
 import androidx.navigation.NavController
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import mozilla.components.browser.state.action.AwesomeBarAction
 import mozilla.components.browser.state.search.SearchEngine
 import mozilla.components.browser.state.state.selectedOrDefaultSearchEngine
@@ -22,7 +21,7 @@ import mozilla.components.support.ktx.kotlin.isUrl
 import mozilla.components.ui.widgets.withCenterAlignedButtons
 import org.mozilla.fenix.BrowserDirection
 import org.mozilla.fenix.GleanMetrics.Events
-import org.mozilla.fenix.GleanMetrics.UnifiedSearch
+import org.mozilla.fenix.GleanMetrics.Toolbar
 import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.R
 import org.mozilla.fenix.components.metrics.MetricsUtils
@@ -36,6 +35,8 @@ import org.mozilla.fenix.ext.telemetryName
 import org.mozilla.fenix.search.toolbar.SearchSelectorInteractor
 import org.mozilla.fenix.search.toolbar.SearchSelectorMenu
 import org.mozilla.fenix.settings.SupportUtils
+import org.mozilla.fenix.telemetry.ACTION_SEARCH_ENGINE_SELECTED
+import org.mozilla.fenix.telemetry.SOURCE_ADDRESS_BAR
 import org.mozilla.fenix.utils.Settings
 
 /**
@@ -263,7 +264,13 @@ class SearchDialogController(
             }
         }
 
-        UnifiedSearch.engineSelected.record(UnifiedSearch.EngineSelectedExtra(searchEngine.telemetryName()))
+        Toolbar.buttonTapped.record(
+            Toolbar.ButtonTappedExtra(
+                source = SOURCE_ADDRESS_BAR,
+                item = ACTION_SEARCH_ENGINE_SELECTED,
+                extra = searchEngine.telemetryName(),
+            ),
+        )
     }
 
     override fun handleClickSearchEngineSettings() {
@@ -311,9 +318,14 @@ class SearchDialogController(
         }
     }
 
+    /**
+     * Builds and configures a [MaterialAlertDialogBuilder] to display a dialog
+     * informing the user that camera permissions are needed and providing an option
+     * to go to the app settings.
+     */
     @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
-    fun buildDialog(): AlertDialog.Builder {
-        return AlertDialog.Builder(activity).apply {
+    fun buildDialog(): MaterialAlertDialogBuilder {
+        return MaterialAlertDialogBuilder(activity).apply {
             val spannableText = SpannableString(
                 activity.resources.getString(R.string.camera_permissions_needed_message),
             )
@@ -322,17 +334,7 @@ class SearchDialogController(
                 dismissDialog?.invoke()
             }
             setPositiveButton(R.string.camera_permissions_needed_positive_button_text) { dialog: DialogInterface, _ ->
-                val intent: Intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                } else {
-                    SupportUtils.createCustomTabIntent(
-                        activity,
-                        SupportUtils.getSumoURLForTopic(
-                            activity,
-                            SupportUtils.SumoTopic.QR_CAMERA_ACCESS,
-                        ),
-                    )
-                }
+                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 val uri = Uri.fromParts("package", activity.packageName, null)
                 intent.data = uri
                 dialog.cancel()

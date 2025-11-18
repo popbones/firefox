@@ -7,16 +7,15 @@
 
 use crate::computed_value_flags::ComputedValueFlags;
 use crate::dom::TElement;
-#[cfg(feature = "gecko")]
-use crate::properties::longhands::{
-    contain::computed_value::T as Contain,
-    container_type::computed_value::T as ContainerType,
-    content_visibility::computed_value::T as ContentVisibility,
-    overflow_x::computed_value::T as Overflow
-};
 use crate::properties::longhands::display::computed_value::T as Display;
 use crate::properties::longhands::float::computed_value::T as Float;
 use crate::properties::longhands::position::computed_value::T as Position;
+#[cfg(feature = "gecko")]
+use crate::properties::longhands::{
+    contain::computed_value::T as Contain, container_type::computed_value::T as ContainerType,
+    content_visibility::computed_value::T as ContentVisibility,
+    overflow_x::computed_value::T as Overflow,
+};
 use crate::properties::{self, ComputedValues, StyleBuilder};
 
 #[cfg(feature = "gecko")]
@@ -206,7 +205,7 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
             return pseudo.skip_item_display_fixup();
         }
 
-        element.map_or(false, |e| e.skip_item_display_fixup())
+        element.is_some_and(|e| e.skip_item_display_fixup())
     }
 
     /// Apply the blockification rules based on the table in CSS 2.2 section 9.7.
@@ -360,8 +359,9 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
     #[cfg(feature = "gecko")]
     fn adjust_for_text_in_ruby(&mut self) {
         let parent_display = self.style.get_parent_box().clone_display();
-        if parent_display.is_ruby_type() ||
-            self.style
+        if parent_display.is_ruby_type()
+            || self
+                .style
                 .get_parent_flags()
                 .contains(ComputedValueFlags::SHOULD_SUPPRESS_LINEBREAK)
         {
@@ -387,8 +387,8 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
         let our_writing_mode = self.style.get_inherited_box().clone_writing_mode();
         let parent_writing_mode = layout_parent_style.get_inherited_box().clone_writing_mode();
 
-        if our_writing_mode != parent_writing_mode &&
-            self.style.get_box().clone_display() == Display::Inline
+        if our_writing_mode != parent_writing_mode
+            && self.style.get_box().clone_display() == Display::Inline
         {
             // TODO(emilio): Figure out if we can just set the adjusted display
             // on Gecko too and unify this code path.
@@ -465,8 +465,8 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
         let box_style = self.style.get_box();
         let container_type = box_style.clone_container_type();
         let content_visibility = box_style.clone_content_visibility();
-        if container_type == ContainerType::Normal &&
-            content_visibility == ContentVisibility::Visible
+        if !container_type.is_size_container_type()
+            && content_visibility == ContentVisibility::Visible
         {
             debug_assert_eq!(
                 box_style.clone_contain(),
@@ -487,20 +487,16 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
             ContentVisibility::Hidden => new_contain
                 .insert(Contain::LAYOUT | Contain::PAINT | Contain::SIZE | Contain::STYLE),
         }
-        match container_type {
-            ContainerType::Normal => {},
+        if container_type.intersects(ContainerType::INLINE_SIZE) {
             // https://drafts.csswg.org/css-contain-3/#valdef-container-type-inline-size:
             //     Applies layout containment, style containment, and inline-size
             //     containment to the principal box.
-            ContainerType::InlineSize => {
-                new_contain.insert(Contain::STYLE | Contain::INLINE_SIZE)
-            },
+            new_contain.insert(Contain::STYLE | Contain::INLINE_SIZE);
+        } else if container_type.intersects(ContainerType::SIZE) {
             // https://drafts.csswg.org/css-contain-3/#valdef-container-type-size:
             //     Applies layout containment, style containment, and size
             //     containment to the principal box.
-            ContainerType::Size => {
-                new_contain.insert(Contain::STYLE | Contain::SIZE)
-            },
+            new_contain.insert(Contain::STYLE | Contain::SIZE);
         }
         if new_contain == old_contain {
             debug_assert_eq!(
@@ -585,9 +581,9 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
         let old_collapse = self.style.get_inherited_text().clone_white_space_collapse();
         let new_collapse = match old_collapse {
             WhiteSpaceCollapse::Preserve | WhiteSpaceCollapse::BreakSpaces => old_collapse,
-            WhiteSpaceCollapse::Collapse |
-            WhiteSpaceCollapse::PreserveSpaces |
-            WhiteSpaceCollapse::PreserveBreaks => WhiteSpaceCollapse::Preserve,
+            WhiteSpaceCollapse::Collapse
+            | WhiteSpaceCollapse::PreserveSpaces
+            | WhiteSpaceCollapse::PreserveBreaks => WhiteSpaceCollapse::Preserve,
         };
         if new_collapse != old_collapse {
             self.style
@@ -874,9 +870,9 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
         use crate::values::computed::font::{FontFamily, FontSynthesis, FontSynthesisStyle};
         use crate::values::computed::text::{LetterSpacing, WordSpacing};
 
-        let is_legacy_marker = self.style.pseudo.map_or(false, |p| p.is_marker()) &&
-            self.style.get_list().clone_list_style_type().is_bullet() &&
-            self.style.get_counters().clone_content() == Content::Normal;
+        let is_legacy_marker = self.style.pseudo.map_or(false, |p| p.is_marker())
+            && self.style.get_list().clone_list_style_type().is_bullet()
+            && self.style.get_counters().clone_content() == Content::Normal;
         if !is_legacy_marker {
             return;
         }
@@ -923,11 +919,16 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
         E: TElement,
     {
         if cfg!(debug_assertions) {
-            if element.map_or(false, |e| e.is_pseudo_element()) {
-                // It'd be nice to assert `self.style.pseudo == Some(&pseudo)`,
-                // but we do resolve ::-moz-list pseudos on ::before / ::after
-                // content, sigh.
-                debug_assert!(self.style.pseudo.is_some(), "Someone really messed up");
+            if let Some(e) = element {
+                if let Some(p) = e.implemented_pseudo_element() {
+                    // It'd be nice to assert `self.style.pseudo == Some(&pseudo)`,
+                    // but we do resolve ::-moz-list pseudos on ::before / ::after
+                    // content, sigh.
+                    debug_assert!(
+                        self.style.pseudo.is_some(),
+                        "Someone really messed up (no pseudo style for {e:?}, {p:?})"
+                    );
+                }
             }
         }
         // FIXME(emilio): The apply_declarations callsite in Servo's
@@ -969,9 +970,6 @@ impl<'a, 'b: 'a> StyleAdjuster<'a, 'b> {
         #[cfg(feature = "gecko")]
         {
             self.adjust_for_ruby(layout_parent_style, element);
-        }
-        #[cfg(feature = "gecko")]
-        {
             self.adjust_for_appearance(element);
             self.adjust_for_marker_pseudo();
         }

@@ -7,21 +7,20 @@
 #include "mozilla/dom/WindowGlobalActor.h"
 
 #include "AutoplayPolicy.h"
-#include "nsContentUtils.h"
 #include "mozilla/Components.h"
 #include "mozilla/ContentBlockingAllowList.h"
 #include "mozilla/Logging.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/JSActorService.h"
-#include "mozilla/dom/JSWindowActorParent.h"
 #include "mozilla/dom/JSWindowActorChild.h"
+#include "mozilla/dom/JSWindowActorParent.h"
 #include "mozilla/dom/JSWindowActorProtocol.h"
 #include "mozilla/dom/PopupBlocker.h"
-#include "mozilla/net/CookieJarSettings.h"
 #include "mozilla/dom/WindowContext.h"
 #include "mozilla/dom/WindowGlobalChild.h"
 #include "mozilla/dom/WindowGlobalParent.h"
-
+#include "mozilla/net/CookieJarSettings.h"
+#include "nsContentUtils.h"
 #include "nsGlobalWindowInner.h"
 #include "nsNetUtil.h"
 
@@ -139,8 +138,12 @@ WindowGlobalInit WindowGlobalActor::WindowInitializer(
     nsCOMPtr<nsILoadInfo> loadInfo(channel->LoadInfo());
     fields.Get<Indexes::IDX_IsOriginalFrameSource>() =
         loadInfo->GetOriginalFrameSrcLoad();
+
+    nsILoadInfo::StoragePermissionState storageAccess =
+        loadInfo->GetStoragePermission();
     fields.Get<Indexes::IDX_UsingStorageAccess>() =
-        loadInfo->GetStoragePermission() != nsILoadInfo::NoStoragePermission;
+        storageAccess == nsILoadInfo::HasStoragePermission ||
+        storageAccess == nsILoadInfo::StoragePermissionAllowListed;
 
     channel->GetSecurityInfo(getter_AddRefs(securityInfo));
   }

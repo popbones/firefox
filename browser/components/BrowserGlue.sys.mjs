@@ -25,6 +25,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
     "moz-src:///browser/components/protections/ContentBlockingPrefs.sys.mjs",
   ContextualIdentityService:
     "resource://gre/modules/ContextualIdentityService.sys.mjs",
+  DAPIncrementality: "resource://gre/modules/DAPIncrementality.sys.mjs",
   DAPTelemetrySender: "resource://gre/modules/DAPTelemetrySender.sys.mjs",
   DAPVisitCounter: "resource://gre/modules/DAPVisitCounter.sys.mjs",
   DefaultBrowserCheck:
@@ -34,11 +35,8 @@ ChromeUtils.defineESModuleGetters(lazy, {
   Discovery: "resource:///modules/Discovery.sys.mjs",
   DistributionManagement: "resource:///modules/distribution.sys.mjs",
   DownloadsViewableInternally:
-    "resource:///modules/DownloadsViewableInternally.sys.mjs",
+    "moz-src:///browser/components/downloads/DownloadsViewableInternally.sys.mjs",
   ExtensionsUI: "resource:///modules/ExtensionsUI.sys.mjs",
-  // FilePickerCrashed is used by the `listeners` object below.
-  // eslint-disable-next-line mozilla/valid-lazy
-  FilePickerCrashed: "resource:///modules/FilePickerCrashed.sys.mjs",
   FormAutofillUtils: "resource://gre/modules/shared/FormAutofillUtils.sys.mjs",
   Interactions: "moz-src:///browser/components/places/Interactions.sys.mjs",
   LoginBreaches: "resource:///modules/LoginBreaches.sys.mjs",
@@ -47,18 +45,14 @@ ChromeUtils.defineESModuleGetters(lazy, {
   NimbusFeatures: "resource://nimbus/ExperimentAPI.sys.mjs",
   OnboardingMessageProvider:
     "resource:///modules/asrouter/OnboardingMessageProvider.sys.mjs",
-  PageDataService: "resource:///modules/pagedata/PageDataService.sys.mjs",
+  PageDataService:
+    "moz-src:///browser/components/pagedata/PageDataService.sys.mjs",
   PdfJs: "resource://pdf.js/PdfJs.sys.mjs",
   PlacesBrowserStartup:
     "moz-src:///browser/components/places/PlacesBrowserStartup.sys.mjs",
-  // PluginManager is used by the `listeners` object below.
-  // eslint-disable-next-line mozilla/valid-lazy
-  PluginManager: "resource:///actors/PluginParent.sys.mjs",
   PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
   ProfileDataUpgrader:
     "moz-src:///browser/components/ProfileDataUpgrader.sys.mjs",
-  RemoteSecuritySettings:
-    "resource://gre/modules/psm/RemoteSecuritySettings.sys.mjs",
   RemoteSettings: "resource://services-settings/remote-settings.sys.mjs",
   SafeBrowsing: "resource://gre/modules/SafeBrowsing.sys.mjs",
   Sanitizer: "resource:///modules/Sanitizer.sys.mjs",
@@ -131,44 +125,6 @@ ChromeUtils.defineLazyGetter(lazy, "gBrowserBundle", function () {
     "chrome://browser/locale/browser.properties"
   );
 });
-
-const listeners = {
-  observers: {
-    "file-picker-crashed": ["FilePickerCrashed"],
-    "gmp-plugin-crash": ["PluginManager"],
-    "plugin-crashed": ["PluginManager"],
-  },
-
-  observe(subject, topic, data) {
-    for (let module of this.observers[topic]) {
-      try {
-        lazy[module].observe(subject, topic, data);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  },
-
-  init() {
-    for (let observer of Object.keys(this.observers)) {
-      Services.obs.addObserver(this, observer);
-    }
-  },
-};
-if (AppConstants.MOZ_UPDATER) {
-  ChromeUtils.defineESModuleGetters(lazy, {
-    // This listeners/observers/lazy indirection is too much for eslint:
-    // eslint-disable-next-line mozilla/valid-lazy
-    UpdateListener: "resource://gre/modules/UpdateListener.sys.mjs",
-  });
-
-  listeners.observers["update-downloading"] = ["UpdateListener"];
-  listeners.observers["update-staged"] = ["UpdateListener"];
-  listeners.observers["update-downloaded"] = ["UpdateListener"];
-  listeners.observers["update-available"] = ["UpdateListener"];
-  listeners.observers["update-error"] = ["UpdateListener"];
-  listeners.observers["update-swap"] = ["UpdateListener"];
-}
 
 // Seconds of idle time before the late idle tasks will be scheduled.
 const LATE_TASKS_IDLE_TIME_SEC = 20;
@@ -289,7 +245,9 @@ BrowserGlue.prototype = {
       case "handle-xul-text-link": {
         let linkHandled = subject.QueryInterface(Ci.nsISupportsPRBool);
         if (!linkHandled.data) {
-          let win = lazy.BrowserWindowTracker.getTopWindow();
+          let win =
+            lazy.BrowserWindowTracker.getTopWindow() ??
+            (await lazy.BrowserWindowTracker.promiseOpenWindow());
           if (win) {
             data = JSON.parse(data);
             let where = lazy.BrowserUtils.whereToOpenLink(data);
@@ -320,7 +278,9 @@ BrowserGlue.prototype = {
         } catch (ex) {
           console.error(ex);
         }
-        let win = lazy.BrowserWindowTracker.getTopWindow();
+        let win = lazy.BrowserWindowTracker.getTopWindow({
+          allowFromInactiveWorkspace: true,
+        });
         lazy.BrowserSearchTelemetry.recordSearch(
           win.gBrowser.selectedBrowser,
           engine,
@@ -449,8 +409,6 @@ BrowserGlue.prototype = {
       lazy.LoginHelper.setOSAuthEnabled(false);
     }
 
-    listeners.init();
-
     lazy.BrowserUtils.callModulesFromCategory({
       categoryName: "browser-before-ui-startup",
     });
@@ -549,7 +507,9 @@ BrowserGlue.prototype = {
    *        why a profile reset is offered.
    */
   _resetProfileNotification(reason) {
-    let win = lazy.BrowserWindowTracker.getTopWindow();
+    let win = lazy.BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
     if (!win) {
       return;
     }
@@ -607,7 +567,9 @@ BrowserGlue.prototype = {
   },
 
   _notifyUnsignedAddonsDisabled() {
-    let win = lazy.BrowserWindowTracker.getTopWindow();
+    let win = lazy.BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
     if (!win) {
       return;
     }
@@ -642,7 +604,7 @@ BrowserGlue.prototype = {
   },
 
   _earlyBlankFirstPaint(cmdLine) {
-    let startTime = Cu.now();
+    let startTime = ChromeUtils.now();
 
     let shouldCreateWindow = isPrivateWindow => {
       if (cmdLine.findFlag("wait-for-jsdebugger", false) != -1) {
@@ -765,12 +727,15 @@ BrowserGlue.prototype = {
     win.stop();
 
     ChromeUtils.addProfilerMarker("earlyBlankFirstPaint", startTime);
-    win.openTime = Cu.now();
+    win.openTime = ChromeUtils.now();
 
     let { TelemetryTimestamps } = ChromeUtils.importESModule(
       "resource://gre/modules/TelemetryTimestamps.sys.mjs"
     );
     TelemetryTimestamps.add("blankWindowShown");
+    Glean.browserTimings.startupTimeline.blankWindowShown.set(
+      Services.telemetry.msSinceProcessStart()
+    );
 
     function getValue(attr) {
       return Services.xulStore.getValue(
@@ -1053,7 +1018,7 @@ BrowserGlue.prototype = {
         ChromeUtils.idleDispatch(
           async () => {
             if (!Services.startup.shuttingDown) {
-              let startTime = Cu.now();
+              let startTime = ChromeUtils.now();
               try {
                 await task.task();
               } catch (ex) {
@@ -1303,6 +1268,7 @@ BrowserGlue.prototype = {
         task: async () => {
           await lazy.DAPTelemetrySender.startup();
           await lazy.DAPVisitCounter.startup();
+          await lazy.DAPIncrementality.startup();
         },
       },
 
@@ -1381,10 +1347,6 @@ BrowserGlue.prototype = {
         this._addBreachesSyncHandler();
       }.bind(this),
 
-      function RemoteSecuritySettingsInit() {
-        lazy.RemoteSecuritySettings.init();
-      },
-
       function searchBackgroundChecks() {
         Services.search.runBackgroundChecks();
       },
@@ -1393,7 +1355,7 @@ BrowserGlue.prototype = {
     for (let task of idleTasks) {
       ChromeUtils.idleDispatch(async () => {
         if (!Services.startup.shuttingDown) {
-          let startTime = Cu.now();
+          let startTime = ChromeUtils.now();
           try {
             await task();
           } catch (ex) {
@@ -1516,7 +1478,9 @@ BrowserGlue.prototype = {
       aQuitType = "quit";
     }
 
-    let win = lazy.BrowserWindowTracker.getTopWindow();
+    let win = lazy.BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
 
     // Our prompt for quitting is most important, so replace others.
     win.gDialogBox.replaceDialogIfOpen();
@@ -1641,7 +1605,7 @@ BrowserGlue.prototype = {
     // Use an increasing number to keep track of the current state of the user's
     // profile, so we can move data around as needed as the browser evolves.
     // Completely unrelated to the current Firefox release number.
-    const APP_DATA_VERSION = 158;
+    const APP_DATA_VERSION = 160;
     const PREF = "browser.migration.version";
 
     let profileDataVersion = Services.prefs.getIntPref(PREF, -1);
@@ -1657,7 +1621,9 @@ BrowserGlue.prototype = {
 
   async _showUpgradeDialog() {
     const data = await lazy.OnboardingMessageProvider.getUpgradeMessage();
-    const { gBrowser } = lazy.BrowserWindowTracker.getTopWindow();
+    const { gBrowser } = lazy.BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
 
     // We'll be adding a new tab open the tab-modal dialog in.
     let tab;
@@ -1757,7 +1723,9 @@ BrowserGlue.prototype = {
       /* isStartupCheck */ true
     );
     if (willPrompt) {
-      let win = lazy.BrowserWindowTracker.getTopWindow();
+      let win = lazy.BrowserWindowTracker.getTopWindow({
+        allowFromInactiveWorkspace: true,
+      });
       let setToDefaultFeature = lazy.NimbusFeatures.setToDefaultPrompt;
 
       // Send exposure telemetry if user will see default prompt or experimental
@@ -1778,8 +1746,9 @@ BrowserGlue.prototype = {
 
     await lazy.ASRouter.waitForInitialized;
     lazy.ASRouter.sendTriggerMessage({
-      browser:
-        lazy.BrowserWindowTracker.getTopWindow()?.gBrowser.selectedBrowser,
+      browser: lazy.BrowserWindowTracker.getTopWindow({
+        allowFromInactiveWorkspace: true,
+      })?.gBrowser.selectedBrowser,
       // triggerId and triggerContext
       id: "defaultBrowserCheck",
       context: { willShowDefaultPrompt: willPrompt, source: "startup" },
@@ -1790,7 +1759,9 @@ BrowserGlue.prototype = {
    * Open preferences even if there are no open windows.
    */
   _openPreferences(...args) {
-    let chromeWindow = lazy.BrowserWindowTracker.getTopWindow();
+    let chromeWindow = lazy.BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
     if (chromeWindow) {
       chromeWindow.openPreferences(...args);
       return;

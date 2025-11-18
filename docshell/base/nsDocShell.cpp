@@ -74,6 +74,7 @@
 #include "mozilla/dom/NavigationHistoryEntry.h"
 #include "mozilla/dom/PerformanceNavigation.h"
 #include "mozilla/dom/PermissionMessageUtils.h"
+#include "mozilla/dom/PolicyContainer.h"
 #include "mozilla/dom/PopupBlocker.h"
 #include "mozilla/dom/ScreenOrientation.h"
 #include "mozilla/dom/ScriptSettings.h"
@@ -1133,8 +1134,10 @@ bool nsDocShell::MaybeHandleSubframeHistory(
   nsCOMPtr<nsISHEntry> currentChildEntry;
   GetCurrentSHEntry(getter_AddRefs(currentChildEntry), &oshe);
 
-  if (mCurrentURI && (!NS_IsAboutBlank(mCurrentURI) || currentChildEntry ||
-                      mLoadingEntry || mActiveEntry)) {
+  if (mCurrentURI &&
+      (!NS_IsAboutBlank(mCurrentURI) || currentChildEntry || mLoadingEntry ||
+       mActiveEntry) &&
+      !aLoadState->ShouldNotForceReplaceInOnLoad()) {
     // This is a pre-existing subframe. If
     // 1. The load of this frame was not originally initiated by session
     //    history directly (i.e. (!shEntry) condition succeeded, but it can
@@ -3699,9 +3702,10 @@ nsDocShell::DisplayLoadError(nsresult aError, nsIURI* aURI,
     errorDescriptionID = error;
   }
 
-  Telemetry::AccumulateCategoricalKeyed(
-      IsSubframe() ? "frame"_ns : "top"_ns,
-      mozilla::dom::LoadErrorToTelemetryLabel(aError));
+  glean::page::load_error
+      .Get(IsSubframe() ? "frame"_ns : "top"_ns,
+           mozilla::dom::LoadErrorToTelemetryLabel(aError))
+      .Add();
 
   // Test if the error needs to be formatted
   if (!messageStr.IsEmpty()) {
@@ -4133,7 +4137,8 @@ nsresult nsDocShell::ReloadDocument(nsDocShell* aDocShell, Document* aDocument,
   bool loadReplace = false;
 
   nsIPrincipal* triggeringPrincipal = aDocument->NodePrincipal();
-  nsCOMPtr<nsIContentSecurityPolicy> csp = aDocument->GetCsp();
+  nsCOMPtr<nsIPolicyContainer> policyContainer =
+      aDocument->GetPolicyContainer();
   uint32_t triggeringSandboxFlags = aDocument->GetSandboxFlags();
   uint64_t triggeringWindowId = aDocument->InnerWindowID();
   bool triggeringStorageAccess = aDocument->UsingStorageAccess();
@@ -4189,7 +4194,7 @@ nsresult nsDocShell::ReloadDocument(nsDocShell* aDocShell, Document* aDocument,
   loadState->SetTriggeringStorageAccess(triggeringStorageAccess);
   loadState->SetTriggeringClassificationFlags(triggeringClassificationFlags);
   loadState->SetPrincipalToInherit(triggeringPrincipal);
-  loadState->SetCsp(csp);
+  loadState->SetPolicyContainer(policyContainer);
   loadState->SetInternalLoadFlags(flags);
   loadState->SetTypeHint(NS_ConvertUTF16toUTF8(contentTypeHint));
   loadState->SetLoadType(aLoadType);
@@ -4211,8 +4216,16 @@ nsresult nsDocShell::ReloadDocument(nsDocShell* aDocShell, Document* aDocument,
 // TODO: Convert this to MOZ_CAN_RUN_SCRIPT (bug 1415230)
 MOZ_CAN_RUN_SCRIPT_BOUNDARY NS_IMETHODIMP
 nsDocShell::Stop(uint32_t aStopFlags) {
+  return StopInternal(aStopFlags, UnsetOngoingNavigation::Yes);
+}
+
+nsresult nsDocShell::StopInternal(
+    uint32_t aStopFlags, UnsetOngoingNavigation aUnsetOngoingNavigation) {
   RefPtr kungFuDeathGrip = this;
-  if (RefPtr<Document> doc = GetDocument(); doc && !doc->ShouldIgnoreOpens()) {
+  if (RefPtr<Document> doc = GetDocument();
+      aUnsetOngoingNavigation == UnsetOngoingNavigation::Yes && doc &&
+      !doc->ShouldIgnoreOpens() &&
+      mOngoingNavigation == Some(OngoingNavigation::NavigationID)) {
     SetOngoingNavigation(Nothing());
   }
 
@@ -4501,6 +4514,11 @@ nsDocShell::Destroy() {
     // the nsDSURIContentListener will block it.  All of which
     // means that we should do this before calling Stop(), of
     // course.
+  }
+
+  if (BrowsingContext* browsingContext = GetBrowsingContext();
+      browsingContext && !browsingContext->IsTop()) {
+    InformNavigationAPIAboutChildNavigableDestruction();
   }
 
   // Stop any URLs that are currently being loaded...
@@ -5160,7 +5178,7 @@ nsDocShell::ForceRefreshURI(nsIURI* aURI, nsIPrincipal* aPrincipal,
     principal = doc->NodePrincipal();
   }
   loadState->SetTriggeringPrincipal(principal);
-  loadState->SetCsp(doc->GetCsp());
+  loadState->SetPolicyContainer(doc->GetPolicyContainer());
   loadState->SetHasValidUserGestureActivation(
       doc->HasValidTransientUserGestureActivation());
 
@@ -5625,16 +5643,8 @@ nsresult nsDocShell::Embed(nsIDocumentViewer* aDocumentViewer,
       }
     }
 
-    nsCOMPtr<nsIPrincipal> partitionedPrincipal;
-    RefPtr<Document> doc = GetDocument();
-    if (doc) {
-      partitionedPrincipal = doc->PartitionedPrincipal();
-    }
-
     MOZ_LOG(gSHLog, LogLevel::Debug, ("document %p Embed", this));
-
-    MoveLoadingToActiveEntry(expired, cacheKey, aPreviousURI,
-                             partitionedPrincipal);
+    MoveLoadingToActiveEntry(expired, cacheKey, aPreviousURI);
   }
 
   bool updateHistory = true;
@@ -6564,7 +6574,7 @@ nsresult nsDocShell::EnsureDocumentViewer() {
     return NS_ERROR_FAILURE;
   }
 
-  nsCOMPtr<nsIContentSecurityPolicy> cspToInheritForAboutBlank;
+  nsCOMPtr<nsIPolicyContainer> policyContainerToInheritForAboutBlank;
   nsCOMPtr<nsIURI> baseURI;
   nsIPrincipal* principal = GetInheritedPrincipal(false);
   nsIPrincipal* partitionedPrincipal = GetInheritedPrincipal(false, true);
@@ -6576,13 +6586,15 @@ nsresult nsDocShell::EnsureDocumentViewer() {
       nsCOMPtr<Element> parentElement = domWin->GetFrameElementInternal();
       if (parentElement) {
         baseURI = parentElement->GetBaseURI();
-        cspToInheritForAboutBlank = parentElement->GetCsp();
+        policyContainerToInheritForAboutBlank =
+            parentElement->GetPolicyContainer();
       }
     }
   }
 
   nsresult rv = CreateAboutBlankDocumentViewer(
-      principal, partitionedPrincipal, cspToInheritForAboutBlank, baseURI,
+      principal, partitionedPrincipal, policyContainerToInheritForAboutBlank,
+      baseURI,
       /* aIsInitialDocument */ true);
 
   NS_ENSURE_STATE(mDocumentViewer);
@@ -6609,7 +6621,8 @@ nsresult nsDocShell::EnsureDocumentViewer() {
 
 nsresult nsDocShell::CreateAboutBlankDocumentViewer(
     nsIPrincipal* aPrincipal, nsIPrincipal* aPartitionedPrincipal,
-    nsIContentSecurityPolicy* aCSP, nsIURI* aBaseURI, bool aIsInitialDocument,
+    nsIPolicyContainer* aPolicyContainer, nsIURI* aBaseURI,
+    bool aIsInitialDocument,
     const Maybe<nsILoadInfo::CrossOriginEmbedderPolicy>& aCOEP,
     bool aTryToSaveOldPresentation, bool aCheckPermitUnload,
     WindowGlobalChild* aActor) {
@@ -6756,14 +6769,17 @@ nsresult nsDocShell::CreateAboutBlankDocumentViewer(
     blankDoc = nsContentDLF::CreateBlankDocument(mLoadGroup, principal,
                                                  partitionedPrincipal, this);
     if (blankDoc) {
-      // Hack: manually set the CSP for the new document
-      // Please create an actual copy of the CSP (do not share the same
-      // reference) otherwise appending a new policy within the new
-      // document will be incorrectly propagated to the opening doc.
-      if (aCSP) {
-        RefPtr<nsCSPContext> cspToInherit = new nsCSPContext();
-        cspToInherit->InitFromOther(static_cast<nsCSPContext*>(aCSP));
-        blankDoc->SetCsp(cspToInherit);
+      // Hack: manually set the policyContainer for the new document
+      // Please create an actual copy of the policyContainer (do not share the
+      // same reference) otherwise modifying the new container (such as
+      // appending a new policy to CSP) within the new document will be
+      // incorrectly propagated to the opening doc.
+      if (aPolicyContainer) {
+        RefPtr<PolicyContainer> policyContainerToInherit =
+            new PolicyContainer();
+        policyContainerToInherit->InitFromOther(
+            PolicyContainer::Cast(aPolicyContainer));
+        blankDoc->SetPolicyContainer(policyContainerToInherit);
       }
 
       blankDoc->SetIsInitialDocument(aIsInitialDocument);
@@ -6834,11 +6850,11 @@ nsresult nsDocShell::CreateAboutBlankDocumentViewer(
 }
 
 NS_IMETHODIMP
-nsDocShell::CreateAboutBlankDocumentViewer(nsIPrincipal* aPrincipal,
-                                           nsIPrincipal* aPartitionedPrincipal,
-                                           nsIContentSecurityPolicy* aCSP) {
-  return CreateAboutBlankDocumentViewer(aPrincipal, aPartitionedPrincipal, aCSP,
-                                        nullptr,
+nsDocShell::CreateAboutBlankDocumentViewer(
+    nsIPrincipal* aPrincipal, nsIPrincipal* aPartitionedPrincipal,
+    nsIPolicyContainer* aPolicyContainer) {
+  return CreateAboutBlankDocumentViewer(aPrincipal, aPartitionedPrincipal,
+                                        aPolicyContainer, nullptr,
                                         /* aIsInitialDocument */ false);
 }
 
@@ -6850,7 +6866,7 @@ nsresult nsDocShell::CreateDocumentViewerForActor(
   // FIXME: We may want to support non-initial documents here.
   nsresult rv = CreateAboutBlankDocumentViewer(
       aWindowActor->DocumentPrincipal(), aWindowActor->DocumentPrincipal(),
-      /* aCsp */ nullptr,
+      /* aPolicyContinaer */ nullptr,
       /* aBaseURI */ nullptr,
       /* aIsInitialDocument */ true,
       /* aCOEP */ Nothing(),
@@ -8212,9 +8228,7 @@ nsresult nsDocShell::SetupNewViewer(nsIDocumentViewer* aNewViewer,
 
   mDocumentViewer = aNewViewer;
 
-  nsCOMPtr<nsIWidget> widget;
-  NS_ENSURE_SUCCESS(GetMainWidget(getter_AddRefs(widget)), NS_ERROR_FAILURE);
-
+  nsCOMPtr<nsIWidget> widget = GetMainWidget();
   LayoutDeviceIntRect bounds(x, y, cx, cy);
 
   mDocumentViewer->SetNavigationTiming(mTiming);
@@ -8609,7 +8623,7 @@ nsresult nsDocShell::PerformRetargeting(nsDocShellLoadState* aLoadState) {
           aLoadState->TriggeringStorageAccess());
       loadState->SetTriggeringClassificationFlags(
           aLoadState->TriggeringClassificationFlags());
-      loadState->SetCsp(aLoadState->Csp());
+      loadState->SetPolicyContainer(aLoadState->PolicyContainer());
       loadState->SetInheritPrincipal(aLoadState->HasInternalLoadFlags(
           INTERNAL_LOAD_FLAGS_INHERIT_PRINCIPAL));
       // Explicit principal because we do not want any guesses as to what the
@@ -8867,14 +8881,10 @@ bool nsDocShell::IsSameDocumentNavigation(nsDocShellLoadState* aLoadState,
 static bool IsSamePrincipalForDocumentURI(nsIPrincipal* aCurrentPrincipal,
                                           nsIURI* aCurrentURI,
                                           nsIURI* aNewURI) {
-  if (!StaticPrefs::dom_security_setdocumenturi()) {
-    return true;
-  }
   nsCOMPtr<nsIURI> principalURI = aCurrentPrincipal->GetURI();
   if (aCurrentPrincipal->GetIsNullPrincipal()) {
-    nsCOMPtr<nsIPrincipal> precursor =
-        aCurrentPrincipal->GetPrecursorPrincipal();
-    if (precursor) {
+    if (nsCOMPtr<nsIPrincipal> precursor =
+            aCurrentPrincipal->GetPrecursorPrincipal()) {
       principalURI = precursor->GetURI();
     }
   }
@@ -8918,6 +8928,7 @@ nsresult nsDocShell::HandleSameDocumentNavigation(
   // origin skip handling otherwise
   if (!IsSamePrincipalForDocumentURI(doc->NodePrincipal(), mCurrentURI,
                                      newURI)) {
+    aSameDocument = false;
     MOZ_LOG(gSHLog, LogLevel::Debug,
             ("nsDocShell[%p]: possible violation of the same origin policy "
              "during same document navigation",
@@ -8925,7 +8936,8 @@ nsresult nsDocShell::HandleSameDocumentNavigation(
     return NS_OK;
   }
 
-  if (nsCOMPtr<nsPIDOMWindowInner> window = doc->GetInnerWindow()) {
+  if (nsCOMPtr<nsPIDOMWindowInner> window = doc->GetInnerWindow();
+      window && !aState.mHistoryNavBetweenSameDoc) {
     // https://html.spec.whatwg.org/#navigate-fragid
     // Step 1
     if (RefPtr<Navigation> navigation = window->Navigation()) {
@@ -9031,26 +9043,26 @@ nsresult nsDocShell::HandleSameDocumentNavigation(
    */
   nsCOMPtr<nsIPrincipal> newURITriggeringPrincipal, newURIPrincipalToInherit,
       newURIPartitionedPrincipalToInherit;
-  nsCOMPtr<nsIContentSecurityPolicy> newCsp;
+  nsCOMPtr<nsIPolicyContainer> newPolicyContainer;
   if (mozilla::SessionHistoryInParent() ? !!mActiveEntry : !!mOSHE) {
     if (mozilla::SessionHistoryInParent()) {
       newURITriggeringPrincipal = mActiveEntry->GetTriggeringPrincipal();
       newURIPrincipalToInherit = mActiveEntry->GetPrincipalToInherit();
       newURIPartitionedPrincipalToInherit =
           mActiveEntry->GetPartitionedPrincipalToInherit();
-      newCsp = mActiveEntry->GetCsp();
+      newPolicyContainer = mActiveEntry->GetPolicyContainer();
     } else {
       newURITriggeringPrincipal = mOSHE->GetTriggeringPrincipal();
       newURIPrincipalToInherit = mOSHE->GetPrincipalToInherit();
       newURIPartitionedPrincipalToInherit =
           mOSHE->GetPartitionedPrincipalToInherit();
-      newCsp = mOSHE->GetCsp();
+      newPolicyContainer = mOSHE->GetPolicyContainer();
     }
   } else {
     newURITriggeringPrincipal = aLoadState->TriggeringPrincipal();
     newURIPrincipalToInherit = doc->NodePrincipal();
     newURIPartitionedPrincipalToInherit = doc->PartitionedPrincipal();
-    newCsp = doc->GetCsp();
+    newPolicyContainer = doc->GetPolicyContainer();
   }
 
   uint32_t locationChangeFlags = GetSameDocumentNavigationFlags(newURI);
@@ -9069,7 +9081,7 @@ nsresult nsDocShell::HandleSameDocumentNavigation(
   // 1668126)
   bool locationChangeNeeded = OnNewURI(
       newURI, nullptr, newURITriggeringPrincipal, newURIPrincipalToInherit,
-      newURIPartitionedPrincipalToInherit, newCsp, true, true);
+      newURIPartitionedPrincipalToInherit, newPolicyContainer, true, true);
 
   nsCOMPtr<nsIInputStream> postData;
   nsCOMPtr<nsIReferrerInfo> referrerInfo;
@@ -9210,8 +9222,6 @@ nsresult nsDocShell::HandleSameDocumentNavigation(
         mActiveEntry->SetCacheKey(cacheKey);
       }
 
-      mActiveEntry->SetPartitionedPrincipalToInherit(
-          doc->PartitionedPrincipal());
       // We're passing in mCurrentURI, which could be null. SessionHistoryCommit
       // does require a non-null uri if this is for a refresh load of the same
       // URI, but in that case mCurrentURI won't be null here.
@@ -9219,7 +9229,7 @@ nsresult nsDocShell::HandleSameDocumentNavigation(
           *mLoadingEntry, mLoadType, mCurrentURI, previousActiveEntry.get(),
           true,
           /* No expiration update on the same document loads*/
-          false, cacheKey, doc->PartitionedPrincipal());
+          false, cacheKey);
       // FIXME Need to set postdata.
 
       // Set the title for the SH entry for this target url so that
@@ -9255,7 +9265,8 @@ nsresult nsDocShell::HandleSameDocumentNavigation(
       } else {
         mActiveEntry = MakeUnique<SessionHistoryInfo>(
             newURI, newURITriggeringPrincipal, newURIPrincipalToInherit,
-            newURIPartitionedPrincipalToInherit, newCsp, mContentTypeHint);
+            newURIPartitionedPrincipalToInherit, newPolicyContainer,
+            mContentTypeHint);
       }
 
       // Save the postData obtained from the previous page in to the session
@@ -9280,9 +9291,6 @@ nsresult nsDocShell::HandleSameDocumentNavigation(
       // Set the title for the SH entry for this target url so that
       // SH menus in go/back/forward buttons won't be empty for this.
       mActiveEntry->SetTitle(mTitle);
-
-      mActiveEntry->SetPartitionedPrincipalToInherit(
-          doc->PartitionedPrincipal());
 
       if (scrollRestorationIsManual.isSome()) {
         mActiveEntry->SetScrollRestorationIsManual(
@@ -9524,6 +9532,7 @@ nsresult nsDocShell::InternalLoad(nsDocShellLoadState* aLoadState,
   // process to have to trust the triggering process to do the appropriate
   // checks for the BrowsingContext's sandbox flags.
   MOZ_TRY(mBrowsingContext->CheckSandboxFlags(aLoadState));
+  MOZ_TRY(mBrowsingContext->CheckFramebusting(aLoadState));
 
   NS_ENSURE_STATE(!HasUnloadedParent());
 
@@ -9642,6 +9651,10 @@ nsresult nsDocShell::InternalLoad(nsDocShellLoadState* aLoadState,
       mBrowsingContext->Focus(CallerType::System, IgnoreErrors());
     }
     if (sameDocument) {
+      if (aLoadState->LoadIsFromSessionHistory() &&
+          (mLoadType & LOAD_CMD_HISTORY)) {
+        SetOngoingNavigation(Nothing());
+      }
       return rv;
     }
   }
@@ -9679,13 +9692,14 @@ nsresult nsDocShell::InternalLoad(nsDocShellLoadState* aLoadState,
 
   // Step 21
   if (RefPtr<Document> document = GetDocument();
-      document &&
+      !aLoadState->LoadIsFromSessionHistory() && document &&
       aLoadState->UserNavigationInvolvement() !=
           UserNavigationInvolvement::BrowserUI &&
       !document->IsInitialDocument() &&
       !NS_IsAboutBlankAllowQueryAndFragment(document->GetDocumentURI()) &&
       NS_IsFetchScheme(aLoadState->URI()) &&
-      document->NodePrincipal()->Subsumes(aLoadState->TriggeringPrincipal())) {
+      document->NodePrincipal()->EqualsConsideringDomain(
+          aLoadState->TriggeringPrincipal())) {
     if (nsCOMPtr<nsPIDOMWindowInner> window = document->GetInnerWindow()) {
       // Step 21.1
       if (RefPtr<Navigation> navigation = window->Navigation()) {
@@ -9819,6 +9833,11 @@ nsresult nsDocShell::InternalLoad(nsDocShellLoadState* aLoadState,
       // telemetry data correctly.
       document->DisallowBFCaching(flags);
     }
+
+    if (aLoadState->LoadIsFromSessionHistory() &&
+        (mLoadType & LOAD_CMD_HISTORY)) {
+      SetOngoingNavigation(Nothing());
+    }
   }
 
   // Don't stop current network activity for javascript: URL's since they might
@@ -9836,9 +9855,10 @@ nsresult nsDocShell::InternalLoad(nsDocShellLoadState* aLoadState,
     // starts arriving from the new URI...
     if ((mDocumentViewer && mDocumentViewer->GetPreviousViewer()) ||
         LOAD_TYPE_HAS_FLAGS(aLoadState->LoadType(), LOAD_FLAGS_STOP_CONTENT)) {
-      rv = Stop(nsIWebNavigation::STOP_ALL);
+      rv = StopInternal(nsIWebNavigation::STOP_ALL, UnsetOngoingNavigation::No);
     } else {
-      rv = Stop(nsIWebNavigation::STOP_NETWORK);
+      rv = StopInternal(nsIWebNavigation::STOP_NETWORK,
+                        UnsetOngoingNavigation::No);
     }
 
     if (NS_FAILED(rv)) {
@@ -9952,6 +9972,13 @@ nsresult nsDocShell::InternalLoad(nsDocShellLoadState* aLoadState,
   if (NS_FAILED(rv)) {
     nsCOMPtr<nsIChannel> chan(do_QueryInterface(req));
     UnblockEmbedderLoadEventForFailure();
+
+    // The spec says no exception should be raised for pre-navigation check
+    // failures.
+    if (NS_ERROR_DOM_SECURITY_ERR == rv) {
+      return NS_OK;
+    }
+
     nsCOMPtr<nsIURI> uri = aLoadState->URI();
     if (DisplayLoadError(rv, uri, nullptr, chan) &&
         // FIXME: At this point code was using internal load flags, but checking
@@ -9964,12 +9991,6 @@ nsresult nsDocShell::InternalLoad(nsDocShellLoadState* aLoadState,
     // reason behind this is that it will allow enumeration of external
     // protocols if we report an error for each unknown protocol.
     if (NS_ERROR_UNKNOWN_PROTOCOL == rv) {
-      return NS_OK;
-    }
-
-    // The spec says no exception should be raised for pre-navigation check
-    // failures.
-    if (NS_ERROR_DOM_SECURITY_ERR == rv) {
       return NS_OK;
     }
   }
@@ -10162,6 +10183,7 @@ nsIPrincipal* nsDocShell::GetInheritedPrincipal(
       aLoadState->HasInternalLoadFlags(INTERNAL_LOAD_FLAGS_ORIGINAL_FRAME_SRC));
   aLoadInfo->SetIsNewWindowTarget(
       aLoadState->HasInternalLoadFlags(INTERNAL_LOAD_FLAGS_FIRST_LOAD));
+  aLoadInfo->SetForceMediaDocument(aLoadState->GetForceMediaDocument());
 
   bool inheritAttrs = false;
   if (aLoadState->PrincipalToInherit()) {
@@ -10425,8 +10447,9 @@ nsIPrincipal* nsDocShell::GetInheritedPrincipal(
     channel->SetLoadFlags(loadFlags | nsIChannel::LOAD_REPLACE);
   }
 
-  nsCOMPtr<nsIContentSecurityPolicy> csp = aLoadState->Csp();
-  if (csp) {
+  nsCOMPtr<nsIPolicyContainer> policyContainer = aLoadState->PolicyContainer();
+  if (nsCOMPtr<nsIContentSecurityPolicy> csp =
+          PolicyContainer::GetCSP(policyContainer)) {
     // Navigational requests that are same origin need to be upgraded in case
     // upgrade-insecure-requests is present. Please note that for document
     // navigations that bit is re-computed in case we encounter a server
@@ -10444,17 +10467,21 @@ nsIPrincipal* nsDocShell::GetInheritedPrincipal(
         aLoadInfo->SetUpgradeInsecureRequests(true);
       }
     }
+  }
 
-    // For document loads we store the CSP that potentially needs to
+  if (policyContainer) {
+    // For document loads we store the policyContainer that potentially needs to
     // be inherited by the new document, e.g. in case we are loading
     // an opaque origin like a data: URI. The actual inheritance
-    // check happens within Document::InitCSP().
-    // Please create an actual copy of the CSP (do not share the same
-    // reference) otherwise a Meta CSP of an opaque origin will
-    // incorrectly be propagated to the embedding document.
-    RefPtr<nsCSPContext> cspToInherit = new nsCSPContext();
-    cspToInherit->InitFromOther(static_cast<nsCSPContext*>(csp.get()));
-    aLoadInfo->SetCSPToInherit(cspToInherit);
+    // check happens within Document::InitPolicyContainer().
+    // Please create an actual copy of the policyContainer (do not share the
+    // same reference) otherwise modifications done (such as the meta CSP of the
+    // new doc) in an opaque origin will incorrectly be propagated to the
+    // embedding document.
+    RefPtr<PolicyContainer> policyContainerToInherit = new PolicyContainer();
+    policyContainerToInherit->InitFromOther(
+        PolicyContainer::Cast(policyContainer));
+    aLoadInfo->SetPolicyContainerToInherit(policyContainerToInherit);
   }
 
   channel.forget(aChannel);
@@ -10472,7 +10499,8 @@ bool nsDocShell::IsAboutBlankLoadOntoInitialAboutBlank(
 nsresult nsDocShell::PerformTrustedTypesPreNavigationCheck(
     nsDocShellLoadState* aLoadState, nsGlobalWindowInner* aWindow) const {
   MOZ_ASSERT(aWindow);
-  RefPtr<nsIContentSecurityPolicy> csp = aWindow->GetCsp();
+  RefPtr<nsIContentSecurityPolicy> csp =
+      PolicyContainer::GetCSP(aWindow->GetPolicyContainer());
   if (csp->GetRequireTrustedTypesForDirectiveState() ==
       RequireTrustedTypesForDirectiveState::NONE) {
     return NS_OK;
@@ -10733,9 +10761,10 @@ nsresult nsDocShell::DoURILoad(nsDocShellLoadState* aLoadState,
     UniquePtr<SessionHistoryInfo> entry = MakeUnique<SessionHistoryInfo>(
         uri, aLoadState->TriggeringPrincipal(),
         aLoadState->PrincipalToInherit(),
-        aLoadState->PartitionedPrincipalToInherit(), aLoadState->Csp(),
-        mContentTypeHint);
+        aLoadState->PartitionedPrincipalToInherit(),
+        aLoadState->PolicyContainer(), mContentTypeHint);
     mozilla::dom::LoadingSessionHistoryInfo info(*entry);
+    info.mContiguousEntries.AppendElement(*entry);
     SetLoadingSessionHistoryInfo(info, true);
   }
 
@@ -11356,7 +11385,7 @@ bool nsDocShell::OnNewURI(nsIURI* aURI, nsIChannel* aChannel,
                           nsIPrincipal* aTriggeringPrincipal,
                           nsIPrincipal* aPrincipalToInherit,
                           nsIPrincipal* aPartitionedPrincipalToInherit,
-                          nsIContentSecurityPolicy* aCsp,
+                          nsIPolicyContainer* aPolicyContainer,
                           bool aAddToGlobalHistory, bool aCloneSHChildren) {
   MOZ_ASSERT(aURI, "uri is null");
   MOZ_ASSERT(!aChannel || !aTriggeringPrincipal, "Shouldn't have both set");
@@ -11520,10 +11549,10 @@ bool nsDocShell::OnNewURI(nsIURI* aURI, nsIChannel* aChannel,
          *.Create a Entry for it and add it to SH, if this is the
          * rootDocShell
          */
-        (void)AddToSessionHistory(aURI, aChannel, aTriggeringPrincipal,
-                                  aPrincipalToInherit,
-                                  aPartitionedPrincipalToInherit, aCsp,
-                                  aCloneSHChildren, getter_AddRefs(mLSHE));
+        (void)AddToSessionHistory(
+            aURI, aChannel, aTriggeringPrincipal, aPrincipalToInherit,
+            aPartitionedPrincipalToInherit, aPolicyContainer, aCloneSHChildren,
+            getter_AddRefs(mLSHE));
       }
     } else if (GetSessionHistory() && mLSHE && mURIResultedInDocument) {
       // Even if we don't add anything to SHistory, ensure the current index
@@ -11893,7 +11922,8 @@ nsresult nsDocShell::UpdateURLAndHistory(
       scrollRestorationIsManual = mOSHE->GetScrollRestorationIsManual();
     }
 
-    nsCOMPtr<nsIContentSecurityPolicy> csp = aDocument->GetCsp();
+    nsCOMPtr<nsIPolicyContainer> policyContainer =
+        aDocument->GetPolicyContainer();
 
     if (mozilla::SessionHistoryInParent()) {
       MOZ_LOG(gSHLog, LogLevel::Debug,
@@ -11907,15 +11937,15 @@ nsresult nsDocShell::UpdateURLAndHistory(
                         /* aOriginalURI = */ nullptr,
                         /* aReferrerInfo = */ referrerInfo,
                         /* aTriggeringPrincipal = */ aDocument->NodePrincipal(),
-                        csp, title, scrollRestorationIsManual, aData,
-                        uriWasModified, aDocument->PartitionedPrincipal());
+                        policyContainer, title, scrollRestorationIsManual,
+                        aData, uriWasModified);
     } else {
       // Since we're not changing which page we have loaded, pass
       // true for aCloneChildren.
       nsresult rv = AddToSessionHistory(
           aNewURI, nullptr,
           aDocument->NodePrincipal(),  // triggeringPrincipal
-          nullptr, nullptr, csp, true, getter_AddRefs(newSHEntry));
+          nullptr, nullptr, policyContainer, true, getter_AddRefs(newSHEntry));
       NS_ENSURE_SUCCESS(rv, rv);
 
       NS_ENSURE_TRUE(newSHEntry, NS_ERROR_FAILURE);
@@ -11960,9 +11990,9 @@ nsresult nsDocShell::UpdateURLAndHistory(
     UpdateActiveEntry(
         true, /* aPreviousScrollPos = */ Nothing(), aNewURI, aNewURI,
         /* aReferrerInfo = */ referrerInfo, aDocument->NodePrincipal(),
-        aDocument->GetCsp(), title,
+        aDocument->GetPolicyContainer(), title,
         mActiveEntry && mActiveEntry->GetScrollRestorationIsManual(), aData,
-        uriWasModified, aDocument->PartitionedPrincipal());
+        uriWasModified);
   } else {
     // Step 3.
     newSHEntry = mOSHE;
@@ -11974,7 +12004,7 @@ nsresult nsDocShell::UpdateURLAndHistory(
       nsresult rv = AddToSessionHistory(
           aNewURI, nullptr,
           aDocument->NodePrincipal(),  // triggeringPrincipal
-          nullptr, nullptr, aDocument->GetCsp(), true,
+          nullptr, nullptr, aDocument->GetPolicyContainer(), true,
           getter_AddRefs(newSHEntry));
       NS_ENSURE_SUCCESS(rv, rv);
       mOSHE = newSHEntry;
@@ -12181,7 +12211,7 @@ nsresult nsDocShell::AddToSessionHistory(
     nsIURI* aURI, nsIChannel* aChannel, nsIPrincipal* aTriggeringPrincipal,
     nsIPrincipal* aPrincipalToInherit,
     nsIPrincipal* aPartitionedPrincipalToInherit,
-    nsIContentSecurityPolicy* aCsp, bool aCloneChildren,
+    nsIPolicyContainer* aPolicyContainer, bool aCloneChildren,
     nsISHEntry** aNewEntry) {
   MOZ_ASSERT(aURI, "uri is null");
   MOZ_ASSERT(!aChannel || !aTriggeringPrincipal, "Shouldn't have both set");
@@ -12236,7 +12266,7 @@ nsresult nsDocShell::AddToSessionHistory(
   nsCOMPtr<nsIPrincipal> principalToInherit = aPrincipalToInherit;
   nsCOMPtr<nsIPrincipal> partitionedPrincipalToInherit =
       aPartitionedPrincipalToInherit;
-  nsCOMPtr<nsIContentSecurityPolicy> csp = aCsp;
+  nsCOMPtr<nsIPolicyContainer> policyContainer = aPolicyContainer;
   bool expired = false;  // by default the page is not expired
   bool discardLayoutState = false;
   nsCOMPtr<nsICacheInfoChannel> cacheChannel;
@@ -12276,8 +12306,8 @@ nsresult nsDocShell::AddToSessionHistory(
     if (!triggeringPrincipal) {
       triggeringPrincipal = loadInfo->TriggeringPrincipal();
     }
-    if (!csp) {
-      csp = loadInfo->GetCspToInherit();
+    if (!policyContainer) {
+      policyContainer = loadInfo->GetPolicyContainerToInherit();
     }
 
     loadInfo->GetResultPrincipalURI(getter_AddRefs(resultPrincipalURI));
@@ -12351,11 +12381,11 @@ nsresult nsDocShell::AddToSessionHistory(
                 cacheKey,             // CacheKey
                 mContentTypeHint,     // Content-type
                 triggeringPrincipal,  // Channel or provided principal
-                principalToInherit, partitionedPrincipalToInherit, csp,
-                HistoryID(), GetCreatedDynamically(), originalURI,
-                resultPrincipalURI, unstrippedURI, loadReplace, referrerInfo,
-                srcdoc, srcdocEntry, baseURI, saveLayoutState, expired,
-                userActivation);
+                principalToInherit, partitionedPrincipalToInherit,
+                policyContainer, HistoryID(), GetCreatedDynamically(),
+                originalURI, resultPrincipalURI, unstrippedURI, loadReplace,
+                referrerInfo, srcdoc, srcdocEntry, baseURI, saveLayoutState,
+                expired, userActivation);
 
   if (mBrowsingContext->IsTop() && GetSessionHistory()) {
     Maybe<int32_t> previousEntryIndex;
@@ -12413,10 +12443,9 @@ nsresult nsDocShell::AddToSessionHistory(
 void nsDocShell::UpdateActiveEntry(
     bool aReplace, const Maybe<nsPoint>& aPreviousScrollPos, nsIURI* aURI,
     nsIURI* aOriginalURI, nsIReferrerInfo* aReferrerInfo,
-    nsIPrincipal* aTriggeringPrincipal, nsIContentSecurityPolicy* aCsp,
+    nsIPrincipal* aTriggeringPrincipal, nsIPolicyContainer* aPolicyContainer,
     const nsAString& aTitle, bool aScrollRestorationIsManual,
-    nsIStructuredCloneContainer* aData, bool aURIWasModified,
-    nsIPrincipal* aPartitionedPrincipal) {
+    nsIStructuredCloneContainer* aData, bool aURIWasModified) {
   MOZ_ASSERT(mozilla::SessionHistoryInParent());
   MOZ_ASSERT(aURI, "uri is null");
   MOZ_ASSERT(mLoadType == LOAD_PUSHSTATE,
@@ -12443,7 +12472,8 @@ void nsDocShell::UpdateActiveEntry(
     mActiveEntry = MakeUnique<SessionHistoryInfo>(*previousActiveEntry, aURI);
   } else {
     mActiveEntry = MakeUnique<SessionHistoryInfo>(
-        aURI, aTriggeringPrincipal, nullptr, nullptr, aCsp, mContentTypeHint);
+        aURI, aTriggeringPrincipal, nullptr, nullptr, aPolicyContainer,
+        mContentTypeHint);
   }
   mActiveEntry->SetOriginalURI(aOriginalURI);
   mActiveEntry->SetUnstrippedURI(nullptr);
@@ -12452,7 +12482,6 @@ void nsDocShell::UpdateActiveEntry(
   mActiveEntry->SetStateData(static_cast<nsStructuredCloneContainer*>(aData));
   mActiveEntry->SetURIWasModified(aURIWasModified);
   mActiveEntry->SetScrollRestorationIsManual(aScrollRestorationIsManual);
-  mActiveEntry->SetPartitionedPrincipalToInherit(aPartitionedPrincipal);
 
   if (replace) {
     mBrowsingContext->ReplaceActiveSessionHistoryEntry(mActiveEntry.get());
@@ -12505,6 +12534,73 @@ nsresult nsDocShell::LoadHistoryEntry(const LoadingSessionHistoryInfo& aEntry,
   return LoadHistoryEntry(loadState, aLoadType, aEntry.mLoadingCurrentEntry);
 }
 
+void nsDocShell::MaybeFireTraverseHistory(nsDocShellLoadState* aLoadState) {
+  if (!Navigation::IsAPIEnabled()) {
+    return;
+  }
+
+  BrowsingContext* browsingContext = GetBrowsingContext();
+  if (!browsingContext || browsingContext->IsTop()) {
+    return;
+  }
+
+  if (!mActiveEntry || !aLoadState->GetLoadingSessionHistoryInfo()) {
+    return;
+  }
+  if (mActiveEntry->NavigationKey() ==
+      aLoadState->GetLoadingSessionHistoryInfo()->mInfo.NavigationKey()) {
+    return;
+  }
+
+  nsCOMPtr activeURI = mActiveEntry->GetURIOrInheritedForAboutBlank();
+  nsCOMPtr<nsIURI> loadingURI = aLoadState->GetLoadingSessionHistoryInfo()
+                                    ->mInfo.GetURIOrInheritedForAboutBlank();
+  if (NS_FAILED(nsContentUtils::GetSecurityManager()->CheckSameOriginURI(
+          activeURI, loadingURI,
+          /*reportError=*/true,
+          /*fromPrivateWindow=*/false))) {
+    return;
+  }
+
+  if (RefPtr window = GetActiveWindow()) {
+    if (RefPtr navigation = window->Navigation()) {
+      if (AutoJSAPI jsapi; jsapi.Init(window)) {
+        // This should send the correct user involvment. See bug 1903552.
+        navigation->FireTraverseNavigateEvent(
+            jsapi.cx(), aLoadState->GetLoadingSessionHistoryInfo()->mInfo,
+            Nothing());
+      }
+    }
+  }
+}
+
+nsIDocumentViewer::PermitUnloadResult
+nsDocShell::MaybeFireTraversableTraverseHistory(
+    const SessionHistoryInfo& aInfo,
+    Maybe<UserNavigationInvolvement> aUserInvolvement) {
+  MOZ_DIAGNOSTIC_ASSERT(GetBrowsingContext());
+  MOZ_DIAGNOSTIC_ASSERT(GetBrowsingContext()->IsTop());
+
+  SetOngoingNavigation(Some(OngoingNavigation::Traversal));
+
+  nsIDocumentViewer::PermitUnloadResult finalStatus =
+      nsIDocumentViewer::eContinue;
+  if (RefPtr<nsPIDOMWindowInner> activeWindow = GetActiveWindow()) {
+    if (RefPtr navigation = activeWindow->Navigation()) {
+      if (AutoJSAPI jsapi; jsapi.Init(activeWindow)) {
+        bool shouldContinue = navigation->FireTraverseNavigateEvent(
+            jsapi.cx(), aInfo, aUserInvolvement);
+
+        if (!shouldContinue) {
+          finalStatus = nsIDocumentViewer::eCanceledByNavigate;
+        }
+      }
+    }
+  }
+
+  return finalStatus;
+}
+
 nsresult nsDocShell::LoadHistoryEntry(nsDocShellLoadState* aLoadState,
                                       uint32_t aLoadType,
                                       bool aLoadingCurrentEntry) {
@@ -12515,6 +12611,8 @@ nsresult nsDocShell::LoadHistoryEntry(nsDocShellLoadState* aLoadState,
   // We are setting load type afterwards so we don't have to
   // send it in an IPC message
   aLoadState->SetLoadType(aLoadType);
+
+  SetOngoingNavigation(Some(OngoingNavigation::Traversal));
 
   nsresult rv;
   if (aLoadState->URI()->SchemeIs("javascript")) {
@@ -12570,6 +12668,8 @@ nsresult nsDocShell::LoadHistoryEntry(nsDocShellLoadState* aLoadState,
   if (!aLoadState->TriggeringPrincipal()) {
     return NS_ERROR_FAILURE;
   }
+
+  MaybeFireTraverseHistory(aLoadState);
 
   return InternalLoad(aLoadState);  // No nsIRequest
 }
@@ -13295,7 +13395,7 @@ nsresult nsDocShell::OnLinkClick(
     const nsAString& aFileName, nsIInputStream* aPostDataStream,
     nsIInputStream* aHeadersDataStream, bool aIsUserTriggered,
     UserNavigationInvolvement aUserInvolvement,
-    nsIPrincipal* aTriggeringPrincipal, nsIContentSecurityPolicy* aCsp) {
+    nsIPrincipal* aTriggeringPrincipal, nsIPolicyContainer* aPolicyContainer) {
 #ifndef ANDROID
   MOZ_ASSERT(aTriggeringPrincipal, "Need a valid triggeringPrincipal");
 #endif
@@ -13368,7 +13468,8 @@ nsresult nsDocShell::OnLinkClick(
   loadState->SetTriggeringPrincipal(
       aTriggeringPrincipal ? aTriggeringPrincipal : aContent->NodePrincipal());
   loadState->SetPrincipalToInherit(aContent->NodePrincipal());
-  loadState->SetCsp(aCsp ? aCsp : aContent->GetCsp());
+  loadState->SetPolicyContainer(
+      aPolicyContainer ? aPolicyContainer : aContent->GetPolicyContainer());
   loadState->SetAllowFocusMove(UserActivation::IsHandlingUserInput());
 
   const bool hasValidUserGestureActivation =
@@ -13583,17 +13684,6 @@ nsresult nsDocShell::OnLinkClickSync(nsIContent* aContent,
   // referrer could be null here in some odd cases, but that's ok,
   // we'll just load the link w/o sending a referrer in those cases.
 
-  // If this is an anchor element, grab its type property to use as a hint
-  nsAutoString typeHint;
-  RefPtr<HTMLAnchorElement> anchor = HTMLAnchorElement::FromNode(aContent);
-  if (anchor) {
-    anchor->GetType(typeHint);
-    NS_ConvertUTF16toUTF8 utf8Hint(typeHint);
-    nsAutoCString type, dummy;
-    NS_ParseRequestContentType(utf8Hint, type, dummy);
-    CopyUTF8toUTF16(type, typeHint);
-  }
-
   uint32_t loadType = LOAD_LINK;
   if (aLoadState->IsFormSubmission()) {
     if (aLoadState->Target().IsEmpty()) {
@@ -13622,7 +13712,6 @@ nsresult nsDocShell::OnLinkClickSync(nsIContent* aContent,
   aLoadState->SetTriggeringStorageAccess(triggeringStorageAccess);
   aLoadState->SetReferrerInfo(referrerInfo);
   aLoadState->SetInternalLoadFlags(flags);
-  aLoadState->SetTypeHint(NS_ConvertUTF16toUTF8(typeHint));
   aLoadState->SetLoadType(loadType);
   aLoadState->SetSourceBrowsingContext(mBrowsingContext);
   aLoadState->SetSourceElement(aContent->AsElement());
@@ -14162,8 +14251,7 @@ void nsDocShell::SetLoadingSessionHistoryInfo(
 }
 
 void nsDocShell::MoveLoadingToActiveEntry(bool aExpired, uint32_t aCacheKey,
-                                          nsIURI* aPreviousURI,
-                                          nsIPrincipal* aPartitionedPrincipal) {
+                                          nsIURI* aPreviousURI) {
   MOZ_ASSERT(mozilla::SessionHistoryInParent());
 
   MOZ_LOG(gSHLog, LogLevel::Debug,
@@ -14178,8 +14266,6 @@ void nsDocShell::MoveLoadingToActiveEntry(bool aExpired, uint32_t aCacheKey,
             ("Moving the loading entry to the active entry on nsDocShell %p "
              "to %s",
              this, mLoadingEntry->mInfo.GetURI()->GetSpecOrDefault().get()));
-    mLoadingEntry->mInfo.SetPartitionedPrincipalToInherit(
-        aPartitionedPrincipal);
     mActiveEntry = MakeUnique<SessionHistoryInfo>(mLoadingEntry->mInfo);
     mLoadingEntry.swap(loadingEntry);
     if (!mActiveEntryIsLoadingFromSessionHistory) {
@@ -14202,7 +14288,6 @@ void nsDocShell::MoveLoadingToActiveEntry(bool aExpired, uint32_t aCacheKey,
       mActiveEntry->SetCacheKey(aCacheKey);
     }
 
-    mActiveEntry->SetPartitionedPrincipalToInherit(aPartitionedPrincipal);
     MOZ_ASSERT(loadingEntry);
     uint32_t loadType =
         mLoadType == LOAD_ERROR_PAGE ? mFailedLoadType : mLoadType;
@@ -14213,7 +14298,7 @@ void nsDocShell::MoveLoadingToActiveEntry(bool aExpired, uint32_t aCacheKey,
       // URI, but in that case mCurrentURI won't be null here.
       mBrowsingContext->SessionHistoryCommit(
           *loadingEntry, loadType, aPreviousURI, previousActiveEntry.get(),
-          false, aExpired, aCacheKey, aPartitionedPrincipal);
+          false, aExpired, aCacheKey);
     }
 
     // Only update navigation if the new entry will be persisted (i.e., is not
@@ -14222,8 +14307,26 @@ void nsDocShell::MoveLoadingToActiveEntry(bool aExpired, uint32_t aCacheKey,
         GetWindow()->GetCurrentInnerWindow()) {
       if (RefPtr navigation =
               GetWindow()->GetCurrentInnerWindow()->Navigation()) {
-        mBrowsingContext->GetContiguousHistoryEntries(*mActiveEntry,
-                                                      navigation);
+        navigation->InitializeHistoryEntries(loadingEntry->mContiguousEntries,
+                                             mActiveEntry.get());
+
+        MOZ_LOG_FMT(gNavigationLog, LogLevel::Debug,
+                    "Before creating NavigationActivation, "
+                    "triggeringEntry={}, triggeringType={}",
+                    fmt::ptr(loadingEntry->mTriggeringEntry
+                                 .map([](auto& entry) { return &entry; })
+                                 .valueOr(nullptr)),
+                    loadingEntry->mTriggeringNavigationType
+                        .map([](NavigationType type) {
+                          return fmt::format(FMT_STRING("{}"), type);
+                        })
+                        .valueOr("none"));
+        if (loadingEntry->mTriggeringEntry &&
+            loadingEntry->mTriggeringNavigationType) {
+          navigation->CreateNavigationActivationFrom(
+              &*loadingEntry->mTriggeringEntry,
+              *loadingEntry->mTriggeringNavigationType);
+        }
       }
     }
   }
@@ -14384,8 +14487,7 @@ nsPIDOMWindowInner* nsDocShell::GetActiveWindow() {
 // https://html.spec.whatwg.org/#inform-the-navigation-api-about-aborting-navigation
 void nsDocShell::InformNavigationAPIAboutAbortingNavigation() {
   // Step 1
-  // This becomes an assert since we have a common event loop.
-  MOZ_DIAGNOSTIC_ASSERT(NS_IsMainThread());
+  // We really have no idea what this means.
 
   // No ongoing navigations if we don't have a window.
   RefPtr<nsPIDOMWindowInner> window = GetActiveWindow();
@@ -14411,6 +14513,31 @@ void nsDocShell::InformNavigationAPIAboutAbortingNavigation() {
 
   // Step 4
   navigation->AbortOngoingNavigation(jsapi.cx());
+}
+
+// https://html.spec.whatwg.org/#inform-the-navigation-api-about-child-navigable-destruction
+void nsDocShell::InformNavigationAPIAboutChildNavigableDestruction() {
+  // Step 1
+  InformNavigationAPIAboutAbortingNavigation();
+
+  // No ongoing navigations if we don't have a window.
+  RefPtr<nsPIDOMWindowInner> window = GetActiveWindow();
+  if (!window) {
+    return;
+  }
+
+  // Step 2
+  RefPtr<Navigation> navigation = window->Navigation();
+  if (!navigation) {
+    return;
+  }
+
+  AutoJSAPI jsapi;
+  if (!jsapi.Init(navigation->GetOwnerGlobal())) {
+    return;
+  }
+
+  navigation->InformAboutChildNavigableDestruction(jsapi.cx());
 }
 
 // https://html.spec.whatwg.org/#set-the-ongoing-navigation

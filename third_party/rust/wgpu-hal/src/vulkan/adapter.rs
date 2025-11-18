@@ -1,5 +1,5 @@
-use alloc::{borrow::ToOwned as _, collections::BTreeMap, sync::Arc, vec::Vec};
-use core::ffi::CStr;
+use alloc::{borrow::ToOwned as _, boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
+use core::{ffi::CStr, marker::PhantomData};
 
 use ash::{ext, google, khr, vk};
 use parking_lot::Mutex;
@@ -75,17 +75,17 @@ pub struct PhysicalDeviceFeatures {
     /// Features provided by `VK_KHR_buffer_device_address`, promoted to Vulkan 1.2.
     ///
     /// We only use this feature for
-    /// [`Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE`], which requires
+    /// [`Features::EXPERIMENTAL_RAY_QUERY`], which requires
     /// `VK_KHR_acceleration_structure`, which depends on
     /// `VK_KHR_buffer_device_address`, so [`Instance::expose_adapter`] only
     /// bothers to check if `VK_KHR_acceleration_structure` is available,
     /// leaving this `None`.
     ///
     /// However, we do populate this when creating a device if
-    /// [`Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE`] is requested.
+    /// [`Features::EXPERIMENTAL_RAY_QUERY`] is requested.
     ///
     /// [`Instance::expose_adapter`]: super::Instance::expose_adapter
-    /// [`Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE`]: wgt::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE
+    /// [`Features::EXPERIMENTAL_RAY_QUERY`]: wgt::Features::EXPERIMENTAL_RAY_QUERY
     buffer_device_address: Option<vk::PhysicalDeviceBufferDeviceAddressFeaturesKHR<'static>>,
 
     /// Features provided by `VK_KHR_ray_query`,
@@ -198,6 +198,13 @@ impl PhysicalDeviceFeatures {
         info
     }
 
+    fn supports_storage_input_output_16(&self) -> bool {
+        self._16bit_storage
+            .as_ref()
+            .map(|features| features.storage_input_output16 != 0)
+            .unwrap_or(false)
+    }
+
     /// Create a `PhysicalDeviceFeatures` that can be used to create a logical
     /// device.
     ///
@@ -226,7 +233,7 @@ impl PhysicalDeviceFeatures {
     /// [`Adapter::required_device_extensions`]: super::Adapter::required_device_extensions
     fn from_extensions_and_requested_features(
         phd_capabilities: &PhysicalDeviceProperties,
-        _phd_features: &PhysicalDeviceFeatures,
+        phd_features: &PhysicalDeviceFeatures,
         enabled_extensions: &[&'static CStr],
         requested_features: wgt::Features,
         downlevel_flags: wgt::DownlevelFlags,
@@ -259,9 +266,7 @@ impl PhysicalDeviceFeatures {
                     requested_features.contains(wgt::Features::INDIRECT_FIRST_INSTANCE),
                 )
                 //.dual_src_blend(requested_features.contains(wgt::Features::DUAL_SRC_BLENDING))
-                .multi_draw_indirect(
-                    requested_features.contains(wgt::Features::MULTI_DRAW_INDIRECT),
-                )
+                .multi_draw_indirect(phd_features.core.multi_draw_indirect != 0)
                 .fill_mode_non_solid(requested_features.intersects(
                     wgt::Features::POLYGON_MODE_LINE | wgt::Features::POLYGON_MODE_POINT,
                 ))
@@ -399,7 +404,7 @@ impl PhysicalDeviceFeatures {
                 Some(
                     vk::PhysicalDevice16BitStorageFeatures::default()
                         .storage_buffer16_bit_access(true)
-                        .storage_input_output16(true)
+                        .storage_input_output16(phd_features.supports_storage_input_output_16())
                         .uniform_and_storage_buffer16_bit_access(true),
                 )
             } else {
@@ -543,7 +548,6 @@ impl PhysicalDeviceFeatures {
     ) -> (wgt::Features, wgt::DownlevelFlags) {
         use wgt::{DownlevelFlags as Df, Features as F};
         let mut features = F::empty()
-            | F::SPIRV_SHADER_PASSTHROUGH
             | F::MAPPABLE_PRIMARY_BUFFERS
             | F::PUSH_CONSTANTS
             | F::ADDRESS_MODE_CLAMP_TO_BORDER
@@ -555,7 +559,8 @@ impl PhysicalDeviceFeatures {
             | F::CLEAR_TEXTURE
             | F::PIPELINE_CACHE
             | F::SHADER_EARLY_DEPTH_TEST
-            | F::TEXTURE_ATOMIC;
+            | F::TEXTURE_ATOMIC
+            | F::EXPERIMENTAL_PASSTHROUGH_SHADERS;
 
         let mut dl_flags = Df::COMPUTE_SHADERS
             | Df::BASE_VERTEX
@@ -570,7 +575,8 @@ impl PhysicalDeviceFeatures {
             | Df::INDIRECT_EXECUTION
             | Df::VIEW_FORMATS
             | Df::UNRESTRICTED_EXTERNAL_TEXTURE_COPIES
-            | Df::NONBLOCKING_QUERY_RESOLVE;
+            | Df::NONBLOCKING_QUERY_RESOLVE
+            | Df::SHADER_F16_IN_F32;
 
         dl_flags.set(
             Df::SURFACE_VIEW_FORMATS,
@@ -595,7 +601,6 @@ impl PhysicalDeviceFeatures {
             self.core.draw_indirect_first_instance != 0,
         );
         //if self.core.dual_src_blend != 0
-        features.set(F::MULTI_DRAW_INDIRECT, self.core.multi_draw_indirect != 0);
         features.set(F::POLYGON_MODE_LINE, self.core.fill_mode_non_solid != 0);
         features.set(F::POLYGON_MODE_POINT, self.core.fill_mode_non_solid != 0);
         //if self.core.depth_bounds != 0 {
@@ -736,12 +741,13 @@ impl PhysicalDeviceFeatures {
 
         if let (Some(ref f16_i8), Some(ref bit16)) = (self.shader_float16_int8, self._16bit_storage)
         {
+            // Note `storage_input_output16` is not required, we polyfill `f16` I/O using `f32`
+            // types when this capability is not available
             features.set(
                 F::SHADER_F16,
                 f16_i8.shader_float16 != 0
                     && bit16.storage_buffer16_bit_access != 0
-                    && bit16.uniform_and_storage_buffer16_bit_access != 0
-                    && bit16.storage_input_output16 != 0,
+                    && bit16.uniform_and_storage_buffer16_bit_access != 0,
             );
         }
 
@@ -799,17 +805,17 @@ impl PhysicalDeviceFeatures {
 
         features.set(F::DEPTH32FLOAT_STENCIL8, texture_d32_s8);
 
-        features.set(
-            F::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE
-                | F::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS,
-            caps.supports_extension(khr::deferred_host_operations::NAME)
-                && caps.supports_extension(khr::acceleration_structure::NAME)
-                && caps.supports_extension(khr::buffer_device_address::NAME),
-        );
+        let supports_acceleration_structures = caps
+            .supports_extension(khr::deferred_host_operations::NAME)
+            && caps.supports_extension(khr::acceleration_structure::NAME)
+            && caps.supports_extension(khr::buffer_device_address::NAME);
 
         features.set(
-            F::EXPERIMENTAL_RAY_QUERY,
-            caps.supports_extension(khr::ray_query::NAME),
+            F::EXPERIMENTAL_RAY_QUERY
+            // Although this doesn't really require ray queries, it does not make sense to be enabled if acceleration structures
+            // aren't enabled.
+                | F::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS,
+            supports_acceleration_structures && caps.supports_extension(khr::ray_query::NAME),
         );
 
         let rg11b10ufloat_renderable = supports_format(
@@ -839,6 +845,24 @@ impl PhysicalDeviceFeatures {
                     instance,
                     phd,
                     vk::Format::G8_B8R8_2PLANE_420_UNORM,
+                    vk::ImageTiling::OPTIMAL,
+                    vk::FormatFeatureFlags::SAMPLED_IMAGE
+                        | vk::FormatFeatureFlags::TRANSFER_SRC
+                        | vk::FormatFeatureFlags::TRANSFER_DST,
+                ) && !caps
+                    .driver
+                    .map(|driver| driver.driver_id == vk::DriverId::MOLTENVK)
+                    .unwrap_or_default(),
+            );
+        }
+
+        if let Some(ref _sampler_ycbcr_conversion) = self.sampler_ycbcr_conversion {
+            features.set(
+                F::TEXTURE_FORMAT_P010,
+                supports_format(
+                    instance,
+                    phd,
+                    vk::Format::G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16,
                     vk::ImageTiling::OPTIMAL,
                     vk::FormatFeatureFlags::SAMPLED_IMAGE
                         | vk::FormatFeatureFlags::TRANSFER_SRC
@@ -932,7 +956,7 @@ pub struct PhysicalDeviceProperties {
 
     /// Additional `vk::PhysicalDevice` properties from the
     /// `VK_EXT_mesh_shader` extension.
-    _mesh_shader: Option<vk::PhysicalDeviceMeshShaderPropertiesEXT<'static>>,
+    mesh_shader: Option<vk::PhysicalDeviceMeshShaderPropertiesEXT<'static>>,
 
     /// The device API version.
     ///
@@ -1098,17 +1122,11 @@ impl PhysicalDeviceProperties {
             extensions.push(khr::draw_indirect_count::NAME);
         }
 
-        // Require `VK_KHR_deferred_host_operations`, `VK_KHR_acceleration_structure` and `VK_KHR_buffer_device_address` if the feature `RAY_TRACING` was requested
-        if requested_features
-            .contains(wgt::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE)
-        {
+        // Require `VK_KHR_deferred_host_operations`, `VK_KHR_acceleration_structure` `VK_KHR_buffer_device_address` (for acceleration structures) and`VK_KHR_ray_query` if `EXPERIMENTAL_RAY_QUERY` was requested
+        if requested_features.contains(wgt::Features::EXPERIMENTAL_RAY_QUERY) {
             extensions.push(khr::deferred_host_operations::NAME);
             extensions.push(khr::acceleration_structure::NAME);
             extensions.push(khr::buffer_device_address::NAME);
-        }
-
-        // Require `VK_KHR_ray_query` if the associated feature was requested
-        if requested_features.contains(wgt::Features::EXPERIMENTAL_RAY_QUERY) {
             extensions.push(khr::ray_query::NAME);
         }
 
@@ -1166,14 +1184,29 @@ impl PhysicalDeviceProperties {
         let max_compute_workgroups_per_dimension = limits.max_compute_work_group_count[0]
             .min(limits.max_compute_work_group_count[1])
             .min(limits.max_compute_work_group_count[2]);
+        let (
+            max_task_workgroup_total_count,
+            max_task_workgroups_per_dimension,
+            max_mesh_multiview_count,
+            max_mesh_output_layers,
+        ) = match self.mesh_shader {
+            Some(m) => (
+                m.max_task_work_group_total_count,
+                m.max_task_work_group_count.into_iter().min().unwrap(),
+                m.max_mesh_multiview_view_count,
+                m.max_mesh_output_layers,
+            ),
+            None => (0, 0, 0, 0),
+        };
 
-        // Prevent very large buffers on mesa and most android devices.
+        // Prevent very large buffers on mesa and most android devices, and in all cases
+        // don't risk confusing JS by exceeding the range of a double.
         let is_nvidia = self.properties.vendor_id == crate::auxil::db::nvidia::VENDOR;
         let max_buffer_size =
             if (cfg!(target_os = "linux") || cfg!(target_os = "android")) && !is_nvidia {
                 i32::MAX as u64
             } else {
-                u64::MAX
+                1u64 << 52
             };
 
         let mut max_binding_array_elements = 0;
@@ -1203,6 +1236,18 @@ impl PhysicalDeviceProperties {
         // 16 bytes per sample is the maximum size for a color attachment.
         let max_color_attachment_bytes_per_sample =
             limits.max_color_attachments * wgt::TextureFormat::MAX_TARGET_PIXEL_BYTE_COST;
+
+        let mut max_blas_geometry_count = 0;
+        let mut max_blas_primitive_count = 0;
+        let mut max_tlas_instance_count = 0;
+        let mut max_acceleration_structures_per_shader_stage = 0;
+        if let Some(properties) = self.acceleration_structure {
+            max_blas_geometry_count = properties.max_geometry_count as u32;
+            max_blas_primitive_count = properties.max_primitive_count as u32;
+            max_tlas_instance_count = properties.max_instance_count as u32;
+            max_acceleration_structures_per_shader_stage =
+                properties.max_per_stage_descriptor_acceleration_structures;
+        }
 
         wgt::Limits {
             max_texture_dimension_1d: limits.max_image_dimension1_d,
@@ -1261,6 +1306,16 @@ impl PhysicalDeviceProperties {
             max_compute_workgroups_per_dimension,
             max_buffer_size,
             max_non_sampler_bindings: u32::MAX,
+
+            max_task_workgroup_total_count,
+            max_task_workgroups_per_dimension,
+            max_mesh_multiview_count,
+            max_mesh_output_layers,
+
+            max_blas_primitive_count,
+            max_blas_geometry_count,
+            max_tlas_instance_count,
+            max_acceleration_structures_per_shader_stage,
         }
     }
 
@@ -1391,7 +1446,7 @@ impl super::InstanceShared {
 
                 if supports_mesh_shader {
                     let next = capabilities
-                        ._mesh_shader
+                        .mesh_shader
                         .insert(vk::PhysicalDeviceMeshShaderPropertiesEXT::default());
                     properties2 = properties2.push_next(next);
                 }
@@ -1623,7 +1678,7 @@ impl super::Instance {
             },
             backend: wgt::Backend::Vulkan,
         };
-        let (available_features, downlevel_flags) =
+        let (available_features, mut downlevel_flags) =
             phd_features.to_wgpu(&self.shared.raw, phd, &phd_capabilities);
         let mut workarounds = super::Workarounds::empty();
         {
@@ -1638,6 +1693,15 @@ impl super::Instance {
                 phd_capabilities.properties.vendor_id == db::nvidia::VENDOR,
             );
         };
+
+        if info.driver == "llvmpipe" {
+            // The `F16_IN_F32` instructions do not normally require native `F16` support, but on
+            // llvmpipe, they do.
+            downlevel_flags.set(
+                wgt::DownlevelFlags::SHADER_F16_IN_F32,
+                available_features.contains(wgt::Features::SHADER_F16),
+            );
+        }
 
         if let Some(driver) = phd_capabilities.driver {
             if driver.conformance_version.major == 0 {
@@ -1684,7 +1748,7 @@ impl super::Instance {
         };
         let queue_flags = queue_families.first()?.queue_flags;
         if !queue_flags.contains(vk::QueueFlags::GRAPHICS) {
-            log::warn!("The first queue only exposes {:?}", queue_flags);
+            log::warn!("The first queue only exposes {queue_flags:?}");
             return None;
         }
 
@@ -1718,6 +1782,7 @@ impl super::Instance {
                 vk::ImageTiling::OPTIMAL,
                 depth_stencil_required_flags(),
             ),
+            multi_draw_indirect: phd_features.core.multi_draw_indirect != 0,
             non_coherent_map_mask: phd_capabilities.properties.limits.non_coherent_atom_size - 1,
             can_present: true,
             //TODO: make configurable
@@ -1812,10 +1877,10 @@ impl super::Adapter {
             });
 
         if !unsupported_extensions.is_empty() {
-            log::warn!("Missing extensions: {:?}", unsupported_extensions);
+            log::warn!("Missing extensions: {unsupported_extensions:?}");
         }
 
-        log::debug!("Supported extensions: {:?}", supported_extensions);
+        log::debug!("Supported extensions: {supported_extensions:?}");
         supported_extensions
     }
 
@@ -2099,6 +2164,8 @@ impl super::Adapter {
                     spv::ZeroInitializeWorkgroupMemoryMode::Polyfill
                 },
                 force_loop_bounding: true,
+                use_storage_input_output_16: features.contains(wgt::Features::SHADER_F16)
+                    && self.phd_features.supports_storage_input_output_16(),
                 // We need to build this separately for each invocation, so just default it out here
                 binding_map: BTreeMap::default(),
                 debug_info: None,
@@ -2152,6 +2219,9 @@ impl super::Adapter {
                 self.private_caps.maximum_samplers,
             )),
             memory_allocations_counter: Default::default(),
+
+            texture_identity_factory: super::ResourceIdentityFactory::new(),
+            texture_view_identity_factory: super::ResourceIdentityFactory::new(),
         });
 
         let relay_semaphores = super::RelaySemaphores::new(&shared)?;
@@ -2271,25 +2341,37 @@ impl super::Adapter {
     pub fn texture_format_as_raw(&self, texture_format: wgt::TextureFormat) -> vk::Format {
         self.private_caps.map_texture_format(texture_format)
     }
-}
 
-impl crate::Adapter for super::Adapter {
-    type A = super::Api;
-
-    unsafe fn open(
+    /// # Safety:
+    /// - Same as `open` plus
+    /// - The callback may not change anything that the device does not support.
+    /// - The callback may not remove features.
+    pub unsafe fn open_with_callback<'a>(
         &self,
         features: wgt::Features,
-        _limits: &wgt::Limits,
         memory_hints: &wgt::MemoryHints,
+        callback: Option<Box<super::CreateDeviceCallback<'a>>>,
     ) -> Result<crate::OpenDevice<super::Api>, crate::DeviceError> {
-        let enabled_extensions = self.required_device_extensions(features);
+        let mut enabled_extensions = self.required_device_extensions(features);
         let mut enabled_phd_features = self.physical_device_features(&enabled_extensions, features);
 
         let family_index = 0; //TODO
         let family_info = vk::DeviceQueueCreateInfo::default()
             .queue_family_index(family_index)
             .queue_priorities(&[1.0]);
-        let family_infos = [family_info];
+        let mut family_infos = Vec::from([family_info]);
+
+        let mut pre_info = vk::DeviceCreateInfo::default();
+
+        if let Some(callback) = callback {
+            callback(super::CreateDeviceCallbackArgs {
+                extensions: &mut enabled_extensions,
+                device_features: &mut enabled_phd_features,
+                queue_create_infos: &mut family_infos,
+                create_info: &mut pre_info,
+                _phantom: PhantomData,
+            })
+        }
 
         let str_pointers = enabled_extensions
             .iter()
@@ -2299,7 +2381,7 @@ impl crate::Adapter for super::Adapter {
             })
             .collect::<Vec<_>>();
 
-        let pre_info = vk::DeviceCreateInfo::default()
+        let pre_info = pre_info
             .queue_create_infos(&family_infos)
             .enabled_extension_names(&str_pointers);
         let info = enabled_phd_features.add_to_device_create(pre_info);
@@ -2334,6 +2416,19 @@ impl crate::Adapter for super::Adapter {
                 0,
             )
         }
+    }
+}
+
+impl crate::Adapter for super::Adapter {
+    type A = super::Api;
+
+    unsafe fn open(
+        &self,
+        features: wgt::Features,
+        _limits: &wgt::Limits,
+        memory_hints: &wgt::MemoryHints,
+    ) -> Result<crate::OpenDevice<super::Api>, crate::DeviceError> {
+        unsafe { self.open_with_callback(features, memory_hints, None) }
     }
 
     unsafe fn texture_format_capabilities(
@@ -2475,7 +2570,7 @@ impl crate::Adapter for super::Adapter {
                 Ok(true) => (),
                 Ok(false) => return None,
                 Err(e) => {
-                    log::error!("get_physical_device_surface_support: {}", e);
+                    log::error!("get_physical_device_surface_support: {e}");
                     return None;
                 }
             }
@@ -2490,7 +2585,7 @@ impl crate::Adapter for super::Adapter {
             } {
                 Ok(caps) => caps,
                 Err(e) => {
-                    log::error!("get_physical_device_surface_capabilities: {}", e);
+                    log::error!("get_physical_device_surface_capabilities: {e}");
                     return None;
                 }
             }
@@ -2524,7 +2619,7 @@ impl crate::Adapter for super::Adapter {
             } {
                 Ok(present_modes) => present_modes,
                 Err(e) => {
-                    log::error!("get_physical_device_surface_present_modes: {}", e);
+                    log::error!("get_physical_device_surface_present_modes: {e}");
                     // Per definition of `SurfaceCapabilities`, there must be at least one present mode.
                     return None;
                 }
@@ -2540,7 +2635,7 @@ impl crate::Adapter for super::Adapter {
             } {
                 Ok(formats) => formats,
                 Err(e) => {
-                    log::error!("get_physical_device_surface_formats: {}", e);
+                    log::error!("get_physical_device_surface_formats: {e}");
                     // Per definition of `SurfaceCapabilities`, there must be at least one present format.
                     return None;
                 }

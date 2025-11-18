@@ -20,6 +20,7 @@
 #include "mozilla/StaticPrefs_browser.h"
 #include "mozilla/StaticPrefs_network.h"
 #include "mozilla/StaticPrefs_privacy.h"
+#include "mozilla/StaticPrefs_urlclassifier.h"
 #include "mozilla/StoragePrincipalHelper.h"
 #include "mozilla/TaskQueue.h"
 #include "nsAboutProtocolUtils.h"
@@ -130,6 +131,13 @@ using mozilla::dom::PerformanceStorage;
 using mozilla::dom::ServiceWorkerDescriptor;
 
 #define MAX_RECURSION_COUNT 50
+
+enum class ClassifierMode {
+  Disabled = 0,
+  AntiTracking = 1,
+  SafeBrowsing = 2,
+  Enabled = 3,
+};
 
 already_AddRefed<nsIIOService> do_GetIOService(nsresult* error /* = 0 */) {
   nsCOMPtr<nsIIOService> io;
@@ -1150,18 +1158,6 @@ nsresult NS_CheckPortSafety(nsIURI* uri) {
   nsAutoCString scheme;
   uri->GetScheme(scheme);
   return NS_CheckPortSafety(port, scheme.get());
-}
-
-nsresult NS_NewProxyInfo(const nsACString& type, const nsACString& host,
-                         int32_t port, uint32_t flags, nsIProxyInfo** result) {
-  nsresult rv;
-  nsCOMPtr<nsIProtocolProxyService> pps;
-  pps = mozilla::components::ProtocolProxy::Service(&rv);
-  if (NS_SUCCEEDED(rv)) {
-    rv = pps->NewProxyInfo(type, host, port, ""_ns, ""_ns, flags, UINT32_MAX,
-                           nullptr, result);
-  }
-  return rv;
 }
 
 nsresult NS_GetFileProtocolHandler(nsIFileProtocolHandler** result,
@@ -3359,6 +3355,19 @@ bool NS_IsOffline() {
  *    flag to enforce bypassing the URL classifier check.
  */
 bool NS_ShouldClassifyChannel(nsIChannel* aChannel, ClassifyType aType) {
+  auto pref =
+      static_cast<ClassifierMode>(StaticPrefs::urlclassifier_enabled_mode());
+  if (pref == ClassifierMode::Disabled) {
+    return false;
+  }
+  if (aType == ClassifyType::SafeBrowsing &&
+      pref == ClassifierMode::AntiTracking) {
+    return false;
+  }
+  if (aType == ClassifyType::ETP && pref == ClassifierMode::SafeBrowsing) {
+    return false;
+  }
+
   nsLoadFlags loadFlags;
   Unused << aChannel->GetLoadFlags(&loadFlags);
   //  If our load flags dictate that we must let this channel through without
@@ -4178,7 +4187,28 @@ nsresult AddExtraHeaders(nsIHttpChannel* aHttpChannel,
   return NS_OK;
 }
 
-bool IsLocalNetworkAccess(
+bool IsLocalHostAccess(
+    const nsILoadInfo::IPAddressSpace aParentIPAddressSpace,
+    const nsILoadInfo::IPAddressSpace aTargetIPAddressSpace) {
+  // Determine if the request is moving to a more private address space
+  // i.e. Public -> LocalHost
+  // Private -> LocalHost
+
+  return ((aTargetIPAddressSpace == nsILoadInfo::IPAddressSpace::Local) &&
+          (aParentIPAddressSpace == nsILoadInfo::IPAddressSpace::Public ||
+           aParentIPAddressSpace == nsILoadInfo::IPAddressSpace::Private));
+}
+
+bool IsPrivateNetworkAccess(
+    const nsILoadInfo::IPAddressSpace aParentIPAddressSpace,
+    const nsILoadInfo::IPAddressSpace aTargetIPAddressSpace) {
+  // Determine if the request is moving from public to private address space
+
+  return ((aTargetIPAddressSpace == nsILoadInfo::IPAddressSpace::Private) &&
+          (aParentIPAddressSpace == nsILoadInfo::IPAddressSpace::Public));
+}
+
+bool IsLocalOrPrivateNetworkAccess(
     const nsILoadInfo::IPAddressSpace aParentIPAddressSpace,
     const nsILoadInfo::IPAddressSpace aTargetIPAddressSpace) {
   // Determine if the request is moving to a more private address space
@@ -4189,26 +4219,68 @@ bool IsLocalNetworkAccess(
   // for private network access
   // XXX (sunil) add link to LNA spec once it is published
 
-  if (aTargetIPAddressSpace == nsILoadInfo::IPAddressSpace::Public ||
-      aTargetIPAddressSpace == nsILoadInfo::IPAddressSpace::Unknown) {
-    return false;
-  }
-  // Check if this is an access to a local resource from Public or Private
-  // network
-  if ((aTargetIPAddressSpace == nsILoadInfo::IPAddressSpace::Local) &&
-      (aParentIPAddressSpace == nsILoadInfo::IPAddressSpace::Public ||
-       aParentIPAddressSpace == nsILoadInfo::IPAddressSpace::Private)) {
-    return true;
-  }
-
-  // Check if this is an access to a Private Network resource from a Public
-  // network
-  if ((aTargetIPAddressSpace == nsILoadInfo::IPAddressSpace::Private) &&
-      (aParentIPAddressSpace == nsILoadInfo::IPAddressSpace::Public)) {
-    return true;
-  }
-
-  return false;
+  return IsPrivateNetworkAccess(aParentIPAddressSpace, aTargetIPAddressSpace) ||
+         IsLocalHostAccess(aParentIPAddressSpace, aTargetIPAddressSpace);
 }
+
+Result<ActivateStorageAccess, nsresult> ParseActivateStorageAccess(
+    const nsACString& aActivateStorageAcess) {
+  nsCOMPtr<nsISFVService> sfv = GetSFVService();
+
+  // Parse storage acces values
+  //  * Activate-Storage-Access: load
+  //  * Activate-Storage-Access: retry; allowed-origin="https://foo.bar"
+  //  * Activate-Storage-Access: retry; allowed-origin=*
+  // into ActivateStorageAccess struct. See ActivateStorageAccessVariant for
+  // documentation on fields
+  nsCOMPtr<nsISFVItem> parsedHeader;
+  MOZ_TRY(sfv->ParseItem(aActivateStorageAcess, getter_AddRefs(parsedHeader)));
+
+  nsCOMPtr<nsISFVBareItem> value;
+  MOZ_TRY(parsedHeader->GetValue(getter_AddRefs(value)));
+
+  nsCOMPtr<nsISFVToken> token = do_QueryInterface(value);
+  if (!token) {
+    return Err(NS_ERROR_FAILURE);
+  }
+  nsAutoCString tokenValue;
+  token->GetValue(tokenValue);
+
+  if (tokenValue.EqualsLiteral("load")) {
+    return ActivateStorageAccess{
+        ActivateStorageAccessVariant::Load,
+    };
+  }
+  if (!tokenValue.EqualsLiteral("retry")) {
+    return Err(NS_ERROR_FAILURE);
+  }
+  nsCOMPtr<nsISFVParams> params;
+  MOZ_TRY(parsedHeader->GetParams(getter_AddRefs(params)));
+
+  nsCOMPtr<nsISFVBareItem> item;
+  MOZ_TRY(params->Get("allowed-origin"_ns, getter_AddRefs(item)));
+
+  // Evaluate whether the token value is a wildcard symbol.
+  nsCOMPtr<nsISFVToken> itemToken = do_QueryInterface(item);
+  if (itemToken) {
+    itemToken->GetValue(tokenValue);
+    if (!tokenValue.EqualsLiteral("*")) {
+      return Err(NS_ERROR_FAILURE);
+    }
+    return ActivateStorageAccess{
+        ActivateStorageAccessVariant::RetryAny,
+    };
+  }
+
+  // Evaluate whether the token value is an origin.
+  nsCOMPtr<nsISFVString> itemString = do_QueryInterface(item);
+  if (!itemString) {
+    return Err(NS_ERROR_FAILURE);
+  }
+  ActivateStorageAccess result{ActivateStorageAccessVariant::RetryOrigin};
+  itemString->GetValue(result.origin);
+  return result;
+}
+
 }  // namespace net
 }  // namespace mozilla

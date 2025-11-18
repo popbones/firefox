@@ -23,12 +23,13 @@ from taskgraph.util.taskcluster import (
 )
 from taskgraph.util.yaml import load_yaml
 
-from gecko_taskgraph import GECKO
+from gecko_taskgraph import GECKO, TEST_CONFIGS
 from gecko_taskgraph.util.attributes import (
     is_try,
     match_run_on_hg_branches,
     match_run_on_projects,
 )
+from gecko_taskgraph.util.constants import TEST_KINDS
 from gecko_taskgraph.util.hg import find_hg_revision_push_info, get_hg_commit_message
 from gecko_taskgraph.util.platforms import platform_family
 from gecko_taskgraph.util.taskcluster import find_task, insert_index
@@ -157,7 +158,6 @@ def filter_by_regex(task_label, regexes, mode="include"):
 def filter_release_tasks(task, parameters):
     platform = task.attributes.get("build_platform")
     if platform in (
-        "linux",
         "linux64",
         "linux64-aarch64",
         "macosx64",
@@ -237,7 +237,7 @@ def filter_tests_without_manifests(task, parameters):
     aware that the task exists (which is needed by the backfill action).
     """
     if (
-        task.kind == "test"
+        task.kind in TEST_KINDS
         and "test_manifests" in task.attributes
         and not task.attributes["test_manifests"]
     ):
@@ -380,7 +380,7 @@ def target_tasks_autoland(full_task_graph, parameters, graph_config):
     )
 
     def filter(task):
-        if task.kind != "test":
+        if task.kind not in TEST_KINDS:
             return True
 
         if parameters["backstop"]:
@@ -406,7 +406,7 @@ def target_tasks_mozilla_central(full_task_graph, parameters, graph_config):
     )
 
     def filter(task):
-        if task.kind != "test":
+        if task.kind not in TEST_KINDS:
             return True
 
         build_platform = task.attributes.get("build_platform")
@@ -645,7 +645,7 @@ def target_tasks_larch(full_task_graph, parameters, graph_config):
         ):
             return False
         # otherwise reduce tests only
-        if task.kind != "test":
+        if task.kind not in TEST_KINDS:
             return True
         return "browser-chrome" in task.label or "xpcshell" in task.label
 
@@ -674,8 +674,7 @@ def target_tasks_custom_car_perf_testing(full_task_graph, parameters, graph_conf
             return False
 
         try_name = attributes.get("raptor_try_name")
-
-        if "network-bench" in try_name:
+        if "network-bench" in try_name and "linux" not in platform:
             return False
 
         # Desktop and Android selection for CaR
@@ -917,7 +916,7 @@ def target_tasks_nightly_linux(full_task_graph, parameters, graph_config):
     nightly build process involves a pipeline of builds, signing,
     and, eventually, uploading the tasks to balrog."""
     filter = make_desktop_nightly_filter(
-        {"linux64-shippable", "linux-shippable", "linux64-aarch64-shippable"}
+        {"linux64-shippable", "linux64-aarch64-shippable"}
     )
     return [l for l, t in full_task_graph.tasks.items() if filter(t, parameters)]
 
@@ -1637,13 +1636,11 @@ def target_tasks_android_l10n_sync(full_task_graph, parameters, graph_config):
 
 @register_target_task("os-integration")
 def target_tasks_os_integration(full_task_graph, parameters, graph_config):
-    candidate_attrs = load_yaml(
-        os.path.join(GECKO, "taskcluster", "kinds", "test", "os-integration.yml")
-    )
+    candidate_attrs = load_yaml(os.path.join(TEST_CONFIGS, "os-integration.yml"))
 
     labels = []
     for label, task in full_task_graph.tasks.items():
-        if task.kind not in ("test", "source-test", "perftest"):
+        if task.kind not in TEST_KINDS + ("source-test", "perftest", "startup-test"):
             continue
 
         # Match tasks against attribute sets defined in os-integration.yml.
@@ -1672,3 +1669,8 @@ def target_tasks_os_integration(full_task_graph, parameters, graph_config):
 
         labels.append(label)
     return labels
+
+
+@register_target_task("weekly-test-info")
+def target_tasks_weekly_test_info(full_task_graph, parameters, graph_config):
+    return ["source-test-file-metadata-test-info-all"]

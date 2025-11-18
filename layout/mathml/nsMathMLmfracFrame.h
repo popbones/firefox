@@ -63,14 +63,14 @@ class nsMathMLmfracFrame final : public nsMathMLContainerFrame {
 
   eMathMLFrameType GetMathMLFrameType() override;
 
-  nsresult Place(DrawTarget* aDrawTarget, const PlaceFlags& aFlags,
-                 ReflowOutput& aDesiredSize) override;
+  void Place(DrawTarget* aDrawTarget, const PlaceFlags& aFlags,
+             ReflowOutput& aDesiredSize) override;
 
   void BuildDisplayList(nsDisplayListBuilder* aBuilder,
                         const nsDisplayListSet& aLists) override;
 
   nsresult AttributeChanged(int32_t aNameSpaceID, nsAtom* aAttribute,
-                            int32_t aModType) override;
+                            AttrModType aModType) override;
 
   NS_IMETHOD
   TransmitAutomaticData() override;

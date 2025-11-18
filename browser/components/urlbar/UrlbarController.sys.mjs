@@ -4,16 +4,28 @@
 
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 
+/**
+ * @import {ProvidersManager} from "moz-src:///browser/components/urlbar/UrlbarProvidersManager.sys.mjs"
+ */
+
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
-  getPlacesSemanticHistoryManager:
-    "resource://gre/modules/PlacesSemanticHistoryManager.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarProvidersManager: "resource:///modules/UrlbarProvidersManager.sys.mjs",
-  UrlbarTokenizer: "resource:///modules/UrlbarTokenizer.sys.mjs",
-  UrlbarUtils: "resource:///modules/UrlbarUtils.sys.mjs",
+  ExtensionUtils: "resource://gre/modules/ExtensionUtils.sys.mjs",
+  Interactions: "moz-src:///browser/components/places/Interactions.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
+  UrlbarProviderSemanticHistorySearch:
+    "moz-src:///browser/components/urlbar/UrlbarProviderSemanticHistorySearch.sys.mjs",
+  UrlbarProvidersManager:
+    "moz-src:///browser/components/urlbar/UrlbarProvidersManager.sys.mjs",
+  UrlbarTokenizer:
+    "moz-src:///browser/components/urlbar/UrlbarTokenizer.sys.mjs",
+  UrlbarUtils: "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs",
 });
+
+ChromeUtils.defineLazyGetter(lazy, "logger", () =>
+  lazy.UrlbarUtils.getLogger({ prefix: "Controller" })
+);
 
 const NOTIFICATIONS = {
   QUERY_STARTED: "onQueryStarted",
@@ -73,6 +85,9 @@ export class UrlbarController {
     this.input = options.input;
     this.browserWindow = options.input.window;
 
+    /**
+     * @type {ProvidersManager}
+     */
     this.manager = options.manager || lazy.UrlbarProvidersManager;
 
     this._listeners = new Set();
@@ -81,10 +96,6 @@ export class UrlbarController {
     this.engagementEvent = new TelemetryEvent(
       this,
       options.eventTelemetryCategory
-    );
-
-    ChromeUtils.defineLazyGetter(this, "logger", () =>
-      lazy.UrlbarUtils.getLogger({ prefix: "Controller" })
     );
   }
 
@@ -313,7 +324,7 @@ export class UrlbarController {
       }
 
       let { queryContext } = this._lastQueryContextWrapper;
-      let handled = this.view.oneOffSearchButtons.handleKeyDown(
+      let handled = this.view.oneOffSearchButtons?.handleKeyDown(
         event,
         this.view.visibleRowCount,
         this.view.allowEmptySelection,
@@ -351,7 +362,7 @@ export class UrlbarController {
         }
       // Fall through, we want the SPACE key to activate this element.
       case KeyEvent.DOM_VK_RETURN:
-        this.logger.debug(`Enter pressed${executeAction ? "" : " delayed"}`);
+        lazy.logger.debug(`Enter pressed${executeAction ? "" : " delayed"}`);
         if (executeAction) {
           this.input.handleCommand(event);
         }
@@ -411,6 +422,8 @@ export class UrlbarController {
         let allowTabbingThroughResults =
           this.input.focusedViaMousedown ||
           this.input.searchMode?.isPreview ||
+          this.input.searchMode?.source ==
+            lazy.UrlbarUtils.RESULT_SOURCE.ACTIONS ||
           this.view.selectedElement ||
           (this.input.value &&
             this.input.getAttribute("pageproxystate") != "valid");
@@ -492,7 +505,9 @@ export class UrlbarController {
           !event.shiftKey
         ) {
           this.input.searchMode = null;
-          this.input.view.oneOffSearchButtons.selectedButton = null;
+          if (this.input.view.oneOffSearchButtons) {
+            this.input.view.oneOffSearchButtons.selectedButton = null;
+          }
           this.input.startQuery({
             allowAutofill: false,
             event,
@@ -708,9 +723,7 @@ export class UrlbarController {
   #focusOnUnifiedSearchButton() {
     this.input.setUnifiedSearchButtonAvailability(true);
 
-    const switcher = this.input.document.getElementById(
-      "urlbar-searchmode-switcher"
-    );
+    const switcher = this.input.querySelector(".searchmode-switcher");
     // Set tabindex to be focusable.
     switcher.setAttribute("tabindex", "-1");
     // Remove blur listener to avoid closing urlbar view panel.
@@ -820,6 +833,7 @@ class TelemetryEvent {
       "input",
       "keydown",
       "mousedown",
+      "paste",
       "tabswitch",
       "focus",
     ];
@@ -829,7 +843,7 @@ class TelemetryEvent {
     }
 
     this._startEventInfo = {
-      timeStamp: event.timeStamp || Cu.now(),
+      timeStamp: event.timeStamp || ChromeUtils.now(),
       interactionType: this._getStartInteractionType(event, searchString),
       searchString,
     };
@@ -850,7 +864,7 @@ class TelemetryEvent {
    *        A DOM event.
    *        Note: event can be null, that usually happens for paste&go or drop&go.
    *        If there's no _startEventInfo this is a no-op.
-   * @param {object} details An object describing action details.
+   * @param {object} [details] An object describing action details.
    * @param {string} [details.searchString] The user's search string. Note that
    *        this string is not sent with telemetry data. It is only used
    *        locally to discern other data, such as the number of characters and
@@ -861,7 +875,7 @@ class TelemetryEvent {
    *        "switchtab", "remotetab", "extension", "oneoff", "dismiss".
    * @param {UrlbarResult} [details.result] The engaged result. This should be
    *        set to the result related to the picked element.
-   * @param {DOMElement} [details.element] The picked view element.
+   * @param {HTMLElement} [details.element] The picked view element.
    */
   record(event, details) {
     // Prevent re-entering `record()`. This can happen because
@@ -929,9 +943,15 @@ class TelemetryEvent {
       // enter search mode are picked. We should find a generalized way to
       // determine this instead of listing all the cases like this.
       details.isSessionOngoing = !!(
-        ["dismiss", "inaccurate_location", "show_less_frequently"].includes(
-          details.selType
-        ) || details.result?.payload.providesSearchMode
+        [
+          "dismiss",
+          "inaccurate_location",
+          "not_interested",
+          "not_now",
+          "opt_in",
+          "show_less_frequently",
+        ].includes(details.selType) ||
+        details.result?.payload.providesSearchMode
       );
     }
 
@@ -1002,17 +1022,22 @@ class TelemetryEvent {
       searchMode,
       selIndex,
       selType,
+      viewTime = 0,
     }
   ) {
     const browserWindow = this._controller.browserWindow;
     let sap = "urlbar";
     if (searchSource === "urlbar-handoff") {
       sap = "handoff";
+    } else if (searchSource === "searchbar") {
+      sap = "searchbar";
     } else if (
       browserWindow.isBlankPageURL(browserWindow.gBrowser.currentURI.spec)
     ) {
       sap = "urlbar_newtab";
-    } else if (browserWindow.gBrowser.currentURI.schemeIs("moz-extension")) {
+    } else if (
+      lazy.ExtensionUtils.isExtensionUrl(browserWindow.gBrowser.currentURI)
+    ) {
       sap = "urlbar_addonpage";
     }
 
@@ -1120,26 +1145,59 @@ class TelemetryEvent {
         results,
         feature: "suggest",
       };
+    } else if (method === "bounce") {
+      let selected_result = lazy.UrlbarUtils.searchEngagementTelemetryType(
+        currentResults[selIndex],
+        selType
+      );
+      eventInfo = {
+        sap,
+        interaction,
+        search_mode,
+        search_engine_default_id,
+        n_chars: numChars,
+        n_words: numWords,
+        n_results: numResults,
+        selected_result,
+        selected_position: selIndex + 1,
+        provider,
+        engagement_type:
+          selType === "help" || selType === "dismiss" ? selType : action,
+        results,
+        view_time: viewTime,
+        threshold: lazy.UrlbarPrefs.get(
+          "events.bounce.maxSecondsFromLastSearch"
+        ),
+      };
     } else {
       console.error(`Unknown telemetry event method: ${method}`);
       return;
     }
 
-    this._controller.logger.info(`${method} event:`, eventInfo);
+    lazy.logger.info(`${method} event:`, eventInfo);
 
     Glean.urlbar[method].record(eventInfo);
   }
 
   /**
    * Retrieves available semantic search sources.
+   * Ensure it is the provider initializing the semantic manager, since it
+   * provides the right configuration for the singleton.
    *
    * @returns {Array<string>} Array of found sources, will contain just "none"
    *   if no sources were found.
    */
   #getAvailableSemanticSources() {
     let sources = [];
-    if (lazy.getPlacesSemanticHistoryManager().canUseSemanticSearch) {
-      sources.push("history");
+    try {
+      if (
+        lazy.UrlbarProviderSemanticHistorySearch.semanticManager
+          .canUseSemanticSearch
+      ) {
+        sources.push("history");
+      }
+    } catch (e) {
+      lazy.logger.error("Error getting the semantic manager:", e);
     }
     if (!sources.length) {
       sources.push("none");
@@ -1174,7 +1232,7 @@ class TelemetryEvent {
       // Record the `keyword_exposure` event if there's a keyword.
       if (keyword) {
         let data = { keyword, terminal, result: resultType };
-        this._controller.logger.debug("Recording keyword_exposure event", data);
+        lazy.logger.debug("Recording keyword_exposure event", data);
         Glean.urlbar.keywordExposure.record(data);
         keywordExposureRecorded = true;
       }
@@ -1186,7 +1244,7 @@ class TelemetryEvent {
       results: tuples.map(t => t[0]).join(","),
       terminal: tuples.map(t => t[1]).join(","),
     };
-    this._controller.logger.debug("Recording exposure event", exposure);
+    lazy.logger.debug("Recording exposure event", exposure);
     Glean.urlbar.exposure.record(exposure);
 
     // Submit the `urlbar-keyword-exposure` ping if any keyword exposure events
@@ -1422,6 +1480,8 @@ class TelemetryEvent {
       return lazy.UrlbarUtils.isPasteEvent(event) ? "pasted" : "typed";
     } else if (event.type == "drop") {
       return "dropped";
+    } else if (event.type == "paste") {
+      return "pasted";
     } else if (searchString) {
       return "typed";
     }
@@ -1452,10 +1512,11 @@ class TelemetryEvent {
     if (!element) {
       return "none";
     }
-    if (element.dataset.command == "help") {
-      return result?.type == lazy.UrlbarUtils.RESULT_TYPE.TIP
-        ? "tiphelp"
-        : "help";
+    if (
+      element.dataset.command == "help" ||
+      element.dataset.l10nName == "learn-more-link"
+    ) {
+      return "help";
     }
     if (element.dataset.command == "dismiss") {
       return "block";
@@ -1549,7 +1610,7 @@ class TelemetryEvent {
    * Start tracking a potential disable suggest event after user has seen a
    * suggest result.
    *
-   * @param {event} [event] A DOM event.
+   * @param {event} event A DOM event.
    * @param {object} details An object describing interaction details.
    */
   startTrackingDisableSuggest(event, details) {
@@ -1628,6 +1689,136 @@ class TelemetryEvent {
   }
 
   getCurrentTime() {
-    return Cu.now();
+    return ChromeUtils.now();
+  }
+
+  /**
+   * Start tracking a potential bounce event after the user has engaged
+   * with a URL bar result.
+   *
+   * @param {Browser} browser The browser object.
+   * @param {event} event A DOM event.
+   * @param {object} details An object describing interaction details.
+   */
+  async startTrackingBounceEvent(browser, event, details) {
+    let state = this._controller.input.getBrowserState(browser);
+    let startEventInfo = this._startEventInfo;
+
+    // If we are already tracking a bounce, then another engagement
+    // could possibly lead to a bounce.
+    if (state.bounceEventTracking) {
+      await this.handleBounceEventTrigger(browser);
+    }
+
+    state.bounceEventTracking = {
+      startTime: Date.now(),
+      pickEvent: event,
+      resultDetails: details,
+      startEventInfo,
+    };
+  }
+
+  /**
+   * Handle a bounce event trigger.
+   * These include closing the tab/window and navigating away via
+   * browser chrome (this includes clicking on history or bookmark entries,
+   * and engaging with the URL bar).
+   *
+   * @param {Browser} browser The browser object.
+   */
+  async handleBounceEventTrigger(browser) {
+    let state = this._controller.input.getBrowserState(browser);
+    if (state.bounceEventTracking) {
+      const interactions =
+        (await lazy.Interactions.getRecentInteractionsForBrowser(browser)) ??
+        [];
+
+      // handleBounceEventTrigger() can run concurrently, so we bail out
+      // if a prior async invocation has already cleared bounceEventTracking.
+      if (!state.bounceEventTracking) {
+        return;
+      }
+
+      let totalViewTime = 0;
+      for (let interaction of interactions) {
+        if (interaction.created_at >= state.bounceEventTracking.startTime) {
+          totalViewTime += interaction.totalViewTime || 0;
+        }
+      }
+
+      // If the total view time when the user navigates away after a
+      // URL bar interaction is less than the threshold of
+      // events.bounce.maxSecondsFromLastSearch, we record a bounce event.
+      // If totalViewTime is 0, that means the page didn't load yet, so
+      // we wouldn't record a bounce event.
+      if (
+        totalViewTime != 0 &&
+        totalViewTime <
+          lazy.UrlbarPrefs.get("events.bounce.maxSecondsFromLastSearch") * 1000
+      ) {
+        this.recordBounceEvent(browser, totalViewTime);
+      }
+
+      state.bounceEventTracking = null;
+    }
+  }
+
+  /**
+   * Record a bounce event
+   *
+   * @param {Browser} browser The browser object.
+   * @param {number} viewTime
+   *  The time spent on a tab after a URL bar engagement before
+   *  navigating away via browser chrome or closing the tab.
+   */
+  recordBounceEvent(browser, viewTime) {
+    let state = this._controller.input.getBrowserState(browser);
+    let event = state.bounceEventTracking.pickEvent;
+    let details = state.bounceEventTracking.resultDetails;
+
+    let startEventInfo = state.bounceEventTracking.startEventInfo;
+
+    if (!startEventInfo) {
+      return;
+    }
+
+    if (
+      !event &&
+      startEventInfo.interactionType != "pasted" &&
+      startEventInfo.interactionType != "dropped"
+    ) {
+      // If no event is passed, we must be executing either paste&go or drop&go.
+      throw new Error("Event must be defined, unless input was pasted/dropped");
+    }
+    if (!details) {
+      throw new Error("Invalid event details: " + details);
+    }
+
+    let action = this.#getActionFromEvent(
+      event,
+      details,
+      startEventInfo.interactionType
+    );
+    let method = "bounce";
+
+    let { numChars, numWords, searchWords } = this._parseSearchString(
+      details.searchString
+    );
+
+    details.provider = details.result?.providerName;
+    details.selIndex = details.result?.rowIndex ?? -1;
+
+    this._recordSearchEngagementTelemetry(method, startEventInfo, {
+      action,
+      numChars,
+      numWords,
+      searchWords,
+      provider: details.provider,
+      searchSource: details.searchSource,
+      searchMode: details.searchMode,
+      selIndex: details.selIndex,
+      selType: details.selType,
+      viewTime: viewTime / 1000,
+    });
   }
 }

@@ -80,6 +80,8 @@ export const PREGROUPED_HANDLING_METHODS = {
 const EXPECTED_TOPIC_MODEL_OBJECTS = 6;
 const EXPECTED_EMBEDDING_MODEL_OBJECTS = 4;
 
+const MAX_NON_SUMMARIZED_SEARCH_LENGTH = 26;
+
 export const DIM_REDUCTION_METHODS = {};
 const MISSING_ANCHOR_IN_CLUSTER_PENALTY = 0.2;
 const MAX_NN_GROUPED_TABS = 4;
@@ -99,13 +101,14 @@ const LABEL_REASONS = {
   ERROR: "ERROR",
 };
 
-const SMART_TAB_GROUPING_CONFIG = {
+export const SMART_TAB_GROUPING_CONFIG = {
   embedding: {
     dtype: "q8",
     timeoutMS: 2 * 60 * 1000, // 2 minutes
     taskName: ML_TASK_FEATURE_EXTRACTION,
     featureId: "smart-tab-embedding",
     backend: "onnx-native",
+    fallbackBackend: "onnx",
   },
   topicGeneration: {
     dtype: "q8",
@@ -113,6 +116,7 @@ const SMART_TAB_GROUPING_CONFIG = {
     taskName: ML_TASK_TEXT2TEXT,
     featureId: "smart-tab-topic",
     backend: "onnx-native",
+    fallbackBackend: "onnx",
   },
   dataConfig: {
     titleKey: "label",
@@ -155,6 +159,8 @@ const TAB_URLS_TO_EXCLUDE = [
   "about:firefoxview",
 ];
 
+const TITLE_DELIMETER_SET = new Set(["-", "|", "—"]);
+
 /**
  * For a given set of clusters represented by indices, returns the index of the cluster
  * that has the most anchor items inside it.
@@ -179,13 +185,42 @@ export function getBestAnchorClusterInfo(groupIndices, anchorItems) {
   return { anchorClusterIndex, numAnchorItemsInCluster };
 }
 
+/**
+ * Check tab to see if it's a search page
+ * @param {Object} tab
+ * @returns {boolean} Returns true if the tab is a web search from the Firefox search UI and the user is still on the original page.
+ * Changes in search query after search is made is supported.
+ * Returns false if user started from a hompepage of a site rather than the New Tab / browser UI
+ */
+export function isSearchTab(tab) {
+  const linkedBrowser = tab?.linkedBrowser;
+  if (!linkedBrowser) {
+    return false;
+  }
+  const searchURL = linkedBrowser.getAttribute("triggeringSearchEngineURL");
+  const curURL = linkedBrowser.currentURI?.spec;
+  if (!searchURL) {
+    return false;
+  }
+  const queryFieldsMarker = searchURL.indexOf("?");
+
+  if (
+    queryFieldsMarker > 0 &&
+    searchURL.substring(0, queryFieldsMarker) ===
+      curURL.substring(0, queryFieldsMarker)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export class SmartTabGroupingManager {
   /**
    * Creates the SmartTabGroupingManager object.
    * @param {object} config configuration options
    */
   constructor(config) {
-    this.config = config || SMART_TAB_GROUPING_CONFIG;
+    this.config = config || structuredClone(SMART_TAB_GROUPING_CONFIG);
   }
 
   /**
@@ -678,6 +713,7 @@ export class SmartTabGroupingManager {
       modelId,
       modelRevision,
       backend,
+      fallbackBackend,
     } = engineConfig;
     let initData = {
       featureId,
@@ -689,9 +725,22 @@ export class SmartTabGroupingManager {
       modelRevision,
       backend,
     };
-
     initData = SmartTabGroupingManager.getUpdatedInitData(initData, featureId);
-    return await createEngine(initData, progressCallback);
+    let engine;
+    try {
+      engine = await createEngine(initData, progressCallback);
+      this.backend = backend;
+    } catch (e) {
+      engine = await createEngine(
+        {
+          ...initData,
+          backend: fallbackBackend,
+        },
+        progressCallback
+      );
+      this.backend = fallbackBackend;
+    }
+    return engine;
   }
 
   /**
@@ -1108,6 +1157,21 @@ export class SmartTabGroupingManager {
    * @param {SmartTabGroupingResult} otherGroupingResult A 'made up' cluster representing all other tabs in the window
    */
   async generateGroupLabels(groupingResult, otherGroupingResult = null) {
+    // Special case for a search page
+    const searchTopicSpecialCase = Services.prefs.getBoolPref(
+      "browser.tabs.groups.smart.searchTopicEnabled",
+      true
+    );
+    if (
+      searchTopicSpecialCase &&
+      groupingResult.clusterRepresentations.length == 1 &&
+      groupingResult.clusterRepresentations[0].isSingleTabSearch
+    ) {
+      if (groupingResult.clusterRepresentations[0].setSingleTabSearchLabel()) {
+        return;
+      }
+    }
+
     const { keywords, documents } =
       groupingResult.getRepresentativeDocsAndKeywords(
         otherGroupingResult
@@ -1180,6 +1244,7 @@ export class SmartTabGroupingManager {
       model_revision: topicEngineConfig.modelRevision || "",
       id,
       label_reason: labelReason,
+      backend: this.backend || "onnx-native",
     });
     this.labelReason = LABEL_REASONS.DEFAULT;
   }
@@ -1216,6 +1281,7 @@ export class SmartTabGroupingManager {
       tabs_removed: numTabsRemoved,
       model_revision: embeddingEngineConfig.modelRevision || "",
       id,
+      backend: this.backend || "onnx-native",
     });
   }
 
@@ -1508,6 +1574,33 @@ export class ClusterRepresentation extends EmbeddingCluster {
     this.keywords = null;
     this.documents = null;
     this.clusterID = genHexString(10);
+    this.isSingleTabSearch = tabs?.length == 1 && isSearchTab(tabs[0]);
+  }
+
+  /**
+   * For a single tab cluster with a search field, set the predicted topic
+   * to be the title of the page
+   * @returns {boolean} True if we updated the cluster label successfully
+   */
+  setSingleTabSearchLabel() {
+    if (this.tabs.length !== 1) {
+      return false;
+    }
+    const pageTitle = this.tabs[0][this.config.dataConfig.titleKey] || "";
+    for (let i = pageTitle.length - 1; i > 0; i--) {
+      if (TITLE_DELIMETER_SET.has(pageTitle[i])) {
+        const topicString = pageTitle.substring(0, i).trim();
+        if (topicString.length > MAX_NON_SUMMARIZED_SEARCH_LENGTH) {
+          return false;
+        }
+        // Capitalize first character of each word. Regex returns first char of each word
+        this.predictedTopicLabel = topicString.replace(/(^|\s)\S/g, t =>
+          t.toUpperCase()
+        );
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

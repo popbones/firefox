@@ -38,10 +38,11 @@ class DocumentType final : public CharacterData {
     SetDOMStringToNull(aNodeValue);
   }
   void SetNodeValueInternal(const nsAString& aNodeValue,
-                            mozilla::ErrorResult& aError) override {}
+                            mozilla::ErrorResult& aError,
+                            MutationEffectOnScript) override {}
 
   // nsIContent overrides
-  virtual const nsTextFragment* GetText() override;
+  virtual const CharacterDataBuffer* GetCharacterDataBuffer() const override;
 
   virtual already_AddRefed<CharacterData> CloneDataNode(
       mozilla::dom::NodeInfo* aNodeInfo, bool aCloneText) const override;

@@ -177,6 +177,7 @@ export class GeckoViewNavigation extends GeckoViewModule {
           headerFilter,
           originalInput,
           textDirectiveUserActivation,
+          appLinkLaunchType,
         } = aData;
 
         let navFlags = convertFlags(flags);
@@ -184,11 +185,11 @@ export class GeckoViewNavigation extends GeckoViewModule {
         // from Gecko, and instead we call it directly in the loadUri Java API.
         navFlags |= Ci.nsIWebNavigation.LOAD_FLAGS_BYPASS_LOAD_URI_DELEGATE;
 
-        let triggeringPrincipal, referrerInfo, csp;
+        let triggeringPrincipal, referrerInfo, policyContainer;
         if (referrerSessionId) {
           const referrerWindow = Services.ww.getWindowByName(referrerSessionId);
           triggeringPrincipal = referrerWindow.browser.contentPrincipal;
-          csp = referrerWindow.browser.csp;
+          policyContainer = referrerWindow.browser.policyContainer;
 
           const { contentPrincipal } = this.browser;
           const isNormal = contentPrincipal.privateBrowsingId == 0;
@@ -269,15 +270,16 @@ export class GeckoViewNavigation extends GeckoViewModule {
         // with the specified URI and no policy set. If no referrerUri is present and we have no
         // referring session, the referrerInfo is null.
         //
-        // csp is only present if we have a referring document, null otherwise.
+        // policyContainer is only present if we have a referring document, null otherwise.
         this.browser.fixupAndLoadURIString(uri, {
           loadFlags: navFlags,
           referrerInfo,
           triggeringPrincipal,
           headers: additionalHeaders,
-          csp,
+          policyContainer,
           textDirectiveUserActivation,
           schemelessInput,
+          appLinkLaunchType,
         });
         break;
       }
@@ -384,7 +386,8 @@ export class GeckoViewNavigation extends GeckoViewModule {
     aOpenWindowInfo,
     aWhere,
     aFlags,
-    aTriggeringPrincipal
+    aTriggeringPrincipal,
+    aPolicyContainer
   ) {
     debug`createContentWindow: uri=${aUri && aUri.spec}
                                 where=${aWhere} flags=${aFlags}`;
@@ -502,7 +505,7 @@ export class GeckoViewNavigation extends GeckoViewModule {
     where,
     flags,
     triggeringPrincipal,
-    csp,
+    policyContainer,
     referrerInfo = null,
     name = null,
   }) {
@@ -541,7 +544,7 @@ export class GeckoViewNavigation extends GeckoViewModule {
     // 3) We have a new session and a browser element, load the requested URI.
     browser.loadURI(uri, {
       triggeringPrincipal,
-      csp,
+      policyContainer,
       referrerInfo,
       hasValidUserGestureActivation:
         !!openWindowInfo?.hasValidUserGestureActivation,
@@ -552,14 +555,21 @@ export class GeckoViewNavigation extends GeckoViewModule {
   }
 
   // nsIBrowserDOMWindow.
-  openURI(aUri, aOpenWindowInfo, aWhere, aFlags, aTriggeringPrincipal, aCsp) {
+  openURI(
+    aUri,
+    aOpenWindowInfo,
+    aWhere,
+    aFlags,
+    aTriggeringPrincipal,
+    aPolicyContainer
+  ) {
     const browser = this.handleOpenUri({
       uri: aUri,
       openWindowInfo: aOpenWindowInfo,
       where: aWhere,
       flags: aFlags,
       triggeringPrincipal: aTriggeringPrincipal,
-      csp: aCsp,
+      policyContainer: aPolicyContainer,
     });
     return browser && browser.browsingContext;
   }
@@ -572,7 +582,7 @@ export class GeckoViewNavigation extends GeckoViewModule {
       where: aWhere,
       flags: aFlags,
       triggeringPrincipal: aParams.triggeringPrincipal,
-      csp: aParams.csp,
+      policyContainer: aParams.policyContainer,
       referrerInfo: aParams.referrerInfo,
       name: aName,
     });

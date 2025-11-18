@@ -110,12 +110,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">Gunakan sandi</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">Jangan sekarang</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">Sandi tersimpan</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">Sandi telah diperbarui</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">Nama pengguna diperbarui</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">Kirim ulang data ke situs ini?</string>
   <string name="mozac_feature_prompt_repost_message">Menyegarkan halaman ini dapat mengulang tindakan yang baru saja dilakukan, seperti melakukan pembayaran atau mengirim komentar dua kali</string>
@@ -123,6 +119,14 @@
   <string name="mozac_feature_prompt_repost_positive_button_text">Kirim ulang data</string>
   <!-- Pressing this will dismiss the dialog and not refresh the webpage -->
   <string name="mozac_feature_prompt_repost_negative_button_text">Batal</string>
+  <!-- Strings show in a dialog that appear when user confirm folder upload -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_title">Unggah berkas?</string>
+  <!-- Prompt message displayed when user selects a specific folder. %1$s is a folder / directory name. -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_message">Pastikan Anda memercayai situs ini sebelum mengunggah dari “%1$s”.</string>
+  <!-- Pressing this will dismiss the dialog and allow to upload folder -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_positive_button_text">Unggah</string>
+  <!-- Pressing this will dismiss the dialog and disallow to upload folder -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_negative_button_text">Batal</string>
   <!--
     Credit Card Autofill
 

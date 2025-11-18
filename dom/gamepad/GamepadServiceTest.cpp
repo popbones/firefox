@@ -8,12 +8,10 @@
 
 #include "mozilla/ErrorResult.h"
 #include "mozilla/Unused.h"
-
 #include "mozilla/dom/GamepadManager.h"
 #include "mozilla/dom/GamepadPlatformService.h"
 #include "mozilla/dom/GamepadServiceTestBinding.h"
 #include "mozilla/dom/GamepadTestChannelChild.h"
-
 #include "mozilla/ipc/BackgroundChild.h"
 #include "mozilla/ipc/PBackgroundChild.h"
 
@@ -124,8 +122,7 @@ already_AddRefed<Promise> GamepadServiceTest::AddGamepad(
   // assertion
   GamepadHandle gamepadHandle{1, GamepadHandleKind::GamepadPlatformManager};
 
-  // Only VR controllers has displayID, we give 0 to the general gamepads.
-  GamepadAdded a(nsString(aID), aMapping, aHand, 0, aNumButtons, aNumAxes,
+  GamepadAdded a(nsString(aID), aMapping, aHand, aNumButtons, aNumAxes,
                  aNumHaptics, aNumLightIndicator, aNumTouchEvents);
   GamepadChangeEventBody body(a);
   GamepadChangeEvent e(gamepadHandle, body);

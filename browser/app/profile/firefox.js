@@ -369,7 +369,11 @@ pref("browser.warnOnQuit", true);
 
 pref("browser.overlink-delay", 80);
 
-pref("browser.taskbarTabs.enabled", false);
+#if defined(XP_WIN)
+  pref("browser.taskbarTabs.enabled", true);
+#else
+  pref("browser.taskbarTabs.enabled", false);
+#endif
 
 #if defined(MOZ_WIDGET_GTK)
   pref("browser.theme.native-theme", true);
@@ -439,10 +443,14 @@ pref("browser.urlbar.suggest.calculator",           true);
 pref("browser.urlbar.suggest.recentsearches",       true);
 pref("browser.urlbar.suggest.quickactions",         true);
 
-pref("browser.urlbar.deduplication.enabled", false);
+pref("browser.urlbar.allowSearchSuggestionsForSimpleOrigins", true);
+
+pref("browser.urlbar.deduplication.enabled", true);
 pref("browser.urlbar.deduplication.thresholdDays", 0);
 
 pref("browser.urlbar.scotchBonnet.enableOverride", true);
+
+pref("browser.urlbar.trustPanel.featureGate", false);
 
 // Once Perplexity has entered search mode at least once,
 // we no longer show the Perplexity onboarding callout.
@@ -459,7 +467,6 @@ pref("browser.urlbar.recentsearches.featureGate", true);
 
 // Enable Rich Entities.
 pref("browser.urlbar.richSuggestions.featureGate", true);
-pref("browser.search.param.search_rich_suggestions", "fen");
 
 // Feature gate pref for weather suggestions in the urlbar.
 pref("browser.urlbar.weather.featureGate", false);
@@ -666,6 +673,12 @@ pref("browser.urlbar.merino.providers", "");
 // Comma-separated list of client variants to send to Merino
 pref("browser.urlbar.merino.clientVariants", "");
 
+// OHTTP config URL for Merino requests
+pref("browser.urlbar.merino.ohttpConfigURL", "");
+
+// OHTTP relay URL for Merino requests
+pref("browser.urlbar.merino.ohttpRelayURL", "");
+
 // Enable site specific search result.
 pref("browser.urlbar.contextualSearch.enabled", true);
 
@@ -673,7 +686,11 @@ pref("browser.urlbar.contextualSearch.enabled", true);
 pref("browser.urlbar.addons.featureGate", false);
 
 // Feature gate pref for semanticHistory
+#if defined(EARLY_BETA_OR_EARLIER) || defined(MOZ_DEV_EDITION)
+pref("places.semanticHistory.featureGate", true);
+#else
 pref("places.semanticHistory.featureGate", false);
+#endif
 
 // Minimum length threshold for semantic history search
 pref("browser.urlbar.suggest.semanticHistory.minLength", 5);
@@ -712,19 +729,9 @@ pref("browser.urlbar.yelp.serviceResultDistinction", false);
 pref("browser.urlbar.suggest.yelp", true);
 
 // Feature gate pref for Fakespot suggestions in the urlbar.
+// TODO Bug 1982966: Remove this after all experiments and rollouts using it
+// finish.
 pref("browser.urlbar.fakespot.featureGate", false);
-
-// The minimum prefix length of a Fakespot keyword the user must type to trigger
-// the suggestion. 0 means the min length should be taken from Nimbus.
-pref("browser.urlbar.fakespot.minKeywordLength", 4);
-
-// The index of Fakespot results within the Firefox Suggest section. A negative
-// index is relative to the end of the section.
-pref("browser.urlbar.fakespot.suggestedIndex", -1);
-
-// If `browser.urlbar.fakespot.featureGate` is true, this controls whether
-// Fakespot suggestions are turned on.
-pref("browser.urlbar.suggest.fakespot", true);
 
 // The minimum prefix length of addons keyword the user must type to trigger
 // the suggestion. 0 means the min length should be taken from Nimbus.
@@ -748,10 +755,37 @@ pref("browser.urlbar.suggest.wikipedia", true);
 // Enable creating and editing user defined search engines.
 pref("browser.urlbar.update2.engineAliasRefresh", true);
 
-pref("browser.altClickSave", false);
+// Controls whether realtime opt-in suggestions are turned on.
+pref("browser.urlbar.suggest.realtimeOptIn", true);
 
-// Enable logging downloads operations to the Console.
-pref("browser.download.loglevel", "Error");
+// Feature gate pref for stock market suggestions in the urlbar.
+pref("browser.urlbar.market.featureGate", false);
+
+// The minimum prefix length of a market keyword the user must type to trigger
+// the suggestion. 0 means the min length should be taken from Nimbus or remote
+// settings.
+pref("browser.urlbar.market.minKeywordLength", 0);
+
+// Feature gate pref for important-dates suggestions in the urlbar.
+pref("browser.urlbar.importantDates.featureGate", false);
+
+// If `browser.urlbar.importantDates.featureGate` is true, this controls whether
+// important-dates suggestions are turned on.
+pref("browser.urlbar.suggest.importantDates", true);
+
+// Feature gate pref for Yelp realtime suggestions in the urlbar.
+pref("browser.urlbar.yelpRealtime.featureGate", false);
+
+// If `browser.urlbar.yelpRealtime.featureGate` is true, this controls whether
+// Yelp realtime suggestions are turned on.
+pref("browser.urlbar.suggest.yelpRealtime", true);
+
+// The minimum prefix length of a Yelp keyword the user must type to trigger
+// the suggestion. 0 means the min length should be taken from Nimbus or remote
+// settings.
+pref("browser.urlbar.yelpRealtime.minKeywordLength", 0);
+
+pref("browser.altClickSave", false);
 
 // Number of milliseconds to wait for the http headers (and thus
 // the Content-Disposition filename) before giving up and falling back to
@@ -837,14 +871,17 @@ pref("browser.search.widget.removeAfterDaysUnused", 120);
 // capped at 100.
 pref("browser.search.totalSearches", 0);
 
+// Feature gate for visual search.
+pref("browser.search.visualSearch.featureGate", false);
+
+// Feature gate for ohttp based suggestions.
+pref("browser.search.suggest.ohttp.featureGate", false);
+
 // Spin the cursor while the page is loading
 pref("browser.spin_cursor_while_busy", false);
 
 // Enable display of contextual-password-manager option in browser sidebar
 pref("browser.contextual-password-manager.enabled", false);
-
-// Enables the display of the Mozilla VPN banner in private browsing windows
-pref("browser.privatebrowsing.vpnpromourl", "https://vpn.mozilla.org/?utm_source=firefox-browser&utm_medium=firefox-%CHANNEL%-browser&utm_campaign=private-browsing-vpn-link");
 
 // Whether the user has opted-in to recommended settings for data features.
 pref("browser.dataFeatureRecommendations.enabled", false);
@@ -870,6 +907,8 @@ pref("permissions.manager.defaultsUrl", "resource://app/defaults/permissions");
 pref("permissions.default.camera", 0);
 pref("permissions.default.microphone", 0);
 pref("permissions.default.geo", 0);
+pref("permissions.default.localhost", 0);
+pref("permissions.default.local-network", 0);
 pref("permissions.default.xr", 0);
 pref("permissions.default.desktop-notification", 0);
 pref("permissions.default.shortcuts", 0);
@@ -921,6 +960,9 @@ pref("browser.link.open_newwindow.restriction", 2);
 #else
   pref("browser.link.open_newwindow.disabled_in_fullscreen", false);
 #endif
+
+// If true, opening javscript: URLs using middle-click, CTRL+click etc. are blocked.
+pref("browser.link.alternative_click.block_javascript", true);
 
 // Tabbed browser
 pref("browser.tabs.closeTabByDblclick", false);
@@ -993,10 +1035,12 @@ pref("browser.tabs.hoverPreview.showThumbnails", true);
 pref("browser.tabs.groups.enabled", true);
 
 #ifdef NIGHTLY_BUILD
-pref("browser.tabs.groups.smart.enabled", true);
+pref("browser.tabs.groups.hoverPreview.enabled", true);
 #else
-pref("browser.tabs.groups.smart.enabled", false);
+pref("browser.tabs.groups.hoverPreview.enabled", false);
 #endif
+
+pref("browser.tabs.groups.smart.enabled", true);
 
 // KMEANS_WITH_ANCHOR or NEAREST_NEIGHBOR or LOGISTIC_REGRESSION
 pref("browser.tabs.groups.smart.suggestOtherTabsMethod", "NEAREST_NEIGHBOR");
@@ -1009,13 +1053,18 @@ pref("browser.tabs.groups.smart.optin", false);
 pref("browser.tabs.dragDrop.createGroup.delayMS", 240);
 pref("browser.tabs.dragDrop.expandGroup.delayMS", 350);
 pref("browser.tabs.dragDrop.selectTab.delayMS", 350);
+pref("browser.tabs.dragDrop.pinInteractionCue.delayMS", 500);
 pref("browser.tabs.dragDrop.moveOverThresholdPercent", 80);
 
 pref("browser.tabs.firefox-view.logLevel", "Warn");
 
+// Special case to use search term when making a group from a single page search
+pref("browser.tabs.groups.smart.searchTopicEnabled", true);
+
 pref("browser.tabs.groups.smart.userEnabled", true);
 
 pref("security.allow_parent_unrestricted_js_loads", false);
+pref("browser.unexpectedScriptLoad.logLevel", "Warn");
 
 // Unload tabs when available memory is running low
 #if defined(XP_MACOSX) || defined(XP_WIN)
@@ -1309,6 +1358,7 @@ pref("browser.send_pings", false);
 
 pref("browser.geolocation.warning.infoURL", "https://www.mozilla.org/%LOCALE%/firefox/geolocation/");
 pref("browser.xr.warning.infoURL", "https://www.mozilla.org/%LOCALE%/firefox/xr/");
+pref("browser.lna.warning.infoURL", "https://support.mozilla.org/%LOCALE%/kb/control-personal-device-local-network-permissions-firefox");
 
 pref("browser.sessionstore.resume_from_crash", true);
 pref("browser.sessionstore.resume_session_once", false);
@@ -1343,6 +1393,9 @@ pref("browser.sessionstore.loglevel", "Warn");
 #endif
 // How old can a log file be before it gets deleted?
 pref("browser.sessionstore.log.appender.file.maxErrorAge", 864000); // 10 days
+
+// Max time to wait between flushing any log messages to disk (defaults to 1hr.)
+pref("browser.sessionstore.logFlushIntervalSeconds", 3600);
 
 // on which sites to save text data, POSTDATA and cookies
 // 0 = everywhere, 1 = unencrypted sites, 2 = nowhere
@@ -1594,6 +1647,7 @@ pref("services.sync.prefs.sync.browser.discovery.enabled", true);
 pref("services.sync.prefs.sync.browser.download.useDownloadDir", true);
 pref("services.sync.prefs.sync.browser.firefox-view.feature-tour", true);
 pref("services.sync.prefs.sync.browser.formfill.enable", true);
+pref("services.sync.prefs.sync.browser.ipProtection.enabled", true);
 pref("services.sync.prefs.sync.browser.link.open_newwindow", true);
 pref("services.sync.prefs.sync.browser.menu.showViewImageInfo", true);
 pref("services.sync.prefs.sync.browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons", true);
@@ -1750,6 +1804,27 @@ pref("browser.newtab.preload", true);
   pref("browser.preonboarding.enabled", false);
 #endif
 
+// For further detail on the TOU prefs below, see the `preonboarding` feature in
+// FeatureManifest.yaml
+// Version of the TOU that the user last accepted
+pref("termsofuse.acceptedVersion", 0);
+// Stringified timestamp of when the user last accepted the TOU
+pref("termsofuse.acceptedDate", "0");
+// The most up-to-date version of the TOU, we set the minimum and current
+// version as 4 to distinguish it from version numbers used in previous TOU
+// experiments and rollouts
+pref("termsofuse.currentVersion", 4);
+// The minimum version fo the TOU that a user must have accepted to not be
+// presented with the TOU modal
+pref("termsofuse.minimumVersion", 4);
+// Should we bypass the TOU modal notification completely, currently only true
+// for local/non-official builds
+#ifdef MOZILLA_OFFICIAL
+  pref("termsofuse.bypassNotification", false);
+#else
+  pref("termsofuse.bypassNotification", true);
+#endif
+
 // Show "Download Firefox for mobile" QR code modal on newtab
 pref("browser.newtabpage.activity-stream.mobileDownloadModal.enabled", false);
 pref("browser.newtabpage.activity-stream.mobileDownloadModal.variant-a", false);
@@ -1757,7 +1832,7 @@ pref("browser.newtabpage.activity-stream.mobileDownloadModal.variant-b", false);
 pref("browser.newtabpage.activity-stream.mobileDownloadModal.variant-c", false);
 
 // Show refined card layout on newtab
-pref("browser.newtabpage.activity-stream.discoverystream.refinedCardsLayout.enabled", false);
+pref("browser.newtabpage.activity-stream.discoverystream.refinedCardsLayout.enabled", true);
 
 // Mozilla Ad Routing Service (MARS) unified ads service
 pref("browser.newtabpage.activity-stream.unifiedAds.tiles.enabled", true);
@@ -1771,16 +1846,38 @@ pref("browser.newtabpage.activity-stream.showWeather", true);
 pref("browser.newtabpage.activity-stream.weather.query", "");
 pref("browser.newtabpage.activity-stream.weather.display", "simple");
 
+// Opt-in enabled for certain locales for newtab weather widget
+pref("browser.newtabpage.activity-stream.weather.optInDisplayed", false);
+
+// User choice made from weather opt-in dialog
+pref("browser.newtabpage.activity-stream.weather.optInAccepted", false);
+
+// If weather opt-in enabled and no selection has been made, show static weather widget
+pref("browser.newtabpage.activity-stream.weather.staticData.enabled", false);
+
 pref("browser.newtabpage.activity-stream.images.smart", true);
 
 // enable location search for newtab weather widget
 pref("browser.newtabpage.activity-stream.weather.locationSearchEnabled", true);
 
+// opt-in enabled for certain locales for newtab weather widget
+pref("browser.newtabpage.activity-stream.weather.optInDisplayed", false);
+
 // List of regions that get weather by default.
-pref("browser.newtabpage.activity-stream.discoverystream.region-weather-config", "US,CA");
+pref("browser.newtabpage.activity-stream.discoverystream.region-weather-config", "US,CA,DE,GB,FR,ES,IT,CH,AT,BE,IE,NL,PL,CZ,SE,SG,HU,SK,FI,DK,NO,PT");
 
 // List of locales that weather widget supports.
-pref("browser.newtabpage.activity-stream.discoverystream.locale-weather-config", "en-US,en-GB,en-CA");
+pref("browser.newtabpage.activity-stream.discoverystream.locale-weather-config", "en-US,en-GB,en-CA,fr,de");
+
+// List of regions that will require opt-in to show weather widget
+pref("browser.newtabpage.activity-stream.discoverystream.optIn-region-weather-config", "DE,GB,FR,ES,IT,CH,AT,BE,IE,NL,PL,CZ,SE,SG,HU,SK,FI,DK,NO,PT");
+
+
+// List of locales that will require opt-in to show weather widget
+pref("browser.newtabpage.activity-stream.discoverystream.optIn-locale-weather-config", "fr,de");
+
+// Promo card visibility
+pref("browser.newtabpage.activity-stream.discoverystream.promoCard.visible", true);
 
 // Preference to enable wallpaper selection in the Customize Menu of new tab page
 pref("browser.newtabpage.activity-stream.newtabWallpapers.enabled", true);
@@ -1791,6 +1888,7 @@ pref("browser.newtabpage.activity-stream.newtabWallpapers.customWallpaper.enable
 pref("browser.newtabpage.activity-stream.newtabWallpapers.customWallpaper.uuid", "");
 pref("browser.newtabpage.activity-stream.newtabWallpapers.customWallpaper.fileSize", 0);
 pref("browser.newtabpage.activity-stream.newtabWallpapers.customWallpaper.fileSize.enabled", false);
+pref("browser.newtabpage.activity-stream.newtabWallpapers.customWallpaper.theme", "");
 
 // Current new tab page background images.
 pref("browser.newtabpage.activity-stream.newtabWallpapers.wallpaper", "");
@@ -1804,8 +1902,6 @@ pref("browser.newtabpage.activity-stream.newtabWallpapers.highlightContentText",
 pref("browser.newtabpage.activity-stream.newtabWallpapers.highlightCtaText", "");
 
 pref("browser.newtabpage.activity-stream.newNewtabExperience.colors", "#004CA4,#009E97,#7550C2,#B63B39,#C96A00,#CA9600,#CC527F");
-
-pref("browser.newtabpage.activity-stream.newtabShortcuts.refresh", true);
 
 // Activity Stream prefs that control to which page to redirect
 #ifndef RELEASE_OR_BETA
@@ -1840,8 +1936,6 @@ pref("browser.newtabpage.activity-stream.discoverystream.hybridLayout.enabled", 
 pref("browser.newtabpage.activity-stream.discoverystream.hideCardBackground.enabled", false);
 pref("browser.newtabpage.activity-stream.discoverystream.fourCardLayout.enabled", false);
 pref("browser.newtabpage.activity-stream.discoverystream.newFooterSection.enabled", false);
-pref("browser.newtabpage.activity-stream.discoverystream.saveToPocketCard.enabled", true);
-pref("browser.newtabpage.activity-stream.discoverystream.saveToPocketCardRegions", "");
 pref("browser.newtabpage.activity-stream.discoverystream.hideDescriptions.enabled", true);
 pref("browser.newtabpage.activity-stream.discoverystream.hideDescriptionsRegions", "");
 pref("browser.newtabpage.activity-stream.discoverystream.compactGrid.enabled", false);
@@ -1851,28 +1945,25 @@ pref("browser.newtabpage.activity-stream.discoverystream.titleLines", 3);
 pref("browser.newtabpage.activity-stream.discoverystream.descLines", 3);
 pref("browser.newtabpage.activity-stream.discoverystream.readTime.enabled", true);
 pref("browser.newtabpage.activity-stream.discoverystream.newSponsoredLabel.enabled", false);
-pref("browser.newtabpage.activity-stream.discoverystream.essentialReadsHeader.enabled", false);
-pref("browser.newtabpage.activity-stream.discoverystream.recentSaves.enabled", false);
-pref("browser.newtabpage.activity-stream.discoverystream.editorsPicksHeader.enabled", false);
-pref("browser.newtabpage.activity-stream.discoverystream.spoc-positions", "1,5,7,11,18,20");
+pref("browser.newtabpage.activity-stream.discoverystream.spoc-positions", "2,4,8,13,17,20");
 
 // For both spoc and tiles, count corresponds to the matching placement. So the first placement in an array corresponds to the first count.
-pref("browser.newtabpage.activity-stream.discoverystream.placements.spocs", "newtab_spocs");
-pref("browser.newtabpage.activity-stream.discoverystream.placements.spocs.counts", "6");
+pref("browser.newtabpage.activity-stream.discoverystream.placements.spocs", "newtab_stories_1, newtab_stories_2, newtab_stories_3, newtab_stories_4, newtab_stories_5, newtab_stories_6");
+pref("browser.newtabpage.activity-stream.discoverystream.placements.spocs.counts", "1,1,1,1,1,1");
 pref("browser.newtabpage.activity-stream.discoverystream.placements.contextualSpocs", "newtab_stories_1, newtab_stories_2, newtab_stories_3, newtab_stories_4, newtab_stories_5, newtab_stories_6");
 pref("browser.newtabpage.activity-stream.discoverystream.placements.contextualSpocs.counts", "1, 1, 1, 1, 1, 1");
 pref("browser.newtabpage.activity-stream.discoverystream.placements.tiles", "newtab_tile_1, newtab_tile_2, newtab_tile_3");
 pref("browser.newtabpage.activity-stream.discoverystream.placements.tiles.counts", "1, 1, 1");
+pref("browser.newtabpage.activity-stream.discoverystream.placements.contextualBanners", "");
+pref("browser.newtabpage.activity-stream.discoverystream.placements.contextualBanners.counts", "");
 
 pref("browser.newtabpage.activity-stream.discoverystream.spoc-topsites-positions", "2");
 // This is a 0-based index, for consistency with the other position CSVs,
 // but Contile positions are a 1-based index, so we end up adding 1 to these before using them.
 pref("browser.newtabpage.activity-stream.discoverystream.contile-topsites-positions", "0,1,2");
 pref("browser.newtabpage.activity-stream.discoverystream.widget-positions", "");
-
 pref("browser.newtabpage.activity-stream.discoverystream.spocs-endpoint", "");
 pref("browser.newtabpage.activity-stream.discoverystream.spocs-endpoint-query", "");
-pref("browser.newtabpage.activity-stream.discoverystream.sponsored-collections.enabled", false);
 
 // Changes the spoc content.
 pref("browser.newtabpage.activity-stream.discoverystream.spocAdTypes", "");
@@ -1883,10 +1974,9 @@ pref("browser.newtabpage.activity-stream.discoverystream.spocTopsitesPlacement.e
 pref("browser.newtabpage.activity-stream.discoverystream.spocSiteId", "");
 pref("browser.newtabpage.activity-stream.discoverystream.ctaButtonSponsors", "");
 pref("browser.newtabpage.activity-stream.discoverystream.ctaButtonVariant", "");
-pref("browser.newtabpage.activity-stream.discoverystream.spocMessageVariant", "");
 
 // Pref enabling content reporting
-pref("browser.newtabpage.activity-stream.discoverystream.reportAds.enabled", false);
+pref("browser.newtabpage.activity-stream.discoverystream.reportAds.enabled", true);
 
 // List of regions that do not get stories, regardless of locale-list-config.
 pref("browser.newtabpage.activity-stream.discoverystream.region-stories-block", "");
@@ -1898,9 +1988,6 @@ pref("browser.newtabpage.activity-stream.discoverystream.region-stories-block", 
 #endif
 // List of regions that get stories by default.
 pref("browser.newtabpage.activity-stream.discoverystream.region-stories-config", "US,DE,CA,GB,IE,CH,AT,BE,IN,FR,IT,ES");
-// List of regions that support the new recommendations BFF, also requires region-stories-config
-pref("browser.newtabpage.activity-stream.discoverystream.region-bff-config", "US,DE,CA,GB,IE,CH,AT,BE,IN,FR,IT,ES");
-pref("browser.newtabpage.activity-stream.discoverystream.merino-provider.enabled", true);
 
 // List of regions that get topics selection by default.
 pref("browser.newtabpage.activity-stream.discoverystream.topicSelection.region-topics-config", "");
@@ -1930,12 +2017,6 @@ pref("browser.newtabpage.activity-stream.discoverystream.sections.personalizatio
 
 pref("browser.newtabpage.activity-stream.discoverystream.sections.personalization.inferred.user.enabled", true);
 
-// List of regions that use shortcuts personalization.
-pref("browser.newtabpage.activity-stream.discoverystream.shortcuts.personalization.region-config", "");
-// List of locales that use shortcuts personalization.
-pref("browser.newtabpage.activity-stream.discoverystream.shortcuts.personalization.locale-config", "en-US,en-GB,en-CA");
-
-
 // Override inferred personalization model JSON string that typically comes from rec API. Or "TEST" for a test model.
 pref("browser.newtabpage.activity-stream.discoverystream.sections.personalization.inferred.model.override", "");
 
@@ -1961,9 +2042,8 @@ pref("browser.newtabpage.activity-stream.discoverystream.region-basic-config", "
 pref("browser.newtabpage.activity-stream.discoverystream.pocket-feed-parameters", "");
 pref("browser.newtabpage.activity-stream.discoverystream.merino-feed-experiment", false);
 
-// Allows Pocket story collections to be dismissed.
-pref("browser.newtabpage.activity-stream.discoverystream.isCollectionDismissible", true);
 pref("browser.newtabpage.activity-stream.discoverystream.personalization.enabled", true);
+pref("browser.newtabpage.activity-stream.discoverystream.personalization.override", false);
 // Configurable keys used by personalization.
 pref("browser.newtabpage.activity-stream.discoverystream.personalization.modelKeys", "nb_model_arts_and_entertainment, nb_model_autos_and_vehicles, nb_model_beauty_and_fitness, nb_model_blogging_resources_and_services, nb_model_books_and_literature, nb_model_business_and_industrial, nb_model_computers_and_electronics, nb_model_finance, nb_model_food_and_drink, nb_model_games, nb_model_health, nb_model_hobbies_and_leisure, nb_model_home_and_garden, nb_model_internet_and_telecom, nb_model_jobs_and_education, nb_model_law_and_government, nb_model_online_communities, nb_model_people_and_society, nb_model_pets_and_animals, nb_model_real_estate, nb_model_reference, nb_model_science, nb_model_shopping, nb_model_sports, nb_model_travel");
 // System pref to allow Pocket stories personalization to be turned on/off.
@@ -1971,18 +2051,11 @@ pref("browser.newtabpage.activity-stream.discoverystream.recs.personalized", fal
 // System pref to allow Pocket sponsored content personalization to be turned on/off.
 pref("browser.newtabpage.activity-stream.discoverystream.spocs.personalized", true);
 
-// Flip this once the user has dismissed the Pocket onboarding experience,
-pref("browser.newtabpage.activity-stream.discoverystream.onboardingExperience.dismissed", false);
-pref("browser.newtabpage.activity-stream.discoverystream.onboardingExperience.enabled", false);
-
 // List of locales that get thumbs up/down on recommended stories by default.
 pref("browser.newtabpage.activity-stream.discoverystream.thumbsUpDown.locale-thumbs-config", "en-US, en-GB, en-CA");
 
-#ifdef NIGHTLY_BUILD
-  pref("browser.newtabpage.activity-stream.telemetry.privatePing.enabled", true);
-#else
-  pref("browser.newtabpage.activity-stream.telemetry.privatePing.enabled", false);
-#endif
+pref("browser.newtabpage.activity-stream.telemetry.privatePing.enabled", false);
+
 // Redacts content interaction ids from original New Tab ping once data processing migrated to the Newtab_content private ping
 pref("browser.newtabpage.activity-stream.telemetry.privatePing.redactNewtabPing.enabled", false);
 pref("browser.newtabpage.activity-stream.telemetry.privatePing.maxSubmissionDelayMs", 5000);
@@ -2004,7 +2077,7 @@ pref("browser.newtabpage.activity-stream.telemetry.surfaceId", "");
 pref("browser.newtabpage.activity-stream.discoverystream.thumbsUpDown.searchTopsitesCompact", true);
 
 // Displays publisher favicons on recommended stories of New Tab page
-pref("browser.newtabpage.activity-stream.discoverystream.publisherFavicon.enabled", false);
+pref("browser.newtabpage.activity-stream.discoverystream.publisherFavicon.enabled", true);
 
 // User pref to show stories on newtab (feeds.system.topstories has to be set to true as well)
 pref("browser.newtabpage.activity-stream.feeds.section.topstories", true);
@@ -2025,10 +2098,18 @@ pref("browser.newtabpage.activity-stream.hideTopSitesWithSearchParam", "mfadid=a
 // Set to true to enable debug logging for AboutNewTabResourceMapping.
 pref("browser.newtabpage.resource-mapping.log", false);
 
+// Base URL for the newtab trainhop add-on version xpi downloads.
+pref("browser.newtabpage.trainhopAddon.xpiBaseURL", "https://archive.mozilla.org/pub/system-addons/newtab/");
+
+pref("browser.newtabpage.sponsor-protection.enabled", true);
+
 // Separate about welcome
 pref("browser.aboutwelcome.enabled", true);
 // Used to set multistage welcome UX
 pref("browser.aboutwelcome.screens", "");
+
+// Disable singleProfile messaging mitigation (Bug 1963213) for multiProfile feature users
+pref("messaging-system.profile.singleProfileMessaging.disable", true);
 
 // Experiment Manager
 // See Console.sys.mjs LOG_LEVELS for all possible values
@@ -2048,6 +2129,14 @@ pref("nimbus.profilesdatastoreservice.enabled", true);
 pref("nimbus.profilesdatastoreservice.read.enabled", true);
 #else
 pref("nimbus.profilesdatastoreservice.read.enabled", false);
+#endif
+
+// Should Nimbus sync experiment unenrollments from other profiles?
+// TODO(bug 1956087): Enable this behaviour by default and remove this pref.
+#if defined(NIGHTLY_BUILD)
+pref("nimbus.profilesdatastoreservice.sync.enabled", true);
+#else
+pref("nimbus.profilesdatastoreservice.sync.enabled", false);
 #endif
 
 // Enable the targeting context telemetry by default, but allow it to be
@@ -2086,8 +2175,6 @@ pref("pdfjs.handleOctetStream", true);
 // Is the sidebar positioned ahead of the content browser
 pref("sidebar.position_start", true);
 pref("sidebar.revamp", false);
-// Should the sidebar launcher default to visible or not with horizontal tabs
-pref("sidebar.revamp.defaultLauncherVisible", true);
 // This is nightly only for now, as we need to address bug 1933527 and bug 1934039.
 #ifdef NIGHTLY_BUILD
 pref("sidebar.revamp.round-content-area", true);
@@ -2097,11 +2184,14 @@ pref("sidebar.revamp.round-content-area", false);
 pref("sidebar.animation.enabled", true);
 pref("sidebar.animation.duration-ms", 200);
 pref("sidebar.animation.expand-on-hover.duration-ms", 400);
+
 // This pref is used to store user customized tools in the sidebar launcher and shouldn't be changed.
 // See https://firefox-source-docs.mozilla.org/browser/components/sidebar/docs/index.html for ways
 // you can introduce a new tool to the sidebar launcher.
 pref("sidebar.main.tools", "");
+pref("sidebar.installed.extensions", "");
 pref("sidebar.verticalTabs", false);
+pref("sidebar.verticalTabs.dragToPinPromo.dismissed", false);
 pref("sidebar.visibility", "always-show");
 // Sidebar UI state is stored per-window via session restore. Use this pref
 // as a backup to restore the sidebar UI state when a user has PPB mode on
@@ -2115,8 +2205,9 @@ pref("sidebar.notification.badge.aichat", false);
 
 pref("browser.ml.chat.enabled", true);
 pref("browser.ml.chat.hideLocalhost", true);
+pref("browser.ml.chat.maxLength", 7000);
 pref("browser.ml.chat.menu", true);
-pref("browser.ml.chat.page", false);
+pref("browser.ml.chat.page", true);
 pref("browser.ml.chat.page.footerBadge", true);
 pref("browser.ml.chat.page.menuBadge", true);
 pref("browser.ml.chat.prompt.prefix", '{"l10nId":"genai-prompt-prefix-selection"}');
@@ -2141,8 +2232,15 @@ pref("browser.ml.linkPreview.noKeyPointsRegions", "AD,AT,BE,BG,CH,CY,CZ,DE,DK,EE
 pref("browser.ml.linkPreview.optin", false);
 pref("browser.ml.linkPreview.outputSentences", 3);
 pref("browser.ml.linkPreview.recentTypingMs", 1000);
-pref("browser.ml.linkPreview.shift", true);
+pref("browser.ml.linkPreview.shift", false);
 pref("browser.ml.linkPreview.shiftAlt", false);
+
+pref("browser.ml.pageAssist.enabled", false);
+pref("browser.ml.smartAssist.apiKey", "");
+pref("browser.ml.smartAssist.enabled", false);
+pref("browser.ml.smartAssist.endpoint", "");
+pref("browser.ml.smartAssist.model", "");
+pref("browser.ml.smartAssist.overrideNewTab", false);
 
 // Block insecure active content on https pages
 pref("security.mixed_content.block_active_content", true);
@@ -2652,8 +2750,6 @@ pref("extensions.pocket.loggedOutVariant", "control");
 
 // Just for the new Pocket panels, enables the email signup button.
 pref("extensions.pocket.refresh.emailButton.enabled", false);
-// Hides the recently saved section in the home panel.
-pref("extensions.pocket.refresh.hideRecentSaves.enabled", false);
 
 // "available"      - user can see feature offer.
 // "offered"        - we have offered feature to user and they have not yet made a decision.
@@ -2717,13 +2813,14 @@ pref("screenshots.browser.component.last-saved-method", "download");
 pref("screenshots.browser.component.preventContentEvents", true);
 
 // Determines the default save location for screenshots
-// Valid values are 0, 1, 2 and 3.
+// Valid values are 0, 1, 2, 3 and 4.
 //   0 - Use the desktop as the default save location.
 //   1 - Use the system's downloads folder as the default save location.
 //   2 - Use the folder set in browser.screenshots.dir as the default save location.
 //   3 - Use system's screenshot folder as the default save location.
+//   4 - Use browser.download.folderList
 // Options 2 and 3 will fallback to the system downloads folder if their specified folder is not found.
-pref("browser.screenshots.folderList", 1);
+pref("browser.screenshots.folderList", 4);
 pref("browser.screenshots.dir", "");
 
 // DoH Rollout: whether to clear the mode value at shutdown.
@@ -2853,10 +2950,6 @@ pref("devtools.browsertoolbox.scope", "parent-process");
 // This preference will enable watching top-level targets from the server side.
 pref("devtools.target-switching.server.enabled", true);
 
-// In DevTools, create a target for each frame (i.e. not only for top-level document and
-// remote frames).
-pref("devtools.every-frame-target.enabled", true);
-
 // Controls the hability to debug popups from the same DevTools
 // of the original tab the popups are coming from
 pref("devtools.popups.debug", false);
@@ -2974,6 +3067,9 @@ pref("devtools.netmonitor.features.requestBlocking", true);
 // Enable the Application panel
 pref("devtools.application.enabled", true);
 
+// The internal Anti tracking debugging panel
+pref("devtools.anti-tracking.enabled", false);
+
 // Enable the custom formatters feature
 // This preference represents the user's choice to enable the custom formatters feature.
 // While the preference above will be removed once the feature is stable, this one is menat to stay.
@@ -2997,7 +3093,6 @@ pref("devtools.netmonitor.msg.visibleColumns",
 );
 pref("devtools.netmonitor.msg.displayed-messages.limit", 500);
 
-pref("devtools.netmonitor.response.ui.limit", 10240);
 pref("devtools.netmonitor.ui.default-raw-response", false);
 
 // Save request/response bodies yes/no.
@@ -3019,9 +3114,12 @@ pref("devtools.netmonitor.har.multiple-pages", false);
 pref("devtools.netmonitor.audits.slow", 500);
 
 // Enable the new Edit and Resend panel
-  pref("devtools.netmonitor.features.newEditAndResend", true);
+pref("devtools.netmonitor.features.newEditAndResend", true);
 
 pref("devtools.netmonitor.customRequest", '{}');
+
+// Enable Netmonitor Web Transport Support
+pref("devtools.netmonitor.features.webtransport", false);
 
 // Enable the Storage Inspector
 pref("devtools.storage.enabled", true);
@@ -3103,8 +3201,8 @@ pref("devtools.browserconsole.input.editorWidth", 0);
 // Display an onboarding UI for the Editor mode.
 pref("devtools.webconsole.input.editorOnboarding", true);
 
-// Enable message grouping in the console, true by default
-pref("devtools.webconsole.groupWarningMessages", true);
+// Enable grouping/repeating similar messages in the console, true by default
+pref("devtools.webconsole.groupSimilarMessages", true);
 
 // Enable network monitoring the browser toolbox console/browser console.
 pref("devtools.browserconsole.enableNetworkMonitoring", false);
@@ -3361,12 +3459,15 @@ pref("browser.backup.sqlite.pages_per_step", 50);
 // The delay between SQLite database backup steps in milliseconds.
 pref("browser.backup.sqlite.step_delay_ms", 50);
 pref("browser.backup.scheduled.idle-threshold-seconds", 15);
-pref("browser.backup.scheduled.minimum-time-between-backups-seconds", 3600);
+pref("browser.backup.scheduled.minimum-time-between-backups-seconds", 86400);
 pref("browser.backup.template.fallback-download.release", "https://www.mozilla.org/firefox/download/thanks/?s=direct&utm_medium=firefox-desktop&utm_source=backup&utm_campaign=firefox-backup-2024&utm_content=control");
 pref("browser.backup.template.fallback-download.beta", "https://www.mozilla.org/firefox/channel/desktop/?utm_medium=firefox-desktop&utm_source=backup&utm_campaign=firefox-backup-2024&utm_content=control#beta");
 pref("browser.backup.template.fallback-download.aurora", "https://www.mozilla.org/firefox/channel/desktop/?utm_medium=firefox-desktop&utm_source=backup&utm_campaign=firefox-backup-2024&utm_content=control#developer");
 pref("browser.backup.template.fallback-download.nightly", "https://www.mozilla.org/firefox/channel/desktop/?utm_medium=firefox-desktop&utm_source=backup&utm_campaign=firefox-backup-2024&utm_content=control#nightly");
 pref("browser.backup.template.fallback-download.esr", "https://www.mozilla.org/firefox/enterprise/?utm_medium=firefox-desktop&utm_source=backup&utm_campaign=firefox-backup-2024&utm_content=control#download");
+pref("browser.backup.errorCode", 0);
+pref("browser.backup.backup-retry-limit", 100);
+pref("browser.backup.disabled-on-idle-backup-retry", false);
 
 #ifdef NIGHTLY_BUILD
   // Pref to enable the new profiles
@@ -3394,8 +3495,26 @@ pref("toolkit.contentRelevancy.log", false);
 
 // The number of days after which to rotate the context ID. 0 means to disable
 // rotation altogether.
-pref("browser.contextual-services.contextId.rotation-in-days", 0);
+pref("browser.contextual-services.contextId.rotation-in-days", 7);
 pref("browser.contextual-services.contextId.rust-component.enabled", true);
 
 // Pref to enable the IP protection feature
 pref("browser.ipProtection.enabled", false);
+pref("browser.ipProtection.variant", "");
+pref("browser.ipProtection.log", false);
+pref("browser.ipProtection.guardian.endpoint", "https://vpn.mozilla.org/");
+
+// Pref to enable aboug:glean redesign.
+pref("about.glean.redesign.enabled", false);
+
+// Forward Rust component logs to the JS console (comma separate list of crate names)
+// The empty string defaults to forwarding error-level messages.
+// If your crate needs to log more by default, for example persistent logging to a file like Sync,
+// contact the application-services developers and we can work with you to implement this.
+pref("toolkit.rust-components.logging.crates", "");
+
+// Log level for the internal logs in `AppServicesTracing.sys.mjs`
+pref("toolkit.rust-components.logging.internal-level", "Warn");
+
+// Settings Redesign 2025 prefs
+pref("browser.settings-redesign.enabled", false);

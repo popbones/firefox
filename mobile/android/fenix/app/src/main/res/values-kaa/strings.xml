@@ -10,10 +10,6 @@
     Content description (not visible, for screen readers etc.): "Three dot" menu button.
   -->
   <string name="content_description_menu">Basqa variantlar</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">Jeke kórinisti iske túsiriw</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_disable_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">Jeke kórinisti óshiriw</string>
   <!-- Placeholder text shown in the search bar before a user enters text for the default engine -->
   <string name="search_hint">Mánzildi izleń yamasa kirgiziń</string>
   <!-- Placeholder text shown in the search bar before a user enters text for a general engine -->
@@ -44,13 +40,7 @@
   <string name="tab_tray_collection_button_multiselect_content_description">Saylanǵan betlerdi toplamda saqlaw</string>
   <!-- About content. %1$s is the name of the app (for example "Firefox"). -->
   <string name="about_content">%1$s Mozilla tárepinen islep shıǵılǵan.</string>
-  <!--
-    Private Browsing
-
-    Explanation for private browsing displayed to users on home view when they first enable private mode.
-    %1$s is the name of the app (for example "Firefox").
-  -->
-  <string name="private_browsing_placeholder_description_2" moz:removedIn="141" tools:ignore="UnusedResources">%1$s izlew hám kóriw tariyxın jeke betlerdi japqanıńızda yamasa baǵdarlamadan shıqqanıńızda óshiredi. Bul sizdi veb-saytlar yamasa internet-provayderlar ushın anonim qılmaydı, tek ǵana usı qurılmanı qollanatuǵın basqa adamlardan óz háreketlerińizdiń internet tarmaǵında qupıyalıǵıńızdı saqlawdı jeńillestiredi.</string>
+  <!-- Private Browsing -->
   <string name="private_browsing_common_myths">Jeke kóriw haqqında tarqalǵan jalǵanlar</string>
   <!--
     Open in App "contextual feature recommendation" (CFR)
@@ -62,6 +52,8 @@
   <string name="open_in_app_cfr_positive_button_text">Sazlawlardı ashıw</string>
   <!-- Text for the negative action button -->
   <string name="open_in_app_cfr_negative_button_text">Jabıw</string>
+  <!-- Private browsing erase action "contextual feature recommendation" (CFR) -->
+
   <!-- Text for the info dialog when camera permissions have been denied but user tries to access a camera feature. -->
   <string name="camera_permissions_needed_message">Kameraǵa kiriw kerek. Bunıń ushın Android sazlawların ashıń, ruqsatnamalar bólimin tańlań, hám ruqsat etiw túymesin basıń.</string>
   <!-- Text for the positive action button to go to Android Settings to grant permissions. -->
@@ -234,24 +226,8 @@
   <!--
     Home onboarding
 
-    Home onboarding dialog welcome screen title text.
+    Content description (not visible, for screen readers etc.): Close button for the home onboarding dialog
   -->
-  <string name="onboarding_home_welcome_title_2" moz:removedIn="141" tools:ignore="UnusedResources">Jeke internetke xosh kelipsiz</string>
-  <!-- Home onboarding dialog welcome screen description text. -->
-  <string name="onboarding_home_welcome_description" moz:removedIn="141" tools:ignore="UnusedResources">Kóbirek reńler. Jaqsıraq qupıyalıq. Paydadan kóre adamlar aldındaǵı májbúriyat.</string>
-  <!-- Home onboarding dialog sign into sync screen title text. -->
-  <string name="onboarding_home_sync_title_3" moz:removedIn="141" tools:ignore="UnusedResources">Ekranlardı almastırıw aldınǵıdan da ańsatraq</string>
-  <!-- Home onboarding dialog sign into sync screen description text. -->
-  <string name="onboarding_home_sync_description" moz:removedIn="141" tools:ignore="UnusedResources">Endi bas bettegi basqa qurılmadaǵı betler menen toqtaǵan jerińizden dawan etiń.</string>
-  <!-- Text for the button to continue the onboarding on the home onboarding dialog. -->
-  <string name="onboarding_home_get_started_button" moz:removedIn="141" tools:ignore="UnusedResources">Baslaw</string>
-  <!-- Text for the button to navigate to the sync sign in screen on the home onboarding dialog. -->
-  <string name="onboarding_home_sign_in_button" moz:removedIn="141" tools:ignore="UnusedResources">Kiriw</string>
-  <!-- Text for the button to skip the onboarding on the home onboarding dialog. -->
-  <string name="onboarding_home_skip_button" moz:removedIn="141" tools:ignore="UnusedResources">Ótkerip jiberiw</string>
-  <!-- Onboarding home screen sync popup dialog message, shown on top of Recent Synced Tabs in the Jump back in section. -->
-  <string name="sync_cfr_message" moz:removedIn="142" tools:ignore="UnusedResources">Betler sáykeslestirilmekte! Jumıstı qalǵan jerinen basqa qurılmada dawam etiń.</string>
-  <!-- Content description (not visible, for screen readers etc.): Close button for the home onboarding dialog -->
   <string name="onboarding_home_content_description_close_button">Jabıw</string>
   <!-- Text for the button to set firefox as default browser on the device -->
   <string name="juno_onboarding_default_browser_positive_button" tools:ignore="UnusedResources">Tiykarǵi brauzer retinde ornatıw</string>
@@ -311,9 +287,9 @@
   <!-- Preference for opening links in a private tab -->
   <string name="preferences_open_links_in_a_private_tab">Siltemelerdi jeke bette ashıw</string>
   <!-- Preference for allowing screenshots to be taken while in a private tab -->
-  <string name="preferences_allow_screenshots_in_private_mode">Jeke bette skrinshot alıwǵa ruqsat beriw</string>
+  <string name="preferences_allow_screenshots_in_private_mode" tools:ignore="UnusedResources" moz:removedIn="144">Jeke bette skrinshot alıwǵa ruqsat beriw</string>
   <!-- Will inform the user of the risk of activating Allow screenshots in private browsing option -->
-  <string name="preferences_screenshots_in_private_mode_disclaimer">Eger ruqsat berilse, bir neshe baǵdarlamalar ashıq waqıtta da qupıya betler kórinedi</string>
+  <string name="preferences_screenshots_in_private_mode_disclaimer" tools:ignore="UnusedResources" moz:removedIn="144">Eger ruqsat berilse, bir neshe baǵdarlamalar ashıq waqıtta da qupıya betler kórinedi</string>
   <!-- Preference for adding private browsing shortcut -->
   <string name="preferences_add_private_browsing_shortcut">Qupıya kóriw operativ buyrıǵın qosıw</string>
   <!-- Preference for enabling "HTTPS-Only" mode -->
@@ -367,13 +343,11 @@
   <!-- Preference for settings related to visual options -->
   <string name="preferences_customize">Jeke sazlaw</string>
   <!-- Preference description for banner about signing in -->
-  <string name="preferences_sign_in_description_2">Betler, saylandılar, paroller hám basqalardı sáykeslestiriw ushın kiriń.</string>
+  <string name="preferences_sign_in_description_2" tools:ignore="UnusedResources" moz:removedIn="145">Betler, saylandılar, paroller hám basqalardı sáykeslestiriw ushın kiriń.</string>
   <!-- Preference text for account title when there was an error syncing FxA -->
   <string name="preferences_account_sync_error">Sáykeslestiriwdi dawam ettiriw ushın qayta jalǵanıń</string>
   <!-- Preference for language -->
   <string name="preferences_language">Til</string>
-  <!-- Preference for data choices -->
-  <string name="preferences_data_choices">Maǵlıwmatlardı tańlaw</string>
   <!-- Preference for data collection -->
   <string name="preferences_data_collection">Maǵlıwmatlardı jıynaw</string>
   <!-- Preference for developers -->
@@ -404,8 +378,6 @@
   <string name="preferences_open_links_in_apps_ask">Ashıwdan aldın soraw</string>
   <!-- Preference for open links in third party apps never open in apps option -->
   <string name="preferences_open_links_in_apps_never">Heshqashan</string>
-  <!-- Preference for open download with an external download manager app -->
-  <string name="preferences_external_download_manager" tools:ignore="UnusedResources" moz:removedIn="141">Sırtqı júklep alıw menedjeri</string>
   <!-- Preference for notifications -->
   <string name="preferences_notifications">Xabarlamalar</string>
   <!-- Summary for notification preference indicating notifications are allowed -->
@@ -431,10 +403,6 @@
     a section where users see a list of tabs that they have visited in the past few days
   -->
   <string name="customize_toggle_recently_visited">Jaqında kirilgenler</string>
-  <!-- Title for the customize home screen section with Pocket. -->
-  <string name="customize_toggle_pocket_2" tools:ignore="UnusedResources" moz:removedIn="140">Oylandıratuǵın áńgimeler</string>
-  <!-- Summary for the customize home screen section with Pocket. %s is "Pocket". -->
-  <string name="customize_toggle_pocket_summary" tools:ignore="UnusedResources" moz:removedIn="140">%s tárepinen usınılǵan maqalalar</string>
   <!-- Title for the customize home screen section with sponsored Pocket stories. -->
   <string name="customize_toggle_pocket_sponsored">Qáwenderlik maqalalar</string>
   <!-- Title for the opening wallpaper settings screen -->
@@ -448,9 +416,9 @@
   -->
   <string name="wallpapers_item_name_content_description">Fon súwreti elementi: %1$s</string>
   <!-- Snackbar message for when wallpaper is selected -->
-  <string name="wallpaper_updated_snackbar_message">Fon súwreti jańalandı!</string>
+  <string name="wallpaper_updated_snackbar_message" tools:ignore="UnusedResources" moz:removedIn="144">Fon súwreti jańalandı!</string>
   <!-- Snackbar label for action to view selected wallpaper -->
-  <string name="wallpaper_updated_snackbar_action">Kóriw</string>
+  <string name="wallpaper_updated_snackbar_action" tools:ignore="UnusedResources" moz:removedIn="144">Kóriw</string>
   <!-- Snackbar message for when wallpaper couldn't be downloaded -->
   <string name="wallpaper_download_error_snackbar_message">Fon súwreti júklep alınbadı</string>
   <!-- Snackbar label for action to retry downloading the wallpaper -->
@@ -534,7 +502,7 @@
 
     Header of the Sync and save your data preference view
   -->
-  <string name="preferences_sync_2">Maǵlıwmatlarıńızdı sáykeslestiriń hám saqlań</string>
+  <string name="preferences_sync_2" tools:ignore="UnusedResources" moz:removedIn="145">Maǵlıwmatlarıńızdı sáykeslestiriń hám saqlań</string>
   <!-- Preference for reconnecting to FxA sync -->
   <string name="preferences_sync_sign_in_to_reconnect">Qayta jalǵanıw ushın sistemaǵa kiriń</string>
   <!-- Preference for removing FxA account -->
@@ -770,9 +738,9 @@
   <!-- Text for the button to clear all history -->
   <string name="history_delete_all">Tariyxtı óshiriw</string>
   <!-- Text for the snackbar to confirm that multiple browsing history items has been deleted -->
-  <string name="history_delete_multiple_items_snackbar">Tariyx óshirildi</string>
+  <string name="history_delete_multiple_items_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">Tariyx óshirildi</string>
   <!-- Text for the snackbar to confirm that a single browsing history item has been deleted. %1$s is the shortened URL of the deleted history item. -->
-  <string name="history_delete_single_item_snackbar">%1$s óshirildi</string>
+  <string name="history_delete_single_item_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">%1$s óshirildi</string>
   <!-- Context description text for the button to delete a single history item -->
   <string name="history_delete_item">Óshiriw</string>
   <!--
@@ -814,9 +782,9 @@
 
     Confirmation message for a dialog confirming if the user wants to delete the selected folder
   -->
-  <string name="bookmark_delete_folder_confirmation_dialog">Bul papkanı óshiriwge isenimińiz kámil me?</string>
+  <string name="bookmark_delete_folder_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">Bul papkanı óshiriwge isenimińiz kámil me?</string>
   <!-- Confirmation message for a dialog confirming if the user wants to delete multiple items including folders. %s is the name of the app (for example "Firefox"). -->
-  <string name="bookmark_delete_multiple_folders_confirmation_dialog">%s tańlanǵan elementlerdi óshiredi.</string>
+  <string name="bookmark_delete_multiple_folders_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">%s tańlanǵan elementlerdi óshiredi.</string>
   <!-- Text for the cancel button on delete bookmark dialog -->
   <string name="bookmark_delete_negative">Biykarlaw</string>
   <!-- Screen title for adding a bookmarks folder -->
@@ -840,7 +808,7 @@
   <!-- Bookmark overflow menu delete button -->
   <string name="bookmark_menu_delete_button">Óshiriw</string>
   <!-- Bookmark overflow menu save button -->
-  <string name="bookmark_menu_save_button">Saqlaw</string>
+  <string name="bookmark_menu_save_button" tools:ignore="UnusedResources" moz:removedIn="143">Saqlaw</string>
   <!--
     Bookmark multi select title in app bar
     %1$d is the number of bookmarks selected
@@ -851,7 +819,7 @@
   <!-- Bookmark folder editing screen title -->
   <string name="edit_bookmark_folder_fragment_title">Papkaǵa ózgeris kirgiziw</string>
   <!-- Bookmark sign in button message -->
-  <string name="bookmark_sign_in_button">Sáykeslestirilgen saylandılardı kóriw ushın kiriń</string>
+  <string name="bookmark_sign_in_button" tools:ignore="UnusedResources" moz:removedIn="143">Sáykeslestirilgen saylandılardı kóriw ushın kiriń</string>
   <!-- Bookmark URL editing field label -->
   <string name="bookmark_url_label">URL</string>
   <!-- Bookmark FOLDER editing field label -->
@@ -859,28 +827,28 @@
   <!-- Bookmark NAME editing field label -->
   <string name="bookmark_name_label">ATAMASI</string>
   <!-- Bookmark add folder screen title -->
-  <string name="bookmark_add_folder_fragment_label">Papka qosıw</string>
+  <string name="bookmark_add_folder_fragment_label" tools:ignore="UnusedResources" moz:removedIn="143">Papka qosıw</string>
   <!-- Bookmark select folder screen title -->
   <string name="bookmark_select_folder_fragment_label">Papkanı tańlaw</string>
   <!-- Bookmark editing error missing title -->
-  <string name="bookmark_empty_title_error">Baslama bolıwı shárt</string>
+  <string name="bookmark_empty_title_error" tools:ignore="UnusedResources" moz:removedIn="143">Baslama bolıwı shárt</string>
   <!-- Bookmark editing error missing or improper URL -->
   <string name="bookmark_invalid_url_error">Qáte URL</string>
   <!-- Bookmark screen message for empty bookmarks folder -->
-  <string name="bookmarks_empty_message">Bul jerde saylandılar joq</string>
+  <string name="bookmarks_empty_message" tools:ignore="UnusedResources" moz:removedIn="143">Bul jerde saylandılar joq</string>
   <!--
     Bookmark snackbar message on deletion
     %1$s is the host part of the URL of the bookmark deleted, if any
   -->
   <string name="bookmark_deletion_snackbar_message">%1$s óshirildi</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks not including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_2">Saylandılar óshirildi</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_2" tools:ignore="UnusedResources" moz:removedIn="143">Saylandılar óshirildi</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_3">Saylanǵan papkalardı óshiriw</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_3" tools:ignore="UnusedResources" moz:removedIn="143">Saylanǵan papkalardı óshiriw</string>
   <!-- Bookmark undo button for deletion snackbar action -->
   <string name="bookmark_undo_deletion">BIYKARLAW</string>
   <!-- Text for the button to search all bookmarks -->
-  <string name="bookmark_search">Izlew sózlerin kirgiziń</string>
+  <string name="bookmark_search" tools:ignore="UnusedResources" moz:removedIn="143">Izlew sózlerin kirgiziń</string>
   <!--
     Site Permissions
 
@@ -1001,12 +969,10 @@
     %d is a placeholder for the number of tabs selected.
   -->
   <string name="create_collection_save_to_collection_tab_selected">%d bet tańlandı</string>
-  <!-- Text shown in snackbar when multiple tabs have been saved in a collection -->
-  <string name="create_collection_tabs_saved">Betler saqlandı!</string>
   <!-- Text shown in snackbar when one or multiple tabs have been saved in a new collection -->
-  <string name="create_collection_tabs_saved_new_collection">Toplam saqlandı!</string>
+  <string name="create_collection_tabs_saved_new_collection" tools:ignore="UnusedResources" moz:removedIn="144">Toplam saqlandı!</string>
   <!-- Text shown in snackbar when one tab has been saved in a collection -->
-  <string name="create_collection_tab_saved">Bet saqlandı!</string>
+  <string name="create_collection_tab_saved" tools:ignore="UnusedResources" moz:removedIn="144">Bet saqlandı!</string>
   <!-- Content description (not visible, for screen readers etc.): button to close the collection creator -->
   <string name="create_collection_close">Jabıw</string>
   <!-- Button to save currently selected tabs in the "select tabs" step of the collection creator -->
@@ -1047,7 +1013,7 @@
   <!-- An option from the share dialog to sign into sync -->
   <string name="sync_sign_in">Sáykeslestiriwge kiriw</string>
   <!-- An option from the three dot menu to sync and save data -->
-  <string name="sync_menu_sync_and_save_data">Maǵlıwmatlarıńızdı sáykeslestiriń hám saqlań</string>
+  <string name="sync_menu_sync_and_save_data" tools:ignore="UnusedResources" moz:removedIn="145">Maǵlıwmatlarıńızdı sáykeslestiriń hám saqlań</string>
   <!-- An option from the share dialog to send link to all other sync devices -->
   <string name="sync_send_to_all">Barlıq qurılmalarǵa jiberiw</string>
   <!-- An option from the share dialog to reconnect to sync -->
@@ -1097,9 +1063,7 @@
 
     Text shown in snackbar when user deletes a collection
   -->
-  <string name="snackbar_collection_deleted">Toplam óshirildi</string>
-  <!-- Text shown in snackbar when user renames a collection -->
-  <string name="snackbar_collection_renamed">Toplam ataması ózgertildi</string>
+  <string name="snackbar_collection_deleted" tools:ignore="UnusedResources" moz:removedIn="143">Toplam óshirildi</string>
   <!-- Text shown in snackbar when user closes a tab -->
   <string name="snackbar_tab_closed">Bet jabıldı</string>
   <!-- Text shown in snackbar when user closes all tabs -->
@@ -1108,12 +1072,10 @@
   <string name="snackbar_added_to_shortcuts">Operativ buyrıqlarǵa qosıldı!</string>
   <!-- Text shown in snackbar when user closes a private tab -->
   <string name="snackbar_private_tab_closed">Jeke bet jabıldı</string>
-  <!-- Text shown in snackbar when user closes all private tabs -->
-  <string name="snackbar_private_tabs_closed" moz:removedIn="141" tools:ignore="UnusedResources">Jeke betler jabıldı</string>
   <!-- Text shown in snackbar to undo deleting a tab, top site or collection -->
   <string name="snackbar_deleted_undo">BIYKARLAW</string>
   <!-- Text shown in snackbar when user removes a top site -->
-  <string name="snackbar_top_site_removed">Sayt alıp taslandı</string>
+  <string name="snackbar_top_site_removed" moz:removedIn="144" tools:ignore="UnusedResources">Sayt alıp taslandı</string>
   <!--
     QR code scanner prompt which appears after scanning a code, but before navigating to it
     %1$s is the name of the app (for example "Firefox"), %2$s is the URL or text scanned
@@ -1130,9 +1092,7 @@
   <!-- Tab collection deletion prompt dialog message. %1$s is the collection name. -->
   <string name="tab_collection_dialog_message">%1$s dı óshiriwińizge isenimińiz kámil me?</string>
   <!-- Tab collection deletion prompt dialog option to delete the collection -->
-  <string name="tab_collection_dialog_positive">Óshiriw</string>
-  <!-- Message for copying the URL via long press on the toolbar -->
-  <string name="url_copied">Silteme kóshirip alındı</string>
+  <string name="tab_collection_dialog_positive" tools:ignore="UnusedResources" moz:removedIn="143">Óshiriw</string>
   <!-- Sample text for accessibility font size -->
   <string name="accessibility_text_size_sample_text_1">Bul úlgi tekst. Siz bul sazlaw járdeminde ólshemdi úlkeytkende yamasa kishireytkende, tekst qanday kórinetuǵının kóriwge boladı.</string>
   <!-- Summary for Accessibility Text Size Scaling Preference -->
@@ -1209,9 +1169,9 @@
 
     Text shown in snackbar when multiple tabs have been sent to device
   -->
-  <string name="sync_sent_tabs_snackbar">Betler jiberildi!</string>
+  <string name="sync_sent_tabs_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">Betler jiberildi!</string>
   <!-- Text shown in snackbar when one tab has been sent to device -->
-  <string name="sync_sent_tab_snackbar">Bet jiberildi!</string>
+  <string name="sync_sent_tab_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">Bet jiberildi!</string>
   <!-- Text shown in snackbar when sharing tabs failed -->
   <string name="sync_sent_tab_error_snackbar">Bólisiw ámelge aspadı</string>
   <!-- Text shown in snackbar for the "retry" action that the user has after sharing tabs failed -->
@@ -1551,14 +1511,6 @@
   <string name="search_add_custom_engine_error_empty_search_string">Izlew qatarın kirgiziń</string>
   <!-- Text shown when a user leaves out the required template string -->
   <string name="search_add_custom_engine_error_missing_template">Izlew qatarınıń úlgi formatına sáykes keliwin tekseriń</string>
-  <!-- Text shown when we aren't able to validate the custom search query. %s is the url of the custom search engine. -->
-  <string name="search_add_custom_engine_error_cannot_reach" moz:removedIn="140" tools:ignore="UnusedResources">“%s” ǵa jalǵanıwdaǵı qátelik</string>
-  <!-- Text shown when a user creates a new search engine. %s is the url of the custom search engine. -->
-  <string name="search_add_custom_engine_success_message">%s jaratıldı</string>
-  <!-- Text shown when a user successfully edits a custom search engine. %s is the url of the custom search engine. -->
-  <string name="search_edit_custom_engine_success_message">%s saqlandı</string>
-  <!-- Text shown when a user successfully deletes a custom search engine. %s is the url of the custom search engine. -->
-  <string name="search_delete_search_engine_success_message">%s óshirildi</string>
   <!-- Heading for the instructions to allow a permission -->
   <string name="phone_feature_blocked_intro">Ruqsat beriw ushın:</string>
   <!-- First step for the allowing a permission -->
@@ -1584,7 +1536,7 @@
   <!-- label shown when there are not site exceptions to show in the site exception settings -->
   <string name="no_site_exceptions">Bul sayt ushın esaptan tısqarılar joq</string>
   <!-- Bookmark deletion confirmation -->
-  <string name="bookmark_deletion_confirmation">Siz bul saylandını óshiriwge isenimińiz kámil me?</string>
+  <string name="bookmark_deletion_confirmation" tools:ignore="UnusedResources" moz:removedIn="143">Siz bul saylandını óshiriwge isenimińiz kámil me?</string>
   <!-- Browser menu button that adds a shortcut to the home fragment -->
   <string name="browser_menu_add_to_shortcuts">Operativ buyrıqlarǵa qosıw</string>
   <!-- Browser menu button that removes a shortcut from the home fragment -->
@@ -1638,11 +1590,7 @@
   <string name="synced_tabs_expand_group">Sáykeslestirilgen betler toparın keńeytiw</string>
   <!-- Content description for collapsing a group of synced tabs. -->
   <string name="synced_tabs_collapse_group">Sáykeslestirilgen betler toparın qısqartıw</string>
-  <!--
-    Top Sites
-
-    Title text displayed in the dialog when shortcuts limit is reached.
-  -->
+  <!-- Title text displayed in the dialog when shortcuts limit is reached. -->
   <string name="shortcut_max_limit_title">Operativ buyrıqlar tolıp qaldı</string>
   <!-- Content description text displayed in the dialog when shortcut limit is reached. -->
   <string name="shortcut_max_limit_content">Jańa operativ buyrıq qosıw ushın birewin alıp taslań. Sayttı basıp turıń hám alıp taslawdi tańlań</string>
@@ -1705,23 +1653,7 @@
   <!-- Content description for the action bar "up" button -->
   <string name="action_bar_up_description">Joqarıǵa ótiw</string>
   <!-- Content description for privacy content close button -->
-  <string name="privacy_content_close_button_content_description">Jabıw</string>
-  <!--
-    Pocket recommended stories
-
-    Header text for a section on the home screen.
-  -->
-  <string name="pocket_stories_header_1" tools:ignore="UnusedResources" moz:removedIn="140">Oylandırıwshı áńgimeler</string>
-  <!-- Header text for a section on the home screen. -->
-  <string name="pocket_stories_categories_header" moz:removedIn="141" tools:ignore="UnusedResources">Temalar boyınsha áńgimeler</string>
-  <!-- Text of a button allowing users to access an external url for more Pocket recommendations. -->
-  <string name="pocket_stories_placeholder_text" moz:removedIn="141" tools:ignore="UnusedResources">Kóbirek biliń</string>
-  <!-- Title of an app feature. Smaller than a heading. %s is "Pocket". -->
-  <string name="pocket_stories_feature_title_2" moz:removedIn="140" tools:ignore="UnusedResources">%s tárepinen qollap-quwatlanadı.</string>
-  <!-- Caption for describing a certain feature. %s is a link using pocket_stories_feature_learn_more as text, which will load an url in a new tab when clicked. -->
-  <string name="pocket_stories_feature_caption" moz:removedIn="140" tools:ignore="BrandUsage,UnusedResources">Firefox toparınıń bólegi. %s</string>
-  <!-- Clickable text for opening an external link for more information about Pocket. -->
-  <string name="pocket_stories_feature_learn_more" moz:removedIn="140" tools:ignore="UnusedResources">Tolıǵıraq úyreniw</string>
+  <string name="privacy_content_close_button_content_description" tools:ignore="UnusedResources" moz:removedIn="143">Jabıw</string>
   <!-- Text indicating that the Pocket story that also displays this text is a sponsored story by other 3rd party entity. -->
   <string name="pocket_stories_sponsor_indication">Qáwenderlik etken</string>
   <!-- Snackbar message for enrolling in a Nimbus experiment from the secret settings when Studies preference is Off. -->
@@ -1738,10 +1670,6 @@
   <string name="a11y_action_label_expand">keńeytiw</string>
   <!-- Action label for links to a website containing documentation about a wallpaper collection. Talkback will append this to say "Double tap to open link to learn more about this collection". -->
   <string name="a11y_action_label_wallpaper_collection_learn_more">bul toplam haqqında kóbirek biliw ushın siltemeni ashıń</string>
-  <!-- Action label for links that point to an article. Talkback will append this to say "Double tap to read the article". -->
-  <string name="a11y_action_label_read_article" moz:removedIn="141" tools:ignore="UnusedResources">Maqalanı oqıw</string>
-  <!-- Action label for links to the Firefox Pocket website. Talkback will append this to say "Double tap to open link to learn more". -->
-  <string name="a11y_action_label_pocket_learn_more" moz:removedIn="140" tools:ignore="UnusedResources">kóbirek biliw ushın siltemeni ashıń</string>
   <!-- Translations feature -->
 
   <!-- TextField Design System Component -->

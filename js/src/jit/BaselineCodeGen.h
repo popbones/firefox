@@ -147,6 +147,13 @@ class BaselineCodeGen {
     return callVM<Fn, fn>(RetAddrEntry::Kind::NonOpCallVM, phase);
   }
 
+  template <typename T>
+  void emitGuardedCallPreBarrierAnyZone(const T& address, MIRType type,
+                                        Register scratch) {
+    MOZ_ASSERT_IF(handler.realmIndependentJitcode(), !masm.maybeRealm());
+    masm.guardedCallPreBarrierAnyZone(address, type, scratch);
+  }
+
   // ifDebuggee should be a function emitting code for when the script is a
   // debuggee script. ifNotDebuggee (if present) is called to emit code for
   // non-debuggee scripts.
@@ -160,9 +167,8 @@ class BaselineCodeGen {
 
   bool emitSuspend(JSOp op);
 
-  template <typename F>
-  [[nodiscard]] bool emitAfterYieldDebugInstrumentation(const F& ifDebuggee,
-                                                        Register scratch);
+  [[nodiscard]] bool emitAfterYieldDebugInstrumentation(Register scratch);
+  [[nodiscard]] bool emitDebugAfterYield();
 
   // ifSet should be a function emitting code for when the script has |flag|
   // set. ifNotSet emits code for when the flag isn't set.
@@ -196,6 +202,9 @@ class BaselineCodeGen {
   [[nodiscard]] bool emitNextIC();
   [[nodiscard]] bool emitInterruptCheck();
   [[nodiscard]] bool emitWarmUpCounterIncrement();
+
+  [[nodiscard]] bool emitTrialInliningCheck(Register count, Register icScript,
+                                            Register scratch);
 
 #define EMIT_OP(op, ...) bool emit_##op();
   FOR_EACH_OPCODE(EMIT_OP)

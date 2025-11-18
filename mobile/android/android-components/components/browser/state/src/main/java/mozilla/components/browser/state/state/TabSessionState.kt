@@ -111,6 +111,7 @@ fun createTab(
     hasFormData: Boolean = false,
     originalInput: String? = null,
     initialTextDirectiveUserActivation: Boolean = false,
+    trackingProtection: TrackingProtectionState = TrackingProtectionState(),
 ): TabSessionState {
     return TabSessionState(
         id = id,
@@ -144,6 +145,7 @@ fun createTab(
         mediaSessionState = mediaSessionState,
         historyMetadata = historyMetadata,
         originalInput = originalInput,
+        trackingProtection = trackingProtection,
     )
 }
 

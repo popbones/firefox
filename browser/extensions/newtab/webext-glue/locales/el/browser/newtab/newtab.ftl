@@ -56,6 +56,9 @@ newtab-topsites-add-shortcut-header = Νέα συντόμευση
 newtab-topsites-edit-topsites-header = Επεξεργασία κορυφαίου ιστοτόπου
 newtab-topsites-edit-shortcut-header = Επεξεργασία συντόμευσης
 newtab-topsites-add-shortcut-label = Προσθήκη συντόμευσης
+newtab-topsites-add-shortcut-title =
+    .title = Προσθήκη συντόμευσης
+    .aria-label = Προσθήκη συντόμευσης
 newtab-topsites-title-label = Τίτλος
 newtab-topsites-title-input =
     .placeholder = Εισαγωγή τίτλου
@@ -84,6 +87,14 @@ newtab-confirm-delete-history-p2 = Δεν είναι δυνατή η αναίρ�
 ## Top Sites - Sponsored label
 
 newtab-topsite-sponsored = Χορηγία
+
+## Label used by screen readers for pinned top sites
+
+# Variables:
+#   $title (string) - The label or hostname of the site.
+topsite-label-pinned =
+    .aria-label = { $title } (καρφιτσώθηκε)
+    .title = { $title }
 
 ## Context Menu - Action Tooltips.
 
@@ -236,14 +247,14 @@ newtab-empty-section-highlights = Ξεκινήστε την περιήγηση �
 # Ex. When there are no more Pocket story recommendations, in the space where there would have been stories, this is shown instead.
 # Variables:
 #   $provider (string) - Name of the content provider for this section, e.g "Pocket".
-newtab-empty-section-topstories = Δεν υπάρχει κάτι νεότερο. Ελέγξτε αργότερα για περισσότερες ιστορίες από τον πάροχο { $provider }. Δεν μπορείτε να περιμένετε; Διαλέξτε κάποιο από τα δημοφιλή θέματα και ανακαλύψτε ενδιαφέρουσες ιστορίες από όλο τον Ιστό.
+newtab-empty-section-topstories = Δεν υπάρχει κάτι νεότερο. Ελέγξτε αργότερα για περισσότερα άρθρα από το { $provider }. Δεν μπορείτε να περιμένετε; Διαλέξτε κάποιο από τα δημοφιλή θέματα και ανακαλύψτε ενδιαφέροντα άρθρα από όλο το διαδίκτυο.
 # Ex. When there are no more story recommendations, in the space where there would have been stories, this is shown instead.
 newtab-empty-section-topstories-generic = Δεν υπάρχει κάτι νεότερο. Ελέγξτε αργότερα για περισσότερα άρθρα. Δεν μπορείτε να περιμένετε; Επιλέξτε κάποιο δημοφιλές θέμα και βρείτε ακόμα περισσότερα ενδιαφέροντα άρθρα από όλο το διαδίκτυο.
 
 ## Empty Section (Content Discovery Experience). These show when there are no more stories or when some stories fail to load.
 
 newtab-discovery-empty-section-topstories-header = Τελειώσατε!
-newtab-discovery-empty-section-topstories-content = Ελέγξτε ξανά αργότερα για περισσότερες ιστορίες.
+newtab-discovery-empty-section-topstories-content = Ελέγξτε ξανά αργότερα για περισσότερα άρθρα.
 newtab-discovery-empty-section-topstories-try-again-button = Δοκιμή ξανά
 newtab-discovery-empty-section-topstories-loading = Φόρτωση…
 # Displays when a layout in a section took too long to fetch articles.
@@ -257,7 +268,7 @@ newtab-pocket-new-topics-title = Θέλετε περισσότερα άρθρα;
 newtab-pocket-more-recommendations = Περισσότερες προτάσεις
 newtab-pocket-learn-more = Μάθετε περισσότερα
 newtab-pocket-cta-button = Αποκτήστε το { -pocket-brand-name }
-newtab-pocket-cta-text = Αποθηκεύστε τις ιστορίες που αγαπάτε στο { -pocket-brand-name } και τροφοδοτήστε το μυαλό σας με εκπληκτικά κείμενα.
+newtab-pocket-cta-text = Αποθηκεύστε τα άρθρα που σας αρέσουν στο { -pocket-brand-name } και τροφοδοτήστε το μυαλό σας με εκπληκτικά κείμενα.
 newtab-pocket-pocket-firefox-family = Το { -pocket-brand-name } ανήκει στην οικογένεια του { -brand-product-name }
 newtab-pocket-save = Αποθήκευση
 newtab-pocket-saved = Αποθηκεύτηκε
@@ -308,19 +319,32 @@ newtab-custom-pocket-subtitle = Εξαιρετικό περιεχόμενο απ
 newtab-custom-stories-toggle =
     .label = Προτεινόμενα άρθρα
     .description = Εξαιρετικό περιεχόμενο από την οικογένεια του { -brand-product-name }
+newtab-custom-stories-personalized-toggle =
+    .label = Άρθρα
+newtab-custom-stories-personalized-checkbox-label = Εξατομικευμένα άρθρα με βάση τη δραστηριότητά σας
 newtab-custom-pocket-sponsored = Χορηγούμενα άρθρα
 newtab-custom-pocket-show-recent-saves = Εμφάνιση πρόσφατων αποθηκεύσεων
 newtab-custom-recent-title = Πρόσφατη δραστηριότητα
 newtab-custom-recent-subtitle = Συλλογή πρόσφατων ιστοτόπων και περιεχομένου
-newtab-custom-recent-toggle =
-    .label = Πρόσφατη δραστηριότητα
-    .description = Συλλογή πρόσφατων ιστοτόπων και περιεχομένου
 newtab-custom-weather-toggle =
     .label = Καιρός
     .description = Σημερινή πρόγνωση με μια ματιά
 newtab-custom-trending-search-toggle =
     .label = Δημοφιλείς αναζητήσεις
     .description = Δημοφιλή και συνήθη θέματα αναζήτησης
+newtab-custom-widget-weather-toggle =
+    .label = Καιρός
+newtab-custom-widget-trending-search-toggle =
+    .label = Δημοφιλείς αναζητήσεις
+newtab-custom-widget-lists-toggle =
+    .label = Λίστες
+newtab-custom-widget-timer-toggle =
+    .label = Αντίστροφη μέτρηση
+newtab-custom-widget-section-title = Γραφικά στοιχεία
+# Tooltip for close button
+newtab-custom-close-menu-button =
+    .title = Κλείσιμο
+    .aria-label = Κλείσιμο μενού
 newtab-custom-close-button = Κλείσιμο
 newtab-custom-settings = Διαχείριση περισσότερων ρυθμίσεων
 
@@ -333,10 +357,11 @@ newtab-wallpaper-custom-color = Επιλογή χρώματος
 # Variables
 #   $file_size (number) - The number of the maximum image file size (in MB) that may be uploaded
 newtab-wallpaper-error-max-file-size = Η εικόνα υπερέβη το όριο μεγέθους των { $file_size }MB. Δοκιμάστε να μεταφορτώσετε ένα μικρότερο αρχείο.
+newtab-wallpaper-error-upload-file-type = Δεν ήταν δυνατή η μεταφόρτωση του αρχείου σας. Δοκιμάστε ξανά με ένα άλλο αρχείο εικόνας.
 newtab-wallpaper-error-file-type = Δεν ήταν δυνατή η μεταφόρτωση του αρχείου σας. Δοκιμάστε ξανά με έναν άλλο τύπο αρχείου.
 newtab-wallpaper-light-red-panda = Κόκκινο πάντα
 newtab-wallpaper-light-mountain = Λευκό βουνό
-newtab-wallpaper-light-sky = Ουρανός με μωβ και ροζ σύννεφα
+newtab-wallpaper-light-sky = Ουρανός με μοβ και ροζ σύννεφα
 newtab-wallpaper-light-color = Μπλε, ροζ και κίτρινα σχήματα
 newtab-wallpaper-light-landscape = Μπλε ορεινό τοπίο ομίχλης
 newtab-wallpaper-light-beach = Παραλία με φοίνικα
@@ -345,13 +370,13 @@ newtab-wallpaper-dark-color = Κόκκινα και μπλε σχήματα
 newtab-wallpaper-dark-panda = Κόκκινο πάντα στο δάσος
 newtab-wallpaper-dark-sky = Αστικό τοπίο με νυχτερινό ουρανό
 newtab-wallpaper-dark-mountain = Ορεινό τοπίο
-newtab-wallpaper-dark-city = Μωβ αστικό τοπίο
+newtab-wallpaper-dark-city = Μοβ αστικό τοπίο
 newtab-wallpaper-dark-fox-anniversary = Μια αλεπού στο πεζοδρόμιο κοντά σε ένα δάσος
 newtab-wallpaper-light-fox-anniversary = Μια αλεπού μέσα σε γρασίδι, με ένα ομιχλώδες ορεινό τοπίο
 
 ## Solid Colors
 
-newtab-wallpaper-category-title-colors = Συμπαγή χρώματα
+newtab-wallpaper-category-title-colors = Αμιγή χρώματα
 newtab-wallpaper-blue = Μπλε
 newtab-wallpaper-light-blue = Ανοιχτό μπλε
 newtab-wallpaper-light-purple = Ανοιχτό μωβ
@@ -373,13 +398,13 @@ newtab-wallpaper-brown = Καφέ
 newtab-wallpaper-category-title-abstract = Αφηρημένο
 newtab-wallpaper-abstract-green = Πράσινα σχήματα
 newtab-wallpaper-abstract-blue = Μπλε σχήματα
-newtab-wallpaper-abstract-purple = Μωβ σχήματα
+newtab-wallpaper-abstract-purple = Μοβ σχήματα
 newtab-wallpaper-abstract-orange = Πορτοκαλί σχήματα
 newtab-wallpaper-gradient-orange = Διαβάθμιση πορτοκαλί και ροζ
-newtab-wallpaper-abstract-blue-purple = Μπλε και μωβ σχήματα
+newtab-wallpaper-abstract-blue-purple = Μπλε και μοβ σχήματα
 newtab-wallpaper-abstract-white-curves = Λευκό με σκιασμένες καμπύλες
-newtab-wallpaper-abstract-purple-green = Διαβάθμιση μωβ και πράσινου φωτός
-newtab-wallpaper-abstract-blue-purple-waves = Μπλε και μωβ κυματιστές μορφές
+newtab-wallpaper-abstract-purple-green = Διαβάθμιση μοβ και πράσινου φωτός
+newtab-wallpaper-abstract-blue-purple-waves = Μπλε και μοβ κυματιστές μορφές
 newtab-wallpaper-abstract-black-waves = Μαύρες κυματιστές μορφές
 
 ## Celestial
@@ -438,7 +463,6 @@ newtab-weather-menu-change-location = Αλλαγή τοποθεσίας
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Αναζήτηση τοποθεσίας
     .aria-label = Αναζήτηση τοποθεσίας
-newtab-weather-change-location-search-input = Αναζήτηση τοποθεσίας
 newtab-weather-menu-weather-display = Προβολή καιρού
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -504,6 +528,9 @@ newtab-topic-selection-button-pick-interests = Επιλέξτε τα ενδια�
 newtab-section-follow-button = Ακολουθήστε
 newtab-section-following-button = Ακολουθείται
 newtab-section-unfollow-button = Άρση παρακολούθησης
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = Βελτιστοποιήστε τη ροή σας
+newtab-section-follow-highlight-subtitle = Ακολουθήστε τα ενδιαφέροντά σας για να δείτε περισσότερα από αυτά που σας αρέσουν.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -536,6 +563,12 @@ newtab-custom-wallpaper-title = Οι προσαρμοσμένες ταπετσα
 newtab-custom-wallpaper-subtitle = Μεταφορτώστε τη δική σας ταπετσαρία ή επιλέξτε ένα προσαρμοσμένο χρώμα για να κάνετε το { -brand-product-name } δικό σας.
 newtab-custom-wallpaper-cta = Δοκιμή
 
+## Strings for new user activation custom wallpaper highlight
+
+newtab-new-user-custom-wallpaper-title = Επιλέξτε μια ταπετσαρία για να κάνετε το { -brand-product-name } δικό σας
+newtab-new-user-custom-wallpaper-subtitle = Νιώστε άνετα σε κάθε νέα καρτέλα με προσαρμοσμένες ταπετσαρίες και χρώματα.
+newtab-new-user-custom-wallpaper-cta = Δοκιμή τώρα
+
 ## Strings for download mobile highlight
 
 newtab-download-mobile-highlight-title = Λήψη του { -brand-product-name } για κινητές συσκευές
@@ -545,6 +578,11 @@ newtab-download-mobile-highlight-body-variant-b = Συνεχίστε από εκ
 newtab-download-mobile-highlight-body-variant-c = Γνωρίζατε ότι μπορείτε να χρησιμοποιείτε το { -brand-product-name } εν κινήσει; Το ίδιο πρόγραμμα περιήγησης, στην τσέπη σας.
 newtab-download-mobile-highlight-image =
     .aria-label = Κωδικός QR για τη λήψη του { -brand-product-name } για κινητές συσκευές
+
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = Τα αγαπημένα σας, στα χέρια σας
+newtab-shortcuts-highlight-subtitle = Προσθέστε μια συντόμευση για να έχετε κοντά σας τους αγαπημένους ιστοτόπους σας.
 
 ## Strings for reporting ads and content
 
@@ -571,11 +609,84 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
-# "Trending on Google" refers to the trending topics coming from Google Search, usually seen when a user is focused on the search bar
-newtab-trending-searches-trending-on-google = Τάσεις Google
 newtab-trending-searches-show-trending =
     .title = Εμφάνιση δημοφιλών αναζητήσεων
 newtab-trending-searches-hide-trending =
     .title = Απόκρυψη δημοφιλών αναζητήσεων
 newtab-trending-searches-learn-more = Μάθετε περισσότερα
 newtab-trending-searches-dismiss = Απόκρυψη δημοφιλών αναζητήσεων
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = Δημοφιλείς αναζητήσεις
+
+## Strings for task / to-do list productivity widget
+
+# "Add one" means adding a new task to the list (e.g., "Walk the dog")
+newtab-widget-lists-empty-cta = Οι δυνατότητες είναι απεριόριστες. Προσθέστε μια νέα.
+# A simple label next to the default list name letting users know this is a new / beta feature
+newtab-widget-lists-label-new =
+    .label = Νέο
+newtab-widget-lists-label-beta =
+    .label = Beta
+# When tasks have been previous marked as complete, they will appear in their own separate list beneath incomplete items
+# Variables:
+#   $number (number) - Amount of list items marked complete
+newtab-widget-lists-completed-list = Ολοκληρωμένες ({ $number })
+newtab-widget-task-list-menu-copy = Αντιγραφή
+newtab-widget-lists-menu-edit = Επεξεργασία ονόματος λίστας
+newtab-widget-lists-menu-create = Δημιουργία νέας λίστας
+newtab-widget-lists-menu-delete = Διαγραφή λίστας
+newtab-widget-lists-menu-copy = Αντιγραφή λίστας στο πρόχειρο
+newtab-widget-lists-menu-hide = Απόκρυψη όλων των λιστών
+newtab-widget-lists-menu-learn-more = Μάθετε περισσότερα
+newtab-widget-lists-input-add-an-item =
+    .placeholder = Προσθήκη στοιχείου
+newtab-widget-lists-input-error = Συμπεριλάβετε κείμενο για να προσθέσετε ένα στοιχείο.
+newtab-widget-lists-input-menu-open-link = Άνοιγμα συνδέσμου
+newtab-widget-lists-input-menu-move-up = Μετακίνηση πάνω
+newtab-widget-lists-input-menu-move-down = Μετακίνηση κάτω
+newtab-widget-lists-input-menu-delete = Διαγραφή
+newtab-widget-lists-input-menu-edit = Επεξεργασία
+newtab-widget-lists-name-label-default =
+    .label = Λίστα εργασιών
+newtab-widget-lists-name-placeholder-default =
+    .placeholder = Λίστα εργασιών
+# The placeholder value of the name field for a newly created list
+newtab-widget-lists-name-placeholder-new =
+    .placeholder = Νέα λίστα
+
+## Strings for timer productivity widget
+## When the timer ends, a system notification may be shown. Depending on which mode the timer is in, that message would be shown
+
+newtab-widget-timer-notification-title = Αντίστροφη μέτρηση
+newtab-widget-timer-notification-focus = Ο χρόνος συγκέντρωσης τελείωσε. Καλή δουλειά. Χρειάζεστε διάλειμμα;
+newtab-widget-timer-notification-break = Το διάλειμμά σας τελείωσε. Έτοιμοι για συγκέντρωση;
+newtab-widget-timer-notification-warning = Οι ειδοποιήσεις είναι ανενεργές
+newtab-widget-timer-mode-focus =
+    .label = Συγκέντρωση
+newtab-widget-timer-mode-break =
+    .label = Διάλειμμα
+newtab-widget-timer-play =
+    .title = Αναπαραγωγή
+newtab-widget-timer-pause =
+    .title = Παύση
+newtab-widget-timer-label-play =
+    .label = Αναπαραγωγή
+newtab-widget-timer-label-pause =
+    .label = Παύση
+newtab-widget-timer-reset =
+    .title = Επαναφορά
+newtab-widget-timer-menu-notifications = Απενεργοποίηση ειδοποιήσεων
+newtab-widget-timer-menu-notifications-on = Ενεργοποίηση ειδοποιήσεων
+newtab-widget-timer-menu-hide = Απόκρυψη αντίστροφης μέτρησης
+newtab-widget-timer-menu-learn-more = Μάθετε περισσότερα
+# Message that appears when widgets are full-height. This reminds users that there is more New Tab content to see if they scroll
+newtab-widget-keep-scrolling = Κάντε κύλιση για περισσότερα
+newtab-widget-message-title = Παραμείνετε συγκεντρωμένοι με τις λίστες και την ενσωματωμένη αντίστροφη μέτρηση
+# to-dos stands for "things to do".
+newtab-widget-message-copy = Από γρήγορες υπενθυμίσεις έως καθημερινές υποχρεώσεις, συνεδρίες συγκέντρωσης έως διαλείμματα: επικεντρωθείτε και ολοκληρώστε τις εργασίες σας εγκαίρως.
+newtab-promo-card-title = Υποστηρίξτε το { -brand-product-name }
+newtab-promo-card-body = Οι χορηγοί μας υποστηρίζουν την αποστολή μας για ένα καλύτερο διαδίκτυο
+newtab-promo-card-cta = Μάθετε περισσότερα
+newtab-promo-card-dismiss-button =
+    .title = Απόρριψη
+    .aria-label = Απόρριψη

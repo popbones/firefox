@@ -6,21 +6,21 @@
 #ifndef nsGenericHTMLElement_h___
 #define nsGenericHTMLElement_h___
 
+#include <cstdint>
+
 #include "mozilla/Attributes.h"
 #include "mozilla/EventForwards.h"
-#include "nsNameSpaceManager.h"  // for kNameSpaceID_None
-#include "nsIFormControl.h"
-#include "nsGkAtoms.h"
-#include "nsContentCreatorFunctions.h"
-#include "nsStyledElement.h"
 #include "mozilla/dom/BindingDeclarations.h"
-#include "mozilla/dom/Element.h"
 #include "mozilla/dom/DOMRect.h"
-#include "mozilla/dom/ValidityState.h"
+#include "mozilla/dom/Element.h"
 #include "mozilla/dom/PopoverData.h"
 #include "mozilla/dom/ToggleEvent.h"
-
-#include <cstdint>
+#include "mozilla/dom/ValidityState.h"
+#include "nsContentCreatorFunctions.h"
+#include "nsGkAtoms.h"
+#include "nsIFormControl.h"
+#include "nsNameSpaceManager.h"  // for kNameSpaceID_None
+#include "nsStyledElement.h"
 
 class nsDOMTokenList;
 class nsIFrame;
@@ -266,7 +266,11 @@ class nsGenericHTMLElement : public nsGenericHTMLElementBase {
   void GetOuterText(mozilla::dom::DOMString& aValue, ErrorResult& aError) {
     return GetInnerText(aValue, aError);
   }
-  MOZ_CAN_RUN_SCRIPT void SetInnerText(const nsAString& aValue);
+  MOZ_CAN_RUN_SCRIPT void SetInnerText(const nsAString& aValue) {
+    SetInnerTextInternal(aValue, MutationEffectOnScript::DropTrustWorthiness);
+  }
+  MOZ_CAN_RUN_SCRIPT void SetInnerTextInternal(
+      const nsAString& aValue, MutationEffectOnScript aMutationEffectOnScript);
   MOZ_CAN_RUN_SCRIPT void SetOuterText(const nsAString& aValue,
                                        ErrorResult& aRv);
 
@@ -318,35 +322,6 @@ class nsGenericHTMLElement : public nsGenericHTMLElementBase {
 #undef ERROR_EVENT
 #undef FORWARDED_EVENT
 #undef EVENT
-  mozilla::dom::Element* GetOffsetParent() {
-    mozilla::CSSIntRect rcFrame;
-    return GetOffsetRect(rcFrame);
-  }
-  int32_t OffsetTop() {
-    mozilla::CSSIntRect rcFrame;
-    GetOffsetRect(rcFrame);
-
-    return rcFrame.y;
-  }
-  int32_t OffsetLeft() {
-    mozilla::CSSIntRect rcFrame;
-    GetOffsetRect(rcFrame);
-
-    return rcFrame.x;
-  }
-  int32_t OffsetWidth() {
-    mozilla::CSSIntRect rcFrame;
-    GetOffsetRect(rcFrame);
-
-    return rcFrame.Width();
-  }
-  int32_t OffsetHeight() {
-    mozilla::CSSIntRect rcFrame;
-    GetOffsetRect(rcFrame);
-
-    return rcFrame.Height();
-  }
-
   // These methods are already implemented in nsIContent but we want something
   // faster for HTMLElements ignoring the namespace checking.
   // This is safe because we already know that we are in the HTML namespace.
@@ -367,7 +342,7 @@ class nsGenericHTMLElement : public nsGenericHTMLElementBase {
 
   mozilla::dom::ElementInternals* GetInternals() const;
 
-  bool IsFormAssociatedCustomElements() const;
+  bool IsFormAssociatedCustomElement() const;
 
   // Returns true if the event should not be handled from GetEventTargetParent.
   virtual bool IsDisabledForEvents(mozilla::WidgetEvent* aEvent) {
@@ -964,14 +939,6 @@ class nsGenericHTMLElement : public nsGenericHTMLElementBase {
   virtual already_AddRefed<mozilla::EditorBase> GetAssociatedEditor();
 
   /**
-   * Get the frame's offset information for offsetTop/Left/Width/Height.
-   * Returns the parent the offset is relative to.
-   * @note This method flushes pending notifications (FlushType::Layout).
-   * @param aRect the offset information [OUT]
-   */
-  mozilla::dom::Element* GetOffsetRect(mozilla::CSSIntRect& aRect);
-
-  /**
    * Ensures all editors associated with a subtree are synced, for purposes of
    * spellchecking.
    */
@@ -1307,7 +1274,7 @@ class nsGenericHTMLFormControlElementWithState
   /**
    * https://html.spec.whatwg.org/#popover-target-attribute-activation-behavior
    */
-  MOZ_CAN_RUN_SCRIPT void HandlePopoverTargetAction();
+  MOZ_CAN_RUN_SCRIPT void HandlePopoverTargetAction(mozilla::dom::Element*);
 
   /**
    * Get the presentation state for a piece of content, or create it if it does

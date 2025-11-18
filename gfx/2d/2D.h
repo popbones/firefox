@@ -104,7 +104,7 @@ class ScaledFont;
 
 namespace gfx {
 
-class AlphaBoxBlur;
+class GaussianBlur;
 class ScaledFont;
 class SourceSurface;
 class DataSourceSurface;
@@ -1520,6 +1520,12 @@ class DrawTarget : public external::AtomicRefCounted<DrawTarget> {
     MOZ_CRASH("GFX: DrawSurfaceDescriptor");
   }
 
+  virtual already_AddRefed<SourceSurface> ImportSurfaceDescriptor(
+      const layers::SurfaceDescriptor& aDesc, const gfx::IntSize& aSize,
+      SurfaceFormat aFormat) {
+    return nullptr;
+  }
+
   /**
    * Draw a surface to the draw target, when the surface will be available
    * at a later time. This is only valid for recording DrawTargets.
@@ -1838,7 +1844,7 @@ class DrawTarget : public external::AtomicRefCounted<DrawTarget> {
    * Perform an in-place blur operation. This is only supported on data draw
    * targets.
    */
-  virtual void Blur(const AlphaBoxBlur& aBlur);
+  virtual void Blur(const GaussianBlur& aBlur);
 
   /**
    * Performs an in-place edge padding operation.
@@ -1995,6 +2001,23 @@ class DrawTarget : public external::AtomicRefCounted<DrawTarget> {
    * @param aType Type of filter node to be created.
    */
   virtual already_AddRefed<FilterNode> CreateFilter(FilterType aType) = 0;
+
+  /**
+   * Create a SourceSurface to resolve a deferred filter input.
+   */
+  already_AddRefed<SourceSurface> ResolveFilterInput(
+      const Path* aPath, const Pattern& aPattern, const IntRect& aSourceRect,
+      const Matrix& aDestTransform, const DrawOptions& aOptions = DrawOptions(),
+      const StrokeOptions* aStrokeOptions = nullptr,
+      SurfaceFormat aFormat = SurfaceFormat::B8G8R8A8);
+
+  /**
+   * Create a FilterNode that may defer drawing of the input path.
+   */
+  virtual already_AddRefed<FilterNode> DeferFilterInput(
+      const Path* aPath, const Pattern& aPattern, const IntRect& aSourceRect,
+      const IntPoint& aDestOffset, const DrawOptions& aOptions = DrawOptions(),
+      const StrokeOptions* aStrokeOptions = nullptr);
 
   Matrix GetTransform() const { return mTransform; }
 

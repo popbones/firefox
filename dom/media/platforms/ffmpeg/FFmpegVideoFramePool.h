@@ -10,7 +10,6 @@
 #include "FFmpegLibWrapper.h"
 #include "FFmpegLibs.h"
 #include "FFmpegLog.h"
-
 #include "mozilla/layers/DMABUFSurfaceImage.h"
 #include "mozilla/widget/DMABufDevice.h"
 #include "mozilla/widget/DMABufSurface.h"
@@ -81,6 +80,9 @@ class VideoFrameSurface<LIBAV_VER> {
   }
   void SetTransferFunction(mozilla::gfx::TransferFunction aTransferFunction) {
     mSurface->GetAsDMABufSurfaceYUV()->SetTransferFunction(aTransferFunction);
+  }
+  void SetWPChromaLocation(uint32_t aWPChromaLocation) {
+    mSurface->GetAsDMABufSurfaceYUV()->SetWPChromaLocation(aWPChromaLocation);
   }
 
   RefPtr<DMABufSurfaceYUV> GetDMABufSurface() {

@@ -8,11 +8,11 @@
 
 use std::{cmp::min, collections::VecDeque};
 
-use neqo_common::Encoder;
+use neqo_common::{qdebug, Buffer, Encoder};
 
 use crate::{
-    events::OutgoingDatagramOutcome, frame::FrameType, packet::PacketBuilder,
-    recovery::RecoveryToken, ConnectionEvents, Error, Res, Stats,
+    events::OutgoingDatagramOutcome, frame::FrameType, packet, recovery, ConnectionEvents, Error,
+    Res, Stats,
 };
 
 pub const MAX_QUIC_DATAGRAM: u64 = 65535;
@@ -26,15 +26,6 @@ pub enum DatagramTracking {
 impl From<Option<u64>> for DatagramTracking {
     fn from(v: Option<u64>) -> Self {
         v.map_or(Self::None, Self::Id)
-    }
-}
-
-impl From<DatagramTracking> for Option<u64> {
-    fn from(v: DatagramTracking) -> Self {
-        match v {
-            DatagramTracking::Id(id) => Some(id),
-            DatagramTracking::None => None,
-        }
     }
 }
 
@@ -94,13 +85,13 @@ impl QuicDatagrams {
         self.remote_datagram_size = min(v, MAX_QUIC_DATAGRAM);
     }
 
-    /// This function tries to write a datagram frame into a packet.
-    /// If the frame does not fit into the packet, the datagram will
-    /// be dropped and a `DatagramLost` event will be posted.
-    pub fn write_frames(
+    /// This function tries to write a datagram frame into a packet. If the
+    /// frame does not fit into the packet, the datagram will be dropped and a
+    /// [`OutgoingDatagramOutcome::DroppedTooBig`] event will be posted.
+    pub fn write_frames<B: Buffer>(
         &mut self,
-        builder: &mut PacketBuilder,
-        tokens: &mut Vec<RecoveryToken>,
+        builder: &mut packet::Builder<B>,
+        tokens: &mut recovery::Tokens,
         stats: &mut Stats,
     ) {
         while let Some(dgram) = self.datagrams.pop_front() {
@@ -110,7 +101,8 @@ impl QuicDatagrams {
                 let length_len =
                     Encoder::varint_len(u64::try_from(len).expect("usize fits in u64"));
                 // Include a length if there is space for another frame after this one.
-                if builder.remaining() >= 1 + length_len + len + PacketBuilder::MINIMUM_FRAME_SIZE {
+                if builder.remaining() >= 1 + length_len + len + packet::Builder::MINIMUM_FRAME_SIZE
+                {
                     builder.encode_varint(FrameType::DatagramWithLen);
                     builder.encode_vvec(dgram.as_ref());
                 } else {
@@ -120,11 +112,12 @@ impl QuicDatagrams {
                 }
                 debug_assert!(builder.len() <= builder.limit());
                 stats.frame_tx.datagram += 1;
-                tokens.push(RecoveryToken::Datagram(*dgram.tracking()));
+                tokens.push(recovery::Token::Datagram(*dgram.tracking()));
             } else if tokens.is_empty() {
                 // If the packet is empty, except packet headers, and the
                 // datagram cannot fit, drop it.
                 // Also continue trying to write the next QuicDatagram.
+                qdebug!("QUIC datagram ({}) does not fit MTU.", dgram.data.len());
                 self.conn_events
                     .datagram_outcome(dgram.tracking(), OutgoingDatagramOutcome::DroppedTooBig);
                 stats.datagram_tx.dropped_too_big += 1;
@@ -136,7 +129,7 @@ impl QuicDatagrams {
         }
     }
 
-    /// Returns true if there was an unsent datagram that has been dismissed.
+    /// Add a datagram to the send queue.
     ///
     /// # Error
     ///
@@ -152,13 +145,19 @@ impl QuicDatagrams {
         stats: &mut Stats,
     ) -> Res<()> {
         if u64::try_from(data.len())? > self.remote_datagram_size {
+            qdebug!(
+                "QUIC datagram exceeds remote limit, dropping it, datagram size {}, remote datagram size limit {}.",
+                data.len(),
+                self.remote_datagram_size
+            );
             return Err(Error::TooMuchData);
         }
         if self.datagrams.len() == self.max_queued_outgoing_datagrams {
+            qdebug!("QUIC datagram queue full, dropping first datagram in queue.");
             self.conn_events.datagram_outcome(
                 self.datagrams
                     .pop_front()
-                    .ok_or(Error::InternalError)?
+                    .ok_or(Error::Internal)?
                     .tracking(),
                 OutgoingDatagramOutcome::DroppedQueueFull,
             );

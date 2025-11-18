@@ -6,8 +6,8 @@ package org.mozilla.geckoview;
 
 import androidx.annotation.AnyThread;
 import androidx.annotation.NonNull;
-import org.mozilla.gecko.annotation.WrapForJNI;
 
+/** Delegate for handling web notification events. */
 public interface WebNotificationDelegate {
   /**
    * This is called when a new notification is created.
@@ -15,7 +15,6 @@ public interface WebNotificationDelegate {
    * @param notification The WebNotification received.
    */
   @AnyThread
-  @WrapForJNI
   default void onShowNotification(@NonNull final WebNotification notification) {}
 
   /**
@@ -24,6 +23,5 @@ public interface WebNotificationDelegate {
    * @param notification The WebNotification received.
    */
   @AnyThread
-  @WrapForJNI
   default void onCloseNotification(@NonNull final WebNotification notification) {}
 }

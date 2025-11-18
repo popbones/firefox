@@ -126,6 +126,7 @@ const TAB_EVENTS = [
   "TabUngrouped",
   "TabGroupCollapse",
   "TabGroupExpand",
+  "TabSplitViewActivate",
 ];
 
 const XUL_NS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
@@ -842,10 +843,16 @@ export var SessionStore = {
    *
    * @param {string} tabGroupId - The ID of the group to save to
    * @param {MozTabbrowserTab[]} tabs - The list of tabs to add to the group
+   * @param {TabMetricsContext} [metricsContext]
+   *   Optional context to record for metrics purposes.
    * @returns {SavedTabGroupStateData}
    */
-  addTabsToSavedGroup(tabGroupId, tabs) {
-    return SessionStoreInternal.addTabsToSavedGroup(tabGroupId, tabs);
+  addTabsToSavedGroup(tabGroupId, tabs, metricsContext) {
+    return SessionStoreInternal.addTabsToSavedGroup(
+      tabGroupId,
+      tabs,
+      metricsContext
+    );
   },
 
   /**
@@ -947,6 +954,16 @@ export var SessionStore = {
    */
   shouldSaveTabsToGroup(tabs) {
     return SessionStoreInternal.shouldSaveTabsToGroup(tabs);
+  },
+
+  /**
+   * Convert tab state into a saved group tab state. Used to convert a
+   * closed tab group into a saved tab group.
+   *
+   * @param {TabState} tabState closed tab state
+   */
+  formatTabStateForSavedGroup(tab) {
+    return SessionStoreInternal._formatTabStateForSavedGroup(tab);
   },
 
   /**
@@ -1145,31 +1162,13 @@ var SessionStoreInternal = {
   _closedObjectsChanged: false,
 
   // A promise resolved once initialization is complete
-  _deferredInitialized: (function () {
-    let deferred = {};
-
-    deferred.promise = new Promise((resolve, reject) => {
-      deferred.resolve = resolve;
-      deferred.reject = reject;
-    });
-
-    return deferred;
-  })(),
+  _deferredInitialized: Promise.withResolvers(),
 
   // Whether session has been initialized
   _sessionInitialized: false,
 
   // A promise resolved once all windows are restored.
-  _deferredAllWindowsRestored: (function () {
-    let deferred = {};
-
-    deferred.promise = new Promise((resolve, reject) => {
-      deferred.resolve = resolve;
-      deferred.reject = reject;
-    });
-
-    return deferred;
-  })(),
+  _deferredAllWindowsRestored: Promise.withResolvers(),
 
   get promiseAllWindowsRestored() {
     return this._deferredAllWindowsRestored.promise;
@@ -1249,6 +1248,9 @@ var SessionStoreInternal = {
     }
 
     TelemetryTimestamps.add("sessionRestoreInitialized");
+    Glean.sessionRestore.startupTimeline.sessionRestoreInitialized.set(
+      Services.telemetry.msSinceProcessStart()
+    );
     OBSERVING.forEach(function (aTopic) {
       Services.obs.addObserver(this, aTopic, true);
     }, this);
@@ -1919,6 +1921,11 @@ var SessionStoreInternal = {
           this._notifyOfClosedObjectsChange();
         }
         break;
+      case "TabSplitViewActivate":
+        for (const tab of aEvent.detail.tabs) {
+          this.maybeRestoreTabContent(tab);
+        }
+        break;
       case "oop-browser-crashed":
       case "oop-browser-buildid-mismatch":
         if (aEvent.isTopFrame) {
@@ -2069,6 +2076,9 @@ var SessionStoreInternal = {
           this._deferredAllWindowsRestored.resolve();
         } else {
           TelemetryTimestamps.add("sessionRestoreRestoring");
+          Glean.sessionRestore.startupTimeline.sessionRestoreRestoring.set(
+            Services.telemetry.msSinceProcessStart()
+          );
           this._restoreCount = aInitialState.windows
             ? aInitialState.windows.length
             : 0;
@@ -3532,9 +3542,11 @@ var SessionStoreInternal = {
   saveClosedTabData(winData, closedTabs, tabData, saveAction = true) {
     // Find the index of the first tab in the list
     // of closed tabs that was closed before our tab.
-    let index = closedTabs.findIndex(tab => {
-      return tab.closedAt < tabData.closedAt;
-    });
+    let index = tabData.closedInTabGroupId
+      ? closedTabs.length
+      : closedTabs.findIndex(tab => {
+          return tab.closedAt < tabData.closedAt;
+        });
 
     // If we found no tab closed before our
     // tab then just append it to the list.
@@ -3627,23 +3639,27 @@ var SessionStoreInternal = {
         aWindow.gBrowser.tabContainer.selectedIndex;
 
       let tab = aWindow.gBrowser.selectedTab;
-      let browser = tab.linkedBrowser;
+      this.maybeRestoreTabContent(tab);
+    }
+  },
 
-      if (TAB_STATE_FOR_BROWSER.get(browser) == TAB_STATE_NEEDS_RESTORE) {
-        // If BROWSER_STATE is still available for the browser and it is
-        // If __SS_restoreState is still on the browser and it is
-        // TAB_STATE_NEEDS_RESTORE, then we haven't restored this tab yet.
-        //
-        // It's possible that this tab was recently revived, and that
-        // we've deferred showing the tab crashed page for it (if the
-        // tab crashed in the background). If so, we need to re-enter
-        // the crashed state, since we'll be showing the tab crashed
-        // page.
-        if (lazy.TabCrashHandler.willShowCrashedTab(browser)) {
-          this.enterCrashedState(browser);
-        } else {
-          this.restoreTabContent(tab);
-        }
+  maybeRestoreTabContent(tab) {
+    let browser = tab.linkedBrowser;
+
+    if (TAB_STATE_FOR_BROWSER.get(browser) == TAB_STATE_NEEDS_RESTORE) {
+      // If BROWSER_STATE is still available for the browser and it is
+      // If __SS_restoreState is still on the browser and it is
+      // TAB_STATE_NEEDS_RESTORE, then we haven't restored this tab yet.
+      //
+      // It's possible that this tab was recently revived, and that
+      // we've deferred showing the tab crashed page for it (if the
+      // tab crashed in the background). If so, we need to re-enter
+      // the crashed state, since we'll be showing the tab crashed
+      // page.
+      if (lazy.TabCrashHandler.willShowCrashedTab(browser)) {
+        this.enterCrashedState(browser);
+      } else {
+        this.restoreTabContent(tab);
       }
     }
   },
@@ -4020,6 +4036,7 @@ var SessionStoreInternal = {
         : {}),
       skipLoad: true,
       preferredRemoteType: aTab.linkedBrowser.remoteType,
+      tabGroup: aTab.group,
     };
     let newTab = aWindow.gBrowser.addTrustedTab(null, tabOptions);
 
@@ -5009,16 +5026,10 @@ var SessionStoreInternal = {
         !activePageData ||
         (activePageData && activePageData.url != "about:blank")
       ) {
-        win.gBrowser.setIcon(
-          tab,
-          tabData.image,
-          undefined,
-          tabData.iconLoadingPrincipal
-        );
+        win.gBrowser.setIcon(tab, tabData.image);
       }
       lazy.TabStateCache.update(browser.permanentKey, {
         image: null,
-        iconLoadingPrincipal: null,
       });
     }
   },
@@ -5936,7 +5947,6 @@ var SessionStoreInternal = {
         return true;
       } catch (error) {
         // Can't setup speculative connection for this url.
-        console.error(error);
         return false;
       }
     }
@@ -6276,7 +6286,6 @@ var SessionStoreInternal = {
       // When that's done it will be removed from the cache and we always
       // collect it in TabState._collectBaseTabData().
       image: tabData.image || "",
-      iconLoadingPrincipal: tabData.iconLoadingPrincipal || null,
       searchMode: tabData.searchMode || null,
       userTypedValue: tabData.userTypedValue || "",
       userTypedClear: tabData.userTypedClear || 0,
@@ -8142,9 +8151,10 @@ var SessionStoreInternal = {
   /**
    * @param {string} tabGroupId
    * @param {MozTabbrowserTab[]} tabs
+   * @param {TabMetricsContext} [metricsContext]
    * @returns {SavedTabGroupStateData}
    */
-  addTabsToSavedGroup(tabGroupId, tabs) {
+  addTabsToSavedGroup(tabGroupId, tabs, metricsContext) {
     let tabGroupState = this.getSavedTabGroup(tabGroupId);
     if (!tabGroupState) {
       throw new Error(`No tab group found with id ${tabGroupId}`);
@@ -8165,6 +8175,17 @@ var SessionStoreInternal = {
       updateTabGroupId: tabGroupId,
     });
     tabGroupState.tabs.push(...newTabState);
+
+    let isVerticalMode = win.gBrowser.tabContainer.verticalMode;
+    Glean.tabgroup.addTab.record({
+      source:
+        metricsContext?.telemetrySource || TabMetrics.METRIC_SOURCE.UNKNOWN,
+      tabs: tabs.length,
+      layout: isVerticalMode
+        ? TabMetrics.METRIC_TABS_LAYOUT.VERTICAL
+        : TabMetrics.METRIC_TABS_LAYOUT.HORIZONTAL,
+      group_type: TabMetrics.METRIC_GROUP_TYPE.SAVED,
+    });
 
     this._notifyOfSavedTabGroupsChange();
     return tabGroupState;

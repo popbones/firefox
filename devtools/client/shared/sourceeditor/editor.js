@@ -165,10 +165,34 @@ class Editor extends EventEmitter {
     haxe: { name: "haxe" },
     http: { name: "http" },
     html: { name: "htmlmixed" },
-    js: { name: "javascript" },
+    xml: { name: "xml" },
+    javascript: { name: "javascript" },
+    json: { name: "json" },
     text: { name: "text" },
     vs: { name: "x-shader/x-vertex" },
     wasm: { name: "wasm" },
+  };
+
+  markerTypes = {
+    /* Line Markers */
+    CONDITIONAL_BP_MARKER: "conditional-breakpoint-panel-marker",
+    TRACE_MARKER: "trace-panel-marker",
+    DEBUG_LINE_MARKER: "debug-line-marker",
+    LINE_EXCEPTION_MARKER: "line-exception-marker",
+    HIGHLIGHT_LINE_MARKER: "highlight-line-marker",
+    MULTI_HIGHLIGHT_LINE_MARKER: "multi-highlight-line-marker",
+    BLACKBOX_LINE_MARKER: "blackbox-line-marker",
+    INLINE_PREVIEW_MARKER: "inline-preview-marker",
+    /* Position Markers */
+    COLUMN_BREAKPOINT_MARKER: "column-breakpoint-marker",
+    DEBUG_POSITION_MARKER: "debug-position-marker",
+    EXCEPTION_POSITION_MARKER: "exception-position-marker",
+    ACTIVE_SELECTION_MARKER: "active-selection-marker",
+    PAUSED_LOCATION_MARKER: "paused-location-marker",
+    /* Gutter Markers */
+    EMPTY_LINE_MARKER: "empty-line-marker",
+    BLACKBOX_LINE_GUTTER_MARKER: "blackbox-line-gutter-marker",
+    GUTTER_BREAKPOINT_MARKER: "gutter-breakpoint-marker",
   };
 
   container = null;
@@ -207,6 +231,10 @@ class Editor extends EventEmitter {
   // for the source and the values are the scroll snapshots for the sources.
   #scrollSnapshots = new Map();
   #updateListener = null;
+
+  // This stores the language support objects used to syntax highlight code,
+  // These are keyed of the modes.
+  #languageModes = new Map();
 
   #sources = new Map();
 
@@ -660,6 +688,28 @@ class Editor extends EventEmitter {
     win.dispatchEvent(editorReadyEvent);
   }
 
+  #setupLanguageModes() {
+    if (!this.config.cm6) {
+      return;
+    }
+    const {
+      codemirrorLangJavascript,
+      codemirrorLangJson,
+      codemirrorLangHtml,
+      codemirrorLangXml,
+      codemirrorLangCss,
+    } = this.#CodeMirror6;
+
+    this.#languageModes.set(
+      Editor.modes.javascript,
+      codemirrorLangJavascript.javascript()
+    );
+    this.#languageModes.set(Editor.modes.json, codemirrorLangJson.json());
+    this.#languageModes.set(Editor.modes.html, codemirrorLangHtml.html());
+    this.#languageModes.set(Editor.modes.xml, codemirrorLangXml.xml());
+    this.#languageModes.set(Editor.modes.css, codemirrorLangCss.css());
+  }
+
   /**
    * Do the actual appending and configuring of the CodeMirror 6 instance.
    * This is used by appendTo and appendToLocalElement, and does all the hard work to
@@ -697,7 +747,6 @@ class Editor extends EventEmitter {
         syntaxHighlighting,
         bracketMatching,
       },
-      codemirrorLangJavascript,
       lezerHighlight,
     } = this.#CodeMirror6;
 
@@ -709,6 +758,7 @@ class Editor extends EventEmitter {
     const searchHighlightCompartment = new Compartment();
     const domEventHandlersCompartment = new Compartment();
     const foldGutterCompartment = new Compartment();
+    const languageCompartment = new Compartment();
 
     this.#compartments = {
       tabSizeCompartment,
@@ -719,6 +769,7 @@ class Editor extends EventEmitter {
       searchHighlightCompartment,
       domEventHandlersCompartment,
       foldGutterCompartment,
+      languageCompartment,
     };
 
     const { lineContentMarkerEffect, lineContentMarkerExtension } =
@@ -737,6 +788,13 @@ class Editor extends EventEmitter {
     this.#editorDOMEventHandlers.scroll = [
       debounce(this.#cacheScrollSnapshot, 250),
     ];
+
+    this.#setupLanguageModes();
+
+    const languageMode = [];
+    if (this.config.mode && this.#languageModes.has(this.config.mode)) {
+      languageMode.push(this.#languageModes.get(this.config.mode));
+    }
 
     const extensions = [
       bracketMatching(),
@@ -781,14 +839,11 @@ class Editor extends EventEmitter {
       lineContentMarkerExtension,
       positionContentMarkerExtension,
       searchHighlightCompartment.of(this.#searchHighlighterExtension([])),
+      languageCompartment.of(languageMode),
       highlightSelectionMatches(),
       // keep last so other extension take precedence
       codemirror.minimalSetup,
     ];
-
-    if (this.config.mode === Editor.modes.js) {
-      extensions.push(codemirrorLangJavascript.javascript());
-    }
 
     if (this.config.placeholder) {
       extensions.push(placeholder(this.config.placeholder));
@@ -1964,11 +2019,26 @@ class Editor extends EventEmitter {
   }
 
   /**
-   * Changes the value of a currently used highlighting mode.
-   * See Editor.modes for the list of all supported modes.
+   * Changes the currently used syntax highlighting mode.
+   *
+   * @param {Object} mode - Any of the modes from Editor.modes
+   * @returns
    */
-  setMode(value) {
-    this.setOption("mode", value);
+  setMode(mode) {
+    if (this.config.cm6) {
+      const cm = editors.get(this);
+      // Fallback to using js syntax highlighting if there is none found
+      const languageMode = this.#languageModes.has(mode)
+        ? this.#languageModes.get(mode)
+        : this.#languageModes.get(Editor.modes.javascript);
+
+      return cm.dispatch({
+        effects: this.#compartments.languageCompartment.reconfigure([
+          languageMode,
+        ]),
+      });
+    }
+    this.setOption("mode", mode);
 
     // If autocomplete was set up and the mode is changing, then
     // turn it off and back on again so the proper mode can be used.
@@ -1976,6 +2046,7 @@ class Editor extends EventEmitter {
       this.setOption("autocomplete", false);
       this.setOption("autocomplete", true);
     }
+    return null;
   }
 
   /**
@@ -2426,7 +2497,7 @@ class Editor extends EventEmitter {
           }
 
           if (!bindingReferences[level]) {
-            bindingReferences[level] = {};
+            bindingReferences[level] = Object.create(null);
           }
           if (!bindingReferences[level][bindingName]) {
             // Put the binding info and related references together for
@@ -3727,6 +3798,7 @@ class Editor extends EventEmitter {
     this.#lineGutterMarkers.clear();
     this.#lineContentMarkers.clear();
     this.#scrollSnapshots.clear();
+    this.#languageModes.clear();
     this.clearSources();
 
     if (this.#prefObserver) {

@@ -128,7 +128,6 @@ extern bool enableArrayBufferTransfer;
 extern bool enableArrayBufferResizable;
 extern bool enableSymbolsAsWeakMapKeys;
 extern bool enableNewSetMethods;
-extern bool enableImportAttributes;
 extern bool enableDestructuringFuse;
 #ifdef JS_GC_ZEAL
 extern uint32_t gZealBits;
@@ -244,9 +243,10 @@ struct ShellContext {
   js::Monitor offThreadMonitor MOZ_UNANNOTATED;
   Vector<OffThreadJob*, 0, SystemAllocPolicy> offThreadJobs;
 
-  // Queued finalization registry cleanup jobs.
-  using FunctionVector = GCVector<JSFunction*, 0, SystemAllocPolicy>;
-  JS::PersistentRooted<FunctionVector> finalizationRegistryCleanupCallbacks;
+  // Queued task callbacks that run after the microtask queue.
+
+  using ObjectVector = GCVector<JSObject*, 0, SystemAllocPolicy>;
+  JS::PersistentRooted<ObjectVector> taskCallbacks;
 };
 
 extern ShellContext* GetShellContext(JSContext* cx);

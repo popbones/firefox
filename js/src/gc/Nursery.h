@@ -146,7 +146,7 @@ class Nursery {
   std::tuple<void*, bool> allocNurseryOrMallocBuffer(JS::Zone* zone,
                                                      size_t nbytes,
                                                      arena_id_t arenaId);
-  std::tuple<void*, bool> allocateBuffer(JS::Zone* zone, size_t nbytes);
+  void* allocateInternalBuffer(JS::Zone* zone, size_t nbytes);
 
   // Like allocNurseryOrMallocBuffer, but returns nullptr if the buffer can't
   // be allocated in the nursery.
@@ -180,8 +180,8 @@ class Nursery {
   void* reallocateBuffer(JS::Zone* zone, gc::Cell* cell, void* oldBuffer,
                          size_t oldBytes, size_t newBytes);
 
-  // Free an object buffer.
-  void freeBuffer(void* buffer, size_t nbytes);
+  // Free an existing buffer.
+  void freeBuffer(JS::Zone* zone, gc::Cell* cell, void* buffer, size_t bytes);
 
   // The maximum number of bytes allowed to reside in nursery buffers.
   static const size_t MaxNurseryBufferSize = 1024;
@@ -208,26 +208,24 @@ class Nursery {
   // bytesUsed can be less than bytesCapacity if not all bytes need to be copied
   // when the buffer is moved.
   enum WasBufferMoved : bool { BufferNotMoved = false, BufferMoved = true };
-  WasBufferMoved maybeMoveRawBufferOnPromotion(void** bufferp, gc::Cell* owner,
-                                               size_t bytesUsed,
-                                               size_t bytesCapacity,
-                                               MemoryUse use, arena_id_t arena);
+  WasBufferMoved maybeMoveRawNurseryOrMallocBufferOnPromotion(
+      void** bufferp, gc::Cell* owner, size_t bytesUsed, size_t bytesCapacity,
+      MemoryUse use, arena_id_t arena);
   template <typename T>
-  WasBufferMoved maybeMoveBufferOnPromotion(T** bufferp, gc::Cell* owner,
-                                            size_t bytesUsed,
-                                            size_t bytesCapacity, MemoryUse use,
-                                            arena_id_t arena) {
-    return maybeMoveRawBufferOnPromotion(reinterpret_cast<void**>(bufferp),
-                                         owner, bytesUsed, bytesCapacity, use,
-                                         arena);
+  WasBufferMoved maybeMoveNurseryOrMallocBufferOnPromotion(
+      T** bufferp, gc::Cell* owner, size_t bytesUsed, size_t bytesCapacity,
+      MemoryUse use, arena_id_t arena) {
+    return maybeMoveRawNurseryOrMallocBufferOnPromotion(
+        reinterpret_cast<void**>(bufferp), owner, bytesUsed, bytesCapacity, use,
+        arena);
   }
   template <typename T>
   WasBufferMoved maybeMoveNurseryOrMallocBufferOnPromotion(T** bufferp,
                                                            gc::Cell* owner,
                                                            size_t nbytes,
                                                            MemoryUse use) {
-    return maybeMoveBufferOnPromotion(bufferp, owner, nbytes, nbytes, use,
-                                      MallocArena);
+    return maybeMoveNurseryOrMallocBufferOnPromotion(bufferp, owner, nbytes,
+                                                     nbytes, use, MallocArena);
   }
 
   WasBufferMoved maybeMoveRawBufferOnPromotion(void** bufferp, gc::Cell* owner,
@@ -243,7 +241,6 @@ class Nursery {
   // should be freed at the end of a minor GC. Buffers are unregistered when
   // their owning objects are tenured.
   [[nodiscard]] bool registerMallocedBuffer(void* buffer, size_t nbytes);
-  void registerBuffer(void* buffer, size_t nbytes);
 
   // Mark a malloced buffer as no longer needing to be freed.
   inline void removeMallocedBuffer(void* buffer, size_t nbytes);
@@ -389,8 +386,11 @@ class Nursery {
   }
 
   inline void addMallocedBufferBytes(size_t nbytes);
+  inline void removeMallocedBufferBytes(size_t nbytes);
 
   mozilla::TimeStamp lastCollectionEndTime() const;
+
+  size_t capacity() const { return capacity_; }
 
  private:
   struct Space;
@@ -407,8 +407,6 @@ class Nursery {
   using ProfileDurations =
       mozilla::EnumeratedArray<ProfileKey, mozilla::TimeDuration,
                                size_t(ProfileKey::KeyCount)>;
-
-  size_t capacity() const { return capacity_; }
 
   // Total number of chunks and the capacity of the current nursery
   // space. Chunks will be lazily allocated and added to the chunks array up to
@@ -476,7 +474,8 @@ class Nursery {
   const js::gc::GCSchedulingTunables& tunables() const;
 
   void getAllocFlagsForZone(JS::Zone* zone, bool* allocObjectsOut,
-                            bool* allocStringsOut, bool* allocBigIntsOut);
+                            bool* allocStringsOut, bool* allocBigIntsOut,
+                            bool* allocGetterSettersOut);
   void updateAllZoneAllocFlags();
   void updateAllocFlagsForZone(JS::Zone* zone);
   void discardCodeAndSetJitFlagsForZone(JS::Zone* zone);

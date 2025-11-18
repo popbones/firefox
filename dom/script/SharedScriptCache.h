@@ -11,18 +11,17 @@
 #include "js/loader/LoadedScript.h"          // JS::loader::LoadedScript
 #include "js/loader/ScriptKind.h"            // JS::loader::ScriptKind
 #include "js/loader/ScriptLoadRequest.h"     // JS::loader::ScriptLoadRequest
-#include "mozilla/RefPtr.h"                  // RefPtr
-#include "mozilla/WeakPtr.h"                 // SupportsWeakPtr
 #include "mozilla/CORSMode.h"                // mozilla::CORSMode
 #include "mozilla/MemoryReporting.h"         // MallocSizeOf
+#include "mozilla/RefPtr.h"                  // RefPtr
 #include "mozilla/SharedSubResourceCache.h"  // SharedSubResourceCache, SharedSubResourceCacheLoadingValueBase, SubResourceNetworkMetadataHolder
+#include "mozilla/WeakPtr.h"                 // SupportsWeakPtr
 #include "mozilla/dom/CacheExpirationTime.h"  // CacheExpirationTime
+#include "mozilla/dom/SRIMetadata.h"          // mozilla::dom::SRIMetadata
 #include "nsIMemoryReporter.h"  // nsIMemoryReporter, NS_DECL_NSIMEMORYREPORTER
-#include "nsIObserver.h"        // nsIObserver, NS_DECL_NSIOBSERVER
 #include "nsIPrincipal.h"       // nsIPrincipal
 #include "nsISupports.h"        // nsISupports, NS_DECL_ISUPPORTS
 #include "nsStringFwd.h"        // nsACString
-#include "mozilla/dom/SRIMetadata.h"  // mozilla::dom::SRIMetadata
 
 namespace mozilla {
 namespace dom {
@@ -177,15 +176,13 @@ struct SharedScriptCacheTraits {
 
 class SharedScriptCache final
     : public SharedSubResourceCache<SharedScriptCacheTraits, SharedScriptCache>,
-      public nsIMemoryReporter,
-      public nsIObserver {
+      public nsIMemoryReporter {
  public:
   using Base =
       SharedSubResourceCache<SharedScriptCacheTraits, SharedScriptCache>;
 
   NS_DECL_ISUPPORTS
   NS_DECL_NSIMEMORYREPORTER
-  NS_DECL_NSIOBSERVER
 
   SharedScriptCache();
   void Init();

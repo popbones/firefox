@@ -7,7 +7,8 @@
 "use strict";
 
 ChromeUtils.defineESModuleGetters(this, {
-  AmpSuggestions: "resource:///modules/urlbar/private/AmpSuggestions.sys.mjs",
+  AmpSuggestions:
+    "moz-src:///browser/components/urlbar/private/AmpSuggestions.sys.mjs",
 });
 
 // relative to `browser.urlbar`
@@ -26,12 +27,14 @@ const REMOTE_SETTINGS_RESULTS = [
 
 const EXPECTED_REMOTE_SETTINGS_URLBAR_RESULT = QuickSuggestTestUtils.ampResult({
   keyword: SEARCH_STRING,
+  suggestedIndex: -1,
 });
 
 const EXPECTED_MERINO_URLBAR_RESULT = QuickSuggestTestUtils.ampResult({
   source: "merino",
   provider: "adm",
   requestId: "request_id",
+  suggestedIndex: -1,
 });
 
 add_setup(async () => {
@@ -252,6 +255,7 @@ add_task(async function multipleMerinoSuggestions() {
         requestId: "request_id",
         source: "merino",
         provider: "adm",
+        suggestedIndex: -1,
       }),
     ],
   });
@@ -355,6 +359,7 @@ add_task(async function dismissals_managed() {
     source: "merino",
     provider: "adm",
     requestId: "request_id",
+    suggestedIndex: -1,
   });
 
   // Do a search. The Merino suggestion should be matched.
@@ -887,7 +892,9 @@ async function doUnmanagedTest({ pref, suggestion }) {
     "quicksuggest-dismissals-changed"
   );
   triggerCommand({
-    feature: UrlbarProviderQuickSuggest,
+    feature: UrlbarProvidersManager.getProvider(
+      UrlbarProviderQuickSuggest.name
+    ),
     command: "dismiss",
     result: context.results[0],
     expectedCountsByCall: {

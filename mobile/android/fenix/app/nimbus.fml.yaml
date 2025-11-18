@@ -43,6 +43,7 @@ features:
         type: Map<HomeScreenSection, Boolean>
         default:
           {
+            "header": true,
             "top-sites": true,
             "jump-back-in": true,
             "bookmarks": true,
@@ -50,17 +51,20 @@ features:
             "pocket": true,
             "pocket-sponsored-stories": true,
             "synced-tabs": true,
+            "collections": true,
           }
     defaults:
       - channel: nightly
         value: {
           "sections-enabled": {
+            "header": true,
             "top-sites": true,
             "jump-back-in": true,
             "bookmarks": true,
             "recent-explorations": true,
             "pocket": true,
             "synced-tabs": true,
+            "collections": true,
           }
         }
   nimbus-validation:
@@ -239,9 +243,9 @@ features:
     description: "A feature that provides server-side configurations for Glean metrics (aka Server Knobs)."
     allow-coenrollment: true
     variables:
-      metrics-enabled:
-        description: "A map of metric base-identifiers to booleans representing the state of the 'enabled' flag for that metric."
-        type: Map<String, Boolean>
+      gleanMetricConfiguration:
+        description: Configuration for Glean Server Knobs
+        type: GleanServerKnobsConfiguration
         default: {}
       enable-event-timestamps:
         description: "Enables precise event timestamps for Glean events"
@@ -466,6 +470,13 @@ features:
           When the feature is enabled the user will see a new composable toolbar instead the previous View based one.
         type: Boolean
         default: false
+    defaults:
+      - channel: nightly
+        value:
+          enabled: true
+      - channel: developer
+        value:
+          enabled: true
 
   remote-tab-management:
     description: >
@@ -602,9 +613,13 @@ features:
       enabled:
         description: If true, the new menu redesign is available.
         type: Boolean
-        default: false
+        default: true
       report-site-issue:
         description: If true, report site issue menu item and preview is available.
+        type: Boolean
+        default: true
+      menu-banner:
+        description: If true, the menu banner is visible.
         type: Boolean
         default: true
     defaults:
@@ -615,30 +630,14 @@ features:
         value:
           report-site-issue: false
 
-  mars:
-    description: Mozilla Ad Routing Service (MARS) unified ads service.
+  override-user-specified-homepage-sections:
+    description: Whether to ignore the user-specified homepage section visibility settings and hide the options in the settings.
     variables:
       enabled:
         description: >
-          Whether or not to enable MARS endpoint to serve sponsored top sites and stories.
+          When true, ignore the user-specified homepage section visibility settings, and hide the toggle options in the settings.
         type: Boolean
         default: false
-
-  compose-homepage:
-    description: Turns on compose homepage.
-    variables:
-      enabled:
-        description: >
-          Whether or not to turn on the compose homepage.
-        type: Boolean
-        default: false
-    defaults:
-      - channel: nightly
-        value:
-          enabled: true
-      - channel: developer
-        value:
-          enabled: true
 
   microsurveys:
     description: Feature for microsurveys.
@@ -646,6 +645,14 @@ features:
       enabled:
         description: >
           When the feature is enabled then microsurveys can be used.
+        type: Boolean
+        default: false
+
+  terms-of-use-prompt:
+    description: Enables the terms of use prompt for users who have not accepted ToU
+    variables:
+      enabled:
+        description: When the feature is enabled then the prompt can show for users.
         type: Boolean
         default: false
 
@@ -681,11 +688,11 @@ features:
         description: >
           Whether or not to enable trending searches.
         type: Boolean
-        default: false
+        default: true
       max-suggestions:
         description: The number of maximum suggestions.
         type: Int
-        default: 4
+        default: 5
 
   recent-searches:
     description: Enables recent searches.
@@ -694,11 +701,11 @@ features:
         description: >
           Whether or not to enable recent searches.
         type: Boolean
-        default: false
+        default: true
       max-suggestions:
         description: The number of maximum suggestions.
         type: Int
-        default: 4
+        default: 5
 
   top-sites-suggestions:
     description: Enables top sites suggestions.
@@ -707,11 +714,11 @@ features:
         description: >
           Whether or not to enable top sites suggestions.
         type: Boolean
-        default: false
+        default: true
       max-suggestions:
         description: The number of maximum suggestions.
         type: Int
-        default: 4
+        default: 2
 
   search-suggestions-on-homepage:
     description: Enables search suggestions on homepage.
@@ -748,6 +755,15 @@ features:
           Whether or not to hide frecent top sites on the homepage.
         type: Boolean
         default: false
+
+  unified-trust-panel:
+    description: Enables the unified trust panel.
+    variables:
+      enabled:
+        description: >
+          Whether or not to enable the unified trust panel.
+        type: Boolean
+        default: true
 
   user-characteristics:
     description: A feature for control user characteristic data collection
@@ -867,7 +883,7 @@ features:
         description: >
           When `true`, include DoH settings in the settings UI.
         type: Boolean
-        default: false
+        default: true
       autoselect-enabled:
         description: >
           Controls the network.android_doh.autoselect_enabled pref and automatically chooses a DoH provider when Default Protection mode is selected.
@@ -882,6 +898,33 @@ features:
           Whether or not to enable private browsing mode lock.
         type: Boolean
         default: true
+
+  app-icon-selection:
+    description: Allows the user to set an alternative app launcher icon.
+    variables:
+      enabled:
+        description: Whether or not the feature is available for the user.
+        type: Boolean
+        default: false
+    defaults:
+      - channel: developer
+        value:
+          enabled: true
+      - channel: nightly
+        value:
+          enabled: true
+      - channel: beta
+        value:
+          enabled: true
+
+  settings-search:
+      description: Feature to allow users to search for settings.
+      variables:
+        enabled:
+          description: >
+            Enables the user to search for settings.
+          type: Boolean
+          default: false
 
   toolbar-redesign-option:
     description: Control the visibility of toolbar redesign option in settings.
@@ -901,14 +944,111 @@ features:
           Whether or not the expanded toolbar customization option is visible to the user.
         type: Boolean
         default: false
+    defaults:
+      - channel: developer
+        value:
+          show-options: true
+          show-simple-customization: false
+          show-expanded-customization: false
+      - channel: nightly
+        value:
+          show-options: true
+          show-simple-customization: false
+          show-expanded-customization: false
+
+  tab-management-enhancements:
+    description: Control the visibility of the tab management enhancements.
+    variables:
+      enabled:
+        description: >
+          Whether or not to enable the tab management enhancements.
+        type: Boolean
+        default: false
+    defaults:
+      - channel: release
+        value:
+          enabled: false
+      - channel: beta
+        value:
+          enabled: false
+      - channel: nightly
+        value:
+          enabled: false
+
+  address-sync:
+    description: Turns on address sync.
+    variables:
+      enabled:
+        description: >
+          Whether or not to turn on address sync.
+        type: Boolean
+        default: false
+    defaults:
+      - channel: nightly
+        value:
+          enabled: false
+      - channel: developer
+        value:
+          enabled: true
+
+  suppress-sponsored-top-sites:
+    description: Suppress sponsored top sites for new users for 14 days.
+    variables:
+      enabled:
+        description: If true, new users won’t see sponsored tiles for 14 days.
+        type: Boolean
+        default: false
+
+  lna-blocking:
+    description: Feature that allows blocking local network or device access.
+    variables:
+      enabled:
+        description: >
+          Whether or not to turn on local network / device access blocking
+        type: Boolean
+        default: false
+
+  isolated-content-processes:
+    description: Feature that controls content process isolation.
+    variables:
+      enabled:
+        description: >
+          Whether or not to enable isolated content processes.
+        type: Boolean
+        default: false
+
+  custom-review-prompt:
+    description: Feature that controls the Play store in-app custom review prompt.
+    variables:
+      enabled:
+        description: Whether or not to enable the custom review prompt.
+        type: Boolean
+        default: false
 
 types:
-  objects: {}
+  objects:
+    GleanServerKnobsConfiguration:
+      description: A configuration object for Glean server knobs.
+      fields:
+        metrics_enabled:
+          description: A map of metric base-identifiers to booleans representing the state of the 'enabled' flag for that metric.
+          type: Map<String, Boolean>
+          default: {}
+        pings_enabled:
+          description: A map of ping names to booleans representing the state of the 'enabled' flag for that ping.
+          type: Map<String, Boolean>
+          default: {}
+        event_threshold:
+          description: The threshold of events that will be buffered before an events ping is collected and submitted.
+          type: Option<Int>
+          default: null
 
   enums:
     HomeScreenSection:
       description: The identifiers for the sections of the homescreen.
       variants:
+        header:
+          description: The header of the homescreen.
         top-sites:
           description: The frecency and pinned sites.
         bookmarks:
@@ -923,6 +1063,8 @@ types:
           description: Subsection of the Pocket homescreen section which shows sponsored stories.
         synced-tabs:
           description: The synced tabs section of the homepage.
+        collections:
+          description: The collections section of the homepage.
 
     MR2022Section:
       description: The identifiers for the sections of the MR 2022.

@@ -146,7 +146,7 @@ class CustomTabsTest : TestSetup() {
             waitUntilDownloadSnackbarGone()
         }
         mDevice.openNotification()
-        notificationShade {
+            notificationShade {
             verifySystemNotificationExists("Download completed")
         }
     }
@@ -258,7 +258,7 @@ class CustomTabsTest : TestSetup() {
 
         customTabScreen {
             clickPageObject(itemWithText("PDF form file"))
-            clickPageObject(itemWithResIdAndText("android:id/button2", "CANCEL"))
+            clickPageObject(itemWithResIdAndText("android:id/button2", "Cancel"))
             waitForPageToLoad()
             verifyPDFReaderToolbarItems()
             verifyCustomTabCloseButton()

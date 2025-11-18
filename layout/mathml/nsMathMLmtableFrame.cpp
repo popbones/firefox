@@ -4,26 +4,25 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "gfxContext.h"
 #include "nsMathMLmtableFrame.h"
-#include "nsPresContext.h"
-#include "nsStyleConsts.h"
-#include "nsNameSpaceManager.h"
-#include "nsCSSRendering.h"
-#include "mozilla/dom/MathMLElement.h"
 
-#include "nsCRT.h"
-#include "nsTArray.h"
-#include "nsTableFrame.h"
-#include "celldata.h"
-
-#include "mozilla/PresShell.h"
-#include "mozilla/RestyleManager.h"
 #include <algorithm>
 
-#include "nsIScriptError.h"
+#include "celldata.h"
+#include "gfxContext.h"
+#include "mozilla/PresShell.h"
+#include "mozilla/RestyleManager.h"
+#include "mozilla/dom/MathMLElement.h"
+#include "nsCRT.h"
+#include "nsCSSRendering.h"
 #include "nsContentUtils.h"
+#include "nsIScriptError.h"
 #include "nsLayoutUtils.h"
+#include "nsNameSpaceManager.h"
+#include "nsPresContext.h"
+#include "nsStyleConsts.h"
+#include "nsTArray.h"
+#include "nsTableFrame.h"
 
 using namespace mozilla;
 using namespace mozilla::image;
@@ -647,7 +646,7 @@ nsMathMLmtableWrapperFrame::~nsMathMLmtableWrapperFrame() = default;
 
 nsresult nsMathMLmtableWrapperFrame::AttributeChanged(int32_t aNameSpaceID,
                                                       nsAtom* aAttribute,
-                                                      int32_t aModType) {
+                                                      AttrModType aModType) {
   // Attributes specific to <mtable>:
   // frame         : in mathml.css
   // framespacing  : here
@@ -1021,7 +1020,7 @@ nsMathMLmtrFrame::~nsMathMLmtrFrame() = default;
 
 nsresult nsMathMLmtrFrame::AttributeChanged(int32_t aNameSpaceID,
                                             nsAtom* aAttribute,
-                                            int32_t aModType) {
+                                            AttrModType aModType) {
   // Attributes specific to <mtr>:
   // groupalign  : Not yet supported.
   // rowalign    : Here
@@ -1074,7 +1073,7 @@ void nsMathMLmtdFrame::Init(nsIContent* aContent, nsContainerFrame* aParent,
 
 nsresult nsMathMLmtdFrame::AttributeChanged(int32_t aNameSpaceID,
                                             nsAtom* aAttribute,
-                                            int32_t aModType) {
+                                            AttrModType aModType) {
   // Attributes specific to <mtd>:
   // groupalign  : Not yet supported
   // rowalign    : here

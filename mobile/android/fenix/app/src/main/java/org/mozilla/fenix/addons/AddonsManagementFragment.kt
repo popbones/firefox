@@ -29,7 +29,6 @@ import mozilla.components.feature.addons.ui.AddonsManagerAdapter
 import org.mozilla.fenix.BrowserDirection
 import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.R
-import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.databinding.FragmentAddOnsManagementBinding
 import org.mozilla.fenix.ext.components
 import org.mozilla.fenix.ext.requireComponents
@@ -37,6 +36,7 @@ import org.mozilla.fenix.ext.runIfFragmentIsAttached
 import org.mozilla.fenix.ext.showToolbar
 import org.mozilla.fenix.settings.SupportUtils.AMO_HOMEPAGE_FOR_ANDROID
 import org.mozilla.fenix.theme.ThemeManager
+import mozilla.components.feature.addons.R as addonsR
 
 /**
  * Fragment use for managing add-ons.
@@ -148,7 +148,7 @@ class AddonsManagementFragment : Fragment(R.layout.fragment_add_ons_management) 
                         binding?.let {
                             showSnackBar(
                                 it.root,
-                                getString(R.string.mozac_feature_addons_failed_to_query_extensions),
+                                getString(addonsR.string.mozac_feature_addons_failed_to_query_extensions),
                             )
                         }
                         binding?.addOnsProgressBar?.isVisible = false
@@ -176,14 +176,14 @@ class AddonsManagementFragment : Fragment(R.layout.fragment_add_ons_management) 
     }
 
     @VisibleForTesting
-    internal fun provideAddonManger(): AddonManager {
+    internal fun provideAddonManager(): AddonManager {
         return requireContext().components.addonManager
     }
 
     internal fun installAddon(addon: Addon) {
         binding?.addonProgressOverlay?.overlayCardView?.visibility = View.VISIBLE
 
-        if (browsingModeManager.mode == BrowsingMode.Private) {
+        if (requireComponents.appStore.state.mode.isPrivate) {
             binding?.addonProgressOverlay?.overlayCardView?.setBackgroundColor(
                 ContextCompat.getColor(
                     requireContext(),
@@ -192,7 +192,7 @@ class AddonsManagementFragment : Fragment(R.layout.fragment_add_ons_management) 
             )
         }
 
-        val installOperation = provideAddonManger().installAddon(
+        val installOperation = provideAddonManager().installAddon(
             url = addon.downloadUrl,
             installationMethod = InstallationMethod.MANAGER,
             onSuccess = {

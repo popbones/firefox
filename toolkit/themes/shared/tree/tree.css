@@ -107,8 +107,11 @@ treechildren::-moz-tree-line(selected, focus) {
 /* ::::: tree separator ::::: */
 
 treechildren::-moz-tree-separator {
-  border-top: 1px solid ThreeDShadow;
-  border-bottom: 1px solid ThreeDHighlight;
+  border-top: 1px solid color-mix(in srgb, currentColor 50%, transparent);
+
+  @media (prefers-contrast) {
+    border-top: 2px solid currentColor;
+  }
 }
 
 /* ::::: drop feedback ::::: */
@@ -240,7 +243,7 @@ html|input.tree-input {
   appearance: none;
   flex: 1;
   border: 0;
-  border-radius: 2px;
+  border-radius: var(--border-radius-xsmall);
   outline: var(--focus-outline);
   margin-block: -1px 0;
   margin-inline: -2px 0;

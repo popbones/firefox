@@ -110,6 +110,9 @@ bool GetModuleStatusName(JSContext* cx, JS::Handle<JS::Value> from,
 
   const char* statusStr = nullptr;
   switch (static_cast<ModuleStatus>(from.toInt32())) {
+    case ModuleStatus::New:
+      statusStr = "New";
+      break;
     case ModuleStatus::Unlinked:
       statusStr = "Unlinked";
       break;
@@ -361,6 +364,9 @@ bool ModuleTypeToString(JSContext* cx, JS::Handle<JSObject*> owner,
       break;
     case JS::ModuleType::JSON:
       to.setString(cx->names().json);
+      break;
+    case JS::ModuleType::CSS:
+      MOZ_ASSERT_UNREACHABLE("CSS modules are not supported in the shell");
       break;
   }
 

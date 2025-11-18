@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <ostream>
+
 #include "ErrorList.h"
 #include "js/RootingAPI.h"
 #include "mozilla/Assertions.h"
@@ -42,7 +43,8 @@ class AbstractRange : public nsISupports,
       mozilla::dom::AllowRangeCrossShadowBoundary;
 
  protected:
-  explicit AbstractRange(nsINode* aNode, bool aIsDynamicRange);
+  explicit AbstractRange(nsINode* aNode, bool aIsDynamicRange,
+                         TreeKind aBoundaryTreeKind);
   virtual ~AbstractRange();
 
  public:

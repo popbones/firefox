@@ -8,6 +8,7 @@ import android.content.ActivityNotFoundException
 import android.content.ClipboardManager
 import android.content.Context
 import android.view.View
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.MainScope
@@ -1513,6 +1514,47 @@ class ContextMenuCandidateTest {
     }
 
     @Test
+    fun `Candidate 'Copy Link' for videos`() {
+        val parentView = CoordinatorLayout(testContext)
+
+        val copyLink = ContextMenuCandidate.createCopyLinkCandidate(
+            testContext,
+            parentView,
+            snackbarDelegate,
+        )
+
+        assertTrue(
+            copyLink.showFor(
+                createTab("https://www.mozilla.org"),
+                HitResult.VIDEO("https://www.mozilla.org"),
+            ),
+        )
+
+        val store = BrowserStore(
+            initialState = BrowserState(
+                tabs = listOf(
+                    createTab("https://www.mozilla.org", id = "mozilla", private = true),
+                ),
+                selectedTabId = "mozilla",
+            ),
+        )
+
+        copyLink.action.invoke(
+            store.state.tabs.first(),
+            HitResult.VIDEO(src = "https://www.video_test.com", title = "video_test"),
+        )
+
+        assertTrue(snackbarDelegate.hasShownSnackbar)
+
+        val clipboardManager =
+            testContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        assertEquals(
+            "https://www.video_test.com",
+            clipboardManager.primaryClip!!.getItemAt(0).text,
+        )
+    }
+
+    @Test
     fun `Candidate 'Copy Link' allows for an additional validation for it to be shown`() {
         val additionalValidation = { _: SessionState, _: HitResult -> false }
         val copyLink = ContextMenuCandidate.createCopyLinkCandidate(
@@ -2132,9 +2174,11 @@ private class TestSnackbarDelegate : SnackbarDelegate {
         snackBarParentView: View,
         text: Int,
         subText: String?,
+        subTextOverflow: TextOverflow?,
         duration: Int,
         isError: Boolean,
         action: Int,
+        withDismissAction: Boolean,
         listener: ((v: View) -> Unit)?,
     ) {
         hasShownSnackbar = true
@@ -2145,9 +2189,11 @@ private class TestSnackbarDelegate : SnackbarDelegate {
         snackBarParentView: View,
         text: String,
         subText: String?,
+        subTextOverflow: TextOverflow?,
         duration: Int,
         isError: Boolean,
         action: String?,
+        withDismissAction: Boolean,
         listener: ((v: View) -> Unit)?,
-    ) = show(snackBarParentView, 0, "", duration, isError, 0, listener)
+    ) = show(snackBarParentView, 0, "", null, duration, isError, 0, false, listener)
 }

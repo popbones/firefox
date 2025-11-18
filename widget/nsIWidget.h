@@ -352,9 +352,11 @@ class nsIWidget : public nsISupports {
   typedef mozilla::widget::TextEventDispatcher TextEventDispatcher;
   typedef mozilla::widget::TextEventDispatcherListener
       TextEventDispatcherListener;
+  typedef mozilla::LayoutDeviceMargin LayoutDeviceMargin;
   typedef mozilla::LayoutDeviceIntMargin LayoutDeviceIntMargin;
   typedef mozilla::LayoutDeviceIntPoint LayoutDeviceIntPoint;
   typedef mozilla::LayoutDeviceIntRect LayoutDeviceIntRect;
+  typedef mozilla::LayoutDeviceRect LayoutDeviceRect;
   typedef mozilla::LayoutDeviceIntRegion LayoutDeviceIntRegion;
   typedef mozilla::LayoutDeviceIntSize LayoutDeviceIntSize;
   typedef mozilla::ScreenIntPoint ScreenIntPoint;
@@ -772,6 +774,9 @@ class nsIWidget : public nsISupports {
 
   virtual void MoveToWorkspace(const nsAString& workspaceID) = 0;
 
+  // Assume that it is not, since most widgets are not cloaked.
+  virtual bool IsCloaked() const { return false; }
+
   /**
    * Suppress animations that are applied to a window by OS.
    */
@@ -1074,11 +1079,14 @@ class nsIWidget : public nsISupports {
   virtual void SetWindowAnimationType(WindowAnimationType aType) = 0;
 
   /**
-   * Specifies whether the window title should be drawn even if the window
-   * contents extend into the titlebar. Ignored on windows that don't draw
-   * in the titlebar. Only implemented on macOS.
+   * Specifies whether the titlebar separator should be hidden.
+   * Only implemented on macOS.
    */
-  virtual void SetDrawsTitle(bool aDrawTitle) {}
+  virtual void SetHideTitlebarSeparator(bool) {}
+
+  // Returns whether the macOS titlebar direction is RTL instead of LTR.
+  // TODO(emilio): Maybe generalize to other OSes?
+  virtual bool IsMacTitlebarDirectionRTL() { return false; }
 
   /**
    * Hide window chrome (borders, buttons) for this widget.
@@ -1931,11 +1939,6 @@ class nsIWidget : public nsISupports {
    * Clear WebRender resources
    */
   virtual void ClearCachedWebrenderResources() {}
-
-  /**
-   * Clear WebRender animation resources
-   */
-  virtual void ClearWebrenderAnimationResources() {}
 
   /**
    * Request fast snapshot at RenderCompositor of WebRender.

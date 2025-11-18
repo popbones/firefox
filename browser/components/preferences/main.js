@@ -2,6 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/**@import { SettingGroup } from "./widgets/setting-group/setting-group.mjs" */
+/** @import { PreferencesSettingsConfig } from "chrome://global/content/preferences/Preferences.mjs" */
+
 /* import-globals-from extensionControlled.js */
 /* import-globals-from preferences.js */
 /* import-globals-from /toolkit/mozapps/preferences/fontbuilder.js */
@@ -31,8 +34,6 @@ const PREF_CONTAINERS_EXTENSION = "privacy.userContext.extension";
 // Strings to identify ExtensionSettingsStore overrides
 const CONTAINERS_KEY = "privacy.containers";
 
-const PREF_CONTENT_APPEARANCE =
-  "layout.css.prefers-color-scheme.content-override";
 const FORCED_COLORS_QUERY = matchMedia("(forced-colors)");
 
 const AUTO_UPDATE_CHANGED_TOPIC =
@@ -57,6 +58,7 @@ Preferences.addAll([
 
   // Downloads
   { id: "browser.download.useDownloadDir", type: "bool", inverted: true },
+  { id: "browser.download.enableDeletePrivate", type: "bool" },
   { id: "browser.download.deletePrivate", type: "bool" },
   { id: "browser.download.always_ask_before_handling_new_types", type: "bool" },
   { id: "browser.download.folderList", type: "int" },
@@ -148,8 +150,6 @@ Preferences.addAll([
   { id: "accessibility.tabfocus", type: "int" },
   { id: "browser.ml.linkPreview.enabled", type: "bool" },
   { id: "browser.ml.linkPreview.optin", type: "bool" },
-  { id: "browser.ml.linkPreview.shift", type: "bool" },
-  { id: "browser.ml.linkPreview.shiftAlt", type: "bool" },
   { id: "browser.ml.linkPreview.longPress", type: "bool" },
 
   {
@@ -184,6 +184,9 @@ Preferences.addAll([
 
   // Media
   { id: "media.hardwaremediakeys.enabled", type: "bool" },
+
+  // Appearance
+  { id: "layout.css.prefers-color-scheme.content-override", type: "int" },
 ]);
 
 if (AppConstants.HAVE_SHELL_SERVICE) {
@@ -280,15 +283,6 @@ Preferences.addSetting({
   visible: () => LinkPreview.canShowKeyPoints,
 });
 Preferences.addSetting({
-  id: "linkPreviewShift",
-  pref: "browser.ml.linkPreview.shift",
-});
-Preferences.addSetting({
-  id: "linkPreviewShiftAlt",
-  pref: "browser.ml.linkPreview.shiftAlt",
-  visible: () => LinkPreview.canShowLegacy,
-});
-Preferences.addSetting({
   id: "linkPreviewLongPress",
   pref: "browser.ml.linkPreview.longPress",
 });
@@ -331,8 +325,467 @@ Preferences.addSetting({
   id: "cfrRecommendations-features",
   pref: "browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features",
 });
+Preferences.addSetting({
+  id: "web-appearance-override-warning",
+  setup: emitChange => {
+    FORCED_COLORS_QUERY.addEventListener("change", emitChange);
+    return () => FORCED_COLORS_QUERY.removeEventListener("change", emitChange);
+  },
+  visible: () => {
+    return FORCED_COLORS_QUERY.matches;
+  },
+});
 
+Preferences.addSetting({
+  id: "web-appearance-chooser",
+  themeNames: ["dark", "light", "auto"],
+  pref: "layout.css.prefers-color-scheme.content-override",
+  setup(emitChange) {
+    Services.obs.addObserver(emitChange, "look-and-feel-changed");
+    return () =>
+      Services.obs.removeObserver(emitChange, "look-and-feel-changed");
+  },
+  get(val, _, setting) {
+    return this.themeNames[val] || this.themeNames[setting.pref.defaultValue];
+  },
+  set(val) {
+    return this.themeNames.indexOf(val);
+  },
+  getControlConfig(config) {
+    // Set the auto theme image to the light/dark that matches.
+    let systemThemeIndex = Services.appinfo.contentThemeDerivedColorSchemeIsDark
+      ? 2
+      : 1;
+    config.options[0].controlAttrs = {
+      ...config.options[0].controlAttrs,
+      imagesrc: config.options[systemThemeIndex].controlAttrs.imagesrc,
+    };
+    return config;
+  },
+});
+
+Preferences.addSetting({
+  id: "web-appearance-manage-themes-link",
+  onUserClick: e => {
+    e.preventDefault();
+    window.browsingContext.topChromeWindow.BrowserAddonUI.openAddonsMgr(
+      "addons://list/theme"
+    );
+  },
+});
+
+Preferences.addSetting({ id: "zoomPlaceholder" });
+
+// Downloads
+/*
+ * Preferences:
+ *
+ * browser.download.useDownloadDir - bool
+ *   True - Save files directly to the folder configured via the
+ *   browser.download.folderList preference.
+ *   False - Always ask the user where to save a file and default to
+ *  browser.download.lastDir when displaying a folder picker dialog.
+ *  browser.download.deletePrivate - bool
+ *   True - Delete files that were downloaded in a private browsing session
+ *   on close of the session
+ *   False - Keep files that were downloaded in a private browsing
+ *   session
+ * browser.download.always_ask_before_handling_new_types - bool
+ *   Defines the default behavior for new file handlers.
+ *   True - When downloading a file that doesn't match any existing
+ *   handlers, ask the user whether to save or open the file.
+ *   False - Save the file. The user can change the default action in
+ *   the Applications section in the preferences UI.
+ * browser.download.dir - local file handle
+ *   A local folder the user may have selected for downloaded files to be
+ *   saved. Migration of other browser settings may also set this path.
+ *   This folder is enabled when folderList equals 2.
+ * browser.download.lastDir - local file handle
+ *   May contain the last folder path accessed when the user browsed
+ *   via the file save-as dialog. (see contentAreaUtils.js)
+ * browser.download.folderList - int
+ *   Indicates the location users wish to save downloaded files too.
+ *   It is also used to display special file labels when the default
+ *   download location is either the Desktop or the Downloads folder.
+ *   Values:
+ *     0 - The desktop is the default download location.
+ *     1 - The system's downloads folder is the default download location.
+ *     2 - The default download location is elsewhere as specified in
+ *         browser.download.dir.
+ * browser.download.downloadDir
+ *   deprecated.
+ * browser.download.defaultFolder
+ *   deprecated.
+ */
+
+/**
+ * Helper object for managing the various downloads related settings.
+ */
+const DownloadsHelpers = new (class DownloadsHelpers {
+  folder;
+  folderPath;
+  folderHostPath;
+  displayName;
+  downloadsDir;
+  desktopDir;
+  downloadsFolderLocalizedName;
+  desktopFolderLocalizedName;
+
+  setupDownloadsHelpersFields = async () => {
+    this.downloadsDir = await this._getDownloadsFolder("Downloads");
+    this.desktopDir = await this._getDownloadsFolder("Desktop");
+    [this.downloadsFolderLocalizedName, this.desktopFolderLocalizedName] =
+      await document.l10n.formatValues([
+        { id: "downloads-folder-name" },
+        { id: "desktop-folder-name" },
+      ]);
+  };
+
+  /**
+   * Returns the Downloads folder.  If aFolder is "Desktop", then the Downloads
+   * folder returned is the desktop folder; otherwise, it is a folder whose name
+   * indicates that it is a download folder and whose path is as determined by
+   * the XPCOM directory service via the download manager's attribute
+   * defaultDownloadsDirectory.
+   *
+   * @throws if aFolder is not "Desktop" or "Downloads"
+   */
+  async _getDownloadsFolder(aFolder) {
+    switch (aFolder) {
+      case "Desktop":
+        return Services.dirsvc.get("Desk", Ci.nsIFile);
+      case "Downloads": {
+        let downloadsDir = await Downloads.getSystemDownloadsDirectory();
+        return new FileUtils.File(downloadsDir);
+      }
+    }
+    throw new Error(
+      "ASSERTION FAILED: folder type should be 'Desktop' or 'Downloads'"
+    );
+  }
+
+  _getSystemDownloadFolderDetails(folderIndex) {
+    let currentDirPref = Preferences.get("browser.download.dir");
+
+    let file;
+    let firefoxLocalizedName;
+    if (folderIndex == 2 && currentDirPref.value) {
+      file = currentDirPref.value;
+      if (file.equals(this.downloadsDir)) {
+        folderIndex = 1;
+      } else if (file.equals(this.desktopDir)) {
+        folderIndex = 0;
+      }
+    }
+    switch (folderIndex) {
+      case 2: // custom path, handled above.
+        break;
+
+      case 1: {
+        // downloads
+        file = this.downloadsDir;
+        firefoxLocalizedName = this.downloadsFolderLocalizedName;
+        break;
+      }
+
+      case 0:
+      // fall through
+      default: {
+        file = this.desktopDir;
+        firefoxLocalizedName = this.desktopFolderLocalizedName;
+      }
+    }
+
+    if (file) {
+      let displayName = file.path;
+
+      // Attempt to translate path to the path as exists on the host
+      // in case the provided path comes from the document portal
+      if (AppConstants.platform == "linux") {
+        if (this.folderHostPath && displayName == this.folderPath) {
+          displayName = this.folderHostPath;
+          if (displayName == this.downloadsDir.path) {
+            firefoxLocalizedName = this.downloadsFolderLocalizedName;
+          } else if (displayName == this.desktopDir.path) {
+            firefoxLocalizedName = this.desktopFolderLocalizedName;
+          }
+        } else if (displayName != this.folderPath) {
+          this.folderHostPath = null;
+          try {
+            file.hostPath().then(folderHostPath => {
+              this.folderHostPath = folderHostPath;
+              Preferences.getSetting("downloadFolder")?.onChange();
+            });
+          } catch (error) {
+            /* ignored */
+          }
+        }
+      }
+
+      if (firefoxLocalizedName) {
+        let folderDisplayName, leafName;
+        // Either/both of these can throw, so check for failures in both cases
+        // so we don't just break display of the download pref:
+        try {
+          folderDisplayName = file.displayName;
+        } catch (ex) {
+          /* ignored */
+        }
+        try {
+          leafName = file.leafName;
+        } catch (ex) {
+          /* ignored */
+        }
+
+        // If we found a localized name that's different from the leaf name,
+        // use that:
+        if (folderDisplayName && folderDisplayName != leafName) {
+          return { file, folderDisplayName };
+        }
+
+        // Otherwise, check if we've got a localized name ourselves.
+        // You can't move the system download or desktop dir on macOS,
+        // so if those are in use just display them. On other platforms
+        // only do so if the folder matches the localized name.
+        if (
+          AppConstants.platform == "macosx" ||
+          leafName == firefoxLocalizedName
+        ) {
+          return { file, folderDisplayName: firefoxLocalizedName };
+        }
+      }
+
+      // If we get here, attempts to use a "pretty" name failed. Just display
+      // the full path:
+      // Force the left-to-right direction when displaying a custom path.
+      return { file, folderDisplayName: `\u2066${displayName}\u2069` };
+    }
+
+    // Don't even have a file - fall back to desktop directory for the
+    // use of the icon, and an empty label:
+    file = this.desktopDir;
+    return { file, folderDisplayName: "" };
+  }
+
+  /**
+   * Determines the type of the given folder.
+   *
+   * @param   aFolder
+   *          the folder whose type is to be determined
+   * @returns integer
+   *          0 if aFolder is the Desktop or is unspecified,
+   *          1 if aFolder is the Downloads folder,
+   *          2 otherwise
+   */
+  _folderToIndex(aFolder) {
+    if (!aFolder || aFolder.equals(this.desktopDir)) {
+      return 0;
+    } else if (aFolder.equals(this.downloadsDir)) {
+      return 1;
+    }
+    return 2;
+  }
+
+  getFolderDetails() {
+    let folderIndex = Preferences.get("browser.download.folderList").value;
+    let { folderDisplayName, file } =
+      this._getSystemDownloadFolderDetails(folderIndex);
+
+    this.folderPath = file?.path ?? "";
+    this.displayName = folderDisplayName;
+  }
+
+  setFolder(folder) {
+    this.folder = folder;
+
+    let folderListPref = Preferences.get("browser.download.folderList");
+    folderListPref.value = this._folderToIndex(this.folder);
+  }
+})();
+
+Preferences.addSetting({
+  id: "browserDownloadFolderList",
+  pref: "browser.download.folderList",
+});
+Preferences.addSetting({
+  id: "downloadFolder",
+  pref: "browser.download.dir",
+  deps: ["browserDownloadFolderList"],
+  get() {
+    DownloadsHelpers.getFolderDetails();
+    return DownloadsHelpers.folderPath;
+  },
+  set(folder) {
+    DownloadsHelpers.setFolder(folder);
+    return DownloadsHelpers.folder;
+  },
+  getControlConfig(config) {
+    if (DownloadsHelpers.displayName) {
+      return {
+        ...config,
+        controlAttrs: {
+          ...config.controlAttrs,
+          ".displayValue": DownloadsHelpers.displayName,
+        },
+      };
+    }
+    return {
+      ...config,
+    };
+  },
+  setup(emitChange) {
+    DownloadsHelpers.setupDownloadsHelpersFields().then(emitChange);
+  },
+  disabled: ({ browserDownloadFolderList }) => {
+    return browserDownloadFolderList.locked;
+  },
+});
+Preferences.addSetting({
+  id: "alwaysAsk",
+  pref: "browser.download.useDownloadDir",
+});
+Preferences.addSetting({
+  id: "enableDeletePrivate",
+  pref: "browser.download.enableDeletePrivate",
+});
+Preferences.addSetting({
+  id: "deletePrivate",
+  pref: "browser.download.deletePrivate",
+  deps: ["enableDeletePrivate"],
+  visible: ({ enableDeletePrivate }) => enableDeletePrivate.value,
+  onUserChange() {
+    Services.prefs.setBoolPref("browser.download.deletePrivate.chosen", true);
+  },
+});
+
+// Performance settings
+Preferences.addSetting({
+  id: "contentProcessCount",
+  pref: "dom.ipc.processCount",
+});
+Preferences.addSetting({
+  id: "allowHWAccel",
+  pref: "layers.acceleration.disabled",
+  deps: ["useRecommendedPerformanceSettings"],
+  visible({ useRecommendedPerformanceSettings }) {
+    return !useRecommendedPerformanceSettings.value;
+  },
+});
+Preferences.addSetting({
+  id: "useRecommendedPerformanceSettings",
+  pref: "browser.preferences.defaultPerformanceSettings.enabled",
+  deps: ["contentProcessCount", "allowHWAccel"],
+  get(val, { allowHWAccel, contentProcessCount }) {
+    if (
+      allowHWAccel.value != allowHWAccel.pref.defaultValue ||
+      contentProcessCount.value != contentProcessCount.pref.defaultValue
+    ) {
+      return false;
+    }
+    return val;
+  },
+  set(val, { allowHWAccel, contentProcessCount }) {
+    if (val) {
+      contentProcessCount.value = contentProcessCount.pref.defaultValue;
+      allowHWAccel.value = allowHWAccel.pref.defaultValue;
+    }
+    return val;
+  },
+});
+
+/**
+ * @type {Record<string, PreferencesSettingsConfig>} SettingConfig
+ */
 let SETTINGS_CONFIG = {
+  zoom: {
+    // This section is marked as in progress for testing purposes
+    inProgress: true,
+    items: [
+      {
+        id: "zoomPlaceholder",
+        control: "moz-message-bar",
+        controlAttrs: {
+          message: "Placeholder for updated zoom controls",
+        },
+      },
+    ],
+  },
+  appearance: {
+    l10nId: "web-appearance-group",
+    items: [
+      {
+        id: "web-appearance-override-warning",
+        l10nId: "preferences-web-appearance-override-warning3",
+        control: "moz-message-bar",
+      },
+      {
+        id: "web-appearance-chooser",
+        control: "moz-visual-picker",
+        options: [
+          {
+            value: "auto",
+            l10nId: "preferences-web-appearance-choice-auto2",
+            controlAttrs: {
+              id: "preferences-web-appearance-choice-auto",
+              class: "appearance-chooser-item",
+              imagesrc:
+                "chrome://browser/content/preferences/web-appearance-light.svg",
+            },
+          },
+          {
+            value: "light",
+            l10nId: "preferences-web-appearance-choice-light2",
+            controlAttrs: {
+              id: "preferences-web-appearance-choice-light",
+              class: "appearance-chooser-item",
+              imagesrc:
+                "chrome://browser/content/preferences/web-appearance-light.svg",
+            },
+          },
+          {
+            value: "dark",
+            l10nId: "preferences-web-appearance-choice-dark2",
+            controlAttrs: {
+              id: "preferences-web-appearance-choice-dark",
+              class: "appearance-chooser-item",
+              imagesrc:
+                "chrome://browser/content/preferences/web-appearance-dark.svg",
+            },
+          },
+        ],
+      },
+      {
+        id: "web-appearance-manage-themes-link",
+        l10nId: "preferences-web-appearance-link",
+        control: "moz-box-link",
+        controlAttrs: {
+          href: "about:addons",
+        },
+      },
+    ],
+  },
+  downloads: {
+    l10nId: "downloads-header-2",
+    headingLevel: 2,
+    items: [
+      {
+        id: "downloadFolder",
+        l10nId: "download-save-where-2",
+        control: "moz-input-folder",
+        controlAttrs: {
+          id: "chooseFolder",
+        },
+      },
+      {
+        id: "alwaysAsk",
+        l10nId: "download-always-ask-where",
+      },
+      {
+        id: "deletePrivate",
+        l10nId: "download-private-browsing-delete",
+      },
+    ],
+  },
   browsing: {
     l10nId: "browsing-group-label",
     items: [
@@ -400,14 +853,6 @@ let SETTINGS_CONFIG = {
             l10nId: "link-preview-settings-key-points",
           },
           {
-            id: "linkPreviewShift",
-            l10nId: "link-preview-settings-shift",
-          },
-          {
-            id: "linkPreviewShiftAlt",
-            l10nId: "link-preview-settings-shift-alt",
-          },
-          {
             id: "linkPreviewLongPress",
             l10nId: "link-preview-settings-long-press",
           },
@@ -415,12 +860,132 @@ let SETTINGS_CONFIG = {
       },
     ],
   },
+  httpsOnly: {
+    items: [
+      {
+        id: "httpsOnlyRadioGroup",
+        control: "moz-radio-group",
+        l10nId: "httpsonly-label",
+        supportPage: "https-only-prefs",
+        options: [
+          {
+            id: "httpsOnlyRadioEnabled",
+            value: "enabled",
+            l10nId: "httpsonly-radio-enabled",
+          },
+          {
+            id: "httpsOnlyRadioEnabledPBM",
+            value: "privateOnly",
+            l10nId: "httpsonly-radio-enabled-pbm",
+          },
+          {
+            id: "httpsOnlyRadioDisabled",
+            value: "disabled",
+            l10nId: "httpsonly-radio-disabled3",
+            supportPage: "connection-upgrades",
+          },
+        ],
+      },
+      {
+        id: "httpsOnlyExceptionButton",
+        l10nId: "sitedata-cookies-exceptions",
+        control: "moz-box-button",
+        controlAttrs: {
+          "search-l10n-ids":
+            "permissions-address,permissions-allow.label,permissions-remove.label,permissions-remove-all.label,permissions-exceptions-https-only-desc2",
+        },
+      },
+    ],
+  },
+  browsingProtection: {
+    items: [
+      {
+        id: "enableSafeBrowsing",
+        l10nId: "security-enable-safe-browsing",
+        supportPage: "phishing-malware",
+        control: "moz-checkbox",
+        items: [
+          {
+            id: "blockDownloads",
+            l10nId: "security-block-downloads",
+          },
+          {
+            id: "blockUncommonUnwanted",
+            l10nId: "security-block-uncommon-software",
+          },
+        ],
+      },
+    ],
+  },
+  nonTechnicalPrivacy: {
+    l10nId: "non-technical-privacy-label",
+    items: [
+      {
+        id: "gpcEnabled",
+        l10nId: "global-privacy-control-description",
+        supportPage: "global-privacy-control",
+        controlAttrs: {
+          "search-l10n-ids": "global-privacy-control-search",
+        },
+      },
+      {
+        id: "dntRemoval",
+        l10nId: "do-not-track-removal2",
+        control: "moz-box-link",
+        supportPage: "how-do-i-turn-do-not-track-feature",
+      },
+    ],
+  },
+  securityPrivacyStatus: {
+    items: [
+      {
+        id: "privacyCard",
+        control: "security-privacy-card",
+      },
+      {
+        id: "securityWarningsGroup",
+        control: "moz-box-group",
+        controlAttrs: {
+          type: "list",
+        },
+      },
+    ],
+  },
+  performance: {
+    items: [
+      {
+        id: "useRecommendedPerformanceSettings",
+        l10nId: "performance-use-recommended-settings-checkbox",
+        supportPage: "performance",
+      },
+      {
+        id: "allowHWAccel",
+        l10nId: "performance-allow-hw-accel",
+      },
+    ],
+  },
 };
 
+/**
+ * @param {string} id - ID of {@link SettingGroup} custom element.
+ */
 function initSettingGroup(id) {
+  /** @type {SettingGroup} */
   let group = document.querySelector(`setting-group[groupid=${id}]`);
-  if (group && SETTINGS_CONFIG[id]) {
-    group.config = SETTINGS_CONFIG[id];
+  const config = SETTINGS_CONFIG[id];
+  if (group && config) {
+    if (config.inProgress && !srdSectionEnabled(id)) {
+      group.remove();
+      return;
+    }
+
+    let legacySections = document.querySelectorAll(`[data-srd-groupid=${id}]`);
+    for (let section of legacySections) {
+      section.hidden = true;
+      section.removeAttribute("data-category");
+      section.setAttribute("data-hidden-from-search", "true");
+    }
+    group.config = config;
     group.getSetting = Preferences.getSetting.bind(Preferences);
   }
 }
@@ -537,17 +1102,6 @@ var gMainPane = {
     }
 
     this.initBrowserContainers();
-    this.buildContentProcessCountMenuList();
-
-    this.updateDefaultPerformanceSettingsPref();
-
-    let defaultPerformancePref = Preferences.get(
-      "browser.preferences.defaultPerformanceSettings.enabled"
-    );
-    defaultPerformancePref.on("change", () => {
-      this.updatePerformanceSettingsBox({ duringChangeEvent: true });
-    });
-    this.updatePerformanceSettingsBox({ duringChangeEvent: false });
     this.displayUseSystemLocale();
     this.updateProxySettingsUI();
     initializeProxyUI(gMainPane);
@@ -563,7 +1117,12 @@ var gMainPane = {
 
     gMainPane.initTranslations();
 
+    // Initialize settings groups from the config object.
+    initSettingGroup("appearance");
+    initSettingGroup("downloads");
     initSettingGroup("browsing");
+    initSettingGroup("zoom");
+    initSettingGroup("performance");
 
     if (AppConstants.platform == "win") {
       // Functionality for "Show tabs in taskbar" on Windows 7 and up.
@@ -586,10 +1145,9 @@ var gMainPane = {
     const tabGroupSuggestionsCheckbox = document.getElementById(
       "tabGroupSuggestions"
     );
-    const smartTabGroupFeatureEnabled = Services.prefs.getBoolPref(
-      "browser.tabs.groups.smart.enabled",
-      false
-    );
+    const smartTabGroupFeatureEnabled =
+      Services.prefs.getBoolPref("browser.tabs.groups.smart.enabled", false) &&
+      Services.locale.appLocaleAsBCP47.startsWith("en");
     tabGroupSuggestionsCheckbox.hidden = !smartTabGroupFeatureEnabled;
 
     // The "opening multiple tabs might slow down Firefox" warning provides
@@ -716,10 +1274,6 @@ var gMainPane = {
       gMainPane.updateColorsButton.bind(gMainPane)
     );
     gMainPane.updateColorsButton();
-    Preferences.get("layers.acceleration.disabled").on(
-      "change",
-      gMainPane.updateHardwareAcceleration.bind(gMainPane)
-    );
     setEventListener(
       "connectionSettings",
       "command",
@@ -740,11 +1294,14 @@ var gMainPane = {
       "command",
       gMainPane.onMigrationButtonCommand
     );
-    setEventListener(
-      "deletePrivate",
-      "command",
-      gMainPane.onDeletePrivateChanged
-    );
+
+    document
+      .getElementById("browserLayoutShowSidebar")
+      .addEventListener(
+        "command",
+        gMainPane.onShowSidebarCommand.bind(gMainPane),
+        { capture: true }
+      );
 
     document
       .getElementById("migrationWizardDialog")
@@ -754,13 +1311,6 @@ var gMainPane = {
 
     if (Services.policies && !Services.policies.isAllowed("profileImport")) {
       document.getElementById("dataMigrationGroup").remove();
-    }
-
-    if (
-      Services.prefs.getBoolPref("browser.backup.preferences.ui.enabled", false)
-    ) {
-      let backupGroup = document.getElementById("dataBackupGroup");
-      backupGroup.removeAttribute("data-hidden-from-search");
     }
 
     if (!SelectableProfileService.isEnabled) {
@@ -966,16 +1516,6 @@ var gMainPane = {
     setEventListener("filter", "MozInputSearch:search", gMainPane.filter);
     setEventListener("typeColumn", "click", gMainPane.sort);
     setEventListener("actionColumn", "click", gMainPane.sort);
-    setEventListener("chooseFolder", "command", gMainPane.chooseFolder);
-    Preferences.get("browser.download.folderList").on(
-      "change",
-      gMainPane.displayDownloadDirPref.bind(gMainPane)
-    );
-    Preferences.get("browser.download.dir").on(
-      "change",
-      gMainPane.displayDownloadDirPref.bind(gMainPane)
-    );
-    gMainPane.displayDownloadDirPref();
 
     // Listen for window unload so we can remove our preference observers.
     window.addEventListener("unload", this);
@@ -1004,8 +1544,6 @@ var gMainPane = {
       ].map(ContextualIdentityService.formatContextLabel)
     );
 
-    AppearanceChooser.init();
-
     // Notify observers that the UI is now ready
     Services.obs.notifyObservers(window, "main-pane-loaded");
 
@@ -1022,10 +1560,6 @@ var gMainPane = {
       () => this.writeCheckSpelling()
     );
     Preferences.addSyncFromPrefListener(
-      document.getElementById("alwaysAsk"),
-      () => this.readUseDownloadDir()
-    );
-    Preferences.addSyncFromPrefListener(
       document.getElementById("linkTargeting"),
       () => this.readLinkTarget()
     );
@@ -1037,11 +1571,6 @@ var gMainPane = {
       document.getElementById("browserContainersCheckbox"),
       () => this.readBrowserContainersCheckbox()
     );
-
-    if (!Services.prefs.getBoolPref("browser.download.enableDeletePrivate")) {
-      let deletePrivateCheckbox = document.getElementById("deletePrivate");
-      deletePrivateCheckbox.hidden = true;
-    }
 
     this.setInitialized();
   },
@@ -1085,6 +1614,21 @@ var gMainPane = {
     }
 
     return false;
+  },
+
+  /**
+   * Handle toggling the "Show sidebar" checkbox to allow SidebarController to know the
+   * origin of this change.
+   */
+  onShowSidebarCommand(event) {
+    // Note: We useCapture so while the checkbox' checked property is already updated,
+    // the pref value has not yet been changed
+    const willEnable = event.target.checked;
+    if (willEnable) {
+      window.browsingContext.topChromeWindow.SidebarController?.enabledViaSettings(
+        true
+      );
+    }
   },
 
   // CONTAINERS
@@ -2348,10 +2892,6 @@ var gMainPane = {
     gotoPref("containers");
   },
 
-  updateHardwareAcceleration() {
-    // Placeholder for restart on change
-  },
-
   // FONTS
 
   /**
@@ -2464,10 +3004,6 @@ var gMainPane = {
     });
   },
 
-  onDeletePrivateChanged() {
-    Services.prefs.setBoolPref("browser.download.deletePrivate.chosen", true);
-  },
-
   /**
    * Displays the migration wizard dialog in an HTML dialog.
    */
@@ -2549,77 +3085,6 @@ var gMainPane = {
       return 1;
     }
     return 0;
-  },
-
-  updateDefaultPerformanceSettingsPref() {
-    let defaultPerformancePref = Preferences.get(
-      "browser.preferences.defaultPerformanceSettings.enabled"
-    );
-    let processCountPref = Preferences.get("dom.ipc.processCount");
-    let accelerationPref = Preferences.get("layers.acceleration.disabled");
-    if (
-      processCountPref.value != processCountPref.defaultValue ||
-      accelerationPref.value != accelerationPref.defaultValue
-    ) {
-      defaultPerformancePref.value = false;
-    }
-  },
-
-  updatePerformanceSettingsBox() {
-    let defaultPerformancePref = Preferences.get(
-      "browser.preferences.defaultPerformanceSettings.enabled"
-    );
-    let performanceSettings = document.getElementById("performanceSettings");
-    let processCountPref = Preferences.get("dom.ipc.processCount");
-    if (defaultPerformancePref.value) {
-      let accelerationPref = Preferences.get("layers.acceleration.disabled");
-      // Unset the value so process count will be decided by the platform.
-      processCountPref.value = processCountPref.defaultValue;
-      accelerationPref.value = accelerationPref.defaultValue;
-      performanceSettings.hidden = true;
-    } else {
-      performanceSettings.hidden = false;
-    }
-  },
-
-  buildContentProcessCountMenuList() {
-    if (Services.appinfo.fissionAutostart) {
-      document.getElementById("limitContentProcess").hidden = true;
-      document.getElementById("contentProcessCount").hidden = true;
-      document.getElementById("contentProcessCountEnabledDescription").hidden =
-        true;
-      document.getElementById("contentProcessCountDisabledDescription").hidden =
-        true;
-      return;
-    }
-    if (Services.appinfo.browserTabsRemoteAutostart) {
-      let processCountPref = Preferences.get("dom.ipc.processCount");
-      let defaultProcessCount = processCountPref.defaultValue;
-
-      let contentProcessCount =
-        document.querySelector(`#contentProcessCount > menupopup >
-                                menuitem[value="${defaultProcessCount}"]`);
-
-      document.l10n.setAttributes(
-        contentProcessCount,
-        "performance-default-content-process-count",
-        { num: defaultProcessCount }
-      );
-
-      document.getElementById("limitContentProcess").disabled = false;
-      document.getElementById("contentProcessCount").disabled = false;
-      document.getElementById("contentProcessCountEnabledDescription").hidden =
-        false;
-      document.getElementById("contentProcessCountDisabledDescription").hidden =
-        true;
-    } else {
-      document.getElementById("limitContentProcess").disabled = true;
-      document.getElementById("contentProcessCount").disabled = true;
-      document.getElementById("contentProcessCountEnabledDescription").hidden =
-        true;
-      document.getElementById("contentProcessCountDisabledDescription").hidden =
-        false;
-    }
   },
 
   _minUpdatePrefDisableTime: 1000,
@@ -2847,8 +3312,6 @@ var gMainPane = {
       this._translationsView.destroy();
       this._translationsView = null;
     }
-
-    AppearanceChooser.destroy();
   },
 
   // nsISupports
@@ -3145,6 +3608,7 @@ var gMainPane = {
         "action",
         Ci.nsIHandlerInfo.handleInternally
       );
+      internalMenuItem.className = "menuitem-iconic";
       document.l10n.setAttributes(internalMenuItem, "applications-open-inapp");
       internalMenuItem.setAttribute(APP_ICON_ATTR_NAME, "handleInternally");
       menuPopup.appendChild(internalMenuItem);
@@ -3152,6 +3616,7 @@ var gMainPane = {
 
     var askMenuItem = document.createXULElement("menuitem");
     askMenuItem.setAttribute("action", Ci.nsIHandlerInfo.alwaysAsk);
+    askMenuItem.className = "menuitem-iconic";
     document.l10n.setAttributes(askMenuItem, "applications-always-ask");
     askMenuItem.setAttribute(APP_ICON_ATTR_NAME, "ask");
     menuPopup.appendChild(askMenuItem);
@@ -3164,6 +3629,7 @@ var gMainPane = {
       saveMenuItem.setAttribute("action", Ci.nsIHandlerInfo.saveToDisk);
       document.l10n.setAttributes(saveMenuItem, "applications-action-save");
       saveMenuItem.setAttribute(APP_ICON_ATTR_NAME, "save");
+      saveMenuItem.className = "menuitem-iconic";
       menuPopup.appendChild(saveMenuItem);
     }
 
@@ -3196,10 +3662,10 @@ var gMainPane = {
             "app-name": handlerInfo.defaultDescription,
           }
         );
-        defaultMenuItem.setAttribute(
-          "image",
-          handlerInfo.iconURLForSystemDefault
-        );
+        let image = handlerInfo.iconURLForSystemDefault;
+        if (image) {
+          defaultMenuItem.setAttribute("image", image);
+        }
       }
 
       menuPopup.appendChild(defaultMenuItem);
@@ -3224,10 +3690,10 @@ var gMainPane = {
       document.l10n.setAttributes(menuItem, "applications-use-app", {
         "app-name": label,
       });
-      menuItem.setAttribute(
-        "image",
-        this._getIconURLForHandlerApp(possibleApp)
-      );
+      let image = this._getIconURLForHandlerApp(possibleApp);
+      if (image) {
+        menuItem.setAttribute("image", image);
+      }
 
       // Attach the handler app object to the menu item so we can use it
       // to make changes to the datastore when the user selects the item.
@@ -3261,10 +3727,11 @@ var gMainPane = {
           document.l10n.setAttributes(menuItem, "applications-use-app", {
             "app-name": handler.name,
           });
-          menuItem.setAttribute(
-            "image",
-            this._getIconURLForHandlerApp(handler)
-          );
+
+          let image = this._getIconURLForHandlerApp(handler);
+          if (image) {
+            menuItem.setAttribute("image", image);
+          }
 
           // Attach the handler app object to the menu item so we can use it
           // to make changes to the datastore when the user selects the item.
@@ -3671,335 +4138,6 @@ var gMainPane = {
     }
 
     return "";
-  },
-
-  // DOWNLOADS
-
-  /*
-   * Preferences:
-   *
-   * browser.download.useDownloadDir - bool
-   *   True - Save files directly to the folder configured via the
-   *   browser.download.folderList preference.
-   *   False - Always ask the user where to save a file and default to
-   *  browser.download.lastDir when displaying a folder picker dialog.
-   *  browser.download.deletePrivate - bool
-   *   True - Delete files that were downloaded in a private browsing session
-   *   on close of the session
-   *   False - Keep files that were downloaded in a private browsing
-   *   session
-   * browser.download.always_ask_before_handling_new_types - bool
-   *   Defines the default behavior for new file handlers.
-   *   True - When downloading a file that doesn't match any existing
-   *   handlers, ask the user whether to save or open the file.
-   *   False - Save the file. The user can change the default action in
-   *   the Applications section in the preferences UI.
-   * browser.download.dir - local file handle
-   *   A local folder the user may have selected for downloaded files to be
-   *   saved. Migration of other browser settings may also set this path.
-   *   This folder is enabled when folderList equals 2.
-   * browser.download.lastDir - local file handle
-   *   May contain the last folder path accessed when the user browsed
-   *   via the file save-as dialog. (see contentAreaUtils.js)
-   * browser.download.folderList - int
-   *   Indicates the location users wish to save downloaded files too.
-   *   It is also used to display special file labels when the default
-   *   download location is either the Desktop or the Downloads folder.
-   *   Values:
-   *     0 - The desktop is the default download location.
-   *     1 - The system's downloads folder is the default download location.
-   *     2 - The default download location is elsewhere as specified in
-   *         browser.download.dir.
-   * browser.download.downloadDir
-   *   deprecated.
-   * browser.download.defaultFolder
-   *   deprecated.
-   */
-
-  /**
-   * Disables the downloads folder field and Browse button if the default
-   * download directory pref is locked (e.g., by the DownloadDirectory or
-   * DefaultDownloadDirectory policies)
-   */
-  readUseDownloadDir() {
-    document.getElementById("downloadFolder").disabled =
-      document.getElementById("chooseFolder").disabled =
-      document.getElementById("saveTo").disabled =
-        Preferences.get("browser.download.dir").locked ||
-        Preferences.get("browser.download.folderList").locked;
-    // don't override the preference's value in UI
-    return undefined;
-  },
-
-  /**
-   * Displays a file picker in which the user can choose the location where
-   * downloads are automatically saved, updating preferences and UI in
-   * response to the choice, if one is made.
-   */
-  chooseFolder() {
-    return this.chooseFolderTask().catch(console.error);
-  },
-  async chooseFolderTask() {
-    let [title] = await document.l10n.formatValues([
-      { id: "choose-download-folder-title" },
-    ]);
-    let folderListPref = Preferences.get("browser.download.folderList");
-    let currentDirPref = await this._indexToFolder(folderListPref.value);
-    let defDownloads = await this._indexToFolder(1);
-    let fp = Cc["@mozilla.org/filepicker;1"].createInstance(Ci.nsIFilePicker);
-
-    fp.init(window.browsingContext, title, Ci.nsIFilePicker.modeGetFolder);
-    fp.appendFilters(Ci.nsIFilePicker.filterAll);
-    // First try to open what's currently configured
-    if (currentDirPref && currentDirPref.exists()) {
-      fp.displayDirectory = currentDirPref;
-    } else if (defDownloads && defDownloads.exists()) {
-      // Try the system's download dir
-      fp.displayDirectory = defDownloads;
-    } else {
-      // Fall back to Desktop
-      fp.displayDirectory = await this._indexToFolder(0);
-    }
-
-    let result = await new Promise(resolve => fp.open(resolve));
-    if (result != Ci.nsIFilePicker.returnOK) {
-      return;
-    }
-
-    let downloadDirPref = Preferences.get("browser.download.dir");
-    downloadDirPref.value = fp.file;
-    folderListPref.value = await this._folderToIndex(fp.file);
-    // Note, the real prefs will not be updated yet, so dnld manager's
-    // userDownloadsDirectory may not return the right folder after
-    // this code executes. displayDownloadDirPref will be called on
-    // the assignment above to update the UI.
-  },
-
-  /**
-   * Initializes the download folder display settings based on the user's
-   * preferences.
-   */
-  displayDownloadDirPref() {
-    this.displayDownloadDirPrefTask().catch(console.error);
-
-    // don't override the preference's value in UI
-    return undefined;
-  },
-
-  async displayDownloadDirPrefTask() {
-    // We're async for localization reasons, and we can get called several
-    // times in the same turn of the event loop (!) because of how the
-    // preferences bindings work... but the speed of localization
-    // shouldn't impact what gets displayed to the user in the end - the
-    // last call should always win.
-    // To accomplish this, store a unique object when we enter this function,
-    // and if by the end of the function that stored object has been
-    // overwritten, don't update the UI but leave it to the last
-    // caller to this function to do.
-    let token = {};
-    this._downloadDisplayToken = token;
-
-    var downloadFolder = document.getElementById("downloadFolder");
-
-    let folderIndex = Preferences.get("browser.download.folderList").value;
-    // For legacy users using cloudstorage pref with folderIndex as 3 (See bug 1751093),
-    // compute folderIndex using the current directory pref
-    if (folderIndex == 3) {
-      let currentDirPref = Preferences.get("browser.download.dir");
-      folderIndex = currentDirPref.value
-        ? await this._folderToIndex(currentDirPref.value)
-        : 1;
-    }
-
-    // Display a 'pretty' label or the path in the UI.
-    let { folderDisplayName, file } =
-      await this._getSystemDownloadFolderDetails(folderIndex);
-    // Figure out an icon url:
-    let fph = Services.io
-      .getProtocolHandler("file")
-      .QueryInterface(Ci.nsIFileProtocolHandler);
-    let iconUrlSpec = fph.getURLSpecFromDir(file);
-
-    // Ensure that the last entry to this function always wins
-    // (see comment at the start of this method):
-    if (this._downloadDisplayToken != token) {
-      return;
-    }
-    // note: downloadFolder.value is not read elsewhere in the code, its only purpose is to display to the user
-    downloadFolder.value = folderDisplayName;
-    downloadFolder.style.backgroundImage = `image-set("moz-icon://${iconUrlSpec}?size=16&scale=1" 1x, "moz-icon://${iconUrlSpec}?size=16&scale=2" 2x, "moz-icon://${iconUrlSpec}?size=16&scale=3" 3x)`;
-  },
-
-  async _getSystemDownloadFolderDetails(folderIndex) {
-    let downloadsDir = await this._getDownloadsFolder("Downloads");
-    let desktopDir = await this._getDownloadsFolder("Desktop");
-    let currentDirPref = Preferences.get("browser.download.dir");
-
-    let file;
-    let firefoxLocalizedName;
-    if (folderIndex == 2 && currentDirPref.value) {
-      file = currentDirPref.value;
-      if (file.equals(downloadsDir)) {
-        folderIndex = 1;
-      } else if (file.equals(desktopDir)) {
-        folderIndex = 0;
-      }
-    }
-    switch (folderIndex) {
-      case 2: // custom path, handled above.
-        break;
-
-      case 1: {
-        // downloads
-        file = downloadsDir;
-        firefoxLocalizedName = await document.l10n.formatValues([
-          { id: "downloads-folder-name" },
-        ]);
-        break;
-      }
-
-      case 0:
-      // fall through
-      default: {
-        file = desktopDir;
-        firefoxLocalizedName = await document.l10n.formatValues([
-          { id: "desktop-folder-name" },
-        ]);
-      }
-    }
-
-    if (file) {
-      let displayName = file.path;
-
-      // Attempt to translate path to the path as exists on the host
-      // in case the provided path comes from the document portal
-      if (AppConstants.platform == "linux") {
-        try {
-          displayName = await file.hostPath();
-        } catch (error) {
-          /* ignored */
-        }
-
-        if (displayName) {
-          if (displayName == downloadsDir.path) {
-            firefoxLocalizedName = await document.l10n.formatValues([
-              { id: "downloads-folder-name" },
-            ]);
-          } else if (displayName == desktopDir.path) {
-            firefoxLocalizedName = await document.l10n.formatValues([
-              { id: "desktop-folder-name" },
-            ]);
-          }
-        }
-      }
-
-      if (firefoxLocalizedName) {
-        let folderDisplayName, leafName;
-        // Either/both of these can throw, so check for failures in both cases
-        // so we don't just break display of the download pref:
-        try {
-          folderDisplayName = file.displayName;
-        } catch (ex) {
-          /* ignored */
-        }
-        try {
-          leafName = file.leafName;
-        } catch (ex) {
-          /* ignored */
-        }
-
-        // If we found a localized name that's different from the leaf name,
-        // use that:
-        if (folderDisplayName && folderDisplayName != leafName) {
-          return { file, folderDisplayName };
-        }
-
-        // Otherwise, check if we've got a localized name ourselves.
-        if (firefoxLocalizedName) {
-          // You can't move the system download or desktop dir on macOS,
-          // so if those are in use just display them. On other platforms
-          // only do so if the folder matches the localized name.
-          if (
-            AppConstants.platform == "macosx" ||
-            leafName == firefoxLocalizedName
-          ) {
-            return { file, folderDisplayName: firefoxLocalizedName };
-          }
-        }
-      }
-
-      // If we get here, attempts to use a "pretty" name failed. Just display
-      // the full path:
-      // Force the left-to-right direction when displaying a custom path.
-      return { file, folderDisplayName: `\u2066${displayName}\u2069` };
-    }
-
-    // Don't even have a file - fall back to desktop directory for the
-    // use of the icon, and an empty label:
-    file = desktopDir;
-    return { file, folderDisplayName: "" };
-  },
-
-  /**
-   * Returns the Downloads folder.  If aFolder is "Desktop", then the Downloads
-   * folder returned is the desktop folder; otherwise, it is a folder whose name
-   * indicates that it is a download folder and whose path is as determined by
-   * the XPCOM directory service via the download manager's attribute
-   * defaultDownloadsDirectory.
-   *
-   * @throws if aFolder is not "Desktop" or "Downloads"
-   */
-  async _getDownloadsFolder(aFolder) {
-    switch (aFolder) {
-      case "Desktop":
-        return Services.dirsvc.get("Desk", Ci.nsIFile);
-      case "Downloads": {
-        let downloadsDir = await Downloads.getSystemDownloadsDirectory();
-        return new FileUtils.File(downloadsDir);
-      }
-    }
-    throw new Error(
-      "ASSERTION FAILED: folder type should be 'Desktop' or 'Downloads'"
-    );
-  },
-
-  /**
-   * Determines the type of the given folder.
-   *
-   * @param   aFolder
-   *          the folder whose type is to be determined
-   * @returns integer
-   *          0 if aFolder is the Desktop or is unspecified,
-   *          1 if aFolder is the Downloads folder,
-   *          2 otherwise
-   */
-  async _folderToIndex(aFolder) {
-    if (!aFolder || aFolder.equals(await this._getDownloadsFolder("Desktop"))) {
-      return 0;
-    } else if (aFolder.equals(await this._getDownloadsFolder("Downloads"))) {
-      return 1;
-    }
-    return 2;
-  },
-
-  /**
-   * Converts an integer into the corresponding folder.
-   *
-   * @param   aIndex
-   *          an integer
-   * @returns the Desktop folder if aIndex == 0,
-   *          the Downloads folder if aIndex == 1,
-   *          the folder stored in browser.download.dir
-   */
-  _indexToFolder(aIndex) {
-    switch (aIndex) {
-      case 0:
-        return this._getDownloadsFolder("Desktop");
-      case 1:
-        return this._getDownloadsFolder("Downloads");
-    }
-    var currentDirPref = Preferences.get("browser.download.dir");
-    return currentDirPref.value;
   },
 };
 
@@ -4495,104 +4633,3 @@ class ViewableInternallyHandlerInfoWrapper extends InternalHandlerInfoWrapper {
     return DownloadIntegration.shouldViewDownloadInternally(this.type);
   }
 }
-
-const AppearanceChooser = {
-  // NOTE: This order must match the values of the
-  // layout.css.prefers-color-scheme.content-override
-  // preference.
-  choices: ["dark", "light", "auto"],
-  chooser: null,
-  radios: null,
-  warning: null,
-
-  init() {
-    this.chooser = document.getElementById("web-appearance-chooser");
-    this.radios = [...this.chooser.querySelectorAll("input")];
-    for (let radio of this.radios) {
-      radio.addEventListener("change", e => {
-        let index = this.choices.indexOf(e.target.value);
-        // The pref change callback will update state if needed.
-        if (index >= 0) {
-          Services.prefs.setIntPref(PREF_CONTENT_APPEARANCE, index);
-        } else {
-          // Shouldn't happen but let's do something sane...
-          Services.prefs.clearUserPref(PREF_CONTENT_APPEARANCE);
-        }
-      });
-    }
-
-    let webAppearanceSettings = document.getElementById(
-      "webAppearanceSettings"
-    );
-    webAppearanceSettings.addEventListener("click", this);
-
-    this.warning = document.getElementById("web-appearance-override-warning");
-
-    FORCED_COLORS_QUERY.addEventListener("change", this);
-    Services.obs.addObserver(this, "look-and-feel-changed");
-    this._update();
-  },
-
-  _update() {
-    this._updateWarning();
-    this._updateOptions();
-  },
-
-  handleEvent(e) {
-    if (e.type == "click") {
-      switch (e.target.id) {
-        case "web-appearance-manage-themes-link":
-          window.browsingContext.topChromeWindow.BrowserAddonUI.openAddonsMgr(
-            "addons://list/theme"
-          );
-          e.preventDefault();
-          break;
-        default:
-          break;
-      }
-    }
-    this._update();
-  },
-
-  observe() {
-    this._update();
-  },
-
-  destroy() {
-    Services.obs.removeObserver(this, "look-and-feel-changed");
-    FORCED_COLORS_QUERY.removeEventListener("change", this);
-  },
-
-  _isValueDark(value) {
-    switch (value) {
-      case "light":
-        return false;
-      case "dark":
-        return true;
-      case "auto":
-        return Services.appinfo.contentThemeDerivedColorSchemeIsDark;
-    }
-    throw new Error("Unknown value");
-  },
-
-  _updateOptions() {
-    let index = Services.prefs.getIntPref(PREF_CONTENT_APPEARANCE);
-    if (index < 0 || index >= this.choices.length) {
-      index = Services.prefs
-        .getDefaultBranch(null)
-        .getIntPref(PREF_CONTENT_APPEARANCE);
-    }
-    let value = this.choices[index];
-    for (let radio of this.radios) {
-      let checked = radio.value == value;
-      let isDark = this._isValueDark(radio.value);
-
-      radio.checked = checked;
-      radio.closest("label").classList.toggle("dark", isDark);
-    }
-  },
-
-  _updateWarning() {
-    this.warning.hidden = !FORCED_COLORS_QUERY.matches;
-  },
-};

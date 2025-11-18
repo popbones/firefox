@@ -12,6 +12,8 @@ import { actionTypes as at } from "resource://newtab/common/Actions.mjs";
 const PREF_SYSTEM_SHORTCUTS_PERSONALIZATION =
   "discoverystream.shortcuts.personalization.enabled";
 
+const PREF_SYSTEM_SHORTCUTS_LOG = "discoverystream.shortcuts.force_log.enabled";
+
 function timeMSToSeconds(timeMS) {
   return Math.round(timeMS / 1000);
 }
@@ -24,22 +26,27 @@ export class SmartShortcutsFeed {
     this.loaded = false;
   }
 
-  async reset() {
-    this.loaded = false;
-  }
-
   isEnabled() {
     const { values } = this.store.getState().Prefs;
     const systemPref = values[PREF_SYSTEM_SHORTCUTS_PERSONALIZATION];
-    const experimentVariable = values.smartShortcutsConfig?.enabled;
+    const experimentVariable = values.trainhopConfig?.smartShortcuts?.enabled;
+    const systemLogPref = values[PREF_SYSTEM_SHORTCUTS_LOG];
+    const experimentLogPref = values.trainhopConfig?.smartShortcuts?.force_log;
 
-    return systemPref || experimentVariable;
+    return (
+      systemPref || experimentVariable || systemLogPref || experimentLogPref
+    );
   }
 
   async init() {
-    if (this.isEnabled()) {
-      this.loaded = true;
+    if (!this.isEnabled()) {
+      return;
     }
+    this.loaded = true;
+  }
+
+  async reset() {
+    this.loaded = false;
   }
 
   async recordShortcutsInteraction(event_type, data) {
@@ -110,7 +117,7 @@ export class SmartShortcutsFeed {
         break;
       case at.PREF_CHANGED:
         this.onPrefChangedAction(action);
-        if (action.data.name === "smartShortcutsConfig") {
+        if (action.data.name === "trainhopConfig") {
           await this.init();
         }
         break;

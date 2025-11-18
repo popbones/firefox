@@ -4,6 +4,7 @@
 
 package org.mozilla.fenix.downloads.listscreen
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -15,9 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import mozilla.components.compose.base.annotation.FlexibleWindowLightDarkPreview
 import org.mozilla.fenix.R
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * A TopAppBar for the Downloads screen. It has slots for a title, an optional navigation icon
@@ -47,6 +50,10 @@ internal fun DownloadsTopAppBar(
         actions = {
             actions()
         },
+        windowInsets = WindowInsets(
+            top = 0.dp,
+            bottom = 0.dp,
+        ),
         colors = TopAppBarDefaults.topAppBarColors(containerColor = backgroundColor),
     )
 }
@@ -70,7 +77,7 @@ private fun DownloadsTopAppBarPreview() {
             navigationIcon = {
                 IconButton(onClick = {}) {
                     Icon(
-                        painter = painterResource(R.drawable.mozac_ic_back_24),
+                        painter = painterResource(iconsR.drawable.mozac_ic_back_24),
                         contentDescription = stringResource(R.string.download_navigate_back_description),
                         tint = FirefoxTheme.colors.iconPrimary,
                     )
@@ -79,7 +86,7 @@ private fun DownloadsTopAppBarPreview() {
             actions = {
                 IconButton(onClick = {}) {
                     Icon(
-                        painter = painterResource(R.drawable.mozac_ic_ellipsis_vertical_24),
+                        painter = painterResource(iconsR.drawable.mozac_ic_ellipsis_vertical_24),
                         contentDescription = stringResource(
                             R.string.content_description_menu,
                         ),

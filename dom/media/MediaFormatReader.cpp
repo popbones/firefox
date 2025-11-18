@@ -14,15 +14,15 @@
 #ifdef MOZ_AV1
 #  include "AOMDecoder.h"
 #endif
+#include "MP4Decoder.h"
 #include "MediaData.h"
 #include "MediaDataDecoderProxy.h"
 #include "MediaInfo.h"
-#include "MP4Decoder.h"
 #include "PDMFactory.h"
 #include "PerformanceRecorder.h"
+#include "VPXDecoder.h"
 #include "VideoFrameContainer.h"
 #include "VideoUtils.h"
-#include "VPXDecoder.h"
 #include "mozilla/AbstractThread.h"
 #include "mozilla/CDMProxy.h"
 #include "mozilla/ClearOnShutdown.h"
@@ -43,7 +43,6 @@
 using namespace mozilla::media;
 
 static mozilla::LazyLogModule sFormatDecoderLog("MediaFormatReader");
-mozilla::LazyLogModule gMediaDemuxerLog("MediaDemuxer");
 
 #define LOG(arg, ...)                                                  \
   DDMOZ_LOG(sFormatDecoderLog, mozilla::LogLevel::Debug, "::%s: " arg, \

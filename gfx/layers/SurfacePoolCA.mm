@@ -85,10 +85,10 @@ template <typename F>
 void SurfacePoolCA::LockedPool::MutateEntryStorage(const char* aMutationType,
                                                    const gfx::IntSize& aSize,
                                                    F aFn) {
-  [[maybe_unused]] size_t inUseCountBefore = mInUseEntries.size();
-  [[maybe_unused]] size_t pendingCountBefore = mPendingEntries.Length();
-  [[maybe_unused]] size_t availableCountBefore = mAvailableEntries.Length();
-  [[maybe_unused]] TimeStamp before = TimeStamp::Now();
+  size_t inUseCountBefore = mInUseEntries.size();
+  size_t pendingCountBefore = mPendingEntries.Length();
+  size_t availableCountBefore = mAvailableEntries.Length();
+  TimeStamp before = TimeStamp::Now();
 
   aFn();
 
@@ -184,6 +184,7 @@ CFTypeRefPtr<IOSurfaceRef> SurfacePoolCA::LockedPool::ObtainSurfaceFromPool(
             (__bridge NSString*)
             kIOSurfacePixelFormat : @(kCVPixelFormatType_32BGRA),
             (__bridge NSString*)kIOSurfaceBytesPerElement : @(4),
+            (__bridge NSString*)kIOSurfaceIsGlobal : @(YES),
           }));
   if (surface) {
     if (StaticPrefs::gfx_color_management_native_srgb()) {

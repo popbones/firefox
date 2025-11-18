@@ -131,7 +131,7 @@ class EnhancedTrackingProtectionTest : TestSetup() {
     @Test
     fun disablingETPOnAWebsiteAddsItToExceptionListTest() {
         val firstPage = getGenericAsset(mockWebServer, 1)
-        val secondPage = "example.com"
+        val secondPage = "https://mozilla-mobile.github.io/testapp"
 
         navigationToolbar {
         }.enterURLAndEnterToBrowser(firstPage.url) {}
@@ -142,7 +142,7 @@ class EnhancedTrackingProtectionTest : TestSetup() {
         }.closeEnhancedTrackingProtectionSheet {
         }.openNavigationToolbar {
         }.enterURLAndEnterToBrowser(secondPage.toUri()) {
-            verifyPageContent("Example Domain")
+            verifyPageContent("Lets test!")
         }
         enhancedTrackingProtection {
         }.openEnhancedTrackingProtectionSheet {
@@ -196,7 +196,7 @@ class EnhancedTrackingProtectionTest : TestSetup() {
     @Test
     fun clearWebsitesFromTPExceptionListTest() {
         val firstPage = getGenericAsset(mockWebServer, 1)
-        val secondPage = "example.com"
+        val secondPage = "https://mozilla-mobile.github.io/testapp"
 
         navigationToolbar {
         }.enterURLAndEnterToBrowser(firstPage.url) {}
@@ -207,7 +207,7 @@ class EnhancedTrackingProtectionTest : TestSetup() {
         }.closeEnhancedTrackingProtectionSheet {
         }.openNavigationToolbar {
         }.enterURLAndEnterToBrowser(secondPage.toUri()) {
-            verifyPageContent("Example Domain")
+            verifyPageContent("Lets test!")
         }
         enhancedTrackingProtection {
         }.openEnhancedTrackingProtectionSheet {
@@ -218,7 +218,7 @@ class EnhancedTrackingProtectionTest : TestSetup() {
         }.openSettings {
         }.openEnhancedTrackingProtectionSubMenu {
         }.openExceptions {
-            removeOneSiteException(secondPage)
+            removeOneSiteException(secondPage.toUri().host.toString())
         }.disableExceptions {
             verifyTPExceptionsDefaultView()
             exitMenu()

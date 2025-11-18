@@ -539,6 +539,10 @@ async function loadManifestFromWebManifest(aPackage, aLocation) {
   addon.optionalPermissions = extension.manifestOptionalPermissions;
   addon.requestedPermissions = extension.getRequestedPermissions();
   addon.applyBackgroundUpdates = AddonManager.AUTOUPDATE_DEFAULT;
+  // This property is exposed in the `AddonInstallWrapper` and only used in the
+  // update logic (in the prompt handler). We don't store it in the add-on DB.
+  addon.hasPreviousConsent =
+    extension.getDataCollectionPermissions().hasPreviousConsent;
 
   function getLocale(aLocale) {
     // Use the raw manifest, here, since we need values with their
@@ -1802,6 +1806,11 @@ class AddonInstall {
             this._callInstallListeners("onInstallFailed");
           } else {
             logger.info(`Install of ${this.addon.id} cancelled by user`);
+            if (err) {
+              // promptHandler is expected to reject() without value to cancel.
+              // A non-void error is unexpected, so log it for visibility.
+              Cu.reportError(err);
+            }
             this.state = AddonManager.STATE_CANCELLED;
             this._cleanup();
             this._callInstallListeners(
@@ -2422,7 +2431,7 @@ var DownloadAddonInstall = class extends AddonInstall {
    * Starts downloading the add-on's XPI file.
    */
   startDownload() {
-    this.downloadStartedAt = Cu.now();
+    this.downloadStartedAt = ChromeUtils.now();
 
     this.state = AddonManager.STATE_DOWNLOADING;
     if (!this._callInstallListeners("onDownloadStarted")) {
@@ -2647,9 +2656,8 @@ var DownloadAddonInstall = class extends AddonInstall {
       return;
     }
 
-    logger.debug("Download of " + this.sourceURI.spec + " completed.");
-
     if (Components.isSuccessCode(aStatus)) {
+      logger.debug(`Download of ${this.sourceURI.spec} completed.`);
       if (
         !(aRequest instanceof Ci.nsIHttpChannel) ||
         aRequest.requestSucceeded
@@ -2919,6 +2927,10 @@ AddonInstallWrapper.prototype = {
   get addon() {
     let install = installFor(this);
     return install.addon ? install.addon.wrapper : null;
+  },
+
+  get addonHasPreviousConsent() {
+    return installFor(this).addon?.hasPreviousConsent;
   },
 
   get sourceURI() {

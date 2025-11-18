@@ -5,6 +5,14 @@
 import { html, ifDefined } from "chrome://global/content/vendor/lit.all.mjs";
 import { MozLitElement } from "chrome://global/content/lit-utils.mjs";
 
+const CLICK_HANDLERS = new Set([
+  "dialog-button",
+  "moz-box-button",
+  "moz-box-item",
+  "moz-box-link",
+  "moz-button",
+]);
+
 export class SettingGroup extends MozLitElement {
   static properties = {
     config: { type: Object },
@@ -38,11 +46,17 @@ export class SettingGroup extends MozLitElement {
     control?.onChange(inputEl);
   }
 
+  onClick(e) {
+    if (!CLICK_HANDLERS.has(e.target.localName)) {
+      return;
+    }
+    let inputEl = e.target;
+    let control = inputEl.control;
+    control?.onClick(e);
+  }
+
   itemTemplate(item) {
     let setting = this.getSetting(item.id);
-    if (!setting.visible) {
-      return "";
-    }
     return html`<setting-control
       .setting=${setting}
       .config=${item}
@@ -56,7 +70,9 @@ export class SettingGroup extends MozLitElement {
     }
     return html`<moz-fieldset
       data-l10n-id=${ifDefined(this.config.l10nId)}
+      .headingLevel=${this.config.headingLevel}
       @change=${this.onChange}
+      @click=${this.onClick}
       >${this.config.items.map(item => this.itemTemplate(item))}</moz-fieldset
     >`;
   }

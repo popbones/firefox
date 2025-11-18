@@ -110,12 +110,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">პაროლის გამოყენება</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">ახლა არა</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">პაროლი შენახულია</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">პაროლი განახლდა</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">სახელი განახლდა</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">ხელახლა გაეგზავნოს მონაცემები ამ საიტს?</string>
   <string name="mozac_feature_prompt_repost_message">გვერდის გაახლებით, შესაძლოა გამეორდეს ბოლო მოქმედება, მაგალითად თანხის ჩამოჭრა ან კომენტარის დატოვება.</string>
@@ -123,6 +119,14 @@
   <string name="mozac_feature_prompt_repost_positive_button_text">კვლავ გაგზავნა</string>
   <!-- Pressing this will dismiss the dialog and not refresh the webpage -->
   <string name="mozac_feature_prompt_repost_negative_button_text">გაუქმება</string>
+  <!-- Strings show in a dialog that appear when user confirm folder upload -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_title">აიტვირთოს ფაილი?</string>
+  <!-- Prompt message displayed when user selects a specific folder. %1$s is a folder / directory name. -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_message">დარწმუნდით, რომ სანდოა საიტი, სანამ ატვირთვისთვის გამოყენებული იქნება „%1$s“.</string>
+  <!-- Pressing this will dismiss the dialog and allow to upload folder -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_positive_button_text">ატვირთვა</string>
+  <!-- Pressing this will dismiss the dialog and disallow to upload folder -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_negative_button_text">გაუქმება</string>
   <!--
     Credit Card Autofill
 

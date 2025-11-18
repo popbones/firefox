@@ -9,8 +9,8 @@
 #ifndef nsRubyBaseContainerFrame_h___
 #define nsRubyBaseContainerFrame_h___
 
-#include "nsContainerFrame.h"
 #include "RubyUtils.h"
+#include "nsContainerFrame.h"
 
 namespace mozilla {
 class PresShell;
@@ -57,6 +57,11 @@ class nsRubyBaseContainerFrame final : public nsContainerFrame {
   }
   mozilla::RubyBlockLeadings GetDescendantLeadings() const {
     return mDescendantLeadings;
+  }
+
+  mozilla::RubyMetrics RubyMetrics(float aRubyMetricsFactor) const override {
+    // provided by nsContainerFrame
+    return RubyMetricsIncludingChildren(aRubyMetricsFactor);
   }
 
  protected:

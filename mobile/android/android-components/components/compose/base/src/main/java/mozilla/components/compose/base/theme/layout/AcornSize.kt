@@ -5,12 +5,12 @@
 package mozilla.components.compose.base.theme.layout
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import mozilla.components.compose.base.theme.layout.AcornSize.MaxWidth.large
 import mozilla.components.compose.base.theme.layout.AcornSize.MaxWidth.medium
-import mozilla.components.compose.base.theme.layout.AcornSize.MaxWidth.small
 
 private const val DEFAULT_FONT_SCALE = 1.0f
 
@@ -114,7 +114,9 @@ sealed class AcornSize {
      * The max-width value for a container depending if font scaling is enabled.
      */
     val containerMaxWidth: Dp
-        @Composable get() {
+        @Composable
+        @ReadOnlyComposable
+        get() {
             return if (LocalDensity.current.fontScale > DEFAULT_FONT_SCALE) {
                 large
             } else {

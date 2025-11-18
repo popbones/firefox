@@ -12,6 +12,9 @@ import {
 } from "chrome://global/content/vendor/lit.all.mjs";
 import { MozLitElement } from "chrome://global/content/lit-utils.mjs";
 
+// eslint-disable-next-line import/no-unassigned-import
+import "chrome://browser/content/sidebar/sidebar-pins-promo.mjs";
+
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   ASRouter: "resource:///modules/asrouter/ASRouter.sys.mjs",
@@ -37,15 +40,21 @@ export default class SidebarMain extends MozLitElement {
   static queries = {
     allButtons: { all: "moz-button" },
     extensionButtons: { all: ".tools-and-extensions > moz-button[extension]" },
-    toolButtons: { all: ".tools-and-extensions > moz-button:not([extension])" },
+    toolButtons: {
+      all: ".tools-and-extensions > moz-button[view]:not([extension])",
+    },
     customizeButton: ".bottom-actions > moz-button[view=viewCustomizeSidebar]",
     buttonGroup: ".actions-list:not(.bottom-actions):not(.overflow-button)",
     moreToolsButton: ".more-tools-button",
+    buttonsWrapper: ".buttons-wrapper",
   };
 
   get fluentStrings() {
     if (!this._fluentStrings) {
-      this._fluentStrings = new Localization(["browser/sidebar.ftl"], true);
+      this._fluentStrings = new Localization(
+        ["browser/sidebar.ftl", "preview/genai.ftl"],
+        true
+      );
     }
     return this._fluentStrings;
   }
@@ -102,6 +111,9 @@ export default class SidebarMain extends MozLitElement {
     this._reportExtensionMenuItem = document.getElementById(
       "sidebar-context-menu-report-extension"
     );
+    this._unpinExtensionMenuItem = document.getElementById(
+      "sidebar-context-menu-unpin-extension"
+    );
     this._hideSidebarMenuItem = document.getElementById(
       "sidebar-context-menu-hide-sidebar"
     );
@@ -111,6 +123,7 @@ export default class SidebarMain extends MozLitElement {
     this._customizeSidebarMenuItem = document.getElementById(
       "sidebar-context-menu-customize-sidebar"
     );
+    this._menuseparator = this._contextMenu.querySelector("menuseparator");
 
     this._sidebarBox.addEventListener("sidebar-show", this);
     this._sidebarBox.addEventListener("sidebar-hide", this);
@@ -145,6 +158,9 @@ export default class SidebarMain extends MozLitElement {
 
     this._toolsIntersectionObserver?.disconnect();
     this._toolsResizeObserver?.disconnect();
+    this.ownerDocument
+      .getElementById("drag-to-pin-promo-card")
+      ?.disconnectedCallback();
   }
 
   get isToolsDragging() {
@@ -270,7 +286,7 @@ export default class SidebarMain extends MozLitElement {
     }
   }
 
-  onSidebarPopupShowing(event) {
+  async onSidebarPopupShowing(event) {
     // Store the context menu target which holds the id required for managing sidebar items
     let targetHost = event.explicitOriginalTarget.getRootNode().host;
     let toolbarContextMenuTarget =
@@ -302,25 +318,104 @@ export default class SidebarMain extends MozLitElement {
       this.updateExtensionContextMenuItems();
       return;
     }
+
+    if (this.contextMenuTarget?.hasAttribute("contextMenu")) {
+      this.hideExistingMenuItem();
+
+      const toolId = this.contextMenuTarget.getAttribute("contextMenu");
+      await this.buildToolContextMenuItems(event, toolId);
+
+      const items = this._contextMenu.querySelectorAll(
+        "[customized-tool='true']"
+      );
+
+      if (items?.length) {
+        // Since we are dynamically building/customizing the sidebar context menu for tools
+        // This ensures that the menu is fully updated before showing.
+        this._contextMenu.openPopupAtScreen(event.screenX, event.screenY, true);
+        return;
+      }
+    }
+
     event.preventDefault();
   }
 
-  updateSidebarContextMenuItems() {
+  async buildToolContextMenuItems(event, toolId) {
+    const menu = this._contextMenu;
+    // Clear previously added custom menuitems
+    menu
+      .querySelectorAll("[customized-tool='true']")
+      .forEach(node => node.remove());
+
+    const menuBuilders = {
+      aichat: async () => {
+        if (Services.prefs.getBoolPref("browser.ml.chat.page")) {
+          await lazy.GenAI.buildAskChatMenu(this._contextMenu, {
+            browser: window.gBrowser.selectedBrowser,
+            selectionInfo: null,
+            source: "tool",
+          });
+        }
+      },
+    };
+
+    const builder = menuBuilders[toolId];
+    if (typeof builder === "function") {
+      const originalAppendChild = menu.appendChild.bind(menu);
+
+      menu.appendChild = child => {
+        child.setAttribute("customized-tool", true);
+        return originalAppendChild(child);
+      };
+
+      await builder(menu);
+      menu.appendChild = originalAppendChild;
+    }
+
+    return menu;
+  }
+
+  hideToolMenuItems() {
+    const customMenuItems = this._contextMenu.querySelectorAll(
+      "[customized-tool='true']"
+    );
+    customMenuItems.forEach(item => (item.hidden = true));
+  }
+
+  hideExistingMenuItem() {
+    this._customizeSidebarMenuItem.hidden = true;
+    this._enableVerticalTabsMenuItem.hidden = true;
+    this._hideSidebarMenuItem.hidden = true;
+    this._unpinExtensionMenuItem.hidden = true;
     this._manageExtensionMenuItem.hidden = true;
     this._removeExtensionMenuItem.hidden = true;
     this._reportExtensionMenuItem.hidden = true;
+    // Prevent the menu separator visible in Window and Linux
+    this._menuseparator.hidden = true;
+  }
+
+  updateSidebarContextMenuItems() {
+    this._menuseparator.hidden = true;
+    this._manageExtensionMenuItem.hidden = true;
+    this._removeExtensionMenuItem.hidden = true;
+    this._reportExtensionMenuItem.hidden = true;
+    this._unpinExtensionMenuItem.hidden = false;
     this._customizeSidebarMenuItem.hidden = false;
     this._enableVerticalTabsMenuItem.hidden = false;
     this._hideSidebarMenuItem.hidden = false;
+    this.hideToolMenuItems();
   }
 
   async updateExtensionContextMenuItems() {
     this._customizeSidebarMenuItem.hidden = true;
     this._enableVerticalTabsMenuItem.hidden = true;
     this._hideSidebarMenuItem.hidden = true;
+    this._menuseparator.hidden = false;
+    this._unpinExtensionMenuItem.hidden = false;
     this._manageExtensionMenuItem.hidden = false;
     this._removeExtensionMenuItem.hidden = false;
     this._reportExtensionMenuItem.hidden = false;
+    this.hideToolMenuItems();
     const extensionId = this.contextMenuTarget.getAttribute("extensionId");
     if (!extensionId) {
       return;
@@ -359,6 +454,12 @@ export default class SidebarMain extends MozLitElement {
     await window.BrowserAddonUI.reportAddon(
       this.contextMenuTarget.getAttribute("extensionId"),
       "sidebar-context-menu"
+    );
+  }
+
+  unpinExtension() {
+    window.SidebarController.toggleTool(
+      this.contextMenuTarget.getAttribute("view")
     );
   }
 
@@ -410,6 +511,9 @@ export default class SidebarMain extends MozLitElement {
             break;
           case "sidebar-context-menu-remove-extension":
             await this.removeExtension();
+            break;
+          case "sidebar-context-menu-unpin-extension":
+            this.unpinExtension();
             break;
           case "sidebar-context-menu-hide-sidebar":
             if (
@@ -628,6 +732,7 @@ export default class SidebarMain extends MozLitElement {
           ?extension=${buttonValues.action.view?.includes("-sidebar-action")}
           extensionId=${ifDefined(buttonValues.action.extensionId)}
           ?attention=${!!action?.attention}
+          contextMenu=${action?.contextMenu || nothing}
         >
         </moz-button>
       `
@@ -698,66 +803,68 @@ export default class SidebarMain extends MozLitElement {
             window.SidebarController.sidebarVerticalTabsEnabled,
           () => html`${this.toolsSplitter}`
         )}
-        <button-group
-          class="tools-and-extensions actions-list"
-          orientation=${this.isToolsOverflowing() ? "horizontal" : "vertical"}
-          overflowing=${ifDefined(this.shouldShowOverflowButton)}
+        <div
+          class="buttons-wrapper"
+          ?overflowing=${this.shouldShowOverflowButton}
         >
-          ${when(!this.isToolsOverflowing(), () =>
-            repeat(
-              this.getToolsAndExtensions().values(),
-              action => action.view,
-              action => this.entrypointTemplate(action)
-            )
-          )}
-          ${when(window.SidebarController.sidebarVerticalTabsEnabled, () =>
-            repeat(
-              this.bottomActions,
-              action => action.view,
-              action => this.entrypointTemplate(action)
-            )
-          )}
-          ${when(this.isToolsOverflowing(), () =>
-            repeat(
-              this.getToolsAndExtensions().values(),
-              action => action.view,
-              action => this.entrypointTemplate(action)
-            )
-          )}
-        </button-group>
-        ${when(
-          !window.SidebarController.sidebarVerticalTabsEnabled,
-          () =>
-            html` <div class="bottom-actions actions-list">
-              ${repeat(
+          <button-group
+            class="tools-and-extensions actions-list"
+            orientation=${this.isToolsOverflowing() ? "horizontal" : "vertical"}
+            overflowing=${ifDefined(this.shouldShowOverflowButton)}
+          >
+            ${when(!this.isToolsOverflowing(), () =>
+              repeat(
+                this.getToolsAndExtensions().values(),
+                action => action.view,
+                action => this.entrypointTemplate(action)
+              )
+            )}
+            ${when(window.SidebarController.sidebarVerticalTabsEnabled, () =>
+              repeat(
                 this.bottomActions,
                 action => action.view,
                 action => this.entrypointTemplate(action)
-              )}
-            </div>`
-        )}
-        ${when(
-          this.shouldShowOverflowButton,
-          () =>
-            html` <button-group
-              class="tools-and-extensions actions-list overflow-button"
-              orientation="vertical"
-              part="overflow-button"
+              )
+            )}
+            ${when(this.isToolsOverflowing(), () =>
+              repeat(
+                this.getToolsAndExtensions().values(),
+                action => action.view,
+                action => this.entrypointTemplate(action)
+              )
+            )}
+          </button-group>
+          ${when(
+            !window.SidebarController.sidebarVerticalTabsEnabled,
+            () =>
+              html` <div class="bottom-actions actions-list">
+                ${repeat(
+                  this.bottomActions,
+                  action => action.view,
+                  action => this.entrypointTemplate(action)
+                )}
+              </div>`
+          )}
+          <button-group
+            class="tools-and-extensions actions-list overflow-button"
+            orientation="vertical"
+            part="overflow-button"
+            ?hidden=${!this.shouldShowOverflowButton}
+          >
+            <moz-button
+              class="more-tools-button"
+              type=${this.isOverflowMenuOpen ? "icon" : "icon ghost"}
+              aria-pressed=${this.isOverflowMenuOpen}
+              @click=${window.SidebarController.sidebarRevampVisibility ===
+              "expand-on-hover"
+                ? nothing
+                : this.showOverflowMenu}
+              title=${moreToolsTooltip}
+              .iconSrc=${"chrome://global/skin/icons/chevron.svg"}
             >
-              <moz-button
-                class="more-tools-button"
-                type=${this.isOverflowMenuOpen ? "icon" : "icon ghost"}
-                aria-pressed=${this.isOverflowMenuOpen}
-                @click=${window.SidebarController.sidebarRevampVisibility ===
-                "expand-on-hover"
-                  ? nothing
-                  : this.showOverflowMenu}
-                title=${moreToolsTooltip}
-                .iconSrc=${"chrome://global/skin/icons/chevron.svg"}
-              >
-              </moz-button>
-            </button-group>`
-        )}
+            </moz-button>
+          </button-group>
+        </div>
       </div>
     `;
   }

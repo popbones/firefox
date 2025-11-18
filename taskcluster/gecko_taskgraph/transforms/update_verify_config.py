@@ -112,7 +112,7 @@ def add_command(config, tasks):
         command.extend(["--repo-path", repo_path])
 
         if release_config.get("partial_versions"):
-            for partial in release_config["partial_versions"]:
+            for partial in release_config["partial_versions"].split(","):
                 command.extend(["--partial-version", partial.split("build")[0]])
 
         for arg in optional_args:
@@ -149,5 +149,11 @@ def add_command(config, tasks):
                 "mach": " ".join(command),
             }
         )
+
+        if task.get("index"):
+            task["index"].setdefault(
+                "job-name",
+                f"update-verify-config-{task['name']}-{task['extra']['channel']}",
+            )
 
         yield task

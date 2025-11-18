@@ -40,7 +40,6 @@
 #include "mozilla/Preferences.h"
 #include "mozilla/StaticPrefs_network.h"
 #include "mozilla/glean/NetwerkDnsMetrics.h"
-#include "mozilla/Telemetry.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/Tokenizer.h"
 #include "mozilla/UniquePtr.h"
@@ -173,8 +172,8 @@ bool TRR::MaybeBlockRequest() {
                                                 true)) {
       if (mType == TRRTYPE_A) {
         // count only blocklist for A records to avoid double counts
-        Telemetry::Accumulate(Telemetry::DNS_TRR_BLACKLISTED3,
-                              TRRService::ProviderKey(), true);
+        glean::dns::trr_blacklisted.Get(TRRService::ProviderKey(), "true"_ns)
+            .Add();
       }
 
       RecordReason(TRRSkippedReason::TRR_HOST_BLOCKED_TEMPORARY);
@@ -188,8 +187,8 @@ bool TRR::MaybeBlockRequest() {
     }
 
     if (UseDefaultServer() && (mType == TRRTYPE_A)) {
-      Telemetry::Accumulate(Telemetry::DNS_TRR_BLACKLISTED3,
-                            TRRService::ProviderKey(), false);
+      glean::dns::trr_blacklisted.Get(TRRService::ProviderKey(), "false"_ns)
+          .Add();
     }
   }
 
@@ -331,7 +330,10 @@ nsresult TRR::SendHTTPRequest() {
   rv = internalChannel->SetIsTRRServiceChannel(true);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  if (UseDefaultServer() && StaticPrefs::network_trr_async_connInfo()) {
+  // When using OHTTP, the we can't use cached connection info, since we
+  // need to connect to the relay, not the TRR server.
+  if (UseDefaultServer() && !useOHTTP &&
+      StaticPrefs::network_trr_async_connInfo()) {
     RefPtr<nsHttpConnectionInfo> trrConnInfo =
         TRRService::Get()->TRRConnectionInfo();
     if (trrConnInfo) {
@@ -342,7 +344,10 @@ nsresult TRR::SendHTTPRequest() {
         LOG(("TRR::SendHTTPRequest use conn info:%s\n",
              trrConnInfo->HashKey().get()));
       } else {
-        MOZ_DIAGNOSTIC_CRASH("host not equal to trrConnInfo origin");
+        // The connection info is inconsistent. Avoid using it and generate a
+        // new one.
+        TRRService::Get()->SetDefaultTRRConnectionInfo(nullptr);
+        TRRService::Get()->InitTRRConnectionInfo(true);
       }
     } else {
       TRRService::Get()->InitTRRConnectionInfo();
@@ -838,14 +843,13 @@ static void RecordHttpVersion(nsIHttpChannel* aHttpChannel) {
     return;
   }
 
-  auto label = Telemetry::LABELS_DNS_TRR_HTTP_VERSION2::h_1;
   if (major == 2) {
-    label = Telemetry::LABELS_DNS_TRR_HTTP_VERSION2::h_2;
+    glean::dns::trr_http_version.Get(TRRService::ProviderKey(), "h_2"_ns).Add();
   } else if (major == 3) {
-    label = Telemetry::LABELS_DNS_TRR_HTTP_VERSION2::h_3;
+    glean::dns::trr_http_version.Get(TRRService::ProviderKey(), "h_3"_ns).Add();
+  } else {
+    glean::dns::trr_http_version.Get(TRRService::ProviderKey(), "h_1"_ns).Add();
   }
-
-  Telemetry::AccumulateCategoricalKeyed(TRRService::ProviderKey(), label);
 
   LOG(("RecordHttpVersion: Provider responded using HTTP version: %d", major));
 }

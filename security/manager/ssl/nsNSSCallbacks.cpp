@@ -45,10 +45,6 @@
 #include "sslproto.h"
 #include "SSLTokensCache.h"
 
-#include "TrustOverrideUtils.h"
-#include "TrustOverride-SymantecData.inc"
-#include "TrustOverride-AppleGoogleDigiCertData.inc"
-
 using namespace mozilla;
 using namespace mozilla::pkix;
 using namespace mozilla::psm;
@@ -342,7 +338,8 @@ OCSPRequest::Run() {
 
   rv = NS_NewTimerWithFuncCallback(
       getter_AddRefs(mTimeoutTimer), OCSPRequest::OnTimeout, this,
-      mTimeout.ToMilliseconds(), nsITimer::TYPE_ONE_SHOT, "OCSPRequest::Run");
+      mTimeout.ToMilliseconds(), nsITimer::TYPE_ONE_SHOT,
+      "OCSPRequest::Run"_ns);
   if (NS_FAILED(rv)) {
     return NotifyDone(rv, lock);
   }

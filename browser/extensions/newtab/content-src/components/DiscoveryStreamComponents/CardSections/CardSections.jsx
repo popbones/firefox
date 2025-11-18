@@ -7,7 +7,10 @@ import { DSEmptyState } from "../DSEmptyState/DSEmptyState";
 import { DSCard, PlaceholderDSCard } from "../DSCard/DSCard";
 import { useSelector } from "react-redux";
 import { actionCreators as ac, actionTypes as at } from "common/Actions.mjs";
-import { useIntersectionObserver } from "../../../lib/utils";
+import {
+  selectWeatherPlacement,
+  useIntersectionObserver,
+} from "../../../lib/utils";
 import { SectionContextMenu } from "../SectionContextMenu/SectionContextMenu";
 import { InterestPicker } from "../InterestPicker/InterestPicker";
 import { AdBanner } from "../AdBanner/AdBanner.jsx";
@@ -15,6 +18,7 @@ import { PersonalizedCard } from "../PersonalizedCard/PersonalizedCard";
 import { FollowSectionButtonHighlight } from "../FeatureHighlight/FollowSectionButtonHighlight";
 import { MessageWrapper } from "content-src/components/MessageWrapper/MessageWrapper";
 import { TrendingSearches } from "../TrendingSearches/TrendingSearches.jsx";
+import { Weather } from "../../Weather/Weather.jsx";
 
 // Prefs
 const PREF_SECTIONS_CARDS_ENABLED = "discoverystream.sections.cards.enabled";
@@ -31,9 +35,9 @@ const PREF_INTEREST_PICKER_ENABLED =
 const PREF_VISIBLE_SECTIONS =
   "discoverystream.sections.interestPicker.visibleSections";
 const PREF_BILLBOARD_ENABLED = "newtabAdSize.billboard";
+const PREF_BILLBOARD_POSITION = "newtabAdSize.billboard.position";
 const PREF_LEADERBOARD_ENABLED = "newtabAdSize.leaderboard";
 const PREF_LEADERBOARD_POSITION = "newtabAdSize.leaderboard.position";
-const PREF_BILLBOARD_POSITION = "newtabAdSize.billboard.position";
 const PREF_REFINED_CARDS_ENABLED = "discoverystream.refinedCardsLayout.enabled";
 const PREF_INFERRED_PERSONALIZATION_USER =
   "discoverystream.sections.personalization.inferred.user.enabled";
@@ -41,6 +45,9 @@ const PREF_TRENDING_SEARCH = "trendingSearch.enabled";
 const PREF_TRENDING_SEARCH_SYSTEM = "system.trendingSearch.enabled";
 const PREF_SEARCH_ENGINE = "trendingSearch.defaultSearchEngine";
 const PREF_TRENDING_SEARCH_VARIANT = "trendingSearch.variant";
+const PREF_DAILY_BRIEF_SECTIONID = "discoverystream.dailyBrief.sectionId";
+const PREF_SPOCS_STARTUPCACHE_ENABLED =
+  "discoverystream.spocs.startupCache.enabled";
 
 function getLayoutData(
   responsiveLayouts,
@@ -60,12 +67,12 @@ function getLayoutData(
         // we update the layout so that the first item is always a medium card to make
         // room for the trending search widget
         if (sectionKey === "top_stories_section" && tileIndex === 0) {
-          //do something
           layoutData.classNames.push(`col-${layout.columnCount}-medium`);
           layoutData.classNames.push(
             `col-${layout.columnCount}-position-${tileIndex}`
           );
           layoutData.imageSizes[layout.columnCount] = "medium";
+          layoutData.classNames.push(`col-${layout.columnCount}-hide-excerpt`);
         } else {
           layoutData.classNames.push(`col-${layout.columnCount}-${tile.size}`);
           layoutData.classNames.push(
@@ -139,11 +146,10 @@ function CardSection({
   dispatch,
   type,
   firstVisibleTimestamp,
-  is_collection,
-  spocMessageVariant,
   ctaButtonVariant,
   ctaButtonSponsors,
   anySectionsFollowed,
+  showWeather,
 }) {
   const prefs = useSelector(state => state.Prefs.values);
 
@@ -152,6 +158,8 @@ function CardSection({
   const { sectionPersonalization } = useSelector(
     state => state.DiscoveryStream
   );
+  const { isForStartupCache } = useSelector(state => state.App);
+
   const showTopics = prefs[PREF_TOPICS_ENABLED];
   const mayHaveSectionsCards = prefs[PREF_SECTIONS_CARDS_ENABLED];
   const mayHaveSectionsCardsThumbsUpDown =
@@ -160,6 +168,7 @@ function CardSection({
   const selectedTopics = prefs[PREF_TOPICS_SELECTED];
   const availableTopics = prefs[PREF_TOPICS_AVAILABLE];
   const refinedCardsLayout = prefs[PREF_REFINED_CARDS_ENABLED];
+  const spocsStartupCacheEnabled = prefs[PREF_SPOCS_STARTUPCACHE_ENABLED];
 
   const trendingEnabled =
     prefs[PREF_TRENDING_SEARCH] &&
@@ -169,12 +178,11 @@ function CardSection({
 
   const shouldShowTrendingSearch = trendingEnabled && trendingVariant === "b";
 
-  const { saveToPocketCard } = useSelector(state => state.DiscoveryStream);
   const mayHaveSectionsPersonalization =
     prefs[PREF_SECTIONS_PERSONALIZATION_ENABLED];
 
   const { sectionKey, title, subtitle } = section;
-  const { responsiveLayouts } = section.layout;
+  const { responsiveLayouts, name: layoutName } = section.layout;
 
   const following = sectionPersonalization[sectionKey]?.isFollowed;
 
@@ -186,10 +194,11 @@ function CardSection({
           section: sectionKey,
           section_position: sectionPosition,
           is_section_followed: following,
+          layout_name: layoutName,
         },
       })
     );
-  }, [dispatch, sectionKey, sectionPosition, following]);
+  }, [dispatch, sectionKey, sectionPosition, following, layoutName]);
 
   // Ref to hold the section element
   const sectionRefs = useIntersectionObserver(handleIntersection);
@@ -274,6 +283,22 @@ function CardSection({
                 verticalPosition="inset-block-center"
                 position="arrow-inline-start"
                 dispatch={dispatch}
+                feature="FEATURE_FOLLOW_SECTION_BUTTON"
+              />
+            </MessageWrapper>
+          )}
+        {!anySectionsFollowed &&
+          sectionPosition === 1 &&
+          shouldShowOMCHighlight(
+            messageData,
+            "FollowSectionButtonAltHighlight"
+          ) && (
+            <MessageWrapper dispatch={dispatch}>
+              <FollowSectionButtonHighlight
+                verticalPosition="inset-block-center"
+                position="arrow-inline-start"
+                dispatch={dispatch}
+                feature="FEATURE_ALT_FOLLOW_SECTION_BUTTON"
               />
             </MessageWrapper>
           )}
@@ -309,7 +334,6 @@ function CardSection({
       />
     </div>
   );
-
   return (
     <section
       className="ds-section"
@@ -318,9 +342,12 @@ function CardSection({
       }}
     >
       <div className="section-heading">
-        <div className="section-title-wrapper">
-          <h2 className="section-title">{title}</h2>
-          {subtitle && <p className="section-subtitle">{subtitle}</p>}
+        <div className="section-heading-inline-start">
+          <div className="section-title-wrapper">
+            <h2 className="section-title">{title}</h2>
+            {subtitle && <p className="section-subtitle">{subtitle}</p>}
+          </div>
+          {showWeather && <Weather isInSection={true} />}
         </div>
         {mayHaveSectionsPersonalization ? sectionContextWrapper : null}
       </div>
@@ -334,7 +361,17 @@ function CardSection({
           );
 
           const { classNames, imageSizes } = layoutData;
-          if (!rec || rec.placeholder) {
+          // Render a placeholder card when:
+          // 1. No recommendation is available.
+          // 2. The item is flagged as a placeholder.
+          // 3. Spocs are loading for with spocs startup cache disabled.
+          if (
+            !rec ||
+            rec.placeholder ||
+            (rec.flight_id &&
+              !spocsStartupCacheEnabled &&
+              isForStartupCache.DiscoveryStream)
+          ) {
             return <PlaceholderDSCard key={`dscard-${index}`} />;
           }
 
@@ -379,16 +416,14 @@ function CardSection({
               showTopics={shouldShowLabels}
               selectedTopics={selectedTopics}
               availableTopics={availableTopics}
-              is_collection={is_collection}
-              saveToPocketCard={saveToPocketCard}
               ctaButtonSponsors={ctaButtonSponsors}
               ctaButtonVariant={ctaButtonVariant}
-              spocMessageVariant={spocMessageVariant}
               sectionsClassNames={classNames.join(" ")}
               sectionsCardImageSizes={imageSizes}
               section={sectionKey}
               sectionPosition={sectionPosition}
               sectionFollowed={following}
+              sectionLayoutName={layoutName}
               isTimeSensitive={rec.isTimeSensitive}
             />
           );
@@ -409,8 +444,6 @@ function CardSections({
   dispatch,
   type,
   firstVisibleTimestamp,
-  is_collection,
-  spocMessageVariant,
   ctaButtonVariant,
   ctaButtonSponsors,
 }) {
@@ -419,6 +452,11 @@ function CardSections({
     state => state.DiscoveryStream
   );
   const { messageData } = useSelector(state => state.Messages);
+  const weatherPlacement = useSelector(selectWeatherPlacement);
+  const dailyBriefSectionId =
+    prefs.trainhopConfig?.dailyBriefing?.sectionId ||
+    prefs[PREF_DAILY_BRIEF_SECTIONID];
+  const weatherEnabled = prefs.showWeather;
   const personalizationEnabled = prefs[PREF_SECTIONS_PERSONALIZATION_ENABLED];
   const interestPickerEnabled = prefs[PREF_INTEREST_PICKER_ENABLED];
 
@@ -459,11 +497,15 @@ function CardSections({
       dispatch={dispatch}
       type={type}
       firstVisibleTimestamp={firstVisibleTimestamp}
-      is_collection={is_collection}
-      spocMessageVariant={spocMessageVariant}
       ctaButtonVariant={ctaButtonVariant}
       ctaButtonSponsors={ctaButtonSponsors}
       anySectionsFollowed={anySectionsFollowed}
+      showWeather={
+        weatherEnabled &&
+        weatherPlacement === "section" &&
+        sectionPosition === 0 &&
+        section.sectionKey === dailyBriefSectionId
+      }
     />
   ));
 

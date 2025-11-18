@@ -53,6 +53,9 @@ newtab-topsites-add-shortcut-header = Nuevo acceso directo
 newtab-topsites-edit-topsites-header = Editar sitio popular
 newtab-topsites-edit-shortcut-header = Editar acceso directo
 newtab-topsites-add-shortcut-label = Agregar acceso directo
+newtab-topsites-add-shortcut-title =
+    .title = Agregar acceso directo
+    .aria-label = Agregar acceso directo
 newtab-topsites-title-label = Título
 newtab-topsites-title-input =
     .placeholder = Introducir un título
@@ -123,9 +126,6 @@ newtab-menu-section-block = Bloquear
 # "Follow", "unfollow", and "following" are social media terms that refer to subscribing to or unsubscribing from a section of stories.
 # e.g. Following the travel section of stories.
 newtab-menu-section-unfollow = Dejar de seguir tema
-
-## Context menu options for sponsored stories and new ad formats on New Tab.
-
 
 ## Message displayed in a modal window to explain privacy and provide context for sponsored content.
 
@@ -298,9 +298,6 @@ newtab-custom-pocket-sponsored = Historias patrocinadas
 newtab-custom-pocket-show-recent-saves = Mostrar guardados recientemente
 newtab-custom-recent-title = Actividad reciente
 newtab-custom-recent-subtitle = Una selección de sitios y contenidos recientes
-newtab-custom-recent-toggle =
-    .label = Actividad reciente
-    .description = Una selección de sitios y contenidos recientes
 newtab-custom-weather-toggle =
     .label = Clima
     .description = El pronóstico estimado para hoy
@@ -420,7 +417,6 @@ newtab-weather-menu-change-location = Cambiar ubicación
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Buscar ubicación
     .aria-label = Buscar ubicación
-newtab-weather-change-location-search-input = Buscar ubicación
 newtab-weather-menu-weather-display = Mostrar el clima
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -513,12 +509,3 @@ newtab-section-mangage-topics-followed-topics = Seguido
 newtab-section-mangage-topics-followed-topics-empty-state = Aún no sigues ningún tema.
 newtab-section-mangage-topics-blocked-topics = Bloqueado
 newtab-section-mangage-topics-blocked-topics-empty-state = Aún no has bloqueado ningún tema.
-
-## Strings for download mobile highlight
-
-
-## Strings for reporting ads and content
-
-
-## Strings for trending searches
-

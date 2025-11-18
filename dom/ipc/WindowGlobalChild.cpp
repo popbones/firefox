@@ -6,44 +6,43 @@
 
 #include "mozilla/dom/WindowGlobalChild.h"
 
+#include "GeckoProfiler.h"
 #include "mozilla/AntiTrackingUtils.h"
 #include "mozilla/ClearOnShutdown.h"
-#include "mozilla/dom/WindowGlobalParent.h"
-#include "mozilla/dom/BrowsingContext.h"
-#include "mozilla/dom/BrowsingContextGroup.h"
-#include "mozilla/dom/ContentChild.h"
-#include "mozilla/dom/MozFrameLoaderOwnerBinding.h"
-#include "mozilla/dom/BrowserChild.h"
-#include "mozilla/dom/BrowserBridgeChild.h"
-#include "mozilla/dom/ContentParent.h"
-#include "mozilla/dom/CloseWatcherManager.h"
-#include "mozilla/dom/IdentityCredential.h"
-#include "mozilla/dom/SecurityPolicyViolationEvent.h"
-#include "mozilla/dom/SessionStoreRestoreData.h"
-#include "mozilla/dom/WindowGlobalActorsBinding.h"
-#include "mozilla/dom/WindowContext.h"
-#include "mozilla/dom/InProcessChild.h"
-#include "mozilla/dom/InProcessParent.h"
-#include "mozilla/ipc/Endpoint.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/ScopeExit.h"
-#include "GeckoProfiler.h"
+#include "mozilla/dom/BrowserBridgeChild.h"
+#include "mozilla/dom/BrowserChild.h"
+#include "mozilla/dom/BrowsingContext.h"
+#include "mozilla/dom/BrowsingContextGroup.h"
+#include "mozilla/dom/CloseWatcherManager.h"
+#include "mozilla/dom/ContentChild.h"
+#include "mozilla/dom/ContentParent.h"
+#include "mozilla/dom/IdentityCredential.h"
+#include "mozilla/dom/InProcessChild.h"
+#include "mozilla/dom/InProcessParent.h"
+#include "mozilla/dom/JSActorService.h"
+#include "mozilla/dom/JSWindowActorBinding.h"
+#include "mozilla/dom/JSWindowActorChild.h"
+#include "mozilla/dom/MozFrameLoaderOwnerBinding.h"
+#include "mozilla/dom/SecurityPolicyViolationEvent.h"
+#include "mozilla/dom/SessionStoreRestoreData.h"
+#include "mozilla/dom/WindowContext.h"
+#include "mozilla/dom/WindowGlobalActorsBinding.h"
+#include "mozilla/dom/WindowGlobalParent.h"
+#include "mozilla/ipc/Endpoint.h"
 #include "nsContentUtils.h"
 #include "nsDocShell.h"
 #include "nsFocusManager.h"
+#include "nsFrameLoader.h"
 #include "nsFrameLoaderOwner.h"
 #include "nsGlobalWindowInner.h"
-#include "nsNetUtil.h"
-#include "nsQueryObject.h"
-#include "nsSerializationHelper.h"
-#include "nsFrameLoader.h"
-#include "nsScriptSecurityManager.h"
-
-#include "mozilla/dom/JSWindowActorBinding.h"
-#include "mozilla/dom/JSWindowActorChild.h"
-#include "mozilla/dom/JSActorService.h"
 #include "nsIHttpChannelInternal.h"
 #include "nsIURIMutator.h"
+#include "nsNetUtil.h"
+#include "nsQueryObject.h"
+#include "nsScriptSecurityManager.h"
+#include "nsSerializationHelper.h"
 #include "nsURLHelper.h"
 
 using namespace mozilla::ipc;
@@ -226,8 +225,12 @@ void WindowGlobalChild::OnNewDocument(Document* aDocument) {
   if (nsCOMPtr<nsIChannel> channel = aDocument->GetChannel()) {
     nsCOMPtr<nsILoadInfo> loadInfo(channel->LoadInfo());
     txn.SetIsOriginalFrameSource(loadInfo->GetOriginalFrameSrcLoad());
-    txn.SetUsingStorageAccess(loadInfo->GetStoragePermission() !=
-                              nsILoadInfo::NoStoragePermission);
+
+    nsILoadInfo::StoragePermissionState storageAccess =
+        loadInfo->GetStoragePermission();
+    txn.SetUsingStorageAccess(
+        storageAccess == nsILoadInfo::HasStoragePermission ||
+        storageAccess == nsILoadInfo::StoragePermissionAllowListed);
   } else {
     txn.SetIsOriginalFrameSource(false);
   }
@@ -310,23 +313,48 @@ bool WindowGlobalChild::IsProcessRoot() {
   return !BrowsingContext()->GetEmbedderElement();
 }
 
+// When a "beforeunload" handler is added, it's recorded to be able to know when
+// dispatching "beforeunload" is needed.
 void WindowGlobalChild::BeforeUnloadAdded() {
   // Don't bother notifying the parent if we don't have an IPC link open.
   if (mBeforeUnloadListeners == 0 && CanSend()) {
-    Unused << mWindowContext->SetHasBeforeUnload(true);
+    Unused << mWindowContext->SetNeedsBeforeUnload(true);
   }
 
   mBeforeUnloadListeners++;
   MOZ_ASSERT(mBeforeUnloadListeners > 0);
 }
 
+// This is the inverse of `BeforeUnloadAdded`, making sure that "beforeunload"
+// isn't dispatched if all "beforeunload" handlers have been removed.
 void WindowGlobalChild::BeforeUnloadRemoved() {
   mBeforeUnloadListeners--;
   MOZ_ASSERT(mBeforeUnloadListeners >= 0);
 
   if (mBeforeUnloadListeners == 0) {
-    Unused << mWindowContext->SetHasBeforeUnload(false);
+    Unused << mWindowContext->SetNeedsBeforeUnload(false);
   }
+}
+
+// This is very similar to what is done for "beforeunload" and uses the same
+// state to keep track, but is only ever used for a top level window. It's used
+// to be able to track when a "navigate" event needs to be dispatched to the top
+// level window's navigation object, which needs to happen right after a
+// "beforeunload" event for that window would be dispatched, regardless of if it
+// is.
+void WindowGlobalChild::NavigateAdded() {
+  if (!BrowsingContext()->IsTop()) {
+    return;
+  }
+  BeforeUnloadAdded();
+}
+
+// The inverse of `NavigateAdded`, again only ever used for a top level window.
+void WindowGlobalChild::NavigateRemoved() {
+  if (!BrowsingContext()->IsTop()) {
+    return;
+  }
+  BeforeUnloadRemoved();
 }
 
 void WindowGlobalChild::Destroy() {
@@ -541,16 +569,16 @@ mozilla::ipc::IPCResult WindowGlobalChild::RecvRestoreTabContent(
 }
 
 IPCResult WindowGlobalChild::RecvRawMessage(
-    const JSActorMessageMeta& aMeta, const Maybe<ClonedMessageData>& aData,
-    const Maybe<ClonedMessageData>& aStack) {
-  Maybe<StructuredCloneData> data;
+    const JSActorMessageMeta& aMeta, const UniquePtr<ClonedMessageData>& aData,
+    const UniquePtr<ClonedMessageData>& aStack) {
+  UniquePtr<StructuredCloneData> data;
   if (aData) {
-    data.emplace();
+    data = MakeUnique<StructuredCloneData>();
     data->BorrowFromClonedMessageData(*aData);
   }
-  Maybe<StructuredCloneData> stack;
+  UniquePtr<StructuredCloneData> stack;
   if (aStack) {
-    stack.emplace();
+    stack = MakeUnique<StructuredCloneData>();
     stack->BorrowFromClonedMessageData(*aStack);
   }
   ReceiveRawMessage(aMeta, std::move(data), std::move(stack));
@@ -607,21 +635,18 @@ void WindowGlobalChild::SetDocumentURI(nsIURI* aDocumentURI) {
       nsContentUtils::TruncatedURLForDisplay(aDocumentURI, 1024),
       embedderInnerWindowID, BrowsingContext()->UsePrivateBrowsing());
 
-  if (StaticPrefs::dom_security_setdocumenturi()) {
-    nsCOMPtr<nsIURI> principalURI = mDocumentPrincipal->GetURI();
-    if (mDocumentPrincipal->GetIsNullPrincipal()) {
-      nsCOMPtr<nsIPrincipal> precursor =
-          mDocumentPrincipal->GetPrecursorPrincipal();
-      if (precursor) {
-        principalURI = precursor->GetURI();
-      }
+  nsCOMPtr<nsIURI> principalURI = mDocumentPrincipal->GetURI();
+  if (mDocumentPrincipal->GetIsNullPrincipal()) {
+    if (nsCOMPtr<nsIPrincipal> precursor =
+            mDocumentPrincipal->GetPrecursorPrincipal()) {
+      principalURI = precursor->GetURI();
     }
-
-    MOZ_DIAGNOSTIC_ASSERT(!nsScriptSecurityManager::IsHttpOrHttpsAndCrossOrigin(
-                              principalURI, aDocumentURI),
-                          "Setting DocumentURI with a different origin "
-                          "than principal URI");
   }
+
+  MOZ_DIAGNOSTIC_ASSERT(!nsScriptSecurityManager::IsHttpOrHttpsAndCrossOrigin(
+                            principalURI, aDocumentURI),
+                        "Setting DocumentURI with a different origin "
+                        "than principal URI");
 
   mDocumentURI = aDocumentURI;
   SendUpdateDocumentURI(WrapNotNull(aDocumentURI));

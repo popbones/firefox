@@ -117,10 +117,6 @@ inline bool JSObject::setQualifiedVarObj(
   return setFlag(cx, obj, js::ObjectFlag::QualifiedVarObj);
 }
 
-inline bool JSObject::canHaveFixedElements() const {
-  return is<js::ArrayObject>();
-}
-
 namespace js {
 
 #ifdef DEBUG
@@ -557,12 +553,12 @@ static inline bool MaybePreserveDOMWrapper(JSContext* cx, HandleObject obj) {
   if (!clasp->isDOMClass()) {
     return true;
   }
-  if (JS::GetReservedSlot(obj, JS_OBJECT_WRAPPER_SLOT).isUndefined()) {
-    return true;
+
+  if (!obj->zone()->preserveWrapper(obj.get())) {
+    return cx->runtime()->preserveWrapperCallback(cx, obj);
   }
 
-  MOZ_ASSERT(cx->runtime()->preserveWrapperCallback);
-  return cx->runtime()->preserveWrapperCallback(cx, obj);
+  return true;
 }
 
 } /* namespace js */

@@ -826,6 +826,7 @@ sec_pkcs12_decoder_asafes_notify(void *arg, PRBool before, void *dest,
                 safeContentsCtx->safeContentsA1Dcx = NULL;
             }
             cinfo = SEC_PKCS7DecoderFinish(p12dcx->currentASafeP7Dcx);
+            SEC_ASN1DecoderClearFilterProc(p12dcx->aSafeA1Dcx);
             p12dcx->currentASafeP7Dcx = NULL;
             if (!cinfo) {
                 p12dcx->errorValue = PORT_GetError();
@@ -2409,8 +2410,9 @@ sec_pkcs12_add_cert(sec_PKCS12SafeBag *cert, PRBool keyExists, void *wincx)
     return rv;
 }
 
-static SECItem *
-sec_pkcs12_get_public_value_and_type(SECKEYPublicKey *pubKey, KeyType *type);
+static const SECItem *
+sec_pkcs12_get_public_value_and_type(const SECKEYPublicKey *pubKey,
+                                     KeyType *type);
 
 static SECStatus
 sec_pkcs12_add_key(sec_PKCS12SafeBag *key, SECKEYPublicKey *pubKey,
@@ -2418,7 +2420,7 @@ sec_pkcs12_add_key(sec_PKCS12SafeBag *key, SECKEYPublicKey *pubKey,
                    SECItem *nickName, PRBool forceUnicode, void *wincx)
 {
     SECStatus rv;
-    SECItem *publicValue = NULL;
+    const SECItem *publicValue = NULL;
     KeyType keyType;
 
     /* We should always have values for "key" and "pubKey"
@@ -2879,11 +2881,10 @@ sec_pkcs12_get_public_key_and_usage(sec_PKCS12SafeBag *certBag,
     return pubKey;
 }
 
-static SECItem *
-sec_pkcs12_get_public_value_and_type(SECKEYPublicKey *pubKey,
+static const SECItem *
+sec_pkcs12_get_public_value_and_type(const SECKEYPublicKey *pubKey,
                                      KeyType *type)
 {
-    SECItem *pubValue = NULL;
 
     if (!type || !pubKey) {
         PORT_SetError(SEC_ERROR_INVALID_ARGS);
@@ -2891,24 +2892,7 @@ sec_pkcs12_get_public_value_and_type(SECKEYPublicKey *pubKey,
     }
 
     *type = pubKey->keyType;
-    switch (pubKey->keyType) {
-        case dsaKey:
-            pubValue = &pubKey->u.dsa.publicValue;
-            break;
-        case dhKey:
-            pubValue = &pubKey->u.dh.publicValue;
-            break;
-        case rsaKey:
-            pubValue = &pubKey->u.rsa.modulus;
-            break;
-        case ecKey:
-            pubValue = &pubKey->u.ec.publicValue;
-            break;
-        default:
-            pubValue = NULL;
-    }
-
-    return pubValue;
+    return PK11_GetPublicValueFromPublicKey(pubKey);
 }
 
 /* This function takes two passes over the bags, installing them in the

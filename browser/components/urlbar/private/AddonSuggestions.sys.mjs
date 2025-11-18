@@ -2,16 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import { SuggestProvider } from "resource:///modules/urlbar/private/SuggestFeature.sys.mjs";
+import { SuggestProvider } from "moz-src:///browser/components/urlbar/private/SuggestFeature.sys.mjs";
 
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
   AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
-  QuickSuggest: "resource:///modules/QuickSuggest.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarResult: "resource:///modules/UrlbarResult.sys.mjs",
-  UrlbarUtils: "resource:///modules/UrlbarUtils.sys.mjs",
+  QuickSuggest: "moz-src:///browser/components/urlbar/QuickSuggest.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
+  UrlbarResult: "moz-src:///browser/components/urlbar/UrlbarResult.sys.mjs",
+  UrlbarUtils: "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs",
 });
 
 const UTM_PARAMS = {
@@ -38,8 +38,8 @@ export class AddonSuggestions extends SuggestProvider {
     ];
   }
 
-  get primaryUserControlledPreference() {
-    return "suggest.addons";
+  get primaryUserControlledPreferences() {
+    return ["suggest.addons"];
   }
 
   get merinoProvider() {
@@ -106,26 +106,29 @@ export class AddonSuggestions extends SuggestProvider {
       helpUrl: lazy.QuickSuggest.HELP_URL,
     };
 
-    return Object.assign(
-      new lazy.UrlbarResult(
-        lazy.UrlbarUtils.RESULT_TYPE.URL,
-        lazy.UrlbarUtils.RESULT_SOURCE.SEARCH,
-        ...lazy.UrlbarResult.payloadAndSimpleHighlights(
-          queryContext.tokens,
-          payload
-        )
+    return new lazy.UrlbarResult({
+      type: lazy.UrlbarUtils.RESULT_TYPE.URL,
+      source: lazy.UrlbarUtils.RESULT_SOURCE.SEARCH,
+      isBestMatch: true,
+      suggestedIndex: 1,
+      isRichSuggestion: true,
+      richSuggestionIconSize: 24,
+      showFeedbackMenu: true,
+      ...lazy.UrlbarResult.payloadAndSimpleHighlights(
+        queryContext.tokens,
+        payload
       ),
-      {
-        isBestMatch: true,
-        suggestedIndex: 1,
-        isRichSuggestion: true,
-        richSuggestionIconSize: 24,
-        showFeedbackMenu: true,
-      }
-    );
+    });
   }
 
+  /**
+   * Gets the list of commands that should be shown in the result menu for a
+   * given result from the provider. All commands returned by this method should
+   * be handled by implementing `onEngagement()` with the possible exception of
+   * commands automatically handled by the urlbar, like "help".
+   */
   getResultCommands() {
+    /** @type {UrlbarResultCommand[]} */
     const commands = [];
 
     if (this.canShowLessFrequently) {
@@ -187,7 +190,7 @@ export class AddonSuggestions extends SuggestProvider {
       case RESULT_MENU_COMMAND.NOT_INTERESTED:
         lazy.UrlbarPrefs.set("suggest.addons", false);
         result.acknowledgeDismissalL10n = {
-          id: "firefox-suggest-dismissal-acknowledgment-all",
+          id: "urlbar-result-dismissal-acknowledgment-all",
         };
         controller.removeResult(result);
         break;

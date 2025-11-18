@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:moz="http://mozac.org/tools" xmlns:tools="http://schemas.android.com/tools">
+<resources xmlns:tools="http://schemas.android.com/tools">
   <!--
     #######################################################################################
 
@@ -150,6 +150,8 @@
     %2$s is the url for the learn-more link.
   -->
   <string name="about_content" tools:ignore="IncorrectStraightDoubleQuote"><![CDATA[<p>%1$s ਕੰਟਰੋਲ ਤੁਹਾਡੇ ਹੱਥ ਦਿੰਦਾ ਹੈ।</p> <p>ਇਸ ਨੂੰ ਪ੍ਰਾਈਵੇਟ ਬਰਾਊਜ਼ਰ ਵਜੋਂ ਵਰਤੋਂ: <ul> <li>ਐਪ ਦੇ ਵਿੱਚ ਖੋਲ੍ਹੋ ਅਤੇ ਬਰਾਊਜ਼ ਕਰੋp</li> <li>ਟਰੈਕਰਾਂ ਤੇ ਲਾਓ ਪਾਬੰਦੀ (ਜਾਂ ਟਰੈਕਰਾਂ ਨੂੰ ਇਜਾਜ਼ਤ ਦੇਣ ਲਈ ਸੈਟਿੰਗਾਂ ਅੱਪਡੇਟ ਕਰੋ)</li> <li>ਖੋਜ ਅਤੇ ਬਰਾਊਜ਼ ਕਰਨ ਦੇ ਅਤੀਤ ਦੇ ਨਾਲ ਨਾਲ ਕੂਕੀਜ਼ ਨੂੰ ਹਟਾਉਣ ਲਈ ਮਿਟਾਓ</li> </ul> </p> <p>%1$s ਨੂੰ Mozilla ਨੇ ਬਣਾਇਆ ਹੈ। ਸਾਡਾ ਮਕਸਦ ਚੰਗਾ, ਆਜ਼ਾਦ ਸਰੋਤ ਇੰਟਰਨੈੱਟ ਖੜ੍ਹਾ ਕਰਨਾ ਹੈ।<br/> <a href=\"%2$s\">ਹੋਰ ਜਾਣੋ</a></p>]]></string>
+  <!-- A link to SUMO at the bottom of About Focus screen. -->
+  <string name="about_screen_learn_more">ਹੋਰ ਜਾਣੋ</string>
   <!-- Header for the Privacy and Security settings menu -->
   <string name="preference_privacy_and_security_header">ਪਰਦੇਦਾਰੀ ਤੇ ਸੁਰੱਖਿਆ</string>
   <!-- Preference summary for settings related to privacy and security -->
@@ -462,23 +464,21 @@
 
     %1$s will be replaced by a link using onboarding_first_screen_terms_of_use_link as text
   -->
-  <string name="onboarding_first_screen_terms_of_use_text" moz:removedIn="141" tools:ignore="UnusedResources">ਜਾਰੀ ਰੱਖ ਕੇ ਤੁਸੀਂ %1$s ਨਾਲ ਸਹਿਮਤ ਹੁੰਦੇ ਹੋ</string>
+  <string name="onboarding_first_screen_terms_of_use_text_2" tools:ignore="UnusedResources">ਜਾਰੀ ਰੱਖ ਕੇ ਤੁਸੀਂ %1$s ਨਾਲ ਸਹਿਮਤ ਹੁੰਦੇ ਹੋ।</string>
   <!--
     New Onboarding flow first screen 'terms of use link'
 
     Text for the link used in onboarding_first_screen_terms_of_use_text
   -->
-  <string name="onboarding_first_screen_terms_of_use_link" moz:removedIn="141" tools:ignore="BrandUsage">Firefox ਵਰਤਣ ਦੀਆਂ ਸ਼ਰਤਾਂ ਹਨ।</string>
+  <string name="onboarding_first_screen_terms_of_use_link_2" tools:ignore="BrandUsage">Firefox ਵਰਤਣ ਲਈ ਸ਼ਰਤਾਂ</string>
   <!--
     New Onboarding flow first screen 'privacy notice' text
 
     %1$s will be replaced by a link using onboarding_first_screen_privacy_notice_link as text
   -->
-  <string name="onboarding_first_screen_privacy_notice_text" moz:removedIn="141" tools:ignore="BrandUsage">Firefox ਤੁਹਾਡੀ ਪਰਦੇਦਾਰੀ ਦੀ ਪਰਵਾਹ ਕਰਦਾ ਹੈ। ਸਾਡੀ %1$s ਬਾਰੇ ਹੋਰ ਜਾਣੋ</string>
+  <string name="onboarding_first_screen_privacy_notice_text_2" tools:ignore="BrandUsage">Firefox ਤੁਹਾਡੀ ਪਰਦੇਦਾਰੀ ਦੀ ਪਰਵਾਹ ਕਰਦਾ ਹੈ। ਸਾਡੀ %1$s ਬਾਰੇ ਹੋਰ ਜਾਣੋ।</string>
   <!-- Text for the link used in onboarding_first_screen_privacy_notice_text -->
-  <string name="onboarding_first_screen_privacy_notice_link" moz:removedIn="141" tools:ignore="UnusedResources">ਪਰਦੇਦਾਰੀ ਸੂਚਨਾ।</string>
-  <!-- New Onboarding flow first screen button label -->
-  <string name="onboarding_first_screen_button_agree_and_continue" moz:removedIn="140" tools:ignore="UnusedResources">ਸਹਿਮਤ ਅਤੇ ਜਾਰੀ ਰੱਖੋ</string>
+  <string name="onboarding_first_screen_privacy_notice_link_2">ਪਰਦੇਦਾਰੀ ਸੂਚਨਾ</string>
   <!-- New Onboarding flow first screen button label -->
   <string name="onboarding_first_screen_button_agree_and_continue_2">ਜਾਰੀ ਰੱਖੋ</string>
   <!-- In the first screen of new onboarding flow, additional accessibility description for content that contain urls. -->
@@ -700,18 +700,6 @@
   <string name="preference_block_autoplay_audio_only_summary">ਸਿਫ਼ਾਰਸ਼ੀ</string>
   <!-- Preference for block autoplay audio and video -->
   <string name="preference_block_autoplay_audio_video">ਆਡੀਓ ਅਤੇ ਵੀਡਿਓ ਤੇ ਪਾਬੰਦੀ ਲਾਓ</string>
-  <!-- Preference for studies -->
-  <string name="preference_studies" moz:removedIn="140">ਅਧਿਐਨ</string>
-  <!-- Preference for studies summary -->
-  <string name="preference_studies_summary" tools:ignore="BrandUsage" moz:removedIn="140">Firefox ਸਮੇਂ ਸਮੇਂ ਉੱਤੇ ਅਧਿਐਨ ਇੰਸਟਾਲ ਕਰ ਤੇ ਚਲਾ ਸਕਦਾ ਹੈ।</string>
-  <!-- Learn more link for studies, links to an article for more information about studies. -->
-  <string name="studies_learn_more" moz:removedIn="140">ਹੋਰ ਜਾਣੋ</string>
-  <!-- Title of the remove studies button -->
-  <string name="studies_remove" moz:removedIn="140">ਹਟਾਓ</string>
-  <!-- Title of the active section on the studies list -->
-  <string name="studies_active" moz:removedIn="140">ਸਰਗਰਮ</string>
-  <!-- Title of the completed section on the studies list -->
-  <string name="studies_completed" moz:removedIn="140">ਪੂਰਾ ਹੋਇਆ</string>
   <!-- Preference to enable remote debugging of the app via USB or Wi-Fi -->
   <string name="preference_remote_debugging">USB//Wi-Fi ਰਾਹੀਂ ਰਿਮੋਟ ਡੀਬੱਗ ਕਰਨਾ</string>
   <!-- Text Button for show biometric prompt -->

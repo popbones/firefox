@@ -30,8 +30,6 @@ this.ContentSearchUIController = (function () {
    * @param {string} healthReportKey
    *        This will be sent with the search data for BrowserUsageTelemetry to
    *        record the search.
-   * @param {string} searchPurpose
-   *        Sent with search data, see nsISearchEngine.getSubmission.
    * @param {string} idPrefix
    *        The IDs of elements created by the object will be prefixed with this
    *        string.
@@ -40,13 +38,11 @@ this.ContentSearchUIController = (function () {
     inputElement,
     tableParent,
     healthReportKey,
-    searchPurpose,
     idPrefix = ""
   ) {
     this.input = inputElement;
     this._idPrefix = idPrefix;
     this._healthReportKey = healthReportKey;
-    this._searchPurpose = searchPurpose;
     this._isPrivateEngine = false;
 
     let tableID = idPrefix + "searchSuggestionTable";
@@ -93,7 +89,7 @@ this.ContentSearchUIController = (function () {
       this._defaultEngine = {
         name: engine.name,
         icon,
-        isAppProvided: engine.isAppProvided,
+        isConfigEngine: engine.isConfigEngine,
       };
       this._updateDefaultEngineHeader();
       this._updateDefaultEngineIcon();
@@ -288,7 +284,6 @@ this.ContentSearchUIController = (function () {
         engineName: this.selectedEngineName,
         searchString: searchTerms,
         healthReportKey: this._healthReportKey,
-        searchPurpose: this._searchPurpose,
         originalEvent: {
           shiftKey: aEvent.shiftKey,
           ctrlKey: aEvent.ctrlKey,
@@ -679,9 +674,9 @@ this.ContentSearchUIController = (function () {
     },
 
     _updateDefaultEngineIcon() {
-      // We only show the engine's own icon for app provided engines, otherwise show
+      // We only show the engine's own icon for config engines, otherwise show
       // a default. xref https://bugzilla.mozilla.org/show_bug.cgi?id=1449338#c19
-      let icon = this.defaultEngine.isAppProvided
+      let icon = this.defaultEngine.isConfigEngine
         ? this.defaultEngine.icon
         : "chrome://global/skin/icons/search-glass.svg";
 

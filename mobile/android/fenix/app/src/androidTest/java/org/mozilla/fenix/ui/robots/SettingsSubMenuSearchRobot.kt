@@ -49,7 +49,6 @@ import org.mozilla.fenix.helpers.DataGenerationHelper.getAvailableSearchEngines
 import org.mozilla.fenix.helpers.DataGenerationHelper.getRegionSearchEnginesList
 import org.mozilla.fenix.helpers.DataGenerationHelper.getStringResource
 import org.mozilla.fenix.helpers.MatcherHelper.assertUIObjectExists
-import org.mozilla.fenix.helpers.MatcherHelper.itemContainingText
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithResIdAndText
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithResIdContainingText
 import org.mozilla.fenix.helpers.MatcherHelper.itemWithText
@@ -60,6 +59,7 @@ import org.mozilla.fenix.helpers.TestHelper.packageName
 import org.mozilla.fenix.helpers.click
 import org.mozilla.fenix.helpers.isChecked
 import org.mozilla.fenix.helpers.isEnabled
+import androidx.preference.R as preferenceR
 
 /**
  * Implementation of Robot Pattern for the settings search sub menu.
@@ -468,7 +468,6 @@ class SettingsSubMenuSearchRobot {
         Log.i(TAG, "saveEditSearchEngine: Trying to click the \"Save\" button")
         onView(withId(R.id.save_button)).click()
         Log.i(TAG, "saveEditSearchEngine: Clicked the \"Save\" button")
-        assertUIObjectExists(itemContainingText("Saved"))
     }
 
     fun verifyInvalidTemplateSearchStringFormatError() {
@@ -558,7 +557,7 @@ private val manageSearchShortcutsHeader = onView(withText("Manage alternative se
 
 private fun searchHistorySwitchButton(): ViewInteraction {
     Log.i(TAG, "searchHistorySwitchButton: Trying to perform scroll action to the \"Search browsing history\" option")
-    onView(withId(androidx.preference.R.id.recycler_view)).perform(
+    onView(withId(preferenceR.id.recycler_view)).perform(
         RecyclerViewActions.scrollTo<RecyclerView.ViewHolder>(
             hasDescendant(withText("Search browsing history")),
         ),
@@ -569,7 +568,7 @@ private fun searchHistorySwitchButton(): ViewInteraction {
 
 private fun searchBookmarksSwitchButton(): ViewInteraction {
     Log.i(TAG, "searchBookmarksSwitchButton: Trying to perform scroll action to the \"Search bookmarks\" option")
-    onView(withId(androidx.preference.R.id.recycler_view)).perform(
+    onView(withId(preferenceR.id.recycler_view)).perform(
         RecyclerViewActions.scrollTo<RecyclerView.ViewHolder>(
             hasDescendant(withText("Search bookmarks")),
         ),
@@ -580,7 +579,7 @@ private fun searchBookmarksSwitchButton(): ViewInteraction {
 
 private fun searchSyncedTabsSwitchButton(): ViewInteraction {
     Log.i(TAG, "searchSyncedTabsSwitchButton: Trying to perform scroll action to the \"Search synced tabs\" option")
-    onView(withId(androidx.preference.R.id.recycler_view)).perform(
+    onView(withId(preferenceR.id.recycler_view)).perform(
         RecyclerViewActions.scrollTo<RecyclerView.ViewHolder>(
             hasDescendant(withText("Search synced tabs")),
         ),
@@ -591,7 +590,7 @@ private fun searchSyncedTabsSwitchButton(): ViewInteraction {
 
 private fun voiceSearchSwitchButton(): ViewInteraction {
     Log.i(TAG, "voiceSearchSwitchButton: Trying to perform scroll action to the \"Show voice search\" option")
-    onView(withId(androidx.preference.R.id.recycler_view)).perform(
+    onView(withId(preferenceR.id.recycler_view)).perform(
         RecyclerViewActions.scrollTo<RecyclerView.ViewHolder>(
             hasDescendant(withText("Show voice search")),
         ),
@@ -602,7 +601,7 @@ private fun voiceSearchSwitchButton(): ViewInteraction {
 
 private fun autocompleteSwitchButton(): ViewInteraction {
     Log.i(TAG, "autocompleteSwitchButton: Trying to perform scroll action to the \"Autocomplete URLs\" option")
-    onView(withId(androidx.preference.R.id.recycler_view)).perform(
+    onView(withId(preferenceR.id.recycler_view)).perform(
         RecyclerViewActions.scrollTo<RecyclerView.ViewHolder>(
             hasDescendant(withText(getStringResource(R.string.preferences_enable_autocomplete_urls))),
         ),
@@ -613,7 +612,7 @@ private fun autocompleteSwitchButton(): ViewInteraction {
 
 private fun showSearchSuggestionSwitchButton(): ViewInteraction {
     Log.i(TAG, "showSearchSuggestionSwitchButton: Trying to perform scroll action to the \"Show search suggestions\" option")
-    onView(withId(androidx.preference.R.id.recycler_view)).perform(
+    onView(withId(preferenceR.id.recycler_view)).perform(
         RecyclerViewActions.scrollTo<RecyclerView.ViewHolder>(
             hasDescendant(withText("Show search suggestions")),
         ),
@@ -624,7 +623,7 @@ private fun showSearchSuggestionSwitchButton(): ViewInteraction {
 
 private fun showClipboardSuggestionSwitch(): ViewInteraction {
     Log.i(TAG, "showClipboardSuggestionSwitch: Trying to perform scroll action to the \"Show clipboard suggestions\" option")
-    onView(withId(androidx.preference.R.id.recycler_view)).perform(
+    onView(withId(preferenceR.id.recycler_view)).perform(
         RecyclerViewActions.scrollTo<RecyclerView.ViewHolder>(
             hasDescendant(withText(getStringResource(R.string.preferences_show_clipboard_suggestions))),
         ),
@@ -635,7 +634,7 @@ private fun showClipboardSuggestionSwitch(): ViewInteraction {
 
 private fun showSuggestionsInPrivateModeSwitch(): ViewInteraction {
     Log.i(TAG, "showSuggestionsInPrivateModeSwitch: Trying to perform scroll action to the \"Show in private sessions\" option")
-    onView(withId(androidx.preference.R.id.recycler_view)).perform(
+    onView(withId(preferenceR.id.recycler_view)).perform(
         RecyclerViewActions.scrollTo<RecyclerView.ViewHolder>(
             hasDescendant(withText(getStringResource(R.string.preferences_show_search_suggestions_in_private))),
         ),

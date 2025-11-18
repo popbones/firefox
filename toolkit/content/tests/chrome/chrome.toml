@@ -78,9 +78,7 @@ run-if = ["os == 'mac'"]
 ["test_autocomplete_placehold_last_complete.xhtml"]
 
 ["test_autocomplete_with_composition_on_input.html"]
-skip-if = [
-  "os == 'mac' && os_version == '14.70' && processor == 'x86_64'", # Bug 1929437
-]
+skip-if = ["os == 'mac' && os_version == '14.70' && processor == 'x86_64'"] # Bug 1929437
 
 ["test_browser_drop.xhtml"]
 
@@ -143,8 +141,6 @@ skip-if = [
 
 ["test_bug792324.xhtml"]
 
-["test_bug1048178.xhtml"]
-
 ["test_button.xhtml"]
 
 ["test_closemenu_attribute.xhtml"]
@@ -178,9 +174,7 @@ support-files = [
 ["test_editor_for_input_with_autocomplete.html"]
 
 ["test_findbar.xhtml"]
-skip-if = [
-  "os == 'mac' && os_version == '14.70' && processor == 'x86_64' && opt", # Bug 1929437
-]
+skip-if = ["os == 'mac' && os_version == '14.70' && processor == 'x86_64' && opt"] # Bug 1929437
 
 ["test_findbar_entireword.xhtml"]
 
@@ -203,18 +197,14 @@ support-files = [
   "window_maximized_persist.xhtml",
   "file_maximized_persist.js",
 ]
-skip-if = [
-  "os == 'linux' && os_version == '24.04' && processor == 'x86_64' && display == 'x11'", # Bug 1968560
-]
+skip-if = ["os == 'linux' && os_version == '24.04' && processor == 'x86_64' && display == 'x11'"] # Bug 1968560
 
 ["test_maximized_persist_with_no_titlebar.xhtml"]
 support-files = [
   "window_maximized_persist_with_no_titlebar.xhtml",
   "file_maximized_persist.js",
 ]
-skip-if = [
-  "os == 'linux' && os_version == '24.04' && processor == 'x86_64' && display == 'x11'", # Bug 1968560
-]
+skip-if = ["os == 'linux' && os_version == '24.04' && processor == 'x86_64' && display == 'x11'"] # Bug 1968560
 
 ["test_menu.xhtml"]
 
@@ -260,9 +250,7 @@ support-files = ["window_navigate_persist.html"]
 ["test_notificationbox.xhtml"]
 
 ["test_panel.xhtml"]
-skip-if = [
-  "os == 'mac' && os_version == '14.70' && processor == 'x86_64'", # Bug 1929437
-]
+skip-if = ["os == 'mac' && os_version == '14.70' && processor == 'x86_64'"] # Bug 1929437
 
 ["test_panel_anchoradjust.xhtml"]
 
@@ -302,6 +290,8 @@ support-files = "window_panel_focus.xhtml"
 
 ["test_popup_tree.xhtml"]
 
+["test_popup_triggerEvent.xhtml"]
+
 ["test_popuphidden.xhtml"]
 
 ["test_popupincontent.xhtml"]
@@ -312,7 +302,11 @@ support-files = "window_panel_focus.xhtml"
 
 ["test_preferences.xhtml"]
 
+["test_preferencesBindings_async_setting.html"]
+
 ["test_preferencesBindings_setting.html"]
+
+["test_preferencesBindings_setting_setup_teardown.html"]
 
 ["test_preferences_beforeaccept.xhtml"]
 support-files = ["window_preferences_beforeaccept.xhtml"]
@@ -328,8 +322,6 @@ support-files = ["window_preferences_onsyncfrompreference.xhtml"]
 
 ["test_screenPersistence.xhtml"]
 
-["test_scrollbar.xhtml"]
-
 ["test_showcaret.xhtml"]
 
 ["test_subframe_origin.xhtml"]
@@ -339,9 +331,7 @@ support-files = ["window_preferences_onsyncfrompreference.xhtml"]
 ["test_tabindex.xhtml"]
 
 ["test_tooltip.xhtml"]
-skip-if = [
-  "os == 'mac' && os_version == '14.70' && processor == 'x86_64'", # Bug 1929437
-]
+skip-if = ["os == 'mac' && os_version == '14.70' && processor == 'x86_64'"] # Bug 1929437
 
 ["test_tooltip_noautohide.xhtml"]
 

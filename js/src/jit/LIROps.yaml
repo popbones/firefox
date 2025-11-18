@@ -205,8 +205,13 @@
 
 - name: NewTypedArray
   result_type: WordSized
-  num_temps: 2
+  num_temps: 3
   mir_op: true
+
+- name: NewTypedArrayInline
+  result_type: WordSized
+  num_temps: 1
+  mir_op: NewTypedArray
 
 - name: BindFunction
   result_type: WordSized
@@ -802,6 +807,26 @@
     cmpMir: MCompare*
   num_temps: 2
 
+# Fused Test and StrictConstantCompareInt32.
+- name: StrictConstantCompareInt32AndBranch
+  successors: [ifTrue, ifFalse]
+  operands:
+    value: BoxedValue
+  arguments:
+    cmpMir: MStrictConstantCompareInt32*
+  mir_op: Test
+  extra_name: true
+
+# Fused Test and StrictConstantCompareBoolean.
+- name: StrictConstantCompareBooleanAndBranch
+  successors: [ifTrue, ifFalse]
+  operands:
+    value: BoxedValue
+  arguments:
+    cmpMir: MStrictConstantCompareBoolean*
+  mir_op: Test
+  extra_name: true
+
 - name: BitAndAndBranch
   successors: [ifTrue, ifFalse]
   operands:
@@ -985,6 +1010,17 @@
   extra_name: true
   defer_init: true
 
+- name: ShiftIntPtr
+  result_type: WordSized
+  operands:
+    lhs: WordSized
+    rhs: WordSized
+  arguments:
+    bitop: JSOp
+  mir_op: Instruction
+  extra_name: true
+  defer_init: true
+
 - name: ShiftI64
   result_type: Int64
   operands:
@@ -1025,6 +1061,14 @@
   gen_boilerplate: false
 
 - name: MinMaxI
+  result_type: WordSized
+  operands:
+    first: WordSized
+    second: WordSized
+  mir_op: MinMax
+  extra_name: true
+
+- name: MinMaxIntPtr
   result_type: WordSized
   operands:
     first: WordSized
@@ -1272,6 +1316,13 @@
     rhs: Int64
   defer_init: true
 
+- name: AddIntPtr
+  result_type: WordSized
+  operands:
+    lhs: WordSized
+    rhs: WordSized
+  defer_init: true
+
 - name: SubI
   gen_boilerplate: false
 
@@ -1282,12 +1333,26 @@
     rhs: Int64
   defer_init: true
 
+- name: SubIntPtr
+  result_type: WordSized
+  operands:
+    lhs: WordSized
+    rhs: WordSized
+  defer_init: true
+
 - name: MulI64
   result_type: Int64
   operands:
     lhs: Int64
     rhs: Int64
   num_temps: 1
+  defer_init: true
+
+- name: MulIntPtr
+  result_type: WordSized
+  operands:
+    lhs: WordSized
+    rhs: WordSized
   defer_init: true
 
 # Performs an add, sub, mul, or div on two double values.
@@ -2260,6 +2325,24 @@
   num_temps: 1
   mir_op: StoreTypedArrayElementHole
 
+- name: TypedArrayFill
+  operands:
+    object: WordSized
+    value: WordSized
+    start: WordSized
+    end: WordSized
+  call_instruction: true
+  mir_op: true
+
+- name: TypedArrayFill64
+  operands:
+    object: WordSized
+    value: Int64
+    start: WordSized
+    end: WordSized
+  call_instruction: true
+  mir_op: TypedArrayFill
+
 - name: AtomicIsLockFree
   result_type: WordSized
   operands:
@@ -2382,10 +2465,16 @@
 #endif
   mir_op: AtomicTypedArrayElementBinop
 
-- name: EffectiveAddress
+- name: EffectiveAddress3
   result_type: WordSized
   operands:
     base: WordSized
+    index: WordSized
+  mir_op: true
+
+- name: EffectiveAddress2
+  result_type: WordSized
+  operands:
     index: WordSized
   mir_op: true
 
@@ -2467,6 +2556,13 @@
     value: BoxedValue
   num_temps: 1
   mir_op: true
+
+- name: AddAndStoreSlotPreserveWrapper
+  operands:
+    object: WordSized
+    value: BoxedValue
+  num_temps: 2
+  mir_op: AddAndStoreSlot
 
 # Store a boxed value to an object's fixed slot.
 - name: StoreFixedSlotV
@@ -2609,6 +2705,22 @@
   operands:
     input: WordSized
   mir_op: NearbyInt
+
+# Rounds a double precision number and keeps a double output.
+# Implements Math.round().
+- name: RoundToDouble
+  result_type: WordSized
+  operands:
+    input: WordSized
+  mir_op: true
+
+# Rounds a single precision number and keeps a single output.
+# Implements Math.round().
+- name: RoundToFloat32
+  result_type: WordSized
+  operands:
+    input: WordSized
+  mir_op: RoundToDouble
 
 - name: NewLexicalEnvironmentObject
   result_type: WordSized
@@ -3123,6 +3235,24 @@
     boundsCheckLimit: Int64
   mir_op: WasmBoundsCheck
 
+- name: WasmBoundsCheckInstanceField
+  result_type: WordSized
+  operands:
+    instance: WordSized
+    ptr: WordSized
+  arguments:
+    offset: uint32_t
+  mir_op: WasmBoundsCheck
+
+- name: WasmBoundsCheckInstanceField64
+  result_type: Int64
+  operands:
+    instance: WordSized
+    ptr: Int64
+  arguments:
+    offset: uint32_t
+  mir_op: WasmBoundsCheck
+
 - name: WasmExtendU32Index
   result_type: WordSized
   operands:
@@ -3335,6 +3465,21 @@
   arguments:
     offset: size_t
     maybeTrap: wasm::MaybeTrapSiteDesc
+
+- name: WasmStoreStackResult
+  operands:
+    value: WordSized
+    stackResultsArea: WordSized
+  arguments:
+    offset: size_t
+    type: MIRType
+
+- name: WasmStoreStackResultI64
+  operands:
+    value: Int64
+    stackResultsArea: WordSized
+  arguments:
+    offset: size_t
 
 - name: WasmStoreElement
   operands:

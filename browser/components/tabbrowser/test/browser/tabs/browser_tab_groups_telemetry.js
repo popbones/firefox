@@ -55,12 +55,8 @@ add_task(async function test_tabGroupTelemetry() {
 
   await BrowserTestUtils.waitForCondition(() => {
     tabGroupCreateTelemetry = Glean.tabgroup.createGroup.testGetValue();
-    return (
-      tabGroupCreateTelemetry?.length == 1 &&
-      Glean.tabgroup.tabCountInGroups.inside.testGetValue() !== null &&
-      Glean.tabgroup.tabsPerActiveGroup.average.testGetValue() !== null
-    );
-  }, "Wait for createGroup and at least one metric from the tabCountInGroups and tabsPerActiveGroup to be set");
+    return tabGroupCreateTelemetry?.length == 1;
+  }, "Wait for createGroup event to be recorded");
 
   Assert.deepEqual(
     tabGroupCreateTelemetry[0].extra,
@@ -73,6 +69,13 @@ add_task(async function test_tabGroupTelemetry() {
     "tabGroupCreate event extra_keys has correct values after tab group create"
   );
 
+  await BrowserTestUtils.waitForCondition(() => {
+    return (
+      Glean.tabgroup.tabCountInGroups.inside.testGetValue() == 1 &&
+      Glean.tabgroup.tabCountInGroups.outside.testGetValue() == 2
+    );
+  }, "Wait for group tab counts to settle");
+
   Assert.equal(
     Glean.tabgroup.tabCountInGroups.inside.testGetValue(),
     1,
@@ -83,6 +86,16 @@ add_task(async function test_tabGroupTelemetry() {
     2,
     "tabCountInGroups.outside has correct value"
   );
+
+  await BrowserTestUtils.waitForCondition(() => {
+    return (
+      Glean.tabgroup.tabsPerActiveGroup.median.testGetValue() == 1 &&
+      Glean.tabgroup.tabsPerActiveGroup.average.testGetValue() == 1 &&
+      Glean.tabgroup.tabsPerActiveGroup.max.testGetValue() == 1 &&
+      Glean.tabgroup.tabsPerActiveGroup.min.testGetValue() == 1
+    );
+  }, "Wait for active group tab statistics to settle");
+
   Assert.equal(
     Glean.tabgroup.tabsPerActiveGroup.median.testGetValue(),
     1,
@@ -123,10 +136,10 @@ add_task(async function test_tabGroupTelemetry() {
 
   await BrowserTestUtils.waitForCondition(() => {
     return (
-      Glean.tabgroup.tabCountInGroups.inside.testGetValue() !== null &&
-      Glean.tabgroup.tabsPerActiveGroup.average.testGetValue() !== null
+      Glean.tabgroup.tabCountInGroups.inside.testGetValue() == 4 &&
+      Glean.tabgroup.tabCountInGroups.outside.testGetValue() == 2
     );
-  }, "Wait for at least one metric from the tabCountInGroups and tabsPerActiveGroup to be set after adding a new tab group");
+  }, "Wait for group tab counts to settle");
 
   Assert.equal(
     Glean.tabgroup.tabCountInGroups.inside.testGetValue(),
@@ -138,6 +151,16 @@ add_task(async function test_tabGroupTelemetry() {
     2,
     "tabCountInGroups.outside has correct value after adding a new tab group"
   );
+
+  await BrowserTestUtils.waitForCondition(() => {
+    return (
+      Glean.tabgroup.tabsPerActiveGroup.median.testGetValue() == 2 &&
+      Glean.tabgroup.tabsPerActiveGroup.average.testGetValue() == 2 &&
+      Glean.tabgroup.tabsPerActiveGroup.max.testGetValue() == 3 &&
+      Glean.tabgroup.tabsPerActiveGroup.min.testGetValue() == 1
+    );
+  }, "Wait for active group tab statistics to settle");
+
   Assert.equal(
     Glean.tabgroup.tabsPerActiveGroup.median.testGetValue(),
     2,
@@ -171,10 +194,10 @@ add_task(async function test_tabGroupTelemetry() {
 
   await BrowserTestUtils.waitForCondition(() => {
     return (
-      Glean.tabgroup.tabCountInGroups.inside.testGetValue() !== null &&
-      Glean.tabgroup.tabsPerActiveGroup.average.testGetValue() !== null
+      Glean.tabgroup.tabCountInGroups.inside.testGetValue() == 5 &&
+      Glean.tabgroup.tabCountInGroups.outside.testGetValue() == 2
     );
-  }, "Wait for at least one metric from the tabCountInGroups and tabsPerActiveGroup to be set after modifying a tab group");
+  }, "Wait for group tab counts to settle");
 
   Assert.equal(
     Glean.tabgroup.tabCountInGroups.inside.testGetValue(),
@@ -186,6 +209,16 @@ add_task(async function test_tabGroupTelemetry() {
     2,
     "tabCountInGroups.outside has correct value after modifying a tab group"
   );
+
+  await BrowserTestUtils.waitForCondition(() => {
+    return (
+      Glean.tabgroup.tabsPerActiveGroup.median.testGetValue() == 2 &&
+      Glean.tabgroup.tabsPerActiveGroup.average.testGetValue() == 2 &&
+      Glean.tabgroup.tabsPerActiveGroup.max.testGetValue() == 4 &&
+      Glean.tabgroup.tabsPerActiveGroup.min.testGetValue() == 1
+    );
+  }, "Wait for active group tab statistics to settle");
+
   Assert.equal(
     Glean.tabgroup.tabsPerActiveGroup.median.testGetValue(),
     2,
@@ -212,8 +245,11 @@ add_task(async function test_tabGroupTelemetry() {
   group2.collapsed = true;
 
   await BrowserTestUtils.waitForCondition(() => {
-    return Glean.tabgroup.activeGroups.collapsed.testGetValue() !== null;
-  }, "Wait for the activeGroups metric to be set after collapsing a tab group");
+    return (
+      Glean.tabgroup.activeGroups.collapsed.testGetValue() == 1 &&
+      Glean.tabgroup.activeGroups.expanded.testGetValue() == 1
+    );
+  }, "Wait for the activeGroups metrics to settle");
 
   Assert.equal(
     Glean.tabgroup.activeGroups.collapsed.testGetValue(),
@@ -223,7 +259,7 @@ add_task(async function test_tabGroupTelemetry() {
   Assert.equal(
     Glean.tabgroup.activeGroups.expanded.testGetValue(),
     1,
-    "activeGroups.collapsed has correct value after collapsing a tab group"
+    "activeGroups.expanded has correct value after collapsing a tab group"
   );
 
   await resetTelemetry();
@@ -670,10 +706,16 @@ add_task(async function test_tabContextMenu_addTabsToGroup() {
   let group = await makeTabGroup();
   let groupId = group.id;
 
+  info("create and save a group");
+  let savedGroup = await makeTabGroup();
+  let savedGroupId = savedGroup.id;
+  await saveAndCloseGroup(savedGroup);
+
   info("create 8 ungrouped tabs to test with");
   let moreTabs = Array.from({ length: 8 }).map(() =>
     BrowserTestUtils.addTab(win.gBrowser, "https://example.com")
   );
+  await TabGroupTestUtils.ensureTabsLoaded(moreTabs);
 
   info("select first ungrouped tab and multi-select three more tabs");
   win.gBrowser.selectedTab = moreTabs[0];
@@ -694,16 +736,72 @@ add_task(async function test_tabContextMenu_addTabsToGroup() {
   await closeContextMenu(menu);
 
   await BrowserTestUtils.waitForCondition(() => {
-    return Glean.tabgroup.addTab.testGetValue() !== null;
+    return Glean.tabgroup.addTab.testGetValue()?.length === 1;
   }, "Wait for a Glean event to be recorded");
 
-  let [addTabEvent] = Glean.tabgroup.addTab.testGetValue();
+  info("Collapse the tab group and add another tab to it");
+  group.collapsed = true;
+
+  menu = await getContextMenu(win.gBrowser.tabs.at(-1), "tabContextMenu");
+  moveTabToGroupItem = win.document.getElementById("context_moveTabToGroup");
+  tabGroupButton = moveTabToGroupItem.querySelector(
+    `[tab-group-id="${groupId}"]`
+  );
+  tabGroupButton.click();
+  await closeContextMenu(menu);
+
+  await BrowserTestUtils.waitForCondition(() => {
+    return Glean.tabgroup.addTab.testGetValue()?.length === 2;
+  }, "Wait for a Glean event to be recorded");
+
+  info("Add a tab to the saved tab group");
+  // TODO bug1983054 saved group does not appear in context menu on first open
+  menu = await getContextMenu(win.gBrowser.tabs.at(-1), "tabContextMenu");
+  await closeContextMenu(menu);
+
+  menu = await getContextMenu(win.gBrowser.tabs.at(-1), "tabContextMenu");
+  moveTabToGroupItem = win.document.getElementById(
+    "context_moveTabToSavedGroup"
+  );
+  tabGroupButton = moveTabToGroupItem.querySelector(
+    `[tab-group-id="${savedGroupId}"]`
+  );
+  tabGroupButton.click();
+  await closeContextMenu(menu);
+
+  await BrowserTestUtils.waitForCondition(() => {
+    return Glean.tabgroup.addTab.testGetValue()?.length === 3;
+  }, "Wait for a Glean event to be recorded");
+
+  let [addTabEventExpanded, addTabEventCollapsed, addTabEventSaved] =
+    Glean.tabgroup.addTab.testGetValue();
   Assert.deepEqual(
-    addTabEvent.extra,
+    addTabEventExpanded.extra,
     {
       source: "tab_menu",
       tabs: "4",
       layout: "horizontal",
+      group_type: "expanded",
+    },
+    "should have recorded the correct event metadata"
+  );
+  Assert.deepEqual(
+    addTabEventCollapsed.extra,
+    {
+      source: "tab_menu",
+      tabs: "1",
+      layout: "horizontal",
+      group_type: "collapsed",
+    },
+    "should have recorded the correct event metadata"
+  );
+  Assert.deepEqual(
+    addTabEventSaved.extra,
+    {
+      source: "tab_menu",
+      tabs: "1",
+      layout: "horizontal",
+      group_type: "saved",
     },
     "should have recorded the correct event metadata"
   );
@@ -931,6 +1029,44 @@ add_task(async function test_cancelTabGroupCreation_ungroupTabsEvent() {
   );
 
   await BrowserTestUtils.removeTab(tab);
+
+  await resetTelemetry();
+});
+
+/* Test that no "add tab to group" events are fired when moving tabs
+ * but the tab does not enter or leave a group */
+add_task(async function test_noGroupEventWhenNotMovingToGroup() {
+  await resetTelemetry();
+
+  // `tabgroup.add_tab` is disabled by default and enabled by server knobs,
+  // so this test needs to enable it manually in order to test it.
+  Services.fog.applyServerKnobsConfig(
+    JSON.stringify({
+      metrics_enabled: {
+        "tabgroup.add_tab": true,
+      },
+    })
+  );
+
+  let tab = await addTabTo(win.gBrowser, "about:blank");
+  Assert.equal(
+    Glean.tabgroup.addTab.testGetValue(),
+    null,
+    "Sanity check: no add tab to group events recorded"
+  );
+
+  win.gBrowser.moveTabTo(tab, { tabIndex: 0, isUserTriggered: true });
+
+  /* eslint-disable mozilla/no-arbitrary-setTimeout */
+  await new Promise(r => setTimeout(r, 300));
+
+  Assert.equal(
+    Glean.tabgroup.addTab.testGetValue(),
+    null,
+    "No add tab to group event recorded when moving tabs not within a group"
+  );
+
+  BrowserTestUtils.removeTab(tab);
 
   await resetTelemetry();
 });

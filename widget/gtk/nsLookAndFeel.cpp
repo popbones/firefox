@@ -19,6 +19,7 @@
 #include <fontconfig/fontconfig.h>
 
 #include "GRefPtr.h"
+#include "GSettings.h"
 #include "GUniquePtr.h"
 #include "gtk/gtk.h"
 #include "nsGtkUtils.h"
@@ -1020,8 +1021,7 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
     } break;
     case IntID::ScrollArrowStyle: {
       aResult = eScrollArrowStyle_Single;
-      GtkSettings* settings = gtk_settings_get_default();
-      if (MOZ_LIKELY(settings)) {
+      if (MOZ_LIKELY(gtk_settings_get_default())) {
         GtkWidget* scrollbar = GtkWidgets::Get(GtkWidgets::Type::Scrollbar);
         aResult = ConvertGTKStepperStyleToMozillaScrollArrowStyle(scrollbar);
       }
@@ -1120,7 +1120,7 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
       break;
     case IntID::GTKThemeFamily: {
       EnsureInit();
-      aResult = int32_t(EffectiveTheme().mFamily);
+      aResult = int32_t(mSystemTheme.mFamily);
       break;
     }
     case IntID::UseAccessibilityTheme:
@@ -1142,11 +1142,6 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
     case IntID::TitlebarRadius: {
       EnsureInit();
       aResult = EffectiveTheme().mTitlebarRadius;
-      break;
-    }
-    case IntID::TitlebarButtonSpacing: {
-      EnsureInit();
-      aResult = EffectiveTheme().mTitlebarButtonSpacing;
       break;
     }
     case IntID::AllowOverlayScrollbarsOverlap: {
@@ -1204,6 +1199,28 @@ nsresult nsLookAndFeel::NativeGetInt(IntID aID, int32_t& aResult) {
         // Though the X11 code just hides the native menubar without
         // communicating it to the front-end...
         return false;
+      }();
+      break;
+    case IntID::HourCycle:
+      aResult = []() {
+        if (MOZ_UNLIKELY(!gtk_settings_get_default())) {
+          // Avoid accessing gsettings early on startup on xpcshell, in order to
+          // avoid messing with tests that try to mock our session bus.
+          // FIXME(bug 1981011): Ideally we would be able to not have this
+          // special case.
+          return 0;
+        }
+
+        nsAutoCString result;
+        widget::GSettings::GetString("org.gnome.desktop.interface"_ns,
+                                     "clock-format"_ns, result);
+        if (result == "12h") {
+          return 12;
+        }
+        if (result == "24h") {
+          return 24;
+        }
+        return 0;
       }();
       break;
     default:
@@ -1460,6 +1477,29 @@ bool nsLookAndFeel::ConfigureAltTheme() {
   return false;
 }
 
+void nsLookAndFeel::PerThemeData::RestoreColorOverrides() {
+  for (auto& override : Reversed(mOverrides)) {
+    *reinterpret_cast<nscolor*>(reinterpret_cast<uint8_t*>(this) +
+                                override.mByteOffset) = override.mOriginalColor;
+  }
+  mOverrides.Clear();
+}
+
+void nsLookAndFeel::PerThemeData::ApplyColorOverride(nscolor* aMember,
+                                                     nscolor aNewColor) {
+  auto offset =
+      reinterpret_cast<uintptr_t>(aMember) - reinterpret_cast<uintptr_t>(this);
+  MOZ_ASSERT(offset < sizeof(*this));
+  mOverrides.AppendElement(ColorOverride{uint32_t(offset), *aMember});
+  *aMember = aNewColor;
+}
+
+void nsLookAndFeel::PerThemeData::ApplyColorOverride(
+    ColorPair* aMember, const ColorPair& aNewPair) {
+  ApplyColorOverride(&aMember->mBg, aNewPair.mBg);
+  ApplyColorOverride(&aMember->mFg, aNewPair.mFg);
+}
+
 // We override some adwaita colors from GTK3 to LibAdwaita, see:
 // https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.7/css-variables.html
 // https://gitlab.gnome.org/GNOME/libadwaita/-/blob/690c0a70315c74b95b2cb5fa29622370b3195b0d/src/stylesheet/_defaults.scss
@@ -1467,32 +1507,35 @@ void nsLookAndFeel::MaybeApplyColorOverrides() {
   auto& dark = mSystemTheme.mIsDark ? mSystemTheme : mAltTheme;
   auto& light = mSystemTheme.mIsDark ? mAltTheme : mSystemTheme;
 
-  // Unconditional special case for Adwaita-dark: In GTK3 we don't have more
-  // proper accent colors, so we use the selected background colors. Those
-  // colors, however, don't have much contrast in dark mode (see bug 1741293).
-  if (dark.mFamily == ThemeFamily::Adwaita) {
-    if (mDBusSettings.HasAccentColor()) {
-      dark.mAccent = mDBusSettings.mAccentColor;
-      dark.mSelectedItem = dark.mMenuHover = dark.mAccent;
-      dark.mNativeHyperLinkText = dark.mNativeVisitedHyperLinkText =
-          dark.mAccent.mBg;
-    } else {
-      dark.mAccent = {NS_RGB(0x35, 0x84, 0xe4), NS_RGB(0xff, 0xff, 0xff)};
-    }
-    dark.mSelectedText = dark.mAccent;
-  }
+  dark.RestoreColorOverrides();
+  light.RestoreColorOverrides();
 
-  if (light.mFamily == ThemeFamily::Adwaita) {
-    if (mDBusSettings.HasAccentColor()) {
-      light.mAccent = mDBusSettings.mAccentColor;
-      light.mSelectedItem = light.mMenuHover = light.mAccent;
-      light.mNativeHyperLinkText = light.mNativeVisitedHyperLinkText =
-          light.mAccent.mBg;
-    } else {
-      light.mAccent = {NS_RGB(0x35, 0x84, 0xe4), NS_RGB(0xff, 0xff, 0xff)};
-    }
-    light.mSelectedText = light.mAccent;
-  }
+  auto MaybeApplyDbusOrAdwaitaAccentColor =
+      [](PerThemeData& aTheme, const DBusSettings& aDBusSettings) {
+        if (aTheme.mFamily != ThemeFamily::Adwaita) {
+          return;
+        }
+        if (aDBusSettings.HasAccentColor()) {
+          aTheme.ApplyColorOverride(&aTheme.mAccent,
+                                    aDBusSettings.mAccentColor);
+          aTheme.ApplyColorOverride(&aTheme.mSelectedItem,
+                                    aDBusSettings.mAccentColor);
+          aTheme.ApplyColorOverride(&aTheme.mMenuHover,
+                                    aDBusSettings.mAccentColor);
+          aTheme.ApplyColorOverride(&aTheme.mNativeHyperLinkText,
+                                    aDBusSettings.mAccentColor.mBg);
+          aTheme.ApplyColorOverride(&aTheme.mNativeVisitedHyperLinkText,
+                                    aDBusSettings.mAccentColor.mBg);
+        } else {
+          aTheme.ApplyColorOverride(
+              &aTheme.mAccent,
+              {NS_RGB(0x35, 0x84, 0xe4), NS_RGB(0xff, 0xff, 0xff)});
+        }
+        aTheme.ApplyColorOverride(&aTheme.mSelectedText, aTheme.mAccent);
+      };
+
+  MaybeApplyDbusOrAdwaitaAccentColor(dark, mDBusSettings);
+  MaybeApplyDbusOrAdwaitaAccentColor(light, mDBusSettings);
 
   if (StaticPrefs::widget_gtk_libadwaita_colors_enabled()) {
     // https://gitlab.gnome.org/GNOME/libadwaita/-/blob/main/src/stylesheet/widgets/_buttons.scss
@@ -1502,30 +1545,39 @@ void nsLookAndFeel::MaybeApplyColorOverrides() {
       // border to checkboxes and textfields as well, so for now let it be.
       // aTheme.mButton.mBorder = aTheme.mButtonHover.mBorder =
       //     aTheme.mButtonActive.mBorder = NS_TRANSPARENT;
-      aTheme.mField.mFg = aTheme.mButton.mFg = aTheme.mButtonHover.mFg =
-          aTheme.mButtonActive.mFg = aTheme.mWindow.mFg;
+      aTheme.ApplyColorOverride(&aTheme.mField.mFg, aTheme.mWindow.mFg);
+      aTheme.ApplyColorOverride(&aTheme.mButton.mFg, aTheme.mWindow.mFg);
+      aTheme.ApplyColorOverride(&aTheme.mButtonHover.mFg, aTheme.mWindow.mFg);
+      aTheme.ApplyColorOverride(&aTheme.mButtonActive.mFg, aTheme.mWindow.mFg);
       // Window background combined with 10%, 15% and 30% of the foreground
       // color, respectively.
-      aTheme.mButton.mBg = aTheme.mField.mBg = NS_ComposeColors(
+      const nscolor buttonBg = NS_ComposeColors(
           aTheme.mWindow.mBg,
           NS_RGBA(NS_GET_R(aTheme.mWindow.mFg), NS_GET_G(aTheme.mWindow.mFg),
                   NS_GET_B(aTheme.mWindow.mFg), 26));
-      aTheme.mButtonHover.mBg = NS_ComposeColors(
-          aTheme.mWindow.mBg,
-          NS_RGBA(NS_GET_R(aTheme.mWindow.mFg), NS_GET_G(aTheme.mWindow.mFg),
-                  NS_GET_B(aTheme.mWindow.mFg), 39));
-      aTheme.mButtonActive.mBg = NS_ComposeColors(
-          aTheme.mWindow.mBg,
-          NS_RGBA(NS_GET_R(aTheme.mWindow.mFg), NS_GET_G(aTheme.mWindow.mFg),
-                  NS_GET_B(aTheme.mWindow.mFg), 77));
+      aTheme.ApplyColorOverride(&aTheme.mButton.mBg, buttonBg);
+      aTheme.ApplyColorOverride(&aTheme.mField.mBg, buttonBg);
+      aTheme.ApplyColorOverride(
+          &aTheme.mButtonHover.mBg,
+          NS_ComposeColors(aTheme.mWindow.mBg,
+                           NS_RGBA(NS_GET_R(aTheme.mWindow.mFg),
+                                   NS_GET_G(aTheme.mWindow.mFg),
+                                   NS_GET_B(aTheme.mWindow.mFg), 39)));
+      aTheme.ApplyColorOverride(
+          &aTheme.mButtonActive.mBg,
+          NS_ComposeColors(aTheme.mWindow.mBg,
+                           NS_RGBA(NS_GET_R(aTheme.mWindow.mFg),
+                                   NS_GET_G(aTheme.mWindow.mFg),
+                                   NS_GET_B(aTheme.mWindow.mFg), 77)));
     };
 
     if (light.mFamily == ThemeFamily::Adwaita) {
       // #323232 is rgba(0,0,0,.8) over #fafafa.
-      light.mWindow.mBg = NS_RGB(0xfa, 0xfa, 0xfb);
-      light.mWindow.mFg =
-          NS_ComposeColors(light.mWindow.mBg, NS_RGBA(0, 0, 6, 204));
-      light.mDialog = light.mWindow;
+      light.ApplyColorOverride(&light.mWindow.mBg, NS_RGB(0xfa, 0xfa, 0xfb));
+      light.ApplyColorOverride(
+          &light.mWindow.mFg,
+          NS_ComposeColors(light.mWindow.mBg, NS_RGBA(0, 0, 6, 204)));
+      light.ApplyColorOverride(&light.mDialog, light.mWindow);
 
       ApplyLibadwaitaButtonColors(light);
 
@@ -1533,53 +1585,64 @@ void nsLookAndFeel::MaybeApplyColorOverrides() {
       // front-end relies on this right now to not look really ugly. Arguably
       // Menu backgrounds or so is what should be used for the urlbar popups,
       // rather than Field...
-      light.mField.mBg = NS_RGB(0xff, 0xff, 0xff);
+      light.ApplyColorOverride(&light.mField.mBg, NS_RGB(0xff, 0xff, 0xff));
 
       // rgba(0,0,6,.8) over the background.
-      light.mSidebar.mBg = NS_RGB(0xeb, 0xeb, 0xed);
-      light.mSidebar.mFg =
-          NS_ComposeColors(light.mSidebar.mBg, NS_RGBA(0, 0, 6, 204));
+      light.ApplyColorOverride(&light.mSidebar.mBg, NS_RGB(0xeb, 0xeb, 0xed));
+      light.ApplyColorOverride(
+          &light.mSidebar.mFg,
+          NS_ComposeColors(light.mSidebar.mBg, NS_RGBA(0, 0, 6, 204)));
 
       // We use the sidebar colors for the headerbar in light mode background
       // because it creates much better contrast. GTK headerbar colors are
       // white, and meant to "blend" with the contents otherwise, but that
       // doesn't work fine for Firefox's toolbars.
-      light.mHeaderBar = light.mTitlebar = light.mHeaderBarInactive =
-          light.mTitlebarInactive = light.mSidebar;
+      light.ApplyColorOverride(&light.mHeaderBar, light.mSidebar);
+      light.ApplyColorOverride(&light.mTitlebar, light.mSidebar);
+      light.ApplyColorOverride(&light.mHeaderBarInactive, light.mSidebar);
+      light.ApplyColorOverride(&light.mTitlebarInactive, light.mSidebar);
 
       // headerbar_backdrop_color
-      light.mHeaderBarInactive.mBg = light.mTitlebarInactive.mBg =
-          light.mWindow.mBg;
+      light.ApplyColorOverride(&light.mHeaderBarInactive.mBg,
+                               light.mWindow.mBg);
+      light.ApplyColorOverride(&light.mTitlebarInactive.mBg, light.mWindow.mBg);
 
-      light.mFrameBorder = NS_RGB(0xe0, 0xe0, 0xe0);
-      light.mSidebarBorder = NS_RGBA(0, 0, 0, 18);
+      light.ApplyColorOverride(&light.mFrameBorder, NS_RGB(0xe0, 0xe0, 0xe0));
+      light.ApplyColorOverride(&light.mSidebarBorder, NS_RGBA(0, 0, 0, 18));
 
       // popover_bg_color, popover_fg_color
-      light.mMenu.mBg = NS_RGB(0xff, 0xff, 0xff);
-      light.mMenu.mFg =
-          NS_ComposeColors(light.mMenu.mBg, NS_RGBA(0, 0, 6, 204));
+      light.ApplyColorOverride(&light.mMenu.mBg, NS_RGB(0xff, 0xff, 0xff));
+      light.ApplyColorOverride(
+          &light.mMenu.mFg,
+          NS_ComposeColors(light.mMenu.mBg, NS_RGBA(0, 0, 6, 204)));
     }
 
     if (dark.mFamily == ThemeFamily::Adwaita) {
-      dark.mWindow = {NS_RGB(0x22, 0x22, 0x26), NS_RGB(0xff, 0xff, 0xff)};
-      dark.mDialog = {NS_RGB(0x36, 0x36, 0x3a), NS_RGB(0xff, 0xff, 0xff)};
+      dark.ApplyColorOverride(
+          &dark.mWindow, {NS_RGB(0x22, 0x22, 0x26), NS_RGB(0xff, 0xff, 0xff)});
+      dark.ApplyColorOverride(
+          &dark.mDialog, {NS_RGB(0x36, 0x36, 0x3a), NS_RGB(0xff, 0xff, 0xff)});
 
       ApplyLibadwaitaButtonColors(dark);
 
-      dark.mSidebar = dark.mHeaderBar = dark.mTitlebar =
-          dark.mHeaderBarInactive = dark.mTitlebarInactive = {
-              NS_RGB(0x2e, 0x2e, 0x32), NS_RGB(0xff, 0xff, 0xff)};
+      dark.ApplyColorOverride(
+          &dark.mSidebar, {NS_RGB(0x2e, 0x2e, 0x32), NS_RGB(0xff, 0xff, 0xff)});
+      dark.ApplyColorOverride(&dark.mHeaderBar, dark.mSidebar);
+      dark.ApplyColorOverride(&dark.mTitlebar, dark.mSidebar);
+      dark.ApplyColorOverride(&dark.mHeaderBarInactive, dark.mSidebar);
+      dark.ApplyColorOverride(&dark.mTitlebarInactive, dark.mSidebar);
 
       // headerbar_backdrop_color
-      dark.mHeaderBarInactive.mBg = dark.mTitlebarInactive.mBg =
-          dark.mWindow.mBg;
+      dark.ApplyColorOverride(&dark.mHeaderBarInactive.mBg, dark.mWindow.mBg);
+      dark.ApplyColorOverride(&dark.mTitlebarInactive.mBg, dark.mWindow.mBg);
 
       // headerbar_shade_color
-      dark.mFrameBorder = NS_RGB(0x1f, 0x1f, 0x1f);
-      dark.mSidebarBorder = NS_RGBA(0, 0, 0, 92);
+      dark.ApplyColorOverride(&dark.mFrameBorder, NS_RGB(0x1f, 0x1f, 0x1f));
+      dark.ApplyColorOverride(&dark.mSidebarBorder, NS_RGBA(0, 0, 0, 92));
 
       // popover_bg_color, popover_fg_color
-      dark.mMenu = {NS_RGB(0x36, 0x36, 0x3a), NS_RGB(0xff, 0xff, 0xff)};
+      dark.ApplyColorOverride(
+          &dark.mMenu, {NS_RGB(0x36, 0x36, 0x3a), NS_RGB(0xff, 0xff, 0xff)});
     }
   }
 
@@ -1587,18 +1650,19 @@ void nsLookAndFeel::MaybeApplyColorOverrides() {
   // back to the default light / dark themes.
   if (mAltTheme.mIsDefaultThemeFallback) {
     if (StaticPrefs::widget_gtk_alt_theme_selection()) {
-      mAltTheme.mSelectedText = mSystemTheme.mSelectedText;
+      mAltTheme.ApplyColorOverride(&mAltTheme.mSelectedText,
+                                   mSystemTheme.mSelectedText);
     }
 
     if (StaticPrefs::widget_gtk_alt_theme_scrollbar_active() &&
         (!mAltTheme.mIsDark || ShouldUseColorForActiveDarkScrollbarThumb(
                                    mSystemTheme.mThemedScrollbarThumbActive))) {
-      mAltTheme.mThemedScrollbarThumbActive =
-          mSystemTheme.mThemedScrollbarThumbActive;
+      mAltTheme.ApplyColorOverride(&mAltTheme.mThemedScrollbarThumbActive,
+                                   mSystemTheme.mThemedScrollbarThumbActive);
     }
 
     if (StaticPrefs::widget_gtk_alt_theme_accent()) {
-      mAltTheme.mAccent = mSystemTheme.mAccent;
+      mAltTheme.ApplyColorOverride(&mAltTheme.mAccent, mSystemTheme.mAccent);
     }
   }
 }
@@ -1766,15 +1830,15 @@ HeaderBarButtonLayout GetGtkHeaderBarButtonLayout() {
   size_t activeButtons = 0;
   for (const auto& part : layout.Split(':')) {
     for (const auto& button : part.Split(',')) {
+      if (activeButtons == result.mButtons.size()) {
+        break;
+      }
       if (button.EqualsLiteral("close")) {
         result.mButtons[activeButtons++] = Type::Close;
       } else if (button.EqualsLiteral("minimize")) {
         result.mButtons[activeButtons++] = Type::Minimize;
       } else if (button.EqualsLiteral("maximize")) {
         result.mButtons[activeButtons++] = Type::Maximize;
-      }
-      if (activeButtons == result.mButtons.size()) {
-        break;
       }
     }
   }
@@ -2102,10 +2166,11 @@ void nsLookAndFeel::PerThemeData::Init() {
   mName = GetGtkTheme();
 
   mFamily = [&] {
-    if (mName.EqualsLiteral("Adwaita") || mName.EqualsLiteral("Adwaita-dark")) {
+    if (StringBeginsWith(mName, "adw"_ns, nsCaseInsensitiveCStringComparator)) {
+      // This catches "Adwaita", "Adwaita-dark", and "{A,a}dw-gtk3" too.
       return ThemeFamily::Adwaita;
     }
-    if (mName.EqualsLiteral("Breeze") || mName.EqualsLiteral("Breeze-Dark")) {
+    if (StringBeginsWith(mName, "Breeze"_ns)) {
       return ThemeFamily::Breeze;
     }
     if (StringBeginsWith(mName, "Yaru"_ns)) {
@@ -2239,7 +2304,7 @@ void nsLookAndFeel::PerThemeData::Init() {
   style = GtkWidgets::GetStyle(GtkWidgets::Type::HeaderBar);
   {
     const bool headerBarHasBackground = HasBackground(style);
-    if (!headerBarHasBackground && !GetBorderRadius(style)) {
+    if (!headerBarHasBackground || !GetBorderRadius(style)) {
       // Some themes like Elementary's style the container of the headerbar
       // rather than the header bar itself.
       GtkStyleContext* fixedStyle =
@@ -2254,14 +2319,6 @@ void nsLookAndFeel::PerThemeData::Init() {
     mTitlebar = GetColorPair(style, GTK_STATE_FLAG_NORMAL);
     mTitlebarInactive = GetColorPair(style, GTK_STATE_FLAG_BACKDROP);
     mTitlebarRadius = GetBorderRadius(style);
-    mTitlebarButtonSpacing = [&] {
-      // Account for the spacing property in the header bar.
-      // Default to 6 pixels (gtk/gtkheaderbar.c)
-      gint spacing = 6;
-      g_object_get(GtkWidgets::Get(GtkWidgets::Type::HeaderBar), "spacing",
-                   &spacing, nullptr);
-      return spacing;
-    }();
   }
 
   // We special-case the header bar color in Adwaita, Yaru and Breeze to be the

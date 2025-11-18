@@ -19,6 +19,8 @@
     clippy::new_without_default,
     clippy::empty_docs,
     clippy::manual_range_contains,
+    unknown_lints,
+    mismatched_lifetime_syntaxes,
 )]
 
 
@@ -36,13 +38,14 @@ extern crate malloc_size_of_derive;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate time;
 
 extern crate malloc_size_of;
 extern crate peek_poke;
 
 pub mod channel;
 mod color;
+#[cfg(feature = "debugger")]
+pub mod debugger;
 mod display_item;
 mod display_item_cache;
 mod display_list;
@@ -100,7 +103,7 @@ impl Default for QualitySettings {
 /// This is mostly used as a synchronization mechanism to observe how/when particular pipeline
 /// updates propagate through WebRender and are applied at various stages.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, MallocSizeOf, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Epoch(pub u32);
 
 impl Epoch {
@@ -117,6 +120,10 @@ impl Epoch {
 #[derive(Clone, Copy, Debug, Default, Eq, MallocSizeOf, PartialEq, Hash, Ord, PartialOrd, PeekPoke)]
 #[derive(Deserialize, Serialize)]
 pub struct IdNamespace(pub u32);
+
+impl IdNamespace {
+    pub const DEBUGGER: IdNamespace = IdNamespace(!0);
+}
 
 /// A key uniquely identifying a WebRender document.
 ///

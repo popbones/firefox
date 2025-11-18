@@ -13,6 +13,7 @@
 #include "mozilla/dom/CloseWatcherManager.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/UserActivationIPCUtils.h"
+#include "mozilla/dom/WorkerCommon.h"
 #include "mozilla/PermissionDelegateIPCUtils.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/StaticPtr.h"
@@ -239,9 +240,14 @@ bool WindowContext::CanSet(FieldIndex<IDX_IsSecure>, const bool& aIsSecure,
   return CheckOnlyOwningProcessCanSet(aSource);
 }
 
-bool WindowContext::CanSet(FieldIndex<IDX_HasBeforeUnload>,
+bool WindowContext::CanSet(FieldIndex<IDX_NeedsBeforeUnload>,
                            const bool& aHasBeforeUnload,
                            ContentParent* aSource) {
+  return CheckOnlyOwningProcessCanSet(aSource);
+}
+
+bool WindowContext::CanSet(FieldIndex<IDX_NeedsTraverse>,
+                           const bool& aNeedsTraverse, ContentParent* aSource) {
   return CheckOnlyOwningProcessCanSet(aSource);
 }
 
@@ -271,7 +277,15 @@ bool WindowContext::CanSet(FieldIndex<IDX_IsThirdPartyTrackingResourceWindow>,
 bool WindowContext::CanSet(FieldIndex<IDX_UsingStorageAccess>,
                            const bool& aUsingStorageAccess,
                            ContentParent* aSource) {
-  return CheckOnlyOwningProcessCanSet(aSource);
+  return XRE_IsParentProcess() || CheckOnlyOwningProcessCanSet(aSource);
+}
+
+void WindowContext::DidSet(FieldIndex<IDX_UsingStorageAccess>, bool aOldValue) {
+  if (!aOldValue && GetUsingStorageAccess() && XRE_IsContentProcess()) {
+    if (nsGlobalWindowInner* windowInner = GetInnerWindow()) {
+      windowInner->StorageAccessPermissionChanged(true);
+    }
+  }
 }
 
 bool WindowContext::CanSet(FieldIndex<IDX_ShouldResistFingerprinting>,
@@ -412,6 +426,26 @@ void WindowContext::DidSet(FieldIndex<IDX_SHEntryHasUserInteraction>,
       activeEntry->SetHasUserInteraction(true);
     }
   }
+}
+
+void WindowContext::DidSet(FieldIndex<IDX_HasActivePeerConnections>,
+                           bool aOldValue) {
+  MOZ_ASSERT(
+      TopWindowContext() == this,
+      "IDX_HasActivePeerConnections can only be set on the top window context");
+
+  BrowsingContext* top = mBrowsingContext->Top();
+
+  top->PreOrderWalk([&](BrowsingContext* aBrowsingContext) {
+    WindowContext* windowContext = aBrowsingContext->GetCurrentWindowContext();
+    if (windowContext) {
+      auto* win{windowContext->GetInnerWindow()};
+      if (win && (aOldValue != win->HasActivePeerConnections())) {
+        dom::UpdateWorkersPeerConnections(*win,
+                                          win->HasActivePeerConnections());
+      }
+    }
+  });
 }
 
 void WindowContext::DidSet(FieldIndex<IDX_UserActivationStateAndModifiers>) {

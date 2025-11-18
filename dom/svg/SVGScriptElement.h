@@ -9,8 +9,8 @@
 
 #include "SVGAnimatedString.h"
 #include "mozilla/AlreadyAddRefed.h"
-#include "mozilla/dom/ScriptElement.h"
 #include "mozilla/dom/SVGElement.h"
+#include "mozilla/dom/ScriptElement.h"
 
 nsresult NS_NewSVGScriptElement(
     nsIContent** aResult, already_AddRefed<mozilla::dom::NodeInfo>&& aNodeInfo,
@@ -80,9 +80,7 @@ class SVGScriptElement final : public SVGScriptElementBase,
 
   StringAttributesInfo GetStringInfo() override;
 
-  // SVG Script elements don't have the ability to set async properties on
-  // themselves, so this will always return false.
-  bool GetAsyncState() override { return false; }
+  bool GetAsyncState() override { return Async(); }
 
   nsIContent* GetAsContent() override { return this; }
 

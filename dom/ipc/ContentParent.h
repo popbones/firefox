@@ -7,23 +7,9 @@
 #ifndef mozilla_dom_ContentParent_h
 #define mozilla_dom_ContentParent_h
 
-#include "mozilla/dom/PContentParent.h"
-#include "mozilla/dom/ipc/IdType.h"
-#include "mozilla/dom/MessageManagerCallback.h"
-#include "mozilla/dom/MediaSessionBinding.h"
-#include "mozilla/dom/ProcessIsolation.h"
-#include "mozilla/dom/RemoteBrowser.h"
-#include "mozilla/dom/RemoteType.h"
-#include "mozilla/dom/JSProcessActorParent.h"
-#include "mozilla/dom/ProcessActor.h"
-#include "mozilla/dom/UniqueContentParentKeepAlive.h"
-#include "mozilla/dom/UserActivation.h"
-#include "mozilla/gfx/gfxVarReceiver.h"
-#include "mozilla/gfx/GPUProcessListener.h"
-#include "mozilla/ipc/BackgroundUtils.h"
-#include "mozilla/ipc/GeckoChildProcessHost.h"
-#include "mozilla/ipc/InputStreamUtils.h"
-#include "mozilla/ipc/SharedMemoryHandle.h"
+#include "DriverCrashGuard.h"
+#include "MainThreadUtils.h"
+#include "PermissionMessageUtils.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/DataMutex.h"
 #include "mozilla/HalTypes.h"
@@ -37,25 +23,38 @@
 #include "mozilla/StaticPtr.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/UniquePtr.h"
-
-#include "MainThreadUtils.h"
+#include "mozilla/dom/JSProcessActorParent.h"
+#include "mozilla/dom/MediaSessionBinding.h"
+#include "mozilla/dom/MessageManagerCallback.h"
+#include "mozilla/dom/PContentParent.h"
+#include "mozilla/dom/ProcessActor.h"
+#include "mozilla/dom/ProcessIsolation.h"
+#include "mozilla/dom/RemoteBrowser.h"
+#include "mozilla/dom/RemoteType.h"
+#include "mozilla/dom/UniqueContentParentKeepAlive.h"
+#include "mozilla/dom/UserActivation.h"
+#include "mozilla/dom/ipc/IdType.h"
+#include "mozilla/gfx/GPUProcessListener.h"
+#include "mozilla/gfx/gfxVarReceiver.h"
+#include "mozilla/ipc/BackgroundUtils.h"
+#include "mozilla/ipc/GeckoChildProcessHost.h"
+#include "mozilla/ipc/InputStreamUtils.h"
+#include "mozilla/ipc/SharedMemoryHandle.h"
 #include "nsClassHashtable.h"
-#include "nsTHashMap.h"
-#include "nsTHashSet.h"
 #include "nsHashKeys.h"
 #include "nsIAsyncShutdown.h"
+#include "nsIDOMGeoPositionCallback.h"
+#include "nsIDOMGeoPositionErrorCallback.h"
 #include "nsIDOMProcessParent.h"
 #include "nsIInterfaceRequestor.h"
 #include "nsIObserver.h"
+#include "nsIReferrerInfo.h"
 #include "nsIRemoteTab.h"
 #include "nsITransferable.h"
-#include "nsIDOMGeoPositionCallback.h"
-#include "nsIDOMGeoPositionErrorCallback.h"
 #include "nsIUrlClassifierFeature.h"
 #include "nsRefPtrHashtable.h"
-#include "PermissionMessageUtils.h"
-#include "DriverCrashGuard.h"
-#include "nsIReferrerInfo.h"
+#include "nsTHashMap.h"
+#include "nsTHashSet.h"
 
 class nsConsoleService;
 class nsICycleCollectorLogSink;
@@ -83,6 +82,10 @@ class SandboxBrokerPolicyFactory;
 class PreallocatedProcessManagerImpl;
 
 using mozilla::loader::PScriptCacheParent;
+
+namespace performance::pageload_event {
+class PageloadEventData;
+}  // namespace performance::pageload_event
 
 namespace ipc {
 class CrashReporterHost;
@@ -550,7 +553,7 @@ class ContentParent final : public PContentParent,
       const bool& aForWindowDotPrint, const bool& aTopLevelCreatedByWebContent,
       nsIURI* aURIToLoad, const nsACString& aFeatures,
       const UserActivation::Modifiers& aModifiers,
-      nsIPrincipal* aTriggeringPrincipal, nsIContentSecurityPolicy* aCsp,
+      nsIPrincipal* aTriggeringPrincipal, nsIPolicyContainer* aPolicyContainer,
       nsIReferrerInfo* aReferrerInfo, const OriginAttributes& aOriginAttributes,
       bool aUserActivation, bool aTextDirectiveUserActivation,
       CreateWindowResolver&& aResolve);
@@ -561,7 +564,7 @@ class ContentParent final : public PContentParent,
       const bool& aTopLevelCreatedByWebContent, nsIURI* aURIToLoad,
       const nsACString& aFeatures, const UserActivation::Modifiers& aModifiers,
       const nsAString& aName, nsIPrincipal* aTriggeringPrincipal,
-      nsIContentSecurityPolicy* aCsp, nsIReferrerInfo* aReferrerInfo,
+      nsIPolicyContainer* aPolicyContainer, nsIReferrerInfo* aReferrerInfo,
       const OriginAttributes& aOriginAttributes, bool aUserActivation,
       bool aTextDirectiveUserActivation);
 
@@ -747,7 +750,7 @@ class ContentParent final : public PContentParent,
 
   bool ShouldContinueFromReplyTimeout() override;
 
-  void OnVarChanged(const GfxVarUpdate& aVar) override;
+  void OnVarChanged(const nsTArray<GfxVarUpdate>& aVar) override;
   void OnCompositorUnexpectedShutdown() override;
 
  private:
@@ -784,7 +787,7 @@ class ContentParent final : public PContentParent,
       nsresult& aResult, nsCOMPtr<nsIRemoteTab>& aNewRemoteTab,
       bool* aWindowIsNew, int32_t& aOpenLocation,
       nsIPrincipal* aTriggeringPrincipal, nsIReferrerInfo* aReferrerInfo,
-      bool aLoadUri, nsIContentSecurityPolicy* aCsp,
+      bool aLoadUri, nsIPolicyContainer* aPolicyContainer,
       const OriginAttributes& aOriginAttributes, bool aUserActivation,
       bool aTextDirectiveUserActivation);
 
@@ -1019,7 +1022,7 @@ class ContentParent final : public PContentParent,
 
   mozilla::ipc::IPCResult RecvSyncMessage(
       const nsAString& aMsg, const ClonedMessageData& aData,
-      nsTArray<StructuredCloneData>* aRetvals);
+      nsTArray<UniquePtr<StructuredCloneData>>* aRetvals);
 
   mozilla::ipc::IPCResult RecvAsyncMessage(const nsAString& aMsg,
                                            const ClonedMessageData& aData);
@@ -1183,7 +1186,10 @@ class ContentParent final : public PContentParent,
   mozilla::ipc::IPCResult RecvRecordDiscardedData(
       const DiscardedData& aDiscardedData);
   mozilla::ipc::IPCResult RecvRecordPageLoadEvent(
-      mozilla::glean::perf::PageLoadExtra&& aPageLoadEventExtra);
+      mozilla::performance::pageload_event::PageloadEventData&&
+          aPageLoadEventData,
+      const TimeStamp& aNavigationStartTime,
+      uint64_t aAndroidAppLinkLoadIdentifier);
   mozilla::ipc::IPCResult RecvRecordOrigin(const uint32_t& aMetricId,
                                            const nsACString& aOrigin);
   mozilla::ipc::IPCResult RecvReportContentBlockingLog(
@@ -1290,8 +1296,9 @@ class ContentParent final : public PContentParent,
       ServiceWorkerShutdownState::Progress aProgress);
 
   mozilla::ipc::IPCResult RecvRawMessage(
-      const JSActorMessageMeta& aMeta, const Maybe<ClonedMessageData>& aData,
-      const Maybe<ClonedMessageData>& aStack);
+      const JSActorMessageMeta& aMeta,
+      const UniquePtr<ClonedMessageData>& aData,
+      const UniquePtr<ClonedMessageData>& aStack);
 
   mozilla::ipc::IPCResult RecvAbortOtherOrientationPendingPromises(
       const MaybeDiscarded<BrowsingContext>& aContext);
@@ -1304,13 +1311,20 @@ class ContentParent final : public PContentParent,
       const MaybeDiscarded<BrowsingContext>& aContext, const uint64_t& aLoadID,
       const nsID& aChangeID, const uint32_t& aLoadType,
       const bool& aCloneEntryChildren, const bool& aChannelExpired,
-      const uint32_t& aCacheKey, nsIPrincipal* aPartitionedPrincipal);
+      const uint32_t& aCacheKey);
 
   MOZ_CAN_RUN_SCRIPT_BOUNDARY
   mozilla::ipc::IPCResult RecvHistoryGo(
       const MaybeDiscarded<BrowsingContext>& aContext, int32_t aOffset,
       uint64_t aHistoryEpoch, bool aRequireUserInteraction,
-      bool aUserActivation, HistoryGoResolver&& aResolveRequestedIndex);
+      bool aUserActivation, bool aCheckForCancelation,
+      HistoryGoResolver&& aResolveRequestedIndex);
+
+  MOZ_CAN_RUN_SCRIPT_BOUNDARY
+  mozilla::ipc::IPCResult RecvNavigationTraverse(
+      const MaybeDiscarded<BrowsingContext>& aContext, const nsID& aKey,
+      uint64_t aHistoryEpoch, bool aUserActivation, bool aCheckForCancelation,
+      NavigationTraverseResolver&& aResolveRequestedIndex);
 
   mozilla::ipc::IPCResult RecvSynchronizeLayoutHistoryState(
       const MaybeDiscarded<BrowsingContext>& aContext,
@@ -1341,10 +1355,6 @@ class ContentParent final : public PContentParent,
   mozilla::ipc::IPCResult RecvGetLoadingSessionHistoryInfoFromParent(
       const MaybeDiscarded<BrowsingContext>& aContext,
       GetLoadingSessionHistoryInfoFromParentResolver&& aResolver);
-
-  mozilla::ipc::IPCResult RecvGetContiguousSessionHistoryInfos(
-      const MaybeDiscarded<BrowsingContext>& aContext,
-      GetContiguousSessionHistoryInfosResolver&& aResolver);
 
   mozilla::ipc::IPCResult RecvRemoveFromBFCache(
       const MaybeDiscarded<BrowsingContext>& aContext);
@@ -1385,6 +1395,8 @@ class ContentParent final : public PContentParent,
 
   mozilla::ipc::IPCResult RecvFOGData(ByteBuf&& buf);
 
+  mozilla::ipc::IPCResult RecvGeckoTraceExport(ByteBuf&& aBuf);
+
   mozilla::ipc::IPCResult RecvSetContainerFeaturePolicy(
       const MaybeDiscardedBrowsingContext& aContainerContext,
       MaybeFeaturePolicyInfo&& aContainerFeaturePolicyInfo);
@@ -1421,7 +1433,7 @@ class ContentParent final : public PContentParent,
     return mBrowsingContextFieldEpoch;
   }
 
-  void UpdateNetworkLinkType();
+  uint32_t UpdateNetworkLinkType();
 
   already_AddRefed<JSActor> InitJSActor(JS::Handle<JSObject*> aMaybeActor,
                                         const nsACString& aName,
@@ -1443,6 +1455,11 @@ class ContentParent final : public PContentParent,
     return mRemoteWorkerServiceActor;
   }
 
+  void SetAndroidAppLinkLaunchType(uint64_t aLoadIdentifier,
+                                   int32_t aAppLinkLaunchType);
+  int32_t GetAndroidAppLinkLaunchType(uint64_t aLoadIdentifier);
+  void ClearAndroidAppLinkLaunchType(uint64_t aLoadIdentifier);
+
  private:
   // Return an existing ContentParent if possible. Otherwise, `nullptr`.
   static UniqueContentParentKeepAlive GetUsedBrowserProcess(
@@ -1459,6 +1476,11 @@ class ContentParent final : public PContentParent,
   void AssertAlive();
 
   void StartRemoteWorkerService();
+
+  void RecordAndroidAppLinkTelemetry(
+      mozilla::performance::pageload_event::PageloadEventData*
+          aPageLoadEventData,
+      const TimeStamp& aNavStartTime, uint64_t aAppLinkLaunchTypeIdentifier);
 
  private:
   // If you add strong pointers to cycle collected objects here, be sure to
@@ -1583,6 +1605,10 @@ class ContentParent final : public PContentParent,
   // viewed as an acceptable side-channel leak. In the future bug 1491018 will
   // moot the need for this structure.
   nsTArray<uint64_t> mLoadedOriginHashes;
+
+  // Map from android load identifier to app link launch type
+  // We do this to avoid sending the app link launch type to the content process
+  nsTHashMap<uint64_t, int32_t> mAndroidLoadIdentifierToAppLinkLaunchType;
 
   UniquePtr<mozilla::ipc::CrashReporterHost> mCrashReporter;
 

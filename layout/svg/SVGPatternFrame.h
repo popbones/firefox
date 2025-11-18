@@ -7,12 +7,12 @@
 #ifndef LAYOUT_SVG_SVGPATTERNFRAME_H_
 #define LAYOUT_SVG_SVGPATTERNFRAME_H_
 
-#include "mozilla/Attributes.h"
 #include "gfxMatrix.h"
-#include "mozilla/gfx/2D.h"
+#include "mozilla/Attributes.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/SVGPaintServerFrame.h"
 #include "mozilla/UniquePtr.h"
+#include "mozilla/gfx/2D.h"
 
 class nsIFrame;
 
@@ -55,7 +55,7 @@ class SVGPatternFrame final : public SVGPaintServerFrame {
 
   // nsIFrame interface:
   nsresult AttributeChanged(int32_t aNameSpaceID, nsAtom* aAttribute,
-                            int32_t aModType) override;
+                            AttrModType aModType) override;
 
 #ifdef DEBUG
   void Init(nsIContent* aContent, nsContainerFrame* aParent,

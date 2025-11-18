@@ -3612,13 +3612,12 @@ class WebExtensionTest : BaseSessionTest() {
         sessionRule.delegateDuringNextWait(object : WebExtensionController.PromptDelegate {
             @AssertCalled
             override fun onUpdatePrompt(
-                currentlyInstalled: WebExtension,
-                updatedExtension: WebExtension,
+                extension: WebExtension,
                 newPermissions: Array<String>,
                 newOrigins: Array<String>,
+                newDataCollectionPermissions: Array<String>,
             ): GeckoResult<AllowOrDeny> {
-                assertEquals(currentlyInstalled.metaData.version, "1.0")
-                assertEquals(updatedExtension.metaData.version, "2.0")
+                assertEquals(extension.metaData.version, "2.0")
                 assertEquals(newPermissions.size, 1)
                 assertEquals(newPermissions[0], "tabs")
                 return GeckoResult.allow()
@@ -3756,13 +3755,12 @@ class WebExtensionTest : BaseSessionTest() {
         sessionRule.delegateDuringNextWait(object : WebExtensionController.PromptDelegate {
             @AssertCalled
             override fun onUpdatePrompt(
-                currentlyInstalled: WebExtension,
-                updatedExtension: WebExtension,
+                extension: WebExtension,
                 newPermissions: Array<String>,
                 newOrigins: Array<String>,
+                newDataCollectionPermissions: Array<String>,
             ): GeckoResult<AllowOrDeny> {
-                assertEquals(currentlyInstalled.metaData.version, "1.0")
-                assertEquals(updatedExtension.metaData.version, "2.0")
+                assertEquals(extension.metaData.version, "2.0")
                 return GeckoResult.deny()
             }
         })
@@ -4344,6 +4342,8 @@ class WebExtensionTest : BaseSessionTest() {
         downloadData.endTime = expectedEndTime
         downloadData.totalBytes = finishedDownloadSize
         downloadData.state = Download.STATE_COMPLETE
+
+        downloadCreated.update(downloadData)
         downloadCreated.update(downloadData)
 
         sessionRule.waitForResult(thirdUpdateReceived)

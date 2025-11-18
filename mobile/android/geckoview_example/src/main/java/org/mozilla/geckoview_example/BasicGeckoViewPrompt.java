@@ -5,7 +5,6 @@
 
 package org.mozilla.geckoview_example;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
@@ -917,7 +916,6 @@ final class BasicGeckoViewPrompt implements GeckoSession.PromptDelegate {
   }
 
   @Override
-  @TargetApi(19)
   public GeckoResult<PromptResponse> onFilePrompt(GeckoSession session, FilePrompt prompt) {
     final Activity activity = mActivity;
     if (activity == null) {
@@ -997,6 +995,12 @@ final class BasicGeckoViewPrompt implements GeckoSession.PromptDelegate {
     }
 
     Uri uri = data.getData();
+
+    if (prompt.type == FilePrompt.Type.FOLDER) {
+      res.complete(prompt.confirm(mActivity, uri));
+      return;
+    }
+
     final ClipData clip = data.getClipData();
 
     if (uri == null) return;
@@ -1020,8 +1024,6 @@ final class BasicGeckoViewPrompt implements GeckoSession.PromptDelegate {
         uris.add(clip.getItemAt(i).getUri());
       }
       res.complete(prompt.confirm(mActivity, uris.toArray(new Uri[uris.size()])));
-    } else if (prompt.type == FilePrompt.Type.FOLDER) {
-      res.complete(prompt.confirm(mActivity, uri));
     }
   }
 

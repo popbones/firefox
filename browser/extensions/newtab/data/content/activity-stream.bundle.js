@@ -119,7 +119,6 @@ for (const type of [
   "DIALOG_CLOSE",
   "DIALOG_OPEN",
   "DISABLE_SEARCH",
-  "DISCOVERY_STREAM_COLLECTION_DISMISSIBLE_TOGGLE",
   "DISCOVERY_STREAM_CONFIG_CHANGE",
   "DISCOVERY_STREAM_CONFIG_RESET",
   "DISCOVERY_STREAM_CONFIG_RESET_DEFAULTS",
@@ -147,10 +146,7 @@ for (const type of [
   "DISCOVERY_STREAM_PERSONALIZATION_RESET",
   "DISCOVERY_STREAM_PERSONALIZATION_TOGGLE",
   "DISCOVERY_STREAM_PERSONALIZATION_UPDATED",
-  "DISCOVERY_STREAM_POCKET_STATE_INIT",
-  "DISCOVERY_STREAM_POCKET_STATE_SET",
   "DISCOVERY_STREAM_PREFS_SETUP",
-  "DISCOVERY_STREAM_RECENT_SAVES",
   "DISCOVERY_STREAM_RETRY_FEED",
   "DISCOVERY_STREAM_SPOCS_CAPS",
   "DISCOVERY_STREAM_SPOCS_ENDPOINT",
@@ -168,7 +164,6 @@ for (const type of [
   "FOLLOW_SECTION",
   "HANDOFF_SEARCH_TO_AWESOMEBAR",
   "HIDE_PERSONALIZE",
-  "HIDE_PRIVACY_INFO",
   "HIDE_TOAST_MESSAGE",
   "INFERRED_PERSONALIZATION_MODEL_UPDATE",
   "INFERRED_PERSONALIZATION_REFRESH",
@@ -181,6 +176,7 @@ for (const type of [
   "MESSAGE_CLICK",
   "MESSAGE_DISMISS",
   "MESSAGE_IMPRESSION",
+  "MESSAGE_NOTIFY_VISIBILITY",
   "MESSAGE_SET",
   "MESSAGE_TOGGLE_VISIBILITY",
   "NEW_TAB_INIT",
@@ -205,7 +201,6 @@ for (const type of [
   "PLACES_LINKS_DELETED",
   "PLACES_LINK_BLOCKED",
   "POCKET_CTA",
-  "POCKET_LOGGED_IN",
   "POCKET_THUMBS_DOWN",
   "POCKET_THUMBS_UP",
   "POCKET_WAITING_FOR_SPOC",
@@ -214,6 +209,9 @@ for (const type of [
   "PREVIEW_REQUEST",
   "PREVIEW_REQUEST_CANCEL",
   "PREVIEW_RESPONSE",
+  "PROMO_CARD_CLICK",
+  "PROMO_CARD_DISMISS",
+  "PROMO_CARD_IMPRESSION",
   "REMOVE_DOWNLOAD_FILE",
   "REPORT_AD_OPEN",
   "REPORT_AD_SUBMIT",
@@ -300,6 +298,21 @@ for (const type of [
   "WEATHER_UPDATE",
   "WEBEXT_CLICK",
   "WEBEXT_DISMISS",
+  "WIDGETS_LISTS_CHANGE_SELECTED",
+  "WIDGETS_LISTS_SET",
+  "WIDGETS_LISTS_SET_SELECTED",
+  "WIDGETS_LISTS_UPDATE",
+  "WIDGETS_LISTS_USER_EVENT",
+  "WIDGETS_LISTS_USER_IMPRESSION",
+  "WIDGETS_TIMER_END",
+  "WIDGETS_TIMER_PAUSE",
+  "WIDGETS_TIMER_PLAY",
+  "WIDGETS_TIMER_RESET",
+  "WIDGETS_TIMER_SET",
+  "WIDGETS_TIMER_SET_DURATION",
+  "WIDGETS_TIMER_SET_TYPE",
+  "WIDGETS_TIMER_USER_EVENT",
+  "WIDGETS_TIMER_USER_IMPRESSION",
 ]) {
   actionTypes[type] = type;
 }
@@ -361,12 +374,14 @@ function OnlyToMain(action, fromTarget) {
  * BroadcastToContent - Creates a message that will be dispatched to main and sent to ALL content processes.
  *
  * @param  {object} action Any redux action (required)
+ * @param  {object} options (optional)
  * @return {object} An action with added .meta properties
  */
-function BroadcastToContent(action) {
+function BroadcastToContent(action, options) {
   return _RouteMessage(action, {
     from: MAIN_MESSAGE_TYPE,
     to: CONTENT_MESSAGE_TYPE,
+    ...options,
   });
 }
 
@@ -644,6 +659,9 @@ const PREF_CONTEXTUAL_CONTENT_FEEDS = "discoverystream.contextualContent.feeds";
 const PREF_SECTIONS_ENABLED = "discoverystream.sections.enabled";
 const PREF_SPOC_PLACEMENTS = "discoverystream.placements.spocs";
 const PREF_SPOC_COUNTS = "discoverystream.placements.spocs.counts";
+const PREF_CONTEXTUAL_ADS_ENABLED = "discoverystream.sections.contextualAds.enabled";
+const PREF_CONTEXTUAL_BANNER_PLACEMENTS = "discoverystream.placements.contextualBanners";
+const PREF_CONTEXTUAL_BANNER_COUNTS = "discoverystream.placements.contextualBanners.counts";
 const Row = props => /*#__PURE__*/external_React_default().createElement("tr", _extends({
   className: "message-item"
 }, props), props.children);
@@ -887,6 +905,22 @@ class DiscoveryStreamAdminUI extends (external_React_default()).PureComponent {
     // Update prefs with new values
     this.props.dispatch(actionCreators.SetPref(PREF_SPOC_PLACEMENTS, placements));
     this.props.dispatch(actionCreators.SetPref(PREF_SPOC_COUNTS, counts));
+
+    // If contextual ads, sections, and one of the banners are enabled
+    // update the contextualBanner prefs to include the banner value and count
+    // Else, clear the prefs
+    if (PREF_CONTEXTUAL_ADS_ENABLED && PREF_SECTIONS_ENABLED) {
+      if (PREF_AD_SIZE_BILLBOARD && placements.includes("newtab_billboard")) {
+        this.props.dispatch(actionCreators.SetPref(PREF_CONTEXTUAL_BANNER_PLACEMENTS, "newtab_billboard"));
+        this.props.dispatch(actionCreators.SetPref(PREF_CONTEXTUAL_BANNER_COUNTS, "1"));
+      } else if (PREF_AD_SIZE_LEADERBOARD && placements.includes("newtab_leaderboard")) {
+        this.props.dispatch(actionCreators.SetPref(PREF_CONTEXTUAL_BANNER_PLACEMENTS, "newtab_leaderboard"));
+        this.props.dispatch(actionCreators.SetPref(PREF_CONTEXTUAL_BANNER_COUNTS, "1"));
+      } else {
+        this.props.dispatch(actionCreators.SetPref(PREF_CONTEXTUAL_BANNER_PLACEMENTS, ""));
+        this.props.dispatch(actionCreators.SetPref(PREF_CONTEXTUAL_BANNER_COUNTS, ""));
+      }
+    }
   }
   handleSectionsToggle(e) {
     const {
@@ -941,7 +975,7 @@ class DiscoveryStreamAdminUI extends (external_React_default()).PureComponent {
       coarseInferredInterests,
       coarsePrivateInferredInterests
     } = this.props.state.InferredPersonalization;
-    return /*#__PURE__*/external_React_default().createElement("div", null, " ", "Inferred Intrests:", /*#__PURE__*/external_React_default().createElement("pre", null, JSON.stringify(inferredInterests, null, 2)), " Coarse Inferred Interests:", /*#__PURE__*/external_React_default().createElement("pre", null, JSON.stringify(coarseInferredInterests, null, 2)), " Coarse Inferred Interests With Differential Privacy:", /*#__PURE__*/external_React_default().createElement("pre", null, JSON.stringify(coarsePrivateInferredInterests, null, 2)));
+    return /*#__PURE__*/external_React_default().createElement("div", null, " ", "Inferred Interests:", /*#__PURE__*/external_React_default().createElement("pre", null, JSON.stringify(inferredInterests, null, 2)), " Coarse Inferred Interests:", /*#__PURE__*/external_React_default().createElement("pre", null, JSON.stringify(coarseInferredInterests, null, 2)), " Coarse Inferred Interests With Differential Privacy:", /*#__PURE__*/external_React_default().createElement("pre", null, JSON.stringify(coarsePrivateInferredInterests, null, 2)));
   }
   renderFeedData(url) {
     const {
@@ -1449,12 +1483,27 @@ class DSImage extends (external_React_default()).PureComponent {
       });
     }
   }
+
+  // Wraps the image url with the Pocket proxy to both resize and crop the image.
   reformatImageURL(url, width, height) {
     const smart = this.props.smartCrop ? "smart/" : "";
     // Change the image URL to request a size tailored for the parent container width
     // Also: force JPEG, quality 60, no upscaling, no EXIF data
     // Uses Thumbor: https://thumbor.readthedocs.io/en/latest/usage.html
-    return `https://img-getpocket.cdn.mozilla.net/${width}x${height}/${smart}filters:format(jpeg):quality(60):no_upscale():strip_exif()/${encodeURIComponent(url)}`;
+    const formattedUrl = `https://img-getpocket.cdn.mozilla.net/${width}x${height}/${smart}filters:format(jpeg):quality(60):no_upscale():strip_exif()/${encodeURIComponent(url)}`;
+    return this.secureImageURL(formattedUrl);
+  }
+
+  // Wraps the image URL with the moz-cached-ohttp:// protocol.
+  // This enables Firefox to load resources over Oblivious HTTP (OHTTP),
+  // providing privacy-preserving resource loading.
+  // Applied only when inferred personalization is enabled.
+  // See: https://firefox-source-docs.mozilla.org/browser/components/mozcachedohttp/docs/index.html
+  secureImageURL(url) {
+    if (!this.props.secureImage) {
+      return url;
+    }
+    return `moz-cached-ohttp://newtab-image/?url=${encodeURIComponent(url)}`;
   }
   componentDidMount() {
     this.idleCallbackId = this.props.windowObj.requestIdleCallback(this.onIdleCallback.bind(this));
@@ -1473,7 +1522,12 @@ class DSImage extends (external_React_default()).PureComponent {
     let img;
     if (this.state) {
       if (this.props.optimize && this.props.rawSource && !this.state.optimizedImageFailed) {
-        let baseSource = this.props.rawSource;
+        const baseSource = this.props.rawSource;
+
+        // We don't care about securing this.props.source, as this exclusivly
+        // comes from an older service that is not personalized.
+        // This can also return a non secure url if this functionality is not enabled.
+        const securedSource = this.secureImageURL(baseSource);
         let sizeRules = [];
         let srcSetRules = [];
         for (let rule of this.props.sizes) {
@@ -1501,7 +1555,7 @@ class DSImage extends (external_React_default()).PureComponent {
           onLoad: this.onLoad,
           onError: this.onOptimizedImageError,
           sizes: sizeRules.join(","),
-          src: baseSource,
+          src: securedSource,
           srcSet: srcSetRules.join(",")
         });
       } else if (this.props.source && !this.state.nonOptimizedImageFailed) {
@@ -1802,7 +1856,7 @@ const LinkMenuOptions = {
         referrer: site.referrer,
         typedBonus: site.typedBonus,
         url: site.url,
-        sponsored_tile_id: site.sponsored_tile_id,
+        is_sponsored: !!site.sponsored_tile_id,
         event_source: "CONTEXT_MENU",
         topic: site.topic,
         firstVisibleTimestamp: site.firstVisibleTimestamp,
@@ -2195,7 +2249,7 @@ const LinkMenuOptions = {
     id: "newtab-menu-section-unfollow",
     action: actionCreators.AlsoToMain({
       type: actionTypes.SECTION_PERSONALIZATION_SET,
-      data: (({ sectionKey: _sectionKey, ...remaining }) => remaining)(
+      data: (({ [sectionKey]: _sectionKey, ...remaining }) => remaining)(
         sectionPersonalization
       ),
     }),
@@ -2246,9 +2300,6 @@ const LinkMenuOptions = {
         data: {
           card_type: site.card_type,
           corpus_item_id: site.corpus_item_id,
-          is_section_followed: site.is_section_followed,
-          received_rank: site.received_rank,
-          recommended_at: site.recommended_at,
           scheduled_corpus_item_id: site.scheduled_corpus_item_id,
           section_position: site.section_position,
           section: site.section,
@@ -2591,6 +2642,11 @@ const DSLinkMenu = (0,external_ReactRedux_namespaceObject.connect)(state => ({
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+const PREF_WEATHER_PLACEMENT = "weather.placement";
+const PREF_DAILY_BRIEF_SECTIONID = "discoverystream.dailyBrief.sectionId";
+const PREF_DAILY_BRIEF_ENABLED = "discoverystream.dailyBrief.enabled";
+const PREF_STORIES_ENABLED = "feeds.section.topstories";
+const PREF_SYSTEM_STORIES_ENABLED = "feeds.system.topstories";
 
 /**
  * A custom react hook that sets up an IntersectionObserver to observe a single
@@ -2609,10 +2665,12 @@ const DSLinkMenu = (0,external_ReactRedux_namespaceObject.connect)(state => ({
  */
 function useIntersectionObserver(callback, threshold = 0.3) {
   const elementsRef = (0,external_React_namespaceObject.useRef)([]);
+  const triggeredElements = (0,external_React_namespaceObject.useRef)(new WeakSet());
   (0,external_React_namespaceObject.useEffect)(() => {
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && !triggeredElements.current.has(entry.target)) {
+          triggeredElements.current.add(entry.target);
           callback(entry.target);
           observer.unobserve(entry.target);
         }
@@ -2621,7 +2679,7 @@ function useIntersectionObserver(callback, threshold = 0.3) {
       threshold
     });
     elementsRef.current.forEach(el => {
-      if (el) {
+      if (el && !triggeredElements.current.has(el)) {
         observer.observe(el);
       }
     });
@@ -2700,6 +2758,149 @@ function getActiveCardSize(screenWidth, classNames, sectionsEnabled, flightId) {
     }
   }
   return null;
+}
+const CONFETTI_VARS = ["--color-red-40", "--color-yellow-40", "--color-purple-40", "--color-blue-40", "--color-green-40"];
+
+/**
+ * Custom hook to animate a confetti burst.
+ *
+ * @param {number} count   Number of particles
+ * @param {number} spread  spread of confetti
+ * @returns {[React.RefObject<HTMLCanvasElement>, () => void]}
+ */
+function useConfetti(count = 80, spread = Math.PI / 3) {
+  // avoid errors from about:home cache
+  const prefersReducedMotion = typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let colors;
+  // if in abouthome cache, getComputedStyle will not be available
+  if (typeof getComputedStyle === "function") {
+    const styles = getComputedStyle(document.documentElement);
+    colors = CONFETTI_VARS.map(variable => styles.getPropertyValue(variable).trim());
+  } else {
+    colors = ["#fa5e75", "#de9600", "#c671eb", "#3f94ff", "#37b847"];
+  }
+  const canvasRef = (0,external_React_namespaceObject.useRef)(null);
+  const particlesRef = (0,external_React_namespaceObject.useRef)([]);
+  const animationFrameRef = (0,external_React_namespaceObject.useRef)(0);
+
+  // initialize/reset pool
+  const initializeConfetti = (0,external_React_namespaceObject.useCallback)((width, height) => {
+    const centerX = width / 2;
+    const centerY = height;
+    const pool = particlesRef.current;
+
+    // Create or overwrite each particle’s initial state
+    for (let i = 0; i < count; i++) {
+      const angle = Math.PI / 2 + (Math.random() - 0.5) * spread;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      pool[i] = {
+        x: centerX + (Math.random() - 0.5) * 40,
+        y: centerY,
+        cos,
+        sin,
+        velocity: Math.random() * 6 + 6,
+        gravity: 0.3,
+        decay: 0.96,
+        size: 8,
+        color,
+        life: 0,
+        maxLife: 100,
+        tilt: Math.random() * Math.PI * 2,
+        tiltSpeed: Math.random() * 0.2 + 0.05
+      };
+    }
+  }, [count, spread, colors]);
+
+  // Core animation loop — updates physics & renders each frame
+  const animateParticles = (0,external_React_namespaceObject.useCallback)(canvas => {
+    const context = canvas.getContext("2d");
+    const {
+      width,
+      height
+    } = canvas;
+    const pool = particlesRef.current;
+
+    // Clear the entire canvas each frame
+    context.clearRect(0, 0, width, height);
+    let anyAlive = false;
+    for (let particle of pool) {
+      if (particle.life < particle.maxLife) {
+        anyAlive = true;
+
+        // update each particles physics: position, velocity decay, gravity, tilt, lifespan
+        particle.velocity *= particle.decay;
+        particle.x += particle.cos * particle.velocity;
+        particle.y -= particle.sin * particle.velocity;
+        particle.y += particle.gravity;
+        particle.tilt += particle.tiltSpeed;
+        particle.life += 1;
+      }
+
+      // Draw: apply alpha, transform & draw a rotated, scaled square
+      const alphaValue = 1 - particle.life / particle.maxLife;
+      const scaleY = Math.sin(particle.tilt);
+      context.globalAlpha = alphaValue;
+      context.setTransform(1, 0, 0, 1, particle.x, particle.y);
+      context.rotate(Math.PI / 4);
+      context.scale(1, scaleY);
+      context.fillStyle = particle.color;
+      context.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+
+      // reset each particle
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.globalAlpha = 1;
+    }
+    if (anyAlive) {
+      // continue the animation
+      animationFrameRef.current = requestAnimationFrame(() => {
+        animateParticles(canvas);
+      });
+    } else {
+      cancelAnimationFrame(animationFrameRef.current);
+      context.clearRect(0, 0, width, height);
+    }
+  }, []);
+
+  // Resets and starts a new confetti animation
+  const fireConfetti = (0,external_React_namespaceObject.useCallback)(() => {
+    if (prefersReducedMotion) {
+      return;
+    }
+    const canvas = canvasRef?.current;
+    if (canvas) {
+      cancelAnimationFrame(animationFrameRef.current);
+      initializeConfetti(canvas.width, canvas.height);
+      animateParticles(canvas);
+    }
+  }, [initializeConfetti, animateParticles, prefersReducedMotion]);
+  return [canvasRef, fireConfetti];
+}
+function selectWeatherPlacement(state) {
+  const prefs = state.Prefs.values || {};
+
+  // Intent: only placed in section if explicitly requested
+  const placementPref = prefs.trainhopConfig?.dailyBriefing?.placement || prefs[PREF_WEATHER_PLACEMENT];
+  if (placementPref === "header" || !placementPref) {
+    return "header";
+  }
+  const sections = state.DiscoveryStream.feeds.data["https://merino.services.mozilla.com/api/v1/curated-recommendations"]?.data.sections ?? [];
+  // check the following prefs to make sure weather is elligible to be placed in sections
+  // 1. The daily brieifng section must be availible and in the top position
+  // 2. That the daily briefing section has not been blocked
+  // 3. That reccomended stories are truned on
+  // Otherwise it should be placed in the header
+  const pocketEnabled = prefs[PREF_STORIES_ENABLED] && prefs[PREF_SYSTEM_STORIES_ENABLED];
+  const sectionPersonalization = state.DiscoveryStream?.sectionPersonalization || {};
+  const dailyBriefEnabled = prefs.trainhopConfig?.dailyBriefing?.enabled || prefs[PREF_DAILY_BRIEF_ENABLED];
+  const sectionId = prefs.trainhopConfig?.dailyBriefing?.sectionId || prefs[PREF_DAILY_BRIEF_SECTIONID];
+  const notBlocked = sectionId && !sectionPersonalization[sectionId]?.isBlocked;
+  let filteredSections = sections.filter(section => !sectionPersonalization[section.sectionKey]?.isBlocked);
+  const foundSection = filteredSections.find(section => section.sectionKey === sectionId);
+  const isTopSection = foundSection?.receivedRank === 0 || filteredSections.indexOf(foundSection) === 0;
+  const eligible = pocketEnabled && dailyBriefEnabled && sectionId && notBlocked && isTopSection;
+  return eligible ? "section" : "header";
 }
 
 ;// CONCATENATED MODULE: ./content-src/components/TopSites/TopSitesConstants.mjs
@@ -2867,7 +3068,8 @@ class ImpressionStats_ImpressionStats extends (external_React_default()).PureCom
             ...(link.section ? {
               section: link.section,
               section_position: link.section_position,
-              is_section_followed: link.is_section_followed
+              is_section_followed: link.is_section_followed,
+              layout_name: link.sectionLayoutName
             } : {})
           })),
           firstVisibleTimestamp: props.firstVisibleTimestamp
@@ -3024,7 +3226,8 @@ class SafeAnchor extends (external_React_default()).PureComponent {
           },
           referrer: this.props.referrer || "https://getpocket.com/recommendations",
           // Use the anchor's url, which could have been cleaned up
-          url: event.currentTarget.href
+          url: event.currentTarget.href,
+          is_sponsored: this.props.isSponsored
         }
       }));
     }
@@ -3052,13 +3255,15 @@ class SafeAnchor extends (external_React_default()).PureComponent {
     const {
       url,
       className,
-      title
+      title,
+      isSponsored
     } = this.props;
     let anchor = /*#__PURE__*/external_React_default().createElement("a", SafeAnchor_extends({
       href: this.safeURI(url),
       title: title,
       className: className,
-      onClick: this.onClick
+      onClick: this.onClick,
+      "data-is-sponsored-link": !!isSponsored
     }, this.props.tabIndex === 0 || this.props.tabIndex ? {
       ref: this.props.setRef,
       tabIndex: this.props.tabIndex
@@ -3098,122 +3303,6 @@ const cardContextTypes = {
   },
 };
 
-;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/FeatureHighlight/FeatureHighlight.jsx
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
-
-function FeatureHighlight({
-  message,
-  icon,
-  toggle,
-  arrowPosition = "",
-  position = "top-left",
-  verticalPosition = "",
-  title,
-  ariaLabel,
-  feature = "FEATURE_HIGHLIGHT_DEFAULT",
-  dispatch = () => {},
-  windowObj = __webpack_require__.g,
-  openedOverride = false,
-  showButtonIcon = true,
-  dismissCallback = () => {},
-  outsideClickCallback = () => {}
-}) {
-  const [opened, setOpened] = (0,external_React_namespaceObject.useState)(openedOverride);
-  const ref = (0,external_React_namespaceObject.useRef)(null);
-  (0,external_React_namespaceObject.useEffect)(() => {
-    const handleOutsideClick = e => {
-      if (!ref?.current?.contains(e.target)) {
-        setOpened(false);
-        outsideClickCallback();
-      }
-    };
-    const handleKeyDown = e => {
-      if (e.key === "Escape") {
-        outsideClickCallback();
-      }
-    };
-    windowObj.document.addEventListener("click", handleOutsideClick);
-    windowObj.document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      windowObj.document.removeEventListener("click", handleOutsideClick);
-      windowObj.document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [windowObj, outsideClickCallback]);
-  const onToggleClick = (0,external_React_namespaceObject.useCallback)(() => {
-    if (!opened) {
-      dispatch(actionCreators.DiscoveryStreamUserEvent({
-        event: "CLICK",
-        source: "FEATURE_HIGHLIGHT",
-        value: {
-          feature
-        }
-      }));
-    }
-    setOpened(!opened);
-  }, [dispatch, feature, opened]);
-  const onDismissClick = (0,external_React_namespaceObject.useCallback)(() => {
-    setOpened(false);
-    dismissCallback();
-  }, [dismissCallback]);
-  const hideButtonClass = showButtonIcon ? `` : `isHidden`;
-  const openedClassname = opened ? `opened` : `closed`;
-  return /*#__PURE__*/external_React_default().createElement("div", {
-    ref: ref,
-    className: `feature-highlight ${verticalPosition}`
-  }, /*#__PURE__*/external_React_default().createElement("button", {
-    title: title,
-    "aria-haspopup": "true",
-    "aria-label": ariaLabel,
-    className: `toggle-button ${hideButtonClass}`,
-    onClick: onToggleClick
-  }, toggle), /*#__PURE__*/external_React_default().createElement("div", {
-    className: `feature-highlight-modal ${position} ${arrowPosition} ${openedClassname}`
-  }, /*#__PURE__*/external_React_default().createElement("div", {
-    className: "message-icon"
-  }, icon), /*#__PURE__*/external_React_default().createElement("p", {
-    className: "content-wrapper"
-  }, message), /*#__PURE__*/external_React_default().createElement("button", {
-    "data-l10n-id": "feature-highlight-dismiss-button",
-    className: "icon icon-dismiss",
-    onClick: onDismissClick
-  })));
-}
-;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/FeatureHighlight/SponsoredContentHighlight.jsx
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
-
-
-function SponsoredContentHighlight({
-  position,
-  dispatch
-}) {
-  return /*#__PURE__*/external_React_default().createElement("div", {
-    className: "sponsored-content-highlight"
-  }, /*#__PURE__*/external_React_default().createElement(FeatureHighlight, {
-    position: position,
-    ariaLabel: "Sponsored content supports our mission to build a better web.",
-    title: "Sponsored content more info",
-    feature: "SPONSORED_CONTENT_INFO",
-    dispatch: dispatch,
-    message: /*#__PURE__*/external_React_default().createElement("span", null, "Sponsored content supports our mission to build a better web.", " ", /*#__PURE__*/external_React_default().createElement(SafeAnchor, {
-      dispatch: dispatch,
-      url: "https://support.mozilla.org/kb/pocket-sponsored-stories-new-tabs"
-    }, "Find out how")),
-    icon: /*#__PURE__*/external_React_default().createElement("div", {
-      className: "sponsored-message-icon"
-    }),
-    toggle: /*#__PURE__*/external_React_default().createElement("div", {
-      className: "icon icon-help"
-    })
-  }));
-}
 ;// CONCATENATED MODULE: external "ReactTransitionGroup"
 const external_ReactTransitionGroup_namespaceObject = ReactTransitionGroup;
 ;// CONCATENATED MODULE: ./content-src/components/FluentOrText/FluentOrText.jsx
@@ -3260,7 +3349,6 @@ class FluentOrText extends (external_React_default()).PureComponent {
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 
 
 // eslint-disable-next-line no-shadow
@@ -3350,8 +3438,6 @@ class DSContextFooter extends (external_React_default()).PureComponent {
       sponsored_by_override,
       cta_button_variant,
       source,
-      spocMessageVariant,
-      dispatch,
       mayHaveSectionsCards
     } = this.props;
     const sponsorLabel = SponsorLabel({
@@ -3382,10 +3468,7 @@ class DSContextFooter extends (external_React_default()).PureComponent {
     if (sponsorLabel || dsMessageLabel && context_type !== "pocket") {
       return /*#__PURE__*/external_React_default().createElement("div", {
         className: "story-footer"
-      }, sponsorLabel, sponsorLabel && spocMessageVariant === "variant-b" && /*#__PURE__*/external_React_default().createElement(SponsoredContentHighlight, {
-        dispatch: dispatch,
-        position: "inset-block-end inset-inline-start"
-      }), dsMessageLabel);
+      }, sponsorLabel, dsMessageLabel);
     }
     return null;
   }
@@ -3393,8 +3476,7 @@ class DSContextFooter extends (external_React_default()).PureComponent {
 const DSMessageFooter = props => {
   const {
     context,
-    context_type,
-    saveToPocketCard
+    context_type
   } = props;
   const dsMessageLabel = DSMessageLabel({
     context,
@@ -3402,7 +3484,7 @@ const DSMessageFooter = props => {
   });
 
   // This case is specific and already displayed to the user elsewhere.
-  if (!dsMessageLabel || saveToPocketCard && context_type === "pocket") {
+  if (!dsMessageLabel) {
     return null;
   }
   return /*#__PURE__*/external_React_default().createElement("div", {
@@ -3472,6 +3554,10 @@ function DSThumbsUpDownButtons({
 
 
 const READING_WPM = 220;
+const PREF_OHTTP_MERINO = "discoverystream.merino-provider.ohttp.enabled";
+const PREF_OHTTP_UNIFIED_ADS = "unifiedAds.ohttp.enabled";
+const DSCard_PREF_SECTIONS_ENABLED = "discoverystream.sections.enabled";
+const PREF_FAVICONS_ENABLED = "discoverystream.publisherFavicon.enabled";
 
 /**
  * READ TIME FROM WORD COUNT
@@ -3547,10 +3633,8 @@ const DefaultMeta = ({
   context_type,
   sponsor,
   sponsored_by_override,
-  saveToPocketCard,
   ctaButtonVariant,
   dispatch,
-  spocMessageVariant,
   mayHaveSectionsCards,
   mayHaveThumbsUpDown,
   onThumbsUpClick,
@@ -3619,12 +3703,10 @@ const DefaultMeta = ({
     cta_button_variant: ctaButtonVariant,
     source: source,
     dispatch: dispatch,
-    spocMessageVariant: spocMessageVariant,
     mayHaveSectionsCards: mayHaveSectionsCards
   }), newSponsoredLabel && /*#__PURE__*/external_React_default().createElement(DSMessageFooter, {
     context_type: context_type,
-    context: null,
-    saveToPocketCard: saveToPocketCard
+    context: null
   }));
 };
 class _DSCard extends (external_React_default()).PureComponent {
@@ -3663,19 +3745,6 @@ class _DSCard extends (external_React_default()).PureComponent {
     // The values chosen here were the dimensions of the card thumbnails as
     // computed by getBoundingClientRect() for each type of viewport width
     // across both high-density and normal-density displays.
-    this.dsImageSizes = [{
-      mediaMatcher: "(min-width: 1122px)",
-      width: 296,
-      height: 148
-    }, {
-      mediaMatcher: "(min-width: 866px)",
-      width: 218,
-      height: 109
-    }, {
-      mediaMatcher: "(max-width: 610px)",
-      width: 202,
-      height: 101
-    }];
     this.standardCardImageSizes = [{
       mediaMatcher: "default",
       width: 296,
@@ -3777,7 +3846,8 @@ class _DSCard extends (external_React_default()).PureComponent {
             ...(this.props.section ? {
               section: this.props.section,
               section_position: this.props.sectionPosition,
-              is_section_followed: this.props.sectionFollowed
+              is_section_followed: this.props.sectionFollowed,
+              layout_name: this.props.sectionLayoutName
             } : {})
           }
         }));
@@ -3832,6 +3902,7 @@ class _DSCard extends (external_React_default()).PureComponent {
       event: "POCKET_THUMBS_UP",
       source: "THUMBS_UI",
       value: {
+        action_position: this.props.pos,
         recommendation_id: this.props.recommendation_id,
         tile_id: this.props.id,
         corpus_item_id: this.props.corpus_item_id,
@@ -3909,6 +3980,7 @@ class _DSCard extends (external_React_default()).PureComponent {
         event: "POCKET_THUMBS_DOWN",
         source: "THUMBS_UI",
         value: {
+          action_position: this.props.pos,
           recommendation_id: this.props.recommendation_id,
           tile_id: this.props.id,
           corpus_item_id: this.props.corpus_item_id,
@@ -3974,12 +4046,18 @@ class _DSCard extends (external_React_default()).PureComponent {
   }
   onIdleCallback() {
     if (!this.state.isSeen) {
-      if (this.observer && this.placeholderElement) {
-        this.observer.unobserve(this.placeholderElement);
+      // To improve responsiveness without impacting performance,
+      // we start rendering stories on idle.
+      // To reduce the number of requests for secure OHTTP images,
+      // we skip idle-time loading.
+      if (!this.secureImage) {
+        if (this.observer && this.placeholderElement) {
+          this.observer.unobserve(this.placeholderElement);
+        }
+        this.setState({
+          isSeen: true
+        });
       }
-      this.setState({
-        isSeen: true
-      });
     }
   }
   componentDidMount() {
@@ -3998,17 +4076,101 @@ class _DSCard extends (external_React_default()).PureComponent {
       this.props.windowObj.cancelIdleCallback(this.idleCallbackId);
     }
   }
+
+  // Wraps the image URL with the moz-cached-ohttp:// protocol.
+  // This enables Firefox to load resources over Oblivious HTTP (OHTTP),
+  // providing privacy-preserving resource loading.
+  // Applied only when inferred personalization is enabled.
+  // See: https://firefox-source-docs.mozilla.org/browser/components/mozcachedohttp/docs/index.html
+  secureImageURL(url) {
+    return `moz-cached-ohttp://newtab-image/?url=${encodeURIComponent(url)}`;
+  }
+  getRawImageSrc() {
+    let rawImageSrc = "";
+    // There is no point in fetching images for startup cache.
+    if (!this.props.App.isForStartupCache.App) {
+      rawImageSrc = this.props.raw_image_src;
+    }
+    return rawImageSrc;
+  }
+  getFaviconSrc() {
+    let faviconSrc = "";
+    const faviconEnabled = this.props.Prefs.values[PREF_FAVICONS_ENABLED];
+    // There is no point in fetching favicons for startup cache.
+    if (!this.props.App.isForStartupCache.App && faviconEnabled && this.props.icon_src) {
+      faviconSrc = this.props.icon_src;
+      if (this.secureImage) {
+        faviconSrc = this.secureImageURL(this.props.icon_src);
+      }
+    }
+    return faviconSrc;
+  }
+  get secureImage() {
+    const {
+      Prefs,
+      flightId
+    } = this.props;
+    let ohttpEnabled = false;
+    if (flightId) {
+      ohttpEnabled = Prefs.values[PREF_OHTTP_UNIFIED_ADS];
+    } else {
+      ohttpEnabled = Prefs.values[PREF_OHTTP_MERINO];
+    }
+    const ohttpImagesEnabled = Prefs.values.ohttpImagesConfig?.enabled;
+    const includeTopStoriesSection = Prefs.values.ohttpImagesConfig?.includeTopStoriesSection;
+    const nonPersonalizedSections = ["top_stories_section"];
+    const sectionPersonalized = !nonPersonalizedSections.includes(this.props.section) || includeTopStoriesSection;
+    const secureImage = ohttpImagesEnabled && ohttpEnabled && sectionPersonalized;
+    return secureImage;
+  }
+  renderImage({
+    sizes = [],
+    classNames = ""
+  } = {}) {
+    const {
+      Prefs
+    } = this.props;
+    const rawImageSrc = this.getRawImageSrc();
+    const smartCrop = Prefs.values["images.smart"];
+    return /*#__PURE__*/external_React_default().createElement(DSImage, {
+      extraClassNames: `img ${classNames}`,
+      source: this.props.image_src,
+      rawSource: rawImageSrc,
+      sizes: sizes,
+      url: this.props.url,
+      title: this.props.title,
+      isRecentSave: this.props.isRecentSave,
+      alt_text: this.props.alt_text,
+      smartCrop: smartCrop,
+      secureImage: this.secureImage
+    });
+  }
+  renderSectionCardImages() {
+    const {
+      sectionsCardImageSizes
+    } = this.props;
+    const columns = ["1", "2", "3", "4"];
+    const images = [];
+    for (const column of columns) {
+      const size = sectionsCardImageSizes[column];
+      const sizes = [this.getSectionImageSize(column, size)];
+      const image = this.renderImage({
+        sizes,
+        classNames: `image-${column}`
+      });
+      images.push(image);
+    }
+    return /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, images);
+  }
   render() {
     const {
       isRecentSave,
       DiscoveryStream,
       Prefs,
-      saveToPocketCard,
       isListCard,
       isFakespot,
       mayHaveSectionsCards,
-      format,
-      alt_text
+      format
     } = this.props;
     const refinedCardsLayout = Prefs.values["discoverystream.refinedCardsLayout.enabled"];
     const refinedCardsClassName = refinedCardsLayout ? `refined-cards` : ``;
@@ -4053,9 +4215,7 @@ class _DSCard extends (external_React_default()).PureComponent {
       descLines = 3,
       readTime: displayReadTime
     } = DiscoveryStream;
-    const sectionsEnabled = Prefs.values["discoverystream.sections.enabled"];
-    const smartCrop = Prefs.values["images.smart"];
-    const faviconEnabled = Prefs.values["discoverystream.publisherFavicon.enabled"];
+    const sectionsEnabled = Prefs.values[DSCard_PREF_SECTIONS_ENABLED];
     // Refined cards have their own excerpt hiding logic.
     // We can ignore hideDescriptions if we are in sections and refined cards.
     const excerpt = !hideDescriptions || sectionsEnabled && refinedCardsLayout ? this.props.excerpt : "";
@@ -4075,22 +4235,22 @@ class _DSCard extends (external_React_default()).PureComponent {
     const listCardClassName = isListCard ? `list-feed-card` : ``;
     const fakespotClassName = isFakespot ? `fakespot` : ``;
     const sectionsCardsClassName = [mayHaveSectionsCards ? `sections-card-ui` : ``, this.props.sectionsClassNames].join(" ");
-    const sectionsCardsImageSizes = this.props.sectionsCardImageSizes;
     const titleLinesName = `ds-card-title-lines-${titleLines}`;
     const descLinesClassName = `ds-card-desc-lines-${descLines}`;
     const isMediumRectangle = format === "rectangle";
     const spocFormatClassName = isMediumRectangle ? `ds-spoc-rectangle` : ``;
-    let sizes = [];
-    if (!isMediumRectangle) {
-      sizes = this.dsImageSizes;
-      if (sectionsEnabled) {
-        sizes = [this.getSectionImageSize("4", sectionsCardsImageSizes["4"]), this.getSectionImageSize("3", sectionsCardsImageSizes["3"]), this.getSectionImageSize("2", sectionsCardsImageSizes["2"]), this.getSectionImageSize("1", sectionsCardsImageSizes["1"])];
-      } else {
-        sizes = this.standardCardImageSizes;
-      }
-      if (isListCard) {
-        sizes = this.listCardImageSizes;
-      }
+    const faviconSrc = this.getFaviconSrc();
+    let images = this.renderImage({
+      sizes: this.standardCardImageSizes
+    });
+    if (isMediumRectangle) {
+      images = this.renderImage();
+    } else if (isListCard) {
+      images = this.renderImage({
+        sizes: this.listCardImageSizes
+      });
+    } else if (sectionsEnabled) {
+      images = this.renderSectionCardImages();
     }
     return /*#__PURE__*/external_React_default().createElement("article", {
       className: `ds-card ${listCardClassName} ${fakespotClassName} ${sectionsCardsClassName} ${compactImagesClassName} ${imageGradientClassName} ${titleLinesName} ${descLinesClassName} ${spocFormatClassName} ${ctaButtonClassName} ${ctaButtonVariantClassName} ${refinedCardsClassName}`,
@@ -4104,23 +4264,14 @@ class _DSCard extends (external_React_default()).PureComponent {
       dispatch: this.props.dispatch,
       onLinkClick: !this.props.placeholder ? this.onLinkClick : undefined,
       url: this.props.url,
-      title: this.props.title
+      title: this.props.title,
+      isSponsored: !!this.props.flightId
     }, this.props.showTopics && !this.props.mayHaveSectionsCards && this.props.topic && !isListCard && !refinedCardsLayout && /*#__PURE__*/external_React_default().createElement("span", {
       className: "ds-card-topic",
       "data-l10n-id": `newtab-topic-label-${this.props.topic}`
     }), /*#__PURE__*/external_React_default().createElement("div", {
       className: "img-wrapper"
-    }, /*#__PURE__*/external_React_default().createElement(DSImage, {
-      extraClassNames: "img",
-      source: this.props.image_src,
-      rawSource: this.props.raw_image_src,
-      sizes: sizes,
-      url: this.props.url,
-      title: this.props.title,
-      isRecentSave: isRecentSave,
-      alt_text: alt_text,
-      smartCrop: smartCrop
-    })), /*#__PURE__*/external_React_default().createElement(ImpressionStats_ImpressionStats, {
+    }, images), /*#__PURE__*/external_React_default().createElement(ImpressionStats_ImpressionStats, {
       flightId: this.props.flightId,
       rows: [{
         id: this.props.id,
@@ -4145,7 +4296,8 @@ class _DSCard extends (external_React_default()).PureComponent {
         ...(this.props.section ? {
           section: this.props.section,
           section_position: this.props.sectionPosition,
-          is_section_followed: this.props.sectionFollowed
+          is_section_followed: this.props.sectionFollowed,
+          sectionLayoutName: this.props.sectionLayoutName
         } : {}),
         ...(!format && this.props.section ?
         // Note: sectionsCardsClassName is passed to ImpressionStats.jsx in order to calculate format
@@ -4175,10 +4327,8 @@ class _DSCard extends (external_React_default()).PureComponent {
       context_type: this.props.context_type,
       sponsor: this.props.sponsor,
       sponsored_by_override: this.props.sponsored_by_override,
-      saveToPocketCard: saveToPocketCard,
       ctaButtonVariant: ctaButtonVariant,
       dispatch: this.props.dispatch,
-      spocMessageVariant: this.props.spocMessageVariant,
       mayHaveThumbsUpDown: this.props.mayHaveThumbsUpDown,
       mayHaveSectionsCards: this.props.mayHaveSectionsCards,
       onThumbsUpClick: this.onThumbsUpClick,
@@ -4189,7 +4339,7 @@ class _DSCard extends (external_React_default()).PureComponent {
       isSectionsCard: this.props.mayHaveSectionsCards && this.props.topic && !isListCard,
       format: format,
       topic: this.props.topic,
-      icon_src: faviconEnabled && this.props.icon_src,
+      icon_src: faviconSrc,
       refinedCardsLayout: refinedCardsLayout
     })), /*#__PURE__*/external_React_default().createElement("div", {
       className: "card-stp-button-hover-background"
@@ -4207,7 +4357,7 @@ class _DSCard extends (external_React_default()).PureComponent {
       pocket_id: this.props.pocket_id,
       shim: this.props.shim,
       bookmarkGuid: this.props.bookmarkGuid,
-      flightId: !this.props.is_collection ? this.props.flightId : undefined,
+      flightId: this.props.flightId,
       showPrivacyInfo: !!this.props.flightId,
       onMenuUpdate: this.onMenuUpdate,
       onMenuShow: this.onMenuShow,
@@ -4330,54 +4480,6 @@ class DSEmptyState extends (external_React_default()).PureComponent {
     }, /*#__PURE__*/external_React_default().createElement("div", {
       className: "empty-state-message"
     }, this.renderState()));
-  }
-}
-;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/DSDismiss/DSDismiss.jsx
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
-class DSDismiss extends (external_React_default()).PureComponent {
-  constructor(props) {
-    super(props);
-    this.onDismissClick = this.onDismissClick.bind(this);
-    this.onHover = this.onHover.bind(this);
-    this.offHover = this.offHover.bind(this);
-    this.state = {
-      hovering: false
-    };
-  }
-  onDismissClick() {
-    if (this.props.onDismissClick) {
-      this.props.onDismissClick();
-    }
-  }
-  onHover() {
-    this.setState({
-      hovering: true
-    });
-  }
-  offHover() {
-    this.setState({
-      hovering: false
-    });
-  }
-  render() {
-    let className = `ds-dismiss
-      ${this.state.hovering ? ` hovering` : ``}
-      ${this.props.extraClasses ? ` ${this.props.extraClasses}` : ``}`;
-    return /*#__PURE__*/external_React_default().createElement("div", {
-      className: className
-    }, this.props.children, /*#__PURE__*/external_React_default().createElement("button", {
-      className: "ds-dismiss-button",
-      "data-l10n-id": "newtab-dismiss-button-tooltip",
-      onClick: this.onDismissClick,
-      onMouseEnter: this.onHover,
-      onMouseLeave: this.offHover
-    }, /*#__PURE__*/external_React_default().createElement("span", {
-      className: "icon icon-dismiss"
-    })));
   }
 }
 ;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/TopicsWidget/TopicsWidget.jsx
@@ -4673,7 +4775,8 @@ function AdBannerContextMenu({
   spoc,
   position,
   type,
-  showAdReporting
+  showAdReporting,
+  toggleActive = () => {}
 }) {
   const ADBANNER_CONTEXT_MENU_OPTIONS = ["BlockAdUrl", ...(showAdReporting ? ["ReportAd"] : []), "ManageSponsoredContent", "OurSponsorsAndYourPrivacy"];
   const [showContextMenu, setShowContextMenu] = (0,external_React_namespaceObject.useState)(false);
@@ -4706,6 +4809,7 @@ function AdBannerContextMenu({
    */
   const toggleContextMenu = isKeyBoard => {
     toggleContextMenuStyleSwitch(!showContextMenu);
+    toggleActive(!showContextMenu);
     setShowContextMenu(!showContextMenu);
     setIsKeyboardAccess(isKeyBoard);
   };
@@ -4721,6 +4825,7 @@ function AdBannerContextMenu({
   };
   const onUpdate = () => {
     toggleContextMenuStyleSwitch(!showContextMenu);
+    toggleActive(!showContextMenu);
     setShowContextMenu(!showContextMenu);
   };
   return /*#__PURE__*/external_React_default().createElement("div", {
@@ -4769,6 +4874,79 @@ function AdBannerContextMenu({
     source: type.toUpperCase()
   })));
 }
+;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/PromoCard/PromoCard.jsx
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+
+
+
+const PREF_PROMO_CARD_DISMISSED = "discoverystream.promoCard.visible";
+
+/**
+ * The PromoCard component displays a promotional message.
+ * It is used next to the AdBanner component in a four-column layout.
+ */
+
+const PromoCard = () => {
+  const dispatch = (0,external_ReactRedux_namespaceObject.useDispatch)();
+  const onCtaClick = (0,external_React_namespaceObject.useCallback)(() => {
+    dispatch(actionCreators.AlsoToMain({
+      type: actionTypes.PROMO_CARD_CLICK
+    }));
+  }, [dispatch]);
+  const onDismissClick = (0,external_React_namespaceObject.useCallback)(() => {
+    dispatch(actionCreators.AlsoToMain({
+      type: actionTypes.PROMO_CARD_DISMISS
+    }));
+    dispatch(actionCreators.SetPref(PREF_PROMO_CARD_DISMISSED, false));
+  }, [dispatch]);
+  const handleIntersection = (0,external_React_namespaceObject.useCallback)(() => {
+    dispatch(actionCreators.AlsoToMain({
+      type: actionTypes.PROMO_CARD_IMPRESSION
+    }));
+  }, [dispatch]);
+  const ref = useIntersectionObserver(handleIntersection);
+  return /*#__PURE__*/external_React_default().createElement("div", {
+    className: "promo-card-wrapper",
+    ref: el => {
+      ref.current = [el];
+    }
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "promo-card-dismiss-button"
+  }, /*#__PURE__*/external_React_default().createElement("moz-button", {
+    type: "icon ghost",
+    size: "small",
+    "data-l10n-id": "newtab-promo-card-dismiss-button",
+    iconsrc: "chrome://global/skin/icons/close.svg",
+    onClick: onDismissClick,
+    onKeyDown: onDismissClick
+  })), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "promo-card-inner"
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "img-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("img", {
+    src: "chrome://newtab/content/data/content/assets/puzzle-fox.svg",
+    alt: ""
+  })), /*#__PURE__*/external_React_default().createElement("span", {
+    className: "promo-card-title",
+    "data-l10n-id": "newtab-promo-card-title"
+  }), /*#__PURE__*/external_React_default().createElement("span", {
+    className: "promo-card-body",
+    "data-l10n-id": "newtab-promo-card-body"
+  }), /*#__PURE__*/external_React_default().createElement("span", {
+    className: "promo-card-cta-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("a", {
+    href: "https://support.mozilla.org/kb/sponsor-privacy",
+    "data-l10n-id": "newtab-promo-card-cta",
+    target: "_blank",
+    rel: "noreferrer",
+    onClick: onCtaClick
+  }))));
+};
+
 ;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/AdBanner/AdBanner.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -4779,6 +4957,12 @@ function AdBannerContextMenu({
 
 
 
+
+const AdBanner_PREF_SECTIONS_ENABLED = "discoverystream.sections.enabled";
+const AdBanner_PREF_OHTTP_UNIFIED_ADS = "unifiedAds.ohttp.enabled";
+const PREF_REPORT_ADS_ENABLED = "discoverystream.reportAds.enabled";
+const PREF_PROMOCARD_ENABLED = "discoverystream.promoCard.enabled";
+const PREF_PROMOCARD_VISIBLE = "discoverystream.promoCard.visible";
 
 /**
  * A new banner ad that appears between rows of stories: leaderboard or billboard size.
@@ -4819,8 +5003,13 @@ const AdBanner = ({
       height: undefined
     };
   };
-  const sectionsEnabled = prefs["discoverystream.sections.enabled"];
-  const showAdReporting = prefs["discoverystream.reportAds.enabled"];
+  const promoCardEnabled = spoc.format === "billboard" && prefs[PREF_PROMOCARD_ENABLED] && prefs[PREF_PROMOCARD_VISIBLE];
+  const sectionsEnabled = prefs[AdBanner_PREF_SECTIONS_ENABLED];
+  const ohttpEnabled = prefs[AdBanner_PREF_OHTTP_UNIFIED_ADS];
+  const showAdReporting = prefs[PREF_REPORT_ADS_ENABLED];
+  const ohttpImagesEnabled = prefs.ohttpImagesConfig?.enabled;
+  const [menuActive, setMenuActive] = (0,external_React_namespaceObject.useState)(false);
+  const adBannerWrapperClassName = `ad-banner-wrapper ${menuActive ? "active" : ""} ${promoCardEnabled ? "promo-card" : ""}`;
   const {
     width: imgWidth,
     height: imgHeight
@@ -4847,29 +5036,38 @@ const AdBanner = ({
       }
     }));
   };
+  const toggleActive = active => {
+    setMenuActive(active);
+  };
 
   // in the default card grid 1 would come before the 1st row of cards and 9 comes after the last row
   // using clamp to make sure its between valid values (1-9)
   const clampedRow = Math.max(1, Math.min(9, row));
+  const secureImage = ohttpImagesEnabled && ohttpEnabled;
+  let rawImageSrc = spoc.raw_image_src;
+
+  // Wraps the image URL with the moz-cached-ohttp:// protocol.
+  // This enables Firefox to load resources over Oblivious HTTP (OHTTP),
+  // providing privacy-preserving resource loading.
+  // Applied only when inferred personalization is enabled.
+  // See: https://firefox-source-docs.mozilla.org/browser/components/mozcachedohttp/docs/index.html
+  if (secureImage) {
+    rawImageSrc = `moz-cached-ohttp://newtab-image/?url=${encodeURIComponent(spoc.raw_image_src)}`;
+  }
   return /*#__PURE__*/external_React_default().createElement("aside", {
-    className: "ad-banner-wrapper",
+    className: adBannerWrapperClassName,
     style: {
       gridRow: clampedRow
     }
   }, /*#__PURE__*/external_React_default().createElement("div", {
     className: `ad-banner-inner ${spoc.format}`
-  }, /*#__PURE__*/external_React_default().createElement(AdBannerContextMenu, {
-    dispatch: dispatch,
-    spoc: spoc,
-    position: row,
-    type: type,
-    showAdReporting: showAdReporting
-  }), /*#__PURE__*/external_React_default().createElement(SafeAnchor, {
+  }, /*#__PURE__*/external_React_default().createElement(SafeAnchor, {
     className: "ad-banner-link",
     url: spoc.url,
     title: spoc.title || spoc.sponsor || spoc.alt_text,
     onLinkClick: onLinkClick,
-    dispatch: dispatch
+    dispatch: dispatch,
+    isSponsored: true
   }, /*#__PURE__*/external_React_default().createElement(ImpressionStats_ImpressionStats, {
     flightId: spoc.flight_id,
     rows: [{
@@ -4888,17 +5086,26 @@ const AdBanner = ({
   }), /*#__PURE__*/external_React_default().createElement("div", {
     className: "ad-banner-content"
   }, /*#__PURE__*/external_React_default().createElement("img", {
-    src: spoc.raw_image_src,
+    src: rawImageSrc,
     alt: spoc.alt_text,
     loading: "eager",
     width: imgWidth,
     height: imgHeight
-  }))), /*#__PURE__*/external_React_default().createElement("div", {
+  })), /*#__PURE__*/external_React_default().createElement("div", {
     className: "ad-banner-sponsored"
   }, /*#__PURE__*/external_React_default().createElement("span", {
     className: "ad-banner-sponsored-label",
     "data-l10n-id": "newtab-label-sponsored-fixed"
-  }))));
+  }))), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "ad-banner-hover-background"
+  }, /*#__PURE__*/external_React_default().createElement(AdBannerContextMenu, {
+    dispatch: dispatch,
+    spoc: spoc,
+    position: row,
+    type: type,
+    showAdReporting: showAdReporting,
+    toggleActive: toggleActive
+  }))), promoCardEnabled && /*#__PURE__*/external_React_default().createElement(PromoCard, null));
 };
 ;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/TrendingSearches/TrendingSearches.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
@@ -4911,6 +5118,7 @@ const AdBanner = ({
 
 
 const PREF_TRENDING_VARIANT = "trendingSearch.variant";
+const PREF_REFINED_CARDS_LAYOUT = "discoverystream.refinedCardsLayout.enabled";
 function TrendingSearches() {
   const [showContextMenu, setShowContextMenu] = (0,external_React_namespaceObject.useState)(false);
   // The keyboard access parameter is passed down to LinkMenu component
@@ -4929,8 +5137,10 @@ function TrendingSearches() {
     collapsed
   } = TrendingSearch;
   const variant = prefs[PREF_TRENDING_VARIANT];
+  const refinedCards = prefs[PREF_REFINED_CARDS_LAYOUT];
   let resultRef = (0,external_React_namespaceObject.useRef)([]);
-  const TRENDING_SEARCH_CONTEXT_MENU_OPTIONS = ["TrendingSearchLearnMore", "TrendingSearchDismiss"];
+  let contextMenuHost = (0,external_React_namespaceObject.useRef)(null);
+  const TRENDING_SEARCH_CONTEXT_MENU_OPTIONS = ["TrendingSearchDismiss", "TrendingSearchLearnMore"];
   function onArrowClick() {
     dispatch(actionCreators.AlsoToMain({
       type: actionTypes.TRENDING_SEARCH_TOGGLE_COLLAPSE,
@@ -4948,9 +5158,36 @@ function TrendingSearches() {
       }
     }));
   }
+
+  // If the window is small, the context menu in variant B will move closer to the card
+  // so that it doesn't cut off
+  const handleContextMenuShow = () => {
+    const host = contextMenuHost.current;
+    const isRTL = document.dir === "rtl"; // returns true if page language is right-to-left
+    const checkRect = host.getBoundingClientRect();
+    const maxBounds = 200;
+
+    // Adds the class of "last-item" if the card is near the edge of the window
+    const checkBounds = isRTL ? checkRect.left <= maxBounds : window.innerWidth - checkRect.right <= maxBounds;
+    if (checkBounds) {
+      host.classList.add("last-item");
+    }
+  };
+  const handleContextMenuUpdate = () => {
+    const host = contextMenuHost.current;
+    if (!host) {
+      return;
+    }
+    host.classList.remove("last-item");
+  };
   const toggleContextMenu = isKeyBoard => {
     setShowContextMenu(!showContextMenu);
     setIsKeyboardAccess(isKeyBoard);
+    if (!showContextMenu) {
+      handleContextMenuShow();
+    } else {
+      handleContextMenuUpdate();
+    }
   };
   function onContextMenuClick(e) {
     e.preventDefault();
@@ -5021,7 +5258,7 @@ function TrendingSearches() {
       onClick: onArrowClick,
       className: `icon icon-arrowhead-up`,
       type: "icon ghost",
-      "data-l10n-id": `newtab-trending-searches-${collapsed ? "hide" : "show"}-trending`
+      "data-l10n-id": `newtab-trending-searches-${collapsed ? "show" : "hide"}-trending`
     }))), !collapsed && /*#__PURE__*/external_React_default().createElement("ul", {
       className: "trending-searches-list"
     }, suggestions.map((result, index) => {
@@ -5041,6 +5278,7 @@ function TrendingSearches() {
     return /*#__PURE__*/external_React_default().createElement("div", {
       ref: el => {
         ref.current = [el];
+        contextMenuHost.current = el;
       },
       className: "trending-searches-list-view"
     }, /*#__PURE__*/external_React_default().createElement("div", {
@@ -5073,7 +5311,7 @@ function TrendingSearches() {
     }, suggestions.slice(0, 6).map((result, index) => {
       return /*#__PURE__*/external_React_default().createElement("li", {
         key: result.suggestion,
-        className: "trending-searches-list-item",
+        className: `trending-searches-list-item ${refinedCards ? "compact" : ""}`,
         onKeyDown: e => handleResultKeyDown(e, index)
       }, /*#__PURE__*/external_React_default().createElement(SafeAnchor, {
         url: result.searchUrl,
@@ -5110,10 +5348,6 @@ function TrendingSearches() {
 
 
 
-
-
-
-const PREF_ONBOARDING_EXPERIENCE_DISMISSED = "discoverystream.onboardingExperience.dismissed";
 const PREF_SECTIONS_CARDS_ENABLED = "discoverystream.sections.cards.enabled";
 const PREF_THUMBS_UP_DOWN_ENABLED = "discoverystream.thumbsUpDown.enabled";
 const PREF_TOPICS_ENABLED = "discoverystream.topicLabels.enabled";
@@ -5124,16 +5358,13 @@ const PREF_LIST_FEED_ENABLED = "discoverystream.contextualContent.enabled";
 const PREF_LIST_FEED_SELECTED_FEED = "discoverystream.contextualContent.selectedFeed";
 const PREF_FAKESPOT_ENABLED = "discoverystream.contextualContent.fakespot.enabled";
 const PREF_BILLBOARD_ENABLED = "newtabAdSize.billboard";
+const PREF_BILLBOARD_POSITION = "newtabAdSize.billboard.position";
 const PREF_LEADERBOARD_ENABLED = "newtabAdSize.leaderboard";
 const PREF_LEADERBOARD_POSITION = "newtabAdSize.leaderboard.position";
-const PREF_BILLBOARD_POSITION = "newtabAdSize.billboard.position";
 const PREF_TRENDING_SEARCH = "trendingSearch.enabled";
 const PREF_TRENDING_SEARCH_SYSTEM = "system.trendingSearch.enabled";
 const PREF_SEARCH_ENGINE = "trendingSearch.defaultSearchEngine";
 const PREF_TRENDING_SEARCH_VARIANT = "trendingSearch.variant";
-const CardGrid_INTERSECTION_RATIO = 0.5;
-const CardGrid_VISIBLE = "visible";
-const CardGrid_VISIBILITY_CHANGE_EVENT = "visibilitychange";
 const WIDGET_IDS = {
   TOPICS: 1
 };
@@ -5145,95 +5376,6 @@ function DSSubHeader({
   }, /*#__PURE__*/external_React_default().createElement("h3", {
     className: "section-title-container"
   }, children));
-}
-function OnboardingExperience({
-  dispatch,
-  windowObj = globalThis
-}) {
-  const [dismissed, setDismissed] = (0,external_React_namespaceObject.useState)(false);
-  const [maxHeight, setMaxHeight] = (0,external_React_namespaceObject.useState)(null);
-  const heightElement = (0,external_React_namespaceObject.useRef)(null);
-  const onDismissClick = (0,external_React_namespaceObject.useCallback)(() => {
-    // We update this as state and redux.
-    // The state update is for this newtab,
-    // and the redux update is for other tabs, offscreen tabs, and future tabs.
-    // We need the state update for this tab to support the transition.
-    setDismissed(true);
-    dispatch(actionCreators.SetPref(PREF_ONBOARDING_EXPERIENCE_DISMISSED, true));
-    dispatch(actionCreators.DiscoveryStreamUserEvent({
-      event: "BLOCK",
-      source: "POCKET_ONBOARDING"
-    }));
-  }, [dispatch]);
-  (0,external_React_namespaceObject.useEffect)(() => {
-    const resizeObserver = new windowObj.ResizeObserver(() => {
-      if (heightElement.current) {
-        setMaxHeight(heightElement.current.offsetHeight);
-      }
-    });
-    const options = {
-      threshold: CardGrid_INTERSECTION_RATIO
-    };
-    const intersectionObserver = new windowObj.IntersectionObserver(entries => {
-      if (entries.some(entry => entry.isIntersecting && entry.intersectionRatio >= CardGrid_INTERSECTION_RATIO)) {
-        dispatch(actionCreators.DiscoveryStreamUserEvent({
-          event: "IMPRESSION",
-          source: "POCKET_ONBOARDING"
-        }));
-        // Once we have observed an impression, we can stop for this instance of newtab.
-        intersectionObserver.unobserve(heightElement.current);
-      }
-    }, options);
-    const onVisibilityChange = () => {
-      intersectionObserver.observe(heightElement.current);
-      windowObj.document.removeEventListener(CardGrid_VISIBILITY_CHANGE_EVENT, onVisibilityChange);
-    };
-    if (heightElement.current) {
-      resizeObserver.observe(heightElement.current);
-      // Check visibility or setup a visibility event to make
-      // sure we don't fire this for off screen pre loaded tabs.
-      if (windowObj.document.visibilityState === CardGrid_VISIBLE) {
-        intersectionObserver.observe(heightElement.current);
-      } else {
-        windowObj.document.addEventListener(CardGrid_VISIBILITY_CHANGE_EVENT, onVisibilityChange);
-      }
-      setMaxHeight(heightElement.current.offsetHeight);
-    }
-
-    // Return unmount callback to clean up observers.
-    return () => {
-      resizeObserver?.disconnect();
-      intersectionObserver?.disconnect();
-      windowObj.document.removeEventListener(CardGrid_VISIBILITY_CHANGE_EVENT, onVisibilityChange);
-    };
-  }, [dispatch, windowObj]);
-  const style = {};
-  if (dismissed) {
-    style.maxHeight = "0";
-    style.opacity = "0";
-    style.transition = "max-height 0.26s ease, opacity 0.26s ease";
-  } else if (maxHeight) {
-    style.maxHeight = `${maxHeight}px`;
-  }
-  return /*#__PURE__*/external_React_default().createElement("div", {
-    style: style
-  }, /*#__PURE__*/external_React_default().createElement("div", {
-    className: "ds-onboarding-ref",
-    ref: heightElement
-  }, /*#__PURE__*/external_React_default().createElement("div", {
-    className: "ds-onboarding-container"
-  }, /*#__PURE__*/external_React_default().createElement(DSDismiss, {
-    onDismissClick: onDismissClick,
-    extraClasses: `ds-onboarding`
-  }, /*#__PURE__*/external_React_default().createElement("div", null, /*#__PURE__*/external_React_default().createElement("header", null, /*#__PURE__*/external_React_default().createElement("span", {
-    className: "icon icon-pocket"
-  }), /*#__PURE__*/external_React_default().createElement("span", {
-    "data-l10n-id": "newtab-pocket-onboarding-discover"
-  })), /*#__PURE__*/external_React_default().createElement("p", {
-    "data-l10n-id": "newtab-pocket-onboarding-cta"
-  })), /*#__PURE__*/external_React_default().createElement("div", {
-    className: "ds-onboarding-graphic"
-  })))));
 }
 
 // eslint-disable-next-line no-shadow
@@ -5265,145 +5407,20 @@ function CardGrid_IntersectionObserver({
     ref: intersectionElement
   }, children);
 }
-function RecentSavesContainer({
-  gridClassName = "",
-  dispatch,
-  windowObj = window,
-  items = 3,
-  source = "CARDGRID_RECENT_SAVES"
-}) {
-  const {
-    recentSavesData,
-    isUserLoggedIn,
-    experimentData: {
-      utmCampaign,
-      utmContent,
-      utmSource
-    }
-  } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.DiscoveryStream);
-  const [visible, setVisible] = (0,external_React_namespaceObject.useState)(false);
-  const onIntersecting = (0,external_React_namespaceObject.useCallback)(() => setVisible(true), []);
-  (0,external_React_namespaceObject.useEffect)(() => {
-    if (visible) {
-      dispatch(actionCreators.AlsoToMain({
-        type: actionTypes.DISCOVERY_STREAM_POCKET_STATE_INIT
-      }));
-    }
-  }, [visible, dispatch]);
-
-  // The user has not yet scrolled to this section,
-  // so wait before potentially requesting Pocket data.
-  if (!visible) {
-    return /*#__PURE__*/external_React_default().createElement(CardGrid_IntersectionObserver, {
-      windowObj: windowObj,
-      onIntersecting: onIntersecting
-    });
-  }
-
-  // Intersection observer has finished, but we're not yet logged in.
-  if (visible && !isUserLoggedIn) {
-    return null;
-  }
-  let queryParams = `?utm_source=${utmSource}`;
-  // We really only need to add these params to urls we own.
-  if (utmCampaign && utmContent) {
-    queryParams += `&utm_content=${utmContent}&utm_campaign=${utmCampaign}`;
-  }
-  function renderCard(rec, index) {
-    const url = new URL(rec.url);
-    const urlSearchParams = new URLSearchParams(queryParams);
-    if (rec?.id && !url.href.match(/getpocket\.com\/read/)) {
-      url.href = `https://getpocket.com/read/${rec.id}`;
-    }
-    for (let [key, val] of urlSearchParams.entries()) {
-      url.searchParams.set(key, val);
-    }
-    return /*#__PURE__*/external_React_default().createElement(DSCard, {
-      key: `dscard-${rec?.id || index}`,
-      id: rec.id,
-      pos: index,
-      type: source,
-      image_src: rec.image_src,
-      raw_image_src: rec.raw_image_src,
-      icon_src: rec.icon_src,
-      word_count: rec.word_count,
-      time_to_read: rec.time_to_read,
-      title: rec.title,
-      excerpt: rec.excerpt,
-      url: url.href,
-      source: rec.domain,
-      isRecentSave: true,
-      dispatch: dispatch
-    });
-  }
-  function onMyListClicked() {
-    dispatch(actionCreators.DiscoveryStreamUserEvent({
-      event: "CLICK",
-      source: `${source}_VIEW_LIST`
-    }));
-  }
-  const recentSavesCards = [];
-  // We fill the cards with a for loop over an inline map because
-  // we want empty placeholders if there are not enough cards.
-  for (let index = 0; index < items; index++) {
-    const recentSave = recentSavesData[index];
-    if (!recentSave) {
-      recentSavesCards.push(/*#__PURE__*/external_React_default().createElement(PlaceholderDSCard, {
-        key: `dscard-${index}`
-      }));
-    } else {
-      recentSavesCards.push(renderCard({
-        id: recentSave.id,
-        image_src: recentSave.top_image_url,
-        raw_image_src: recentSave.top_image_url,
-        word_count: recentSave.word_count,
-        time_to_read: recentSave.time_to_read,
-        title: recentSave.resolved_title || recentSave.given_title,
-        url: recentSave.resolved_url || recentSave.given_url,
-        domain: recentSave.domain_metadata?.name,
-        excerpt: recentSave.excerpt
-      }, index));
-    }
-  }
-
-  // We are visible and logged in.
-  return /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, /*#__PURE__*/external_React_default().createElement(DSSubHeader, null, /*#__PURE__*/external_React_default().createElement("span", {
-    className: "section-title"
-  }, /*#__PURE__*/external_React_default().createElement(FluentOrText, {
-    message: "Recently Saved to your List"
-  })), /*#__PURE__*/external_React_default().createElement(SafeAnchor, {
-    onLinkClick: onMyListClicked,
-    className: "section-sub-link",
-    url: `https://getpocket.com/a${queryParams}`
-  }, /*#__PURE__*/external_React_default().createElement(FluentOrText, {
-    message: "View My List"
-  }))), /*#__PURE__*/external_React_default().createElement("div", {
-    className: `ds-card-grid-recent-saves ${gridClassName}`
-  }, recentSavesCards));
-}
 class _CardGrid extends (external_React_default()).PureComponent {
   // eslint-disable-next-line max-statements
   renderCards() {
     const prefs = this.props.Prefs.values;
     const {
       items,
-      fourCardLayout,
-      essentialReadsHeader,
-      editorsPicksHeader,
-      onboardingExperience,
       ctaButtonSponsors,
       ctaButtonVariant,
-      spocMessageVariant,
       widgets,
-      recentSavesEnabled,
       DiscoveryStream
     } = this.props;
     const {
-      saveToPocketCard,
       topicsLoading
     } = DiscoveryStream;
-    const showRecentSaves = prefs.showRecentSaves && recentSavesEnabled;
-    const isOnboardingExperienceDismissed = prefs[PREF_ONBOARDING_EXPERIENCE_DISMISSED];
     const mayHaveSectionsCards = prefs[PREF_SECTIONS_CARDS_ENABLED];
     const mayHaveThumbsUpDown = prefs[PREF_THUMBS_UP_DOWN_ENABLED];
     const showTopics = prefs[PREF_TOPICS_ENABLED];
@@ -5420,8 +5437,6 @@ class _CardGrid extends (external_React_default()).PureComponent {
     // filter out recs that should be in ListFeed
     const recs = this.props.data.recommendations.filter(item => !item.feedName).slice(0, items);
     const cards = [];
-    let essentialReadsCards = [];
-    let editorsPicksCards = [];
     for (let index = 0; index < items; index++) {
       const rec = recs[index];
       cards.push(topicsLoading || !rec || rec.placeholder || rec.flight_id && !spocsStartupCacheEnabled && this.props.App.isForStartupCache.DiscoveryStream ? /*#__PURE__*/external_React_default().createElement(PlaceholderDSCard, {
@@ -5456,11 +5471,8 @@ class _CardGrid extends (external_React_default()).PureComponent {
         pocket_id: rec.pocket_id,
         context_type: rec.context_type,
         bookmarkGuid: rec.bookmarkGuid,
-        is_collection: this.props.is_collection,
-        saveToPocketCard: saveToPocketCard,
         ctaButtonSponsors: ctaButtonSponsors,
         ctaButtonVariant: ctaButtonVariant,
-        spocMessageVariant: spocMessageVariant,
         recommendation_id: rec.recommendation_id,
         firstVisibleTimestamp: this.props.firstVisibleTimestamp,
         mayHaveThumbsUpDown: mayHaveThumbsUpDown,
@@ -5569,44 +5581,10 @@ class _CardGrid extends (external_React_default()).PureComponent {
         injectAdBanner(getBannerIndex());
       }
     }
-    let moreRecsHeader = "";
-    // For now this is English only.
-    if (showRecentSaves || essentialReadsHeader && editorsPicksHeader) {
-      let spliceAt = 6;
-      // For 4 card row layouts, second row is 8 cards, and regular it is 6 cards.
-      if (fourCardLayout) {
-        spliceAt = 8;
-      }
-      // If we have a custom header, ensure the more recs section also has a header.
-      moreRecsHeader = "More Recommendations";
-      // Put the first 2 rows into essentialReadsCards.
-      essentialReadsCards = [...cards.splice(0, spliceAt)];
-      // Put the rest into editorsPicksCards.
-      if (essentialReadsHeader && editorsPicksHeader) {
-        editorsPicksCards = [...cards.splice(0, cards.length)];
-      }
-    }
     const gridClassName = this.renderGridClassName();
-    return /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, !isOnboardingExperienceDismissed && onboardingExperience && /*#__PURE__*/external_React_default().createElement(OnboardingExperience, {
-      dispatch: this.props.dispatch
-    }), essentialReadsCards?.length > 0 && /*#__PURE__*/external_React_default().createElement("div", {
+    return /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, cards?.length > 0 && /*#__PURE__*/external_React_default().createElement("div", {
       className: gridClassName
-    }, essentialReadsCards), showRecentSaves && /*#__PURE__*/external_React_default().createElement(RecentSavesContainer, {
-      gridClassName: gridClassName,
-      dispatch: this.props.dispatch
-    }), editorsPicksCards?.length > 0 && /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, /*#__PURE__*/external_React_default().createElement(DSSubHeader, null, /*#__PURE__*/external_React_default().createElement("span", {
-      className: "section-title"
-    }, /*#__PURE__*/external_React_default().createElement(FluentOrText, {
-      message: "Editor\u2019s Picks"
-    }))), /*#__PURE__*/external_React_default().createElement("div", {
-      className: gridClassName
-    }, editorsPicksCards)), cards?.length > 0 && /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, moreRecsHeader && /*#__PURE__*/external_React_default().createElement(DSSubHeader, null, /*#__PURE__*/external_React_default().createElement("span", {
-      className: "section-title"
-    }, /*#__PURE__*/external_React_default().createElement(FluentOrText, {
-      message: moreRecsHeader
-    }))), /*#__PURE__*/external_React_default().createElement("div", {
-      className: gridClassName
-    }, cards)));
+    }, cards));
   }
   renderListFeed(recommendations, selectedFeed) {
     const recs = recommendations.filter(item => item.feedName === selectedFeed);
@@ -5679,145 +5657,6 @@ const CardGrid = (0,external_ReactRedux_namespaceObject.connect)(state => ({
   App: state.App,
   DiscoveryStream: state.DiscoveryStream
 }))(_CardGrid);
-;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/CollectionCardGrid/CollectionCardGrid.jsx
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
-
-
-
-
-class CollectionCardGrid extends (external_React_default()).PureComponent {
-  constructor(props) {
-    super(props);
-    this.onDismissClick = this.onDismissClick.bind(this);
-    this.state = {
-      dismissed: false
-    };
-  }
-  onDismissClick() {
-    const {
-      data
-    } = this.props;
-    if (this.props.dispatch && data && data.spocs && data.spocs.length) {
-      this.setState({
-        dismissed: true
-      });
-      const pos = 0;
-      const source = this.props.type.toUpperCase();
-      // Grab the available items in the array to dismiss.
-      // This fires a ping for all items available, even if below the fold.
-      const spocsData = data.spocs.map(item => ({
-        url: item.url,
-        guid: item.id,
-        shim: item.shim,
-        flight_id: item.flightId
-      }));
-      const blockUrlOption = LinkMenuOptions.BlockUrls(spocsData, pos, source);
-      const {
-        action,
-        impression,
-        userEvent
-      } = blockUrlOption;
-      this.props.dispatch(action);
-      this.props.dispatch(actionCreators.DiscoveryStreamUserEvent({
-        event: userEvent,
-        source,
-        action_position: pos
-      }));
-      if (impression) {
-        this.props.dispatch(impression);
-      }
-    }
-  }
-  render() {
-    const {
-      data,
-      dismissible,
-      pocket_button_enabled
-    } = this.props;
-    if (this.state.dismissed || !data || !data.spocs || !data.spocs[0] ||
-    // We only display complete collections.
-    data.spocs.length < 3) {
-      return null;
-    }
-    const {
-      spocs,
-      placement,
-      feed
-    } = this.props;
-    // spocs.data is spocs state data, and not an array of spocs.
-    const {
-      title,
-      context,
-      sponsored_by_override,
-      sponsor
-    } = spocs.data[placement.name] || {};
-    // Just in case of bad data, don't display a broken collection.
-    if (!title) {
-      return null;
-    }
-    let sponsoredByMessage = "";
-
-    // If override is not false or an empty string.
-    if (sponsored_by_override || sponsored_by_override === "") {
-      // We specifically want to display nothing if the server returns an empty string.
-      // So the server can turn off the label.
-      // This is to support the use cases where the sponsored context is displayed elsewhere.
-      sponsoredByMessage = sponsored_by_override;
-    } else if (sponsor) {
-      sponsoredByMessage = {
-        id: `newtab-label-sponsored-by`,
-        values: {
-          sponsor
-        }
-      };
-    } else if (context) {
-      sponsoredByMessage = context;
-    }
-
-    // Generally a card grid displays recs with spocs already injected.
-    // Normally it doesn't care which rec is a spoc and which isn't,
-    // it just displays content in a grid.
-    // For collections, we're only displaying a list of spocs.
-    // We don't need to tell the card grid that our list of cards are spocs,
-    // it shouldn't need to care. So we just pass our spocs along as recs.
-    // Think of it as injecting all rec positions with spocs.
-    // Consider maybe making recommendations in CardGrid use a more generic name.
-    const recsData = {
-      recommendations: data.spocs
-    };
-
-    // All cards inside of a collection card grid have a slightly different type.
-    // For the case of interactions to the card grid, we use the type "COLLECTIONCARDGRID".
-    // Example, you dismiss the whole collection, we use the type "COLLECTIONCARDGRID".
-    // For interactions inside the card grid, example, you dismiss a single card in the collection,
-    // we use the type "COLLECTIONCARDGRID_CARD".
-    const type = `${this.props.type}_card`;
-    const collectionGrid = /*#__PURE__*/external_React_default().createElement("div", {
-      className: "ds-collection-card-grid"
-    }, /*#__PURE__*/external_React_default().createElement(CardGrid, {
-      pocket_button_enabled: pocket_button_enabled,
-      title: title,
-      context: sponsoredByMessage,
-      data: recsData,
-      feed: feed,
-      type: type,
-      is_collection: true,
-      dispatch: this.props.dispatch,
-      items: this.props.items
-    }));
-    if (dismissible) {
-      return /*#__PURE__*/external_React_default().createElement(DSDismiss, {
-        onDismissClick: this.onDismissClick,
-        extraClasses: `ds-dismiss-ds-collection`
-      }, collectionGrid);
-    }
-    return collectionGrid;
-  }
-}
 ;// CONCATENATED MODULE: ./content-src/components/A11yLinkButton/A11yLinkButton.jsx
 function A11yLinkButton_extends() { return A11yLinkButton_extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, A11yLinkButton_extends.apply(null, arguments); }
 /* This Source Code Form is subject to the terms of the Mozilla Public
@@ -5917,7 +5756,6 @@ ErrorBoundary.defaultProps = {
 
 
 
-
 /**
  * A section that can collapse. As of bug 1710937, it can no longer collapse.
  * See bug 1727365 for follow-up work to simplify this component.
@@ -5982,7 +5820,6 @@ class _CollapsibleSection extends (external_React_default()).PureComponent {
       collapsed,
       title,
       subTitle,
-      mayHaveSponsoredStories,
       mayHaveTopicsSelection,
       sectionsEnabled
     } = this.props;
@@ -6025,10 +5862,7 @@ class _CollapsibleSection extends (external_React_default()).PureComponent {
       className: "section-sub-title"
     }, /*#__PURE__*/external_React_default().createElement(FluentOrText, {
       message: subTitle
-    })), mayHaveSponsoredStories && this.props.spocMessageVariant === "variant-a" && /*#__PURE__*/external_React_default().createElement(SponsoredContentHighlight, {
-      position: "inset-block-start inset-inline-start",
-      dispatch: this.props.dispatch
-    })), mayHaveTopicsSelection && /*#__PURE__*/external_React_default().createElement("div", {
+    }))), mayHaveTopicsSelection && /*#__PURE__*/external_React_default().createElement("div", {
       className: "button-topic-selection"
     }, /*#__PURE__*/external_React_default().createElement("moz-button", {
       "data-l10n-id": topicsHaveBeenPreviouslySet ? "newtab-topic-selection-button-update-interests" : "newtab-topic-selection-button-pick-interests",
@@ -6083,117 +5917,6 @@ class DSMessage extends (external_React_default()).PureComponent {
     }))));
   }
 }
-;// CONCATENATED MODULE: ./content-src/components/ModalOverlay/ModalOverlay.jsx
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
-function ModalOverlayWrapper({
-  // eslint-disable-next-line no-shadow
-  document = globalThis.document,
-  unstyled,
-  innerClassName,
-  onClose,
-  children,
-  headerId,
-  id
-}) {
-  const modalRef = (0,external_React_namespaceObject.useRef)(null);
-  let className = unstyled ? "" : "modalOverlayInner active";
-  if (innerClassName) {
-    className += ` ${innerClassName}`;
-  }
-
-  // The intended behaviour is to listen for an escape key
-  // but not for a click; see Bug 1582242
-  const onKeyDown = (0,external_React_namespaceObject.useCallback)(event => {
-    if (event.key === "Escape") {
-      onClose(event);
-    }
-  }, [onClose]);
-  (0,external_React_namespaceObject.useEffect)(() => {
-    document.addEventListener("keydown", onKeyDown);
-    document.body.classList.add("modal-open");
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.classList.remove("modal-open");
-    };
-  }, [document, onKeyDown]);
-  return /*#__PURE__*/external_React_default().createElement("div", {
-    className: "modalOverlayOuter active",
-    onKeyDown: onKeyDown,
-    role: "presentation"
-  }, /*#__PURE__*/external_React_default().createElement("div", {
-    className: className,
-    "aria-labelledby": headerId,
-    id: id,
-    role: "dialog",
-    ref: modalRef
-  }, children));
-}
-
-;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/DSPrivacyModal/DSPrivacyModal.jsx
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
-
-
-class DSPrivacyModal extends (external_React_default()).PureComponent {
-  constructor(props) {
-    super(props);
-    this.closeModal = this.closeModal.bind(this);
-    this.onLearnLinkClick = this.onLearnLinkClick.bind(this);
-    this.onManageLinkClick = this.onManageLinkClick.bind(this);
-  }
-  onLearnLinkClick() {
-    this.props.dispatch(actionCreators.DiscoveryStreamUserEvent({
-      event: "CLICK_PRIVACY_INFO",
-      source: "DS_PRIVACY_MODAL"
-    }));
-  }
-  onManageLinkClick() {
-    this.props.dispatch(actionCreators.OnlyToMain({
-      type: actionTypes.SETTINGS_OPEN
-    }));
-  }
-  closeModal() {
-    this.props.dispatch({
-      type: `HIDE_PRIVACY_INFO`,
-      data: {}
-    });
-  }
-  render() {
-    return /*#__PURE__*/external_React_default().createElement(ModalOverlayWrapper, {
-      onClose: this.closeModal,
-      innerClassName: "ds-privacy-modal"
-    }, /*#__PURE__*/external_React_default().createElement("div", {
-      className: "privacy-notice"
-    }, /*#__PURE__*/external_React_default().createElement("h3", {
-      "data-l10n-id": "newtab-privacy-modal-header"
-    }), /*#__PURE__*/external_React_default().createElement("p", {
-      "data-l10n-id": "newtab-privacy-modal-paragraph-2"
-    }), /*#__PURE__*/external_React_default().createElement("a", {
-      className: "modal-link modal-link-privacy",
-      "data-l10n-id": "newtab-privacy-modal-link",
-      onClick: this.onLearnLinkClick,
-      href: "https://support.mozilla.org/kb/pocket-recommendations-firefox-new-tab"
-    }), /*#__PURE__*/external_React_default().createElement("button", {
-      className: "modal-link modal-link-manage",
-      "data-l10n-id": "newtab-privacy-modal-button-manage",
-      onClick: this.onManageLinkClick
-    })), /*#__PURE__*/external_React_default().createElement("section", {
-      className: "actions"
-    }, /*#__PURE__*/external_React_default().createElement("button", {
-      className: "done",
-      type: "submit",
-      onClick: this.closeModal,
-      "data-l10n-id": "newtab-privacy-modal-button-done"
-    })));
-  }
-}
 ;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/ReportContent/ReportContent.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -6221,10 +5944,7 @@ const ReportContent = spocs => {
     const {
       card_type,
       corpus_item_id,
-      is_section_followed,
       position,
-      received_rank,
-      recommended_at,
       reporting_url,
       scheduled_corpus_item_id,
       section_position,
@@ -6239,9 +5959,6 @@ const ReportContent = spocs => {
         data: {
           card_type,
           corpus_item_id,
-          is_section_followed,
-          received_rank,
-          recommended_at,
           report_reason: selectedReason,
           scheduled_corpus_item_id,
           section_position,
@@ -6542,6 +6259,54 @@ class DSSignup extends (external_React_default()).PureComponent {
 DSSignup.defaultProps = {
   windowObj: window // Added to support unit tests
 };
+;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/DSDismiss/DSDismiss.jsx
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+class DSDismiss extends (external_React_default()).PureComponent {
+  constructor(props) {
+    super(props);
+    this.onDismissClick = this.onDismissClick.bind(this);
+    this.onHover = this.onHover.bind(this);
+    this.offHover = this.offHover.bind(this);
+    this.state = {
+      hovering: false
+    };
+  }
+  onDismissClick() {
+    if (this.props.onDismissClick) {
+      this.props.onDismissClick();
+    }
+  }
+  onHover() {
+    this.setState({
+      hovering: true
+    });
+  }
+  offHover() {
+    this.setState({
+      hovering: false
+    });
+  }
+  render() {
+    let className = `ds-dismiss
+      ${this.state.hovering ? ` hovering` : ``}
+      ${this.props.extraClasses ? ` ${this.props.extraClasses}` : ``}`;
+    return /*#__PURE__*/external_React_default().createElement("div", {
+      className: className
+    }, this.props.children, /*#__PURE__*/external_React_default().createElement("button", {
+      className: "ds-dismiss-button",
+      "data-l10n-id": "newtab-dismiss-button-tooltip",
+      onClick: this.onDismissClick,
+      onMouseEnter: this.onHover,
+      onMouseLeave: this.offHover
+    }, /*#__PURE__*/external_React_default().createElement("span", {
+      className: "icon icon-dismiss"
+    })));
+  }
+}
 ;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/DSTextPromo/DSTextPromo.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -7336,37 +7101,56 @@ class MoreRecommendations extends (external_React_default()).PureComponent {
     return null;
   }
 }
-;// CONCATENATED MODULE: ./content-src/components/PocketLoggedInCta/PocketLoggedInCta.jsx
+;// CONCATENATED MODULE: ./content-src/components/ModalOverlay/ModalOverlay.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
-
-class _PocketLoggedInCta extends (external_React_default()).PureComponent {
-  render() {
-    const {
-      pocketCta
-    } = this.props.Pocket;
-    return /*#__PURE__*/external_React_default().createElement("span", {
-      className: "pocket-logged-in-cta"
-    }, /*#__PURE__*/external_React_default().createElement("a", {
-      className: "pocket-cta-button",
-      href: pocketCta.ctaUrl ? pocketCta.ctaUrl : "https://getpocket.com/"
-    }, pocketCta.ctaButton ? pocketCta.ctaButton : /*#__PURE__*/external_React_default().createElement("span", {
-      "data-l10n-id": "newtab-pocket-cta-button"
-    })), /*#__PURE__*/external_React_default().createElement("a", {
-      href: pocketCta.ctaUrl ? pocketCta.ctaUrl : "https://getpocket.com/"
-    }, /*#__PURE__*/external_React_default().createElement("span", {
-      className: "cta-text"
-    }, pocketCta.ctaText ? pocketCta.ctaText : /*#__PURE__*/external_React_default().createElement("span", {
-      "data-l10n-id": "newtab-pocket-cta-text"
-    }))));
+function ModalOverlayWrapper({
+  // eslint-disable-next-line no-shadow
+  document = globalThis.document,
+  unstyled,
+  innerClassName,
+  onClose,
+  children,
+  headerId,
+  id
+}) {
+  const modalRef = (0,external_React_namespaceObject.useRef)(null);
+  let className = unstyled ? "" : "modalOverlayInner active";
+  if (innerClassName) {
+    className += ` ${innerClassName}`;
   }
+
+  // The intended behaviour is to listen for an escape key
+  // but not for a click; see Bug 1582242
+  const onKeyDown = (0,external_React_namespaceObject.useCallback)(event => {
+    if (event.key === "Escape") {
+      onClose(event);
+    }
+  }, [onClose]);
+  (0,external_React_namespaceObject.useEffect)(() => {
+    document.addEventListener("keydown", onKeyDown);
+    document.body.classList.add("modal-open");
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.classList.remove("modal-open");
+    };
+  }, [document, onKeyDown]);
+  return /*#__PURE__*/external_React_default().createElement("div", {
+    className: "modalOverlayOuter active",
+    onKeyDown: onKeyDown,
+    role: "presentation"
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: className,
+    "aria-labelledby": headerId,
+    id: id,
+    role: "dialog",
+    ref: modalRef
+  }, children));
 }
-const PocketLoggedInCta = (0,external_ReactRedux_namespaceObject.connect)(state => ({
-  Pocket: state.Pocket
-}))(_PocketLoggedInCta);
+
 ;// CONCATENATED MODULE: ./content-src/components/TopSites/SearchShortcutsForm.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -7600,8 +7384,6 @@ const TOP_SITES_MAX_SITES_PER_ROW = 8;
 
 
 
-const PREF_COLLECTION_DISMISSIBLE = "discoverystream.isCollectionDismissible";
-
 const dedupe = new Dedupe(site => site && site.url);
 
 const INITIAL_STATE = {
@@ -7655,7 +7437,6 @@ const INITIAL_STATE = {
   },
   Sections: [],
   Pocket: {
-    isUserLoggedIn: null,
     pocketCta: {},
     waitingForSpoc: true,
   },
@@ -7664,8 +7445,6 @@ const INITIAL_STATE = {
     // This is a JSON-parsed copy of the discoverystream.config pref value.
     config: { enabled: false },
     layout: [],
-    isPrivacyInfoModalVisible: false,
-    isCollectionDismissible: false,
     topicsLoading: false,
     feeds: {
       data: {
@@ -7696,9 +7475,6 @@ const INITIAL_STATE = {
       utmCampaign: undefined,
       utmContent: undefined,
     },
-    recentSavesData: [],
-    isUserLoggedIn: false,
-    recentSavesEnabled: false,
     showTopicSelection: false,
     report: {
       visible: false,
@@ -7709,7 +7485,7 @@ const INITIAL_STATE = {
   // Messages received from ASRouter to render in newtab
   Messages: {
     // messages received from ASRouter are initially visible
-    isHidden: false,
+    isVisible: true,
     // portID for that tab that was sent the message
     portID: "",
     // READONLY Message data received from ASRouter
@@ -7730,7 +7506,7 @@ const INITIAL_STATE = {
   InferredPersonalization: {
     initialized: false,
     lastUpdated: null,
-    inferredIntrests: {},
+    inferredInterests: {},
     coarseInferredInterests: {},
     coarsePrivateInferredInterests: {},
   },
@@ -7767,6 +7543,40 @@ const INITIAL_STATE = {
   TrendingSearch: {
     suggestions: [],
     collapsed: false,
+  },
+  // Widgets
+  ListsWidget: {
+    // value pointing to last selectled list
+    selected: "taskList",
+    // Default state of an empty task list
+    lists: {
+      taskList: {
+        label: "",
+        tasks: [],
+        completed: [],
+      },
+    },
+  },
+  TimerWidget: {
+    // The timer will have 2 types of states, focus and break.
+    // Focus will the default state
+    timerType: "focus",
+    focus: {
+      // Timer duration set by user; 25 mins by default
+      duration: 25 * 60,
+      // Initial duration - also set by the user; does not update until timer ends or user resets timer
+      initialDuration: 25 * 60,
+      // the Date.now() value when a user starts/resumes a timer
+      startTime: null,
+      // Boolean indicating if timer is currently running
+      isRunning: false,
+    },
+    break: {
+      duration: 5 * 60,
+      initialDuration: 5 * 60,
+      startTime: null,
+      isRunning: false,
+    },
   },
 };
 
@@ -8160,7 +7970,7 @@ function Messages(prevState = INITIAL_STATE.Messages, action) {
         portID: action.data.portID || "",
       };
     case actionTypes.MESSAGE_TOGGLE_VISIBILITY:
-      return { ...prevState, isHidden: action.data };
+      return { ...prevState, isVisible: action.data };
     default:
       return prevState;
   }
@@ -8170,8 +7980,6 @@ function Pocket(prevState = INITIAL_STATE.Pocket, action) {
   switch (action.type) {
     case actionTypes.POCKET_WAITING_FOR_SPOC:
       return { ...prevState, waitingForSpoc: action.data };
-    case actionTypes.POCKET_LOGGED_IN:
-      return { ...prevState, isUserLoggedIn: !!action.data };
     case actionTypes.POCKET_CTA:
       return {
         ...prevState,
@@ -8300,11 +8108,6 @@ function DiscoveryStream(prevState = INITIAL_STATE.DiscoveryStream, action) {
         ...prevState,
         layout: action.data.layout || [],
       };
-    case actionTypes.DISCOVERY_STREAM_COLLECTION_DISMISSIBLE_TOGGLE:
-      return {
-        ...prevState,
-        isCollectionDismissible: action.data.value,
-      };
     case actionTypes.DISCOVERY_STREAM_TOPICS_LOADING:
       return {
         ...prevState,
@@ -8313,9 +8116,6 @@ function DiscoveryStream(prevState = INITIAL_STATE.DiscoveryStream, action) {
     case actionTypes.DISCOVERY_STREAM_PREFS_SETUP:
       return {
         ...prevState,
-        recentSavesEnabled: action.data.recentSavesEnabled,
-        pocketButtonEnabled: action.data.pocketButtonEnabled,
-        saveToPocketCard: action.data.saveToPocketCard,
         hideDescriptions: action.data.hideDescriptions,
         compactImages: action.data.compactImages,
         imageGradient: action.data.imageGradient,
@@ -8324,25 +8124,9 @@ function DiscoveryStream(prevState = INITIAL_STATE.DiscoveryStream, action) {
         descLines: action.data.descLines,
         readTime: action.data.readTime,
       };
-    case actionTypes.DISCOVERY_STREAM_RECENT_SAVES:
-      return {
-        ...prevState,
-        recentSavesData: action.data.recentSaves,
-      };
-    case actionTypes.DISCOVERY_STREAM_POCKET_STATE_SET:
-      return {
-        ...prevState,
-        isUserLoggedIn: action.data.isUserLoggedIn,
-      };
-    case actionTypes.HIDE_PRIVACY_INFO:
-      return {
-        ...prevState,
-        isPrivacyInfoModalVisible: false,
-      };
     case actionTypes.SHOW_PRIVACY_INFO:
       return {
         ...prevState,
-        isPrivacyInfoModalVisible: true,
       };
     case actionTypes.DISCOVERY_STREAM_LAYOUT_RESET:
       return { ...INITIAL_STATE.DiscoveryStream, config: prevState.config };
@@ -8472,14 +8256,6 @@ function DiscoveryStream(prevState = INITIAL_STATE.DiscoveryStream, action) {
         ? prevState
         : nextState(items => items.map(removeBookmarkInfo));
     }
-    case actionTypes.PREF_CHANGED:
-      if (action.data.name === PREF_COLLECTION_DISMISSIBLE) {
-        return {
-          ...prevState,
-          isCollectionDismissible: action.data.value,
-        };
-      }
-      return prevState;
     case actionTypes.TOPIC_SELECTION_SPOTLIGHT_OPEN:
       return {
         ...prevState,
@@ -8516,9 +8292,6 @@ function DiscoveryStream(prevState = INITIAL_STATE.DiscoveryStream, action) {
           ...prevState.report,
           card_type: action.data?.card_type,
           corpus_item_id: action.data?.corpus_item_id,
-          is_section_followed: action.data?.is_section_followed,
-          received_rank: action.data?.received_rank,
-          recommended_at: action.data?.recommended_at,
           scheduled_corpus_item_id: action.data?.scheduled_corpus_item_id,
           section_position: action.data?.section_position,
           section: action.data?.section,
@@ -8666,6 +8439,93 @@ function TrendingSearch(prevState = INITIAL_STATE.TrendingSearch, action) {
   }
 }
 
+function TimerWidget(prevState = INITIAL_STATE.TimerWidget, action) {
+  // fallback to current timerType in state if not provided in action
+  const timerType = action.data?.timerType || prevState.timerType;
+  switch (action.type) {
+    case actionTypes.WIDGETS_TIMER_SET:
+      return {
+        ...prevState,
+        ...action.data,
+      };
+    case actionTypes.WIDGETS_TIMER_SET_TYPE:
+      return {
+        ...prevState,
+        timerType: action.data.timerType,
+      };
+    case actionTypes.WIDGETS_TIMER_SET_DURATION:
+      return {
+        ...prevState,
+        [timerType]: {
+          // setting a dynamic key assignment to let us dynamically update timer type's state based on what is set
+          duration: action.data.duration,
+          initialDuration: action.data.duration,
+          startTime: null,
+          isRunning: false,
+        },
+      };
+    case actionTypes.WIDGETS_TIMER_PLAY:
+      return {
+        ...prevState,
+        [timerType]: {
+          ...prevState[timerType],
+          startTime: Math.floor(Date.now() / 1000), // reflected in seconds
+          isRunning: true,
+        },
+      };
+    case actionTypes.WIDGETS_TIMER_PAUSE:
+      if (prevState[timerType]?.isRunning) {
+        return {
+          ...prevState,
+          [timerType]: {
+            ...prevState[timerType],
+            duration: action.data.duration,
+            // setting startTime to null on pause because we need to check the exact time the user presses play,
+            // whether it's when the user starts or resumes the timer. This helps get accurate results
+            startTime: null,
+            isRunning: false,
+          },
+        };
+      }
+      return prevState;
+    case actionTypes.WIDGETS_TIMER_RESET:
+      return {
+        ...prevState,
+        [timerType]: {
+          ...prevState[timerType],
+          duration: action.data.duration,
+          initialDuration: action.data.duration,
+          startTime: null,
+          isRunning: false,
+        },
+      };
+    case actionTypes.WIDGETS_TIMER_END:
+      return {
+        ...prevState,
+        [timerType]: {
+          ...prevState[timerType],
+          duration: action.data.duration,
+          initialDuration: action.data.duration,
+          startTime: null,
+          isRunning: false,
+        },
+      };
+    default:
+      return prevState;
+  }
+}
+
+function ListsWidget(prevState = INITIAL_STATE.ListsWidget, action) {
+  switch (action.type) {
+    case actionTypes.WIDGETS_LISTS_SET:
+      return { ...prevState, lists: action.data };
+    case actionTypes.WIDGETS_LISTS_SET_SELECTED:
+      return { ...prevState, selected: action.data };
+    default:
+      return prevState;
+  }
+}
+
 const reducers = {
   TopSites,
   App,
@@ -8680,6 +8540,8 @@ const reducers = {
   InferredPersonalization,
   DiscoveryStream,
   Search,
+  TimerWidget,
+  ListsWidget,
   TrendingSearch,
   Wallpapers,
   Weather,
@@ -8906,11 +8768,275 @@ TopSiteImpressionWrapper.defaultProps = {
   actionType: null,
   tile: null
 };
+;// CONCATENATED MODULE: ./content-src/components/MessageWrapper/MessageWrapper.jsx
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+
+
+
+
+// Note: MessageWrapper emits events via submitGleanPingForPing() in the OMC messaging-system.
+// If a feature is triggered outside of this flow (e.g., the Mobile Download QR Promo),
+// it should emit New Tab-specific Glean events independently.
+
+function MessageWrapper({
+  children,
+  dispatch,
+  hiddenOverride,
+  onDismiss
+}) {
+  const message = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Messages);
+  const [isIntersecting, setIsIntersecting] = (0,external_React_namespaceObject.useState)(false);
+  const [tabIsVisible, setTabIsVisible] = (0,external_React_namespaceObject.useState)(() => typeof document !== "undefined" && document.visibilityState === "visible");
+  const [hasRun, setHasRun] = (0,external_React_namespaceObject.useState)();
+  const handleIntersection = (0,external_React_namespaceObject.useCallback)(() => {
+    setIsIntersecting(true);
+    // only send impression if messageId is defined and tab is visible
+    if (tabIsVisible && message.messageData.id && !hasRun) {
+      setHasRun(true);
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.MESSAGE_IMPRESSION,
+        data: message.messageData
+      }));
+    }
+  }, [dispatch, message, tabIsVisible, hasRun]);
+  (0,external_React_namespaceObject.useEffect)(() => {
+    // we dont want to dispatch this action unless the current tab is open and visible
+    if (message.isVisible && tabIsVisible) {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.MESSAGE_NOTIFY_VISIBILITY,
+        data: true
+      }));
+    }
+  }, [message, dispatch, tabIsVisible]);
+  (0,external_React_namespaceObject.useEffect)(() => {
+    const handleVisibilityChange = () => {
+      setTabIsVisible(document.visibilityState === "visible");
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+  const ref = useIntersectionObserver(handleIntersection);
+  const handleClose = (0,external_React_namespaceObject.useCallback)(() => {
+    const action = {
+      type: actionTypes.MESSAGE_TOGGLE_VISIBILITY,
+      data: false //isVisible
+    };
+    if (message.portID) {
+      dispatch(actionCreators.OnlyToOneContent(action, message.portID));
+    } else {
+      dispatch(actionCreators.AlsoToMain(action));
+    }
+    dispatch(actionCreators.AlsoToMain({
+      type: actionTypes.MESSAGE_NOTIFY_VISIBILITY,
+      data: false
+    }));
+    onDismiss?.();
+  }, [dispatch, message, onDismiss]);
+  function handleDismiss() {
+    const {
+      id
+    } = message.messageData;
+    if (id) {
+      dispatch(actionCreators.OnlyToMain({
+        type: actionTypes.MESSAGE_DISMISS,
+        data: {
+          message: message.messageData
+        }
+      }));
+    }
+    handleClose();
+  }
+  function handleBlock() {
+    const {
+      id
+    } = message.messageData;
+    if (id) {
+      dispatch(actionCreators.OnlyToMain({
+        type: actionTypes.MESSAGE_BLOCK,
+        data: id
+      }));
+    }
+  }
+  function handleClick(elementId) {
+    const {
+      id
+    } = message.messageData;
+    if (id) {
+      dispatch(actionCreators.OnlyToMain({
+        type: actionTypes.MESSAGE_CLICK,
+        data: {
+          message: message.messageData,
+          source: elementId || ""
+        }
+      }));
+    }
+  }
+  if (!message || !hiddenOverride && !message.isVisible) {
+    return null;
+  }
+
+  // only display the message if `isVisible` is true
+  return /*#__PURE__*/external_React_default().createElement("div", {
+    ref: el => {
+      ref.current = [el];
+    },
+    className: "message-wrapper"
+  }, /*#__PURE__*/external_React_default().cloneElement(children, {
+    isIntersecting,
+    handleDismiss,
+    handleClick,
+    handleBlock,
+    handleClose
+  }));
+}
+
+;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/FeatureHighlight/FeatureHighlight.jsx
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+
+function FeatureHighlight({
+  message,
+  icon,
+  toggle,
+  arrowPosition = "",
+  position = "top-left",
+  verticalPosition = "",
+  title,
+  ariaLabel,
+  feature = "FEATURE_HIGHLIGHT_DEFAULT",
+  dispatch = () => {},
+  windowObj = __webpack_require__.g,
+  openedOverride = false,
+  showButtonIcon = true,
+  dismissCallback = () => {},
+  outsideClickCallback = () => {},
+  modalClassName = ""
+}) {
+  const [opened, setOpened] = (0,external_React_namespaceObject.useState)(openedOverride);
+  const ref = (0,external_React_namespaceObject.useRef)(null);
+  (0,external_React_namespaceObject.useEffect)(() => {
+    const handleOutsideClick = e => {
+      if (!ref?.current?.contains(e.target)) {
+        setOpened(false);
+        outsideClickCallback();
+      }
+    };
+    const handleKeyDown = e => {
+      if (e.key === "Escape") {
+        outsideClickCallback();
+      }
+    };
+    windowObj.document.addEventListener("click", handleOutsideClick);
+    windowObj.document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      windowObj.document.removeEventListener("click", handleOutsideClick);
+      windowObj.document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [windowObj, outsideClickCallback]);
+  const onToggleClick = (0,external_React_namespaceObject.useCallback)(() => {
+    if (!opened) {
+      dispatch(actionCreators.DiscoveryStreamUserEvent({
+        event: "CLICK",
+        source: "FEATURE_HIGHLIGHT",
+        value: {
+          feature
+        }
+      }));
+    }
+    setOpened(!opened);
+  }, [dispatch, feature, opened]);
+  const onDismissClick = (0,external_React_namespaceObject.useCallback)(() => {
+    setOpened(false);
+    dismissCallback();
+  }, [dismissCallback]);
+  const hideButtonClass = showButtonIcon ? `` : `isHidden`;
+  const openedClassname = opened ? `opened` : `closed`;
+  return /*#__PURE__*/external_React_default().createElement("div", {
+    ref: ref,
+    className: `feature-highlight ${verticalPosition}`
+  }, /*#__PURE__*/external_React_default().createElement("button", {
+    title: title,
+    "aria-haspopup": "true",
+    "aria-label": ariaLabel,
+    className: `toggle-button ${hideButtonClass}`,
+    onClick: onToggleClick
+  }, toggle), /*#__PURE__*/external_React_default().createElement("div", {
+    className: `feature-highlight-modal ${position} ${arrowPosition} ${modalClassName} ${openedClassname}`
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "message-icon"
+  }, icon), /*#__PURE__*/external_React_default().createElement("p", {
+    className: "content-wrapper"
+  }, message), /*#__PURE__*/external_React_default().createElement("moz-button", {
+    type: "icon ghost",
+    size: "small",
+    "data-l10n-id": "feature-highlight-dismiss-button",
+    iconsrc: "chrome://global/skin/icons/close.svg",
+    onClick: onDismissClick,
+    onKeyDown: onDismissClick
+  })));
+}
+;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/FeatureHighlight/ShortcutFeatureHighlight.jsx
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+
+function ShortcutFeatureHighlight({
+  position,
+  dispatch,
+  handleDismiss,
+  handleBlock,
+  feature
+}) {
+  const onDismiss = (0,external_React_namespaceObject.useCallback)(() => {
+    handleDismiss();
+    handleBlock();
+  }, [handleDismiss, handleBlock]);
+  return /*#__PURE__*/external_React_default().createElement("div", {
+    className: "shortcut-feature-highlight"
+  }, /*#__PURE__*/external_React_default().createElement(FeatureHighlight, {
+    position: position,
+    feature: feature,
+    dispatch: dispatch,
+    message: /*#__PURE__*/external_React_default().createElement("div", {
+      className: "shortcut-feature-highlight-content"
+    }, /*#__PURE__*/external_React_default().createElement("img", {
+      src: "chrome://global/skin/icons/open-in-new.svg",
+      width: "24",
+      height: "24",
+      alt: ""
+    }), /*#__PURE__*/external_React_default().createElement("div", {
+      className: "shortcut-feature-highlight-copy"
+    }, /*#__PURE__*/external_React_default().createElement("p", {
+      className: "title",
+      "data-l10n-id": "newtab-shortcuts-highlight-title"
+    }), /*#__PURE__*/external_React_default().createElement("p", {
+      className: "subtitle",
+      "data-l10n-id": "newtab-shortcuts-highlight-subtitle"
+    }))),
+    openedOverride: true,
+    showButtonIcon: false,
+    dismissCallback: onDismiss,
+    outsideClickCallback: handleDismiss
+  }));
+}
 ;// CONCATENATED MODULE: ./content-src/components/TopSites/TopSite.jsx
 function TopSite_extends() { return TopSite_extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, TopSite_extends.apply(null, arguments); }
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
 
 
 
@@ -8941,6 +9067,7 @@ class TopSiteLink extends (external_React_default()).PureComponent {
     };
     this.onDragEvent = this.onDragEvent.bind(this);
     this.onKeyPress = this.onKeyPress.bind(this);
+    this.shouldShowOMCHighlight = this.shouldShowOMCHighlight.bind(this);
   }
 
   /*
@@ -9133,6 +9260,13 @@ class TopSiteLink extends (external_React_default()).PureComponent {
       selectedColor
     };
   }
+  shouldShowOMCHighlight(componentId) {
+    const messageData = this.props.Messages?.messageData;
+    if (!messageData || Object.keys(messageData).length === 0) {
+      return false;
+    }
+    return messageData?.content?.messageType === componentId;
+  }
   render() {
     const {
       children,
@@ -9142,7 +9276,7 @@ class TopSiteLink extends (external_React_default()).PureComponent {
       onClick,
       title,
       isAddButton,
-      shortcutsRefresh
+      visibleTopSites
     } = this.props;
     const topSiteOuterClassName = `top-site-outer${className ? ` ${className}` : ""}${link.isDragged ? " dragged" : ""}${link.searchTopSite ? " search-shortcut" : ""}`;
     const [letterFallback] = title;
@@ -9153,8 +9287,17 @@ class TopSiteLink extends (external_React_default()).PureComponent {
       imageClassName,
       selectedColor
     } = this.calculateStyle();
-    let addButtonl10n = {
+    const addButtonLabell10n = {
       "data-l10n-id": "newtab-topsites-add-shortcut-label"
+    };
+    const addButtonTitlel10n = {
+      "data-l10n-id": "newtab-topsites-add-shortcut-title"
+    };
+    const addPinnedTitlel10n = {
+      "data-l10n-id": "topsite-label-pinned",
+      "data-l10n-args": JSON.stringify({
+        title
+      })
     };
     let draggableProps = {};
     if (isDraggable) {
@@ -9188,7 +9331,8 @@ class TopSiteLink extends (external_React_default()).PureComponent {
           tile_id: link.sponsored_tile_id || -1,
           reporting_url: link.sponsored_impression_url,
           advertiser: title.toLocaleLowerCase(),
-          source: NEWTAB_SOURCE
+          source: NEWTAB_SOURCE,
+          visible_topsites: visibleTopSites
         }
         // For testing.
         ,
@@ -9204,7 +9348,8 @@ class TopSiteLink extends (external_React_default()).PureComponent {
           position: this.props.index,
           source: NEWTAB_SOURCE,
           isPinned: this.props.link.isPinned,
-          guid: this.props.link.guid
+          guid: this.props.link.guid,
+          visible_topsites: visibleTopSites
         }
         // For testing.
         ,
@@ -9222,7 +9367,7 @@ class TopSiteLink extends (external_React_default()).PureComponent {
       ref: this.props.setRef
     }, draggableProps), /*#__PURE__*/external_React_default().createElement("div", {
       className: "top-site-inner"
-    }, /*#__PURE__*/external_React_default().createElement("a", {
+    }, /*#__PURE__*/external_React_default().createElement("a", TopSite_extends({
       className: "top-site-button",
       href: link.searchTopSite ? undefined : link.url,
       tabIndex: this.props.tabIndex,
@@ -9230,9 +9375,19 @@ class TopSiteLink extends (external_React_default()).PureComponent {
       onClick: onClick,
       draggable: true,
       "data-is-sponsored-link": !!link.sponsored_tile_id,
-      title: title,
-      onFocus: this.props.onFocus
-    }, shortcutsRefresh && link.isPinned && /*#__PURE__*/external_React_default().createElement("div", {
+      onFocus: this.props.onFocus,
+      "aria-label": link.isPinned ? undefined : title
+    }, isAddButton && {
+      ...addButtonTitlel10n
+    }, !isAddButton && {
+      title
+    }, link.isPinned && {
+      ...addPinnedTitlel10n
+    }, {
+      "data-l10n-args": JSON.stringify({
+        title
+      })
+    }), link.isPinned && /*#__PURE__*/external_React_default().createElement("div", {
       className: "icon icon-pin-small"
     }), /*#__PURE__*/external_React_default().createElement("div", {
       className: "tile",
@@ -9250,23 +9405,26 @@ class TopSiteLink extends (external_React_default()).PureComponent {
       className: "top-site-icon default-icon",
       "data-fallback": smallFaviconStyle ? "" : letterFallback,
       style: smallFaviconStyle
-    })), !shortcutsRefresh && link.searchTopSite && /*#__PURE__*/external_React_default().createElement("div", {
-      className: "top-site-icon search-topsite"
-    })), /*#__PURE__*/external_React_default().createElement("div", {
+    }))), /*#__PURE__*/external_React_default().createElement("div", {
       className: `title${link.isPinned ? " has-icon pinned" : ""}${link.type === SPOC_TYPE || link.show_sponsored_label ? " sponsored" : ""}`
     }, /*#__PURE__*/external_React_default().createElement("span", TopSite_extends({
       className: "title-label",
       dir: "auto"
     }, isAddButton && {
-      ...addButtonl10n
-    }), !shortcutsRefresh && link.isPinned && /*#__PURE__*/external_React_default().createElement("div", {
-      className: "icon icon-pin-small"
-    }), shortcutsRefresh && link.searchTopSite && /*#__PURE__*/external_React_default().createElement("div", {
+      ...addButtonLabell10n
+    }), link.searchTopSite && /*#__PURE__*/external_React_default().createElement("div", {
       className: "top-site-icon search-topsite"
     }), title || /*#__PURE__*/external_React_default().createElement("br", null)), /*#__PURE__*/external_React_default().createElement("span", {
       className: "sponsored-label",
       "data-l10n-id": "newtab-topsite-sponsored"
-    }))), children, impressionStats));
+    }))), isAddButton && this.shouldShowOMCHighlight("ShortcutHighlight") && /*#__PURE__*/external_React_default().createElement(MessageWrapper, {
+      dispatch: this.props.dispatch,
+      onClick: e => e.stopPropagation()
+    }, /*#__PURE__*/external_React_default().createElement(ShortcutFeatureHighlight, {
+      dispatch: this.props.dispatch,
+      feature: "FEATURE_SHORTCUT_HIGHLIGHT",
+      position: "inset-block-end inset-inline-start"
+    })), children, impressionStats));
   }
 }
 TopSiteLink.defaultProps = {
@@ -9337,7 +9495,8 @@ class TopSite extends (external_React_default()).PureComponent {
             ctrlKey,
             metaKey,
             shiftKey
-          }
+          },
+          is_sponsored: !!this.props.link.sponsored_tile_id
         })
       }));
       if (this.props.link.type === SPOC_TYPE) {
@@ -9389,7 +9548,8 @@ class TopSite extends (external_React_default()).PureComponent {
             tile_id: this.props.link.sponsored_tile_id || -1,
             reporting_url: this.props.link.sponsored_click_url,
             advertiser: title.toLocaleLowerCase(),
-            source: NEWTAB_SOURCE
+            source: NEWTAB_SOURCE,
+            visible_topsites: this.props.visibleTopSites
           }
         }));
       } else {
@@ -9401,7 +9561,8 @@ class TopSite extends (external_React_default()).PureComponent {
             position: this.props.index,
             source: NEWTAB_SOURCE,
             isPinned: this.props.link.isPinned,
-            guid: this.props.link.guid
+            guid: this.props.link.guid,
+            visible_topsites: this.props.visibleTopSites
           }
         }));
       }
@@ -9481,7 +9642,7 @@ TopSite.defaultProps = {
   link: {},
   onActivate() {}
 };
-class TopSitePlaceholder extends (external_React_default()).PureComponent {
+class TopSiteAddButton extends (external_React_default()).PureComponent {
   constructor(props) {
     super(props);
     this.onEditButtonClick = this.onEditButtonClick.bind(this);
@@ -9495,20 +9656,21 @@ class TopSitePlaceholder extends (external_React_default()).PureComponent {
     });
   }
   render() {
-    let addButtonProps = {};
-    if (this.props.isAddButton) {
-      addButtonProps = {
-        title: "newtab-topsites-add-shortcut-label",
-        onClick: this.onEditButtonClick
-      };
-    }
-    return /*#__PURE__*/external_React_default().createElement(TopSiteLink, TopSite_extends({}, this.props, this.props.isAddButton ? {
-      ...addButtonProps
-    } : {}, {
-      className: `placeholder ${this.props.className || ""} ${this.props.isAddButton ? "add-button" : ""}`,
+    return /*#__PURE__*/external_React_default().createElement(TopSiteLink, TopSite_extends({}, this.props, {
+      isAddButton: true,
+      className: `add-button ${this.props.className || ""}`,
+      onClick: this.onEditButtonClick,
       setPref: this.props.setPref,
       isDraggable: false,
       tabIndex: this.props.tabIndex
+    }));
+  }
+}
+class TopSitePlaceholder extends (external_React_default()).PureComponent {
+  render() {
+    return /*#__PURE__*/external_React_default().createElement(TopSiteLink, TopSite_extends({}, this.props, {
+      className: `placeholder ${this.props.className || ""}`,
+      isDraggable: false
     }));
   }
 }
@@ -9705,8 +9867,6 @@ class _TopSiteList extends (external_React_default()).PureComponent {
     const {
       props
     } = this;
-    const prefs = props.Prefs.values;
-    const shortcutsRefresh = prefs["newtabShortcuts.refresh"];
     const topSites = this.state.topSitesPreview || this._getTopSites();
     const topSitesUI = [];
     const commonProps = {
@@ -9736,19 +9896,22 @@ class _TopSiteList extends (external_React_default()).PureComponent {
       let topSiteLink;
       // Use a placeholder if the link is empty or it's rendering a sponsored
       // tile for the about:home startup cache.
-      if (!link || props.App.isForStartupCache.TopSites && isSponsored(link) || topSites[i]?.isAddButton) {
+      if (!link || props.App.isForStartupCache.TopSites && isSponsored(link)) {
         if (link) {
-          topSiteLink = /*#__PURE__*/external_React_default().createElement(TopSitePlaceholder, TopSite_extends({}, slotProps, commonProps, {
-            isAddButton: topSites[i] && topSites[i].isAddButton,
-            setRef: i === this.state.focusedIndex ? el => {
-              this.focusedRef = el;
-            } : () => {},
-            tabIndex: i === this.state.focusedIndex ? 0 : -1,
-            onFocus: () => {
-              this.onTopsiteFocus(i);
-            }
-          }));
+          topSiteLink = /*#__PURE__*/external_React_default().createElement(TopSitePlaceholder, TopSite_extends({}, slotProps, commonProps));
         }
+      } else if (topSites[i]?.isAddButton) {
+        topSiteLink = /*#__PURE__*/external_React_default().createElement(TopSiteAddButton, TopSite_extends({}, slotProps, commonProps, {
+          setRef: i === this.state.focusedIndex ? el => {
+            this.focusedRef = el;
+          } : () => {},
+          tabIndex: i === this.state.focusedIndex ? 0 : -1,
+          onFocus: () => {
+            this.onTopsiteFocus(i);
+          },
+          Messages: this.props.Messages,
+          visibleTopSites: this.props.visibleTopSites
+        }));
       } else {
         topSiteLink = /*#__PURE__*/external_React_default().createElement(TopSite, TopSite_extends({
           link: link,
@@ -9756,14 +9919,14 @@ class _TopSiteList extends (external_React_default()).PureComponent {
           onActivate: this.onActivate
         }, slotProps, commonProps, {
           colors: props.colors,
-          shortcutsRefresh: shortcutsRefresh,
           setRef: i === this.state.focusedIndex ? el => {
             this.focusedRef = el;
           } : () => {},
           tabIndex: i === this.state.focusedIndex ? 0 : -1,
           onFocus: () => {
             this.onTopsiteFocus(i);
-          }
+          },
+          visibleTopSites: this.props.visibleTopSites
         }));
       }
       topSitesUI.push(topSiteLink);
@@ -9784,6 +9947,7 @@ class _TopSiteList extends (external_React_default()).PureComponent {
 }
 const TopSiteList = (0,external_ReactRedux_namespaceObject.connect)(state => ({
   App: state.App,
+  Messages: state.Messages,
   Prefs: state.Prefs
 }))(_TopSiteList);
 ;// CONCATENATED MODULE: ./content-src/components/TopSites/TopSiteForm.jsx
@@ -10187,7 +10351,13 @@ class _TopSites extends (external_React_default()).PureComponent {
       showSearchShortcutsForm
     } = props.TopSites;
     const extraMenuOptions = ["AddTopSite"];
+    let visibleTopSites;
     const colors = props.Prefs.values["newNewtabExperience.colors"];
+
+    // do not run this function when for startup cache
+    if (!props.App.isForStartupCache.TopSites) {
+      visibleTopSites = this._getVisibleTopSites()?.length;
+    }
     if (props.Prefs.values["improvesearch.topSiteSearchShortcuts"]) {
       extraMenuOptions.push("AddSearchShortcut");
     }
@@ -10215,7 +10385,8 @@ class _TopSites extends (external_React_default()).PureComponent {
       TopSitesRows: props.TopSitesRows,
       dispatch: props.dispatch,
       topSiteIconType: topSiteIconType,
-      colors: colors
+      colors: colors,
+      visibleTopSites: visibleTopSites
     }), /*#__PURE__*/external_React_default().createElement("div", {
       className: "edit-topsites-wrapper"
     }, editForm && /*#__PURE__*/external_React_default().createElement("div", {
@@ -10242,6 +10413,7 @@ class _TopSites extends (external_React_default()).PureComponent {
   }
 }
 const TopSites_TopSites = (0,external_ReactRedux_namespaceObject.connect)(state => ({
+  App: state.App,
   TopSites: state.TopSites,
   Prefs: state.Prefs,
   TopSitesRows: state.Prefs.values.topSitesRows
@@ -10251,7 +10423,6 @@ function Sections_extends() { return Sections_extends = Object.assign ? Object.a
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 
 
 
@@ -10393,7 +10564,6 @@ class Section extends (external_React_default()).PureComponent {
       eventSource,
       title,
       rows,
-      Pocket,
       emptyState,
       dispatch,
       compactCards,
@@ -10413,14 +10583,6 @@ class Section extends (external_React_default()).PureComponent {
     } = this;
     const maxCards = maxCardsPerRow * numRows;
     const maxCardsOnNarrow = CARDS_PER_ROW_DEFAULT * numRows;
-    const {
-      pocketCta,
-      isUserLoggedIn
-    } = Pocket || {};
-    const {
-      useCta
-    } = pocketCta || {};
-    const shouldShowPocketCta = id === "topstories" && useCta && isUserLoggedIn === false;
     const shouldShowReadMore = read_more_endpoint;
     const realRows = rows.slice(0, maxCards);
 
@@ -10490,9 +10652,7 @@ class Section extends (external_React_default()).PureComponent {
       className: "empty-state-message"
     })))), id === "topstories" && /*#__PURE__*/external_React_default().createElement("div", {
       className: "top-stories-bottom-container"
-    }, shouldShowPocketCta && /*#__PURE__*/external_React_default().createElement("div", {
-      className: "wrapper-cta"
-    }, /*#__PURE__*/external_React_default().createElement(PocketLoggedInCta, null)), /*#__PURE__*/external_React_default().createElement("div", {
+    }, /*#__PURE__*/external_React_default().createElement("div", {
       className: "wrapper-more-recommendations"
     }, shouldShowReadMore && /*#__PURE__*/external_React_default().createElement(MoreRecommendations, {
       read_more_endpoint: read_more_endpoint
@@ -10777,22 +10937,40 @@ const selectLayoutRender = ({ state = {}, prefs = {} }) => {
     "SectionTitle",
     "Signup",
     "Navigation",
+    "Widgets",
     "CardGrid",
-    "CollectionCardGrid",
     "HorizontalRule",
     "PrivacyLink",
   ];
 
   const filterArray = [];
 
+  // Filter sections is Topsites are turned off
   if (!prefs["feeds.topsites"]) {
     filterArray.push("TopSites");
   }
 
+  // Filter sections is Widgets are turned off
+  // Note extra logic is required bc this feature can be enabled via Nimbus
+  const nimbusWidgetsTrainhopEnabled = prefs.trainhopConfig?.widgets?.enabled;
+  const nimbusWidgetsEnabled = prefs.widgetsConfig?.enabled;
+  const widgetsEnabled = prefs["widgets.system.enabled"];
+  if (
+    !nimbusWidgetsTrainhopEnabled &&
+    !nimbusWidgetsEnabled &&
+    !widgetsEnabled
+  ) {
+    filterArray.push("Widgets");
+  }
+
+  // Filter sections is Recommended Stories are turned off
   const pocketEnabled =
     prefs["feeds.section.topstories"] && prefs["feeds.system.topstories"];
   if (!pocketEnabled) {
-    filterArray.push(...DS_COMPONENTS);
+    filterArray.push(
+      // Bug 1980459 - Do not remove Widgets if DS is disabled
+      ...DS_COMPONENTS.filter(component => component !== "Widgets")
+    );
   }
 
   // function to determine amount of tiles shown per section per viewport
@@ -11262,6 +11440,8 @@ function InterestPicker({
       checked: checked,
       "aria-checked": checked,
       onChange: e => handleChange(e, index),
+      key: `${interest.sectionId}-${checked}` // Force remount to sync DOM state with React state
+      ,
       tabIndex: index === focusedIndex ? 0 : -1,
       onFocus: () => {
         onItemFocus(index);
@@ -11331,7 +11511,7 @@ const PersonalizedCard = ({
   }, messageData.content.ctaText), /*#__PURE__*/external_React_default().createElement(SafeAnchor, {
     className: "personalized-card-link",
     dispatch: dispatch,
-    url: "https://www.mozilla.org/en-US/privacy/firefox/#notice",
+    url: messageData.content.linkUrl || "https://support.mozilla.org/",
     onLinkClick: () => {
       handleClick("link-click");
     }
@@ -11344,8 +11524,6 @@ const PersonalizedCard = ({
 
 
 
-
-const FEATURE_ID = "FEATURE_FOLLOW_SECTION_BUTTON";
 function FollowSectionButtonHighlight({
   arrowPosition,
   position,
@@ -11353,43 +11531,24 @@ function FollowSectionButtonHighlight({
   dispatch,
   handleDismiss,
   handleBlock,
-  isIntersecting
+  feature
 }) {
   const onDismiss = (0,external_React_namespaceObject.useCallback)(() => {
-    // This event is emitted manually because the feature may be triggered outside the OMC flow,
-    // and may not be captured by the messaging-system’s automatic reporting.
-    dispatch(actionCreators.DiscoveryStreamUserEvent({
-      event: "FEATURE_HIGHLIGHT_DISMISS",
-      source: "FEATURE_HIGHLIGHT",
-      value: FEATURE_ID
-    }));
     handleDismiss();
     handleBlock();
-  }, [dispatch, handleDismiss, handleBlock]);
-  (0,external_React_namespaceObject.useEffect)(() => {
-    if (isIntersecting) {
-      // This event is emitted manually because the feature may be triggered outside the OMC flow,
-      // and may not be captured by the messaging-system’s automatic reporting.
-      dispatch(actionCreators.DiscoveryStreamUserEvent({
-        event: "FEATURE_HIGHLIGHT_IMPRESSION",
-        source: "FEATURE_HIGHLIGHT",
-        value: FEATURE_ID
-      }));
-    }
-  }, [dispatch, isIntersecting]);
+  }, [handleDismiss, handleBlock]);
   return /*#__PURE__*/external_React_default().createElement("div", {
     className: "follow-section-button-highlight"
   }, /*#__PURE__*/external_React_default().createElement(FeatureHighlight, {
     position: position,
     arrowPosition: arrowPosition,
     verticalPosition: verticalPosition,
-    feature: FEATURE_ID,
+    feature: feature,
     dispatch: dispatch,
     message: /*#__PURE__*/external_React_default().createElement("div", {
       className: "follow-section-button-highlight-content"
     }, /*#__PURE__*/external_React_default().createElement("img", {
       src: "chrome://browser/content/asrouter/assets/smiling-fox-icon.svg",
-      "data-l10n-id": "newtab-download-mobile-highlight-image",
       width: "24",
       height: "24",
       alt: ""
@@ -11408,7 +11567,114 @@ function FollowSectionButtonHighlight({
     outsideClickCallback: handleDismiss
   }));
 }
-;// CONCATENATED MODULE: ./content-src/components/MessageWrapper/MessageWrapper.jsx
+;// CONCATENATED MODULE: ./content-src/components/Weather/LocationSearch.jsx
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+
+
+function LocationSearch({
+  outerClassName
+}) {
+  // should be the location object from suggestedLocations
+  const [selectedLocation, setSelectedLocation] = (0,external_React_namespaceObject.useState)("");
+  const suggestedLocations = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Weather.suggestedLocations);
+  const locationSearchString = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Weather.locationSearchString);
+  const [userInput, setUserInput] = (0,external_React_namespaceObject.useState)(locationSearchString || "");
+  const inputRef = (0,external_React_namespaceObject.useRef)(null);
+  const dispatch = (0,external_ReactRedux_namespaceObject.useDispatch)();
+  (0,external_React_namespaceObject.useEffect)(() => {
+    if (selectedLocation) {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WEATHER_LOCATION_DATA_UPDATE,
+        data: {
+          city: selectedLocation.localized_name,
+          adminName: selectedLocation.administrative_area,
+          country: selectedLocation.country
+        }
+      }));
+      dispatch(actionCreators.SetPref("weather.query", selectedLocation.key));
+      dispatch(actionCreators.BroadcastToContent({
+        type: actionTypes.WEATHER_SEARCH_ACTIVE,
+        data: false
+      }));
+    }
+  }, [selectedLocation, dispatch]);
+
+  // when component mounts, set focus to input
+  (0,external_React_namespaceObject.useEffect)(() => {
+    inputRef?.current?.focus();
+  }, [inputRef]);
+  function handleChange(event) {
+    const {
+      value
+    } = event.target;
+    setUserInput(value);
+    // if the user input contains less than three characters and suggestedLocations is not an empty array,
+    // reset suggestedLocations to [] so there arent incorrect items in the datalist
+    if (value.length < 3 && suggestedLocations.length) {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WEATHER_LOCATION_SUGGESTIONS_UPDATE,
+        data: []
+      }));
+    }
+    // find match in suggestedLocation array
+    const match = suggestedLocations?.find(({
+      key
+    }) => key === value);
+    if (match) {
+      setSelectedLocation(match);
+      setUserInput(`${match.localized_name}, ${match.administrative_area.localized_name}`);
+    } else if (value.length >= 3 && !match) {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WEATHER_LOCATION_SEARCH_UPDATE,
+        data: value
+      }));
+    }
+  }
+  function handleCloseSearch() {
+    dispatch(actionCreators.BroadcastToContent({
+      type: actionTypes.WEATHER_SEARCH_ACTIVE,
+      data: false
+    }));
+    setUserInput("");
+  }
+  function handleKeyDown(e) {
+    if (e.key === "Escape") {
+      handleCloseSearch();
+    }
+  }
+  return /*#__PURE__*/external_React_default().createElement("div", {
+    className: `${outerClassName} location-search`
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "location-input-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "search-icon"
+  }), /*#__PURE__*/external_React_default().createElement("input", {
+    ref: inputRef,
+    list: "merino-location-list",
+    type: "text",
+    "data-l10n-id": "newtab-weather-change-location-search-input-placeholder",
+    onChange: handleChange,
+    value: userInput,
+    onKeyDown: handleKeyDown
+  }), /*#__PURE__*/external_React_default().createElement("moz-button", {
+    class: "close-icon",
+    type: "icon ghost",
+    size: "small",
+    iconSrc: "chrome://global/skin/icons/close.svg",
+    onClick: handleCloseSearch
+  }), /*#__PURE__*/external_React_default().createElement("datalist", {
+    id: "merino-location-list"
+  }, (suggestedLocations || []).map(merinoLcation => /*#__PURE__*/external_React_default().createElement("option", {
+    value: merinoLcation.key,
+    key: merinoLcation.key
+  }, merinoLcation.localized_name, ",", " ", merinoLcation.administrative_area.localized_name)))));
+}
+
+;// CONCATENATED MODULE: ./content-src/components/Weather/Weather.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -11418,117 +11684,330 @@ function FollowSectionButtonHighlight({
 
 
 
-// Note: MessageWrapper emits events via submitGleanPingForPing() in the OMC messaging-system.
-// If a feature is triggered outside of this flow (e.g., the Mobile Download QR Promo),
-// it should emit New Tab-specific Glean events independently.
 
-function MessageWrapper({
-  children,
-  dispatch,
-  hiddenOverride,
-  onDismiss
-}) {
-  const message = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Messages);
-  const [isIntersecting, setIsIntersecting] = (0,external_React_namespaceObject.useState)(false);
-  const [hasRun, setHasRun] = (0,external_React_namespaceObject.useState)();
-  const handleIntersection = (0,external_React_namespaceObject.useCallback)(() => {
-    setIsIntersecting(true);
-    const isVisible = document?.visibilityState && document.visibilityState === "visible";
-    // only send impression if messageId is defined and tab is visible
-    if (isVisible && message.messageData.id) {
-      setHasRun(true);
-      dispatch(actionCreators.AlsoToMain({
-        type: actionTypes.MESSAGE_IMPRESSION,
-        data: message.messageData
-      }));
-    }
-  }, [dispatch, message]);
-  (0,external_React_namespaceObject.useEffect)(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && !hasRun) {
-        handleIntersection();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [handleIntersection, hasRun]);
-  const ref = useIntersectionObserver(handleIntersection);
-  const handleClose = (0,external_React_namespaceObject.useCallback)(() => {
-    const action = {
-      type: actionTypes.MESSAGE_TOGGLE_VISIBILITY,
-      data: true
-    };
-    if (message.portID) {
-      dispatch(actionCreators.OnlyToOneContent(action, message.portID));
-    } else {
-      dispatch(actionCreators.AlsoToMain(action));
-    }
-    onDismiss?.();
-  }, [dispatch, message, onDismiss]);
-  function handleDismiss() {
-    const {
-      id
-    } = message.messageData;
-    if (id) {
-      dispatch(actionCreators.OnlyToMain({
-        type: actionTypes.MESSAGE_DISMISS,
-        data: {
-          message: message.messageData
-        }
-      }));
-    }
-    handleClose();
-  }
-  function handleBlock() {
-    const {
-      id
-    } = message.messageData;
-    if (id) {
-      dispatch(actionCreators.OnlyToMain({
-        type: actionTypes.MESSAGE_BLOCK,
-        data: id
-      }));
-    }
-  }
-  function handleClick(elementId) {
-    const {
-      id
-    } = message.messageData;
-    if (id) {
-      dispatch(actionCreators.OnlyToMain({
-        type: actionTypes.MESSAGE_CLICK,
-        data: {
-          message: message.messageData,
-          source: elementId || ""
-        }
-      }));
-    }
-  }
-  if (!message || !hiddenOverride && message.isHidden) {
-    return null;
-  }
+const Weather_VISIBLE = "visible";
+const Weather_VISIBILITY_CHANGE_EVENT = "visibilitychange";
+function WeatherPlaceholder() {
+  const [isSeen, setIsSeen] = (0,external_React_namespaceObject.useState)(false);
 
-  // only display the message if `isHidden` is false
+  // We are setting up a visibility and intersection event
+  // so animations don't happen with headless automation.
+  // The animations causes tests to fail beause they never stop,
+  // and many tests wait until everything has stopped before passing.
+  const ref = useIntersectionObserver(() => setIsSeen(true), 1);
+  const isSeenClassName = isSeen ? `placeholder-seen` : ``;
   return /*#__PURE__*/external_React_default().createElement("div", {
+    className: `weather weather-placeholder ${isSeenClassName}`,
     ref: el => {
       ref.current = [el];
-    },
-    className: "message-wrapper"
-  }, /*#__PURE__*/external_React_default().cloneElement(children, {
-    isIntersecting,
-    handleDismiss,
-    handleClick,
-    handleBlock,
-    handleClose
-  }));
+    }
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "placeholder-image placeholder-fill"
+  }), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "placeholder-context"
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "placeholder-header placeholder-fill"
+  }), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "placeholder-description placeholder-fill"
+  })));
 }
+class _Weather extends (external_React_default()).PureComponent {
+  constructor(props) {
+    super(props);
+    this.state = {
+      contextMenuKeyboard: false,
+      showContextMenu: false,
+      url: "https://example.com",
+      impressionSeen: false,
+      errorSeen: false
+    };
+    this.setImpressionRef = element => {
+      this.impressionElement = element;
+    };
+    this.setErrorRef = element => {
+      this.errorElement = element;
+    };
+    this.onClick = this.onClick.bind(this);
+    this.onKeyDown = this.onKeyDown.bind(this);
+    this.onUpdate = this.onUpdate.bind(this);
+    this.onProviderClick = this.onProviderClick.bind(this);
+  }
+  componentDidMount() {
+    const {
+      props
+    } = this;
+    if (!props.dispatch) {
+      return;
+    }
+    if (props.document.visibilityState === Weather_VISIBLE) {
+      // Setup the impression observer once the page is visible.
+      this.setImpressionObservers();
+    } else {
+      // We should only ever send the latest impression stats ping, so remove any
+      // older listeners.
+      if (this._onVisibilityChange) {
+        props.document.removeEventListener(Weather_VISIBILITY_CHANGE_EVENT, this._onVisibilityChange);
+      }
+      this._onVisibilityChange = () => {
+        if (props.document.visibilityState === Weather_VISIBLE) {
+          // Setup the impression observer once the page is visible.
+          this.setImpressionObservers();
+          props.document.removeEventListener(Weather_VISIBILITY_CHANGE_EVENT, this._onVisibilityChange);
+        }
+      };
+      props.document.addEventListener(Weather_VISIBILITY_CHANGE_EVENT, this._onVisibilityChange);
+    }
+  }
+  componentWillUnmount() {
+    // Remove observers on unmount
+    if (this.observer && this.impressionElement) {
+      this.observer.unobserve(this.impressionElement);
+    }
+    if (this.observer && this.errorElement) {
+      this.observer.unobserve(this.errorElement);
+    }
+    if (this._onVisibilityChange) {
+      this.props.document.removeEventListener(Weather_VISIBILITY_CHANGE_EVENT, this._onVisibilityChange);
+    }
+  }
+  setImpressionObservers() {
+    if (this.impressionElement) {
+      this.observer = new IntersectionObserver(this.onImpression.bind(this));
+      this.observer.observe(this.impressionElement);
+    }
+    if (this.errorElement) {
+      this.observer = new IntersectionObserver(this.onError.bind(this));
+      this.observer.observe(this.errorElement);
+    }
+  }
+  onImpression(entries) {
+    if (this.state) {
+      const entry = entries.find(e => e.isIntersecting);
+      if (entry) {
+        if (this.impressionElement) {
+          this.observer.unobserve(this.impressionElement);
+        }
+        this.props.dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WEATHER_IMPRESSION
+        }));
 
+        // Stop observing since element has been seen
+        this.setState({
+          impressionSeen: true
+        });
+      }
+    }
+  }
+  onError(entries) {
+    if (this.state) {
+      const entry = entries.find(e => e.isIntersecting);
+      if (entry) {
+        if (this.errorElement) {
+          this.observer.unobserve(this.errorElement);
+        }
+        this.props.dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WEATHER_LOAD_ERROR
+        }));
+
+        // Stop observing since element has been seen
+        this.setState({
+          errorSeen: true
+        });
+      }
+    }
+  }
+  openContextMenu(isKeyBoard) {
+    if (this.props.onUpdate) {
+      this.props.onUpdate(true);
+    }
+    this.setState({
+      showContextMenu: true,
+      contextMenuKeyboard: isKeyBoard
+    });
+  }
+  onClick(event) {
+    event.preventDefault();
+    this.openContextMenu(false, event);
+  }
+  onKeyDown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      this.openContextMenu(true, event);
+    }
+  }
+  onUpdate(showContextMenu) {
+    if (this.props.onUpdate) {
+      this.props.onUpdate(showContextMenu);
+    }
+    this.setState({
+      showContextMenu
+    });
+  }
+  onProviderClick() {
+    this.props.dispatch(actionCreators.OnlyToMain({
+      type: actionTypes.WEATHER_OPEN_PROVIDER_URL,
+      data: {
+        source: "WEATHER"
+      }
+    }));
+  }
+  handleRejectOptIn = () => {
+    this.props.dispatch(actionCreators.SetPref("weather.optInAccepted", false));
+    this.props.dispatch(actionCreators.SetPref("weather.optInDisplayed", false));
+  };
+  handleAcceptOptIn = () => {
+    this.props.dispatch(actionCreators.SetPref("weather.optInAccepted", true));
+    this.props.dispatch(actionCreators.SetPref("weather.optInDisplayed", false));
+  };
+  render() {
+    // Check if weather should be rendered
+    const isWeatherEnabled = this.props.Prefs.values["system.showWeather"];
+    if (!isWeatherEnabled) {
+      return false;
+    }
+    if (this.props.App.isForStartupCache.Weather || !this.props.Weather.initialized) {
+      return /*#__PURE__*/external_React_default().createElement(WeatherPlaceholder, null);
+    }
+    const {
+      showContextMenu
+    } = this.state;
+    const {
+      props
+    } = this;
+    const {
+      dispatch,
+      Prefs,
+      Weather
+    } = props;
+    const WEATHER_SUGGESTION = Weather.suggestions?.[0];
+    const outerClassName = ["weather", Weather.searchActive && "search", props.isInSection && "section-weather"].filter(v => v).join(" ");
+    const showDetailedView = Prefs.values["weather.display"] === "detailed";
+    const isOptInEnabled = Prefs.values["system.showWeatherOptIn"];
+    const optInDisplayed = Prefs.values["weather.optInDisplayed"];
+    const nimbusOptInDisplayed = Prefs.values.trainhopConfig?.weather?.optInDisplayed;
+    const optInUserChoice = Prefs.values["weather.optInAccepted"];
+    const nimbusOptInUserChoice = Prefs.values.trainhopConfig?.weather?.optInAccepted;
+    const optInPrompt = nimbusOptInDisplayed ?? optInDisplayed ?? false;
+    const userChoice = nimbusOptInUserChoice ?? optInUserChoice ?? false;
+    const isUserWeatherEnabled = Prefs.values.showWeather;
+
+    // Opt-in dialog should only show if:
+    // - weather enabled on customization menu
+    // - weather opt-in pref is enabled
+    // - opt-in prompt is enabled
+    // - user hasn't accepted the opt-in yet
+    const shouldShowOptInDialog = isUserWeatherEnabled && isOptInEnabled && optInPrompt && !userChoice;
+
+    // Note: The temperature units/display options will become secondary menu items
+    const WEATHER_SOURCE_CONTEXT_MENU_OPTIONS = [...(Prefs.values["weather.locationSearchEnabled"] ? ["ChangeWeatherLocation"] : []), ...(Prefs.values["weather.temperatureUnits"] === "f" ? ["ChangeTempUnitCelsius"] : ["ChangeTempUnitFahrenheit"]), ...(Prefs.values["weather.display"] === "simple" ? ["ChangeWeatherDisplayDetailed"] : ["ChangeWeatherDisplaySimple"]), "HideWeather", "OpenLearnMoreURL"];
+    const WEATHER_SOURCE_ERROR_CONTEXT_MENU_OPTIONS = [...(Prefs.values["weather.locationSearchEnabled"] ? ["ChangeWeatherLocation"] : []), "HideWeather", "OpenLearnMoreURL"];
+    const contextMenu = contextOpts => /*#__PURE__*/external_React_default().createElement("div", {
+      className: "weatherButtonContextMenuWrapper"
+    }, /*#__PURE__*/external_React_default().createElement("button", {
+      "aria-haspopup": "true",
+      onKeyDown: this.onKeyDown,
+      onClick: this.onClick,
+      "data-l10n-id": "newtab-menu-section-tooltip",
+      className: "weatherButtonContextMenu"
+    }, showContextMenu ? /*#__PURE__*/external_React_default().createElement(LinkMenu, {
+      dispatch: dispatch,
+      index: 0,
+      source: "WEATHER",
+      onUpdate: this.onUpdate,
+      options: contextOpts,
+      site: {
+        url: "https://support.mozilla.org/kb/customize-items-on-firefox-new-tab-page"
+      },
+      link: "https://support.mozilla.org/kb/customize-items-on-firefox-new-tab-page",
+      shouldSendImpressionStats: false
+    }) : null));
+    if (Weather.searchActive) {
+      return /*#__PURE__*/external_React_default().createElement(LocationSearch, {
+        outerClassName: outerClassName
+      });
+    } else if (WEATHER_SUGGESTION) {
+      return /*#__PURE__*/external_React_default().createElement("div", {
+        ref: this.setImpressionRef,
+        className: outerClassName
+      }, /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherCard"
+      }, /*#__PURE__*/external_React_default().createElement("a", {
+        "data-l10n-id": "newtab-weather-see-forecast",
+        "data-l10n-args": "{\"provider\": \"AccuWeather\xAE\"}",
+        href: WEATHER_SUGGESTION.forecast.url,
+        className: "weatherInfoLink",
+        onClick: this.onProviderClick
+      }, /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherIconCol"
+      }, /*#__PURE__*/external_React_default().createElement("span", {
+        className: `weatherIcon iconId${WEATHER_SUGGESTION.current_conditions.icon_id}`
+      })), /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherText"
+      }, /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherForecastRow"
+      }, /*#__PURE__*/external_React_default().createElement("span", {
+        className: "weatherTemperature"
+      }, WEATHER_SUGGESTION.current_conditions.temperature[Prefs.values["weather.temperatureUnits"]], "\xB0", Prefs.values["weather.temperatureUnits"])), /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherCityRow"
+      }, /*#__PURE__*/external_React_default().createElement("span", {
+        className: "weatherCity"
+      }, Weather.locationData.city)), showDetailedView ? /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherDetailedSummaryRow"
+      }, /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherHighLowTemps"
+      }, /*#__PURE__*/external_React_default().createElement("span", null, WEATHER_SUGGESTION.forecast.high[Prefs.values["weather.temperatureUnits"]], "\xB0", Prefs.values["weather.temperatureUnits"]), /*#__PURE__*/external_React_default().createElement("span", null, "\u2022"), /*#__PURE__*/external_React_default().createElement("span", null, WEATHER_SUGGESTION.forecast.low[Prefs.values["weather.temperatureUnits"]], "\xB0", Prefs.values["weather.temperatureUnits"])), /*#__PURE__*/external_React_default().createElement("span", {
+        className: "weatherTextSummary"
+      }, WEATHER_SUGGESTION.current_conditions.summary)) : null)), contextMenu(WEATHER_SOURCE_CONTEXT_MENU_OPTIONS)), /*#__PURE__*/external_React_default().createElement("span", {
+        className: "weatherSponsorText"
+      }, /*#__PURE__*/external_React_default().createElement("span", {
+        "data-l10n-id": "newtab-weather-sponsored",
+        "data-l10n-args": "{\"provider\": \"AccuWeather\xAE\"}"
+      })), shouldShowOptInDialog && /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherOptIn"
+      }, /*#__PURE__*/external_React_default().createElement("dialog", {
+        open: true
+      }, /*#__PURE__*/external_React_default().createElement("span", {
+        className: "weatherOptInImg"
+      }), /*#__PURE__*/external_React_default().createElement("div", {
+        className: "weatherOptInContent"
+      }, /*#__PURE__*/external_React_default().createElement("h3", null, "Do you want to see the weather for your location?"), /*#__PURE__*/external_React_default().createElement("moz-button-group", {
+        className: "button-group"
+      }, /*#__PURE__*/external_React_default().createElement("moz-button", {
+        size: "small",
+        type: "default",
+        label: "Not now",
+        onClick: this.handleRejectOptIn
+      }), /*#__PURE__*/external_React_default().createElement("moz-button", {
+        size: "small",
+        type: "default",
+        label: "Yes",
+        onClick: this.handleAcceptOptIn
+      }))))));
+    }
+    return /*#__PURE__*/external_React_default().createElement("div", {
+      ref: this.setErrorRef,
+      className: outerClassName
+    }, /*#__PURE__*/external_React_default().createElement("div", {
+      className: "weatherNotAvailable"
+    }, /*#__PURE__*/external_React_default().createElement("span", {
+      className: "icon icon-info-warning"
+    }), " ", /*#__PURE__*/external_React_default().createElement("p", {
+      "data-l10n-id": "newtab-weather-error-not-available"
+    }), contextMenu(WEATHER_SOURCE_ERROR_CONTEXT_MENU_OPTIONS)));
+  }
+}
+const Weather_Weather = (0,external_ReactRedux_namespaceObject.connect)(state => ({
+  App: state.App,
+  Weather: state.Weather,
+  Prefs: state.Prefs,
+  IntersectionObserver: globalThis.IntersectionObserver,
+  document: globalThis.document
+}))(_Weather);
 ;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/CardSections/CardSections.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
 
 
 
@@ -11555,15 +12034,17 @@ const CardSections_PREF_THUMBS_UP_DOWN_ENABLED = "discoverystream.thumbsUpDown.e
 const PREF_INTEREST_PICKER_ENABLED = "discoverystream.sections.interestPicker.enabled";
 const CardSections_PREF_VISIBLE_SECTIONS = "discoverystream.sections.interestPicker.visibleSections";
 const CardSections_PREF_BILLBOARD_ENABLED = "newtabAdSize.billboard";
+const CardSections_PREF_BILLBOARD_POSITION = "newtabAdSize.billboard.position";
 const CardSections_PREF_LEADERBOARD_ENABLED = "newtabAdSize.leaderboard";
 const CardSections_PREF_LEADERBOARD_POSITION = "newtabAdSize.leaderboard.position";
-const CardSections_PREF_BILLBOARD_POSITION = "newtabAdSize.billboard.position";
 const PREF_REFINED_CARDS_ENABLED = "discoverystream.refinedCardsLayout.enabled";
 const PREF_INFERRED_PERSONALIZATION_USER = "discoverystream.sections.personalization.inferred.user.enabled";
 const CardSections_PREF_TRENDING_SEARCH = "trendingSearch.enabled";
 const CardSections_PREF_TRENDING_SEARCH_SYSTEM = "system.trendingSearch.enabled";
 const CardSections_PREF_SEARCH_ENGINE = "trendingSearch.defaultSearchEngine";
 const CardSections_PREF_TRENDING_SEARCH_VARIANT = "trendingSearch.variant";
+const CardSections_PREF_DAILY_BRIEF_SECTIONID = "discoverystream.dailyBrief.sectionId";
+const CardSections_PREF_SPOCS_STARTUPCACHE_ENABLED = "discoverystream.spocs.startupCache.enabled";
 function getLayoutData(responsiveLayouts, index, refinedCardsLayout, sectionKey) {
   let layoutData = {
     classNames: [],
@@ -11576,10 +12057,10 @@ function getLayoutData(responsiveLayouts, index, refinedCardsLayout, sectionKey)
         // we update the layout so that the first item is always a medium card to make
         // room for the trending search widget
         if (sectionKey === "top_stories_section" && tileIndex === 0) {
-          //do something
           layoutData.classNames.push(`col-${layout.columnCount}-medium`);
           layoutData.classNames.push(`col-${layout.columnCount}-position-${tileIndex}`);
           layoutData.imageSizes[layout.columnCount] = "medium";
+          layoutData.classNames.push(`col-${layout.columnCount}-hide-excerpt`);
         } else {
           layoutData.classNames.push(`col-${layout.columnCount}-${tile.size}`);
           layoutData.classNames.push(`col-${layout.columnCount}-position-${tileIndex}`);
@@ -11639,11 +12120,10 @@ function CardSection({
   dispatch,
   type,
   firstVisibleTimestamp,
-  is_collection,
-  spocMessageVariant,
   ctaButtonVariant,
   ctaButtonSponsors,
-  anySectionsFollowed
+  anySectionsFollowed,
+  showWeather
 }) {
   const prefs = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Prefs.values);
   const {
@@ -11652,6 +12132,9 @@ function CardSection({
   const {
     sectionPersonalization
   } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.DiscoveryStream);
+  const {
+    isForStartupCache
+  } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.App);
   const showTopics = prefs[CardSections_PREF_TOPICS_ENABLED];
   const mayHaveSectionsCards = prefs[CardSections_PREF_SECTIONS_CARDS_ENABLED];
   const mayHaveSectionsCardsThumbsUpDown = prefs[PREF_SECTIONS_CARDS_THUMBS_UP_DOWN_ENABLED];
@@ -11659,12 +12142,10 @@ function CardSection({
   const selectedTopics = prefs[CardSections_PREF_TOPICS_SELECTED];
   const availableTopics = prefs[CardSections_PREF_TOPICS_AVAILABLE];
   const refinedCardsLayout = prefs[PREF_REFINED_CARDS_ENABLED];
+  const spocsStartupCacheEnabled = prefs[CardSections_PREF_SPOCS_STARTUPCACHE_ENABLED];
   const trendingEnabled = prefs[CardSections_PREF_TRENDING_SEARCH] && prefs[CardSections_PREF_TRENDING_SEARCH_SYSTEM] && prefs[CardSections_PREF_SEARCH_ENGINE]?.toLowerCase() === "google";
   const trendingVariant = prefs[CardSections_PREF_TRENDING_SEARCH_VARIANT];
   const shouldShowTrendingSearch = trendingEnabled && trendingVariant === "b";
-  const {
-    saveToPocketCard
-  } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.DiscoveryStream);
   const mayHaveSectionsPersonalization = prefs[PREF_SECTIONS_PERSONALIZATION_ENABLED];
   const {
     sectionKey,
@@ -11672,7 +12153,8 @@ function CardSection({
     subtitle
   } = section;
   const {
-    responsiveLayouts
+    responsiveLayouts,
+    name: layoutName
   } = section.layout;
   const following = sectionPersonalization[sectionKey]?.isFollowed;
   const handleIntersection = (0,external_React_namespaceObject.useCallback)(() => {
@@ -11681,10 +12163,11 @@ function CardSection({
       data: {
         section: sectionKey,
         section_position: sectionPosition,
-        is_section_followed: following
+        is_section_followed: following,
+        layout_name: layoutName
       }
     }));
-  }, [dispatch, sectionKey, sectionPosition, following]);
+  }, [dispatch, sectionKey, sectionPosition, following, layoutName]);
 
   // Ref to hold the section element
   const sectionRefs = useIntersectionObserver(handleIntersection);
@@ -11752,7 +12235,15 @@ function CardSection({
   }, /*#__PURE__*/external_React_default().createElement(FollowSectionButtonHighlight, {
     verticalPosition: "inset-block-center",
     position: "arrow-inline-start",
+    dispatch: dispatch,
+    feature: "FEATURE_FOLLOW_SECTION_BUTTON"
+  })), !anySectionsFollowed && sectionPosition === 1 && shouldShowOMCHighlight(messageData, "FollowSectionButtonAltHighlight") && /*#__PURE__*/external_React_default().createElement(MessageWrapper, {
     dispatch: dispatch
+  }, /*#__PURE__*/external_React_default().createElement(FollowSectionButtonHighlight, {
+    verticalPosition: "inset-block-center",
+    position: "arrow-inline-start",
+    dispatch: dispatch,
+    feature: "FEATURE_ALT_FOLLOW_SECTION_BUTTON"
   })), /*#__PURE__*/external_React_default().createElement("moz-button", {
     onClick: following ? onUnfollowClick : onFollowClick,
     type: "default",
@@ -11785,12 +12276,16 @@ function CardSection({
   }, /*#__PURE__*/external_React_default().createElement("div", {
     className: "section-heading"
   }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "section-heading-inline-start"
+  }, /*#__PURE__*/external_React_default().createElement("div", {
     className: "section-title-wrapper"
   }, /*#__PURE__*/external_React_default().createElement("h2", {
     className: "section-title"
   }, title), subtitle && /*#__PURE__*/external_React_default().createElement("p", {
     className: "section-subtitle"
-  }, subtitle)), mayHaveSectionsPersonalization ? sectionContextWrapper : null), /*#__PURE__*/external_React_default().createElement("div", {
+  }, subtitle)), showWeather && /*#__PURE__*/external_React_default().createElement(Weather_Weather, {
+    isInSection: true
+  })), mayHaveSectionsPersonalization ? sectionContextWrapper : null), /*#__PURE__*/external_React_default().createElement("div", {
     className: `ds-section-grid ds-card-grid`
   }, section.data.slice(0, maxTile).map((rec, index) => {
     const layoutData = getLayoutData(responsiveLayouts, index, refinedCardsLayout, shouldShowTrendingSearch && sectionKey);
@@ -11798,7 +12293,11 @@ function CardSection({
       classNames,
       imageSizes
     } = layoutData;
-    if (!rec || rec.placeholder) {
+    // Render a placeholder card when:
+    // 1. No recommendation is available.
+    // 2. The item is flagged as a placeholder.
+    // 3. Spocs are loading for with spocs startup cache disabled.
+    if (!rec || rec.placeholder || rec.flight_id && !spocsStartupCacheEnabled && isForStartupCache.DiscoveryStream) {
       return /*#__PURE__*/external_React_default().createElement(PlaceholderDSCard, {
         key: `dscard-${index}`
       });
@@ -11843,16 +12342,14 @@ function CardSection({
       showTopics: shouldShowLabels,
       selectedTopics: selectedTopics,
       availableTopics: availableTopics,
-      is_collection: is_collection,
-      saveToPocketCard: saveToPocketCard,
       ctaButtonSponsors: ctaButtonSponsors,
       ctaButtonVariant: ctaButtonVariant,
-      spocMessageVariant: spocMessageVariant,
       sectionsClassNames: classNames.join(" "),
       sectionsCardImageSizes: imageSizes,
       section: sectionKey,
       sectionPosition: sectionPosition,
       sectionFollowed: following,
+      sectionLayoutName: layoutName,
       isTimeSensitive: rec.isTimeSensitive
     });
     return index === 0 && shouldShowTrendingSearch && sectionKey === "top_stories_section" ? [card, /*#__PURE__*/external_React_default().createElement(TrendingSearches, {
@@ -11866,8 +12363,6 @@ function CardSections({
   dispatch,
   type,
   firstVisibleTimestamp,
-  is_collection,
-  spocMessageVariant,
   ctaButtonVariant,
   ctaButtonSponsors
 }) {
@@ -11879,6 +12374,9 @@ function CardSections({
   const {
     messageData
   } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Messages);
+  const weatherPlacement = (0,external_ReactRedux_namespaceObject.useSelector)(selectWeatherPlacement);
+  const dailyBriefSectionId = prefs.trainhopConfig?.dailyBriefing?.sectionId || prefs[CardSections_PREF_DAILY_BRIEF_SECTIONID];
+  const weatherEnabled = prefs.showWeather;
   const personalizationEnabled = prefs[PREF_SECTIONS_PERSONALIZATION_ENABLED];
   const interestPickerEnabled = prefs[PREF_INTEREST_PICKER_ENABLED];
 
@@ -11912,11 +12410,10 @@ function CardSections({
     dispatch: dispatch,
     type: type,
     firstVisibleTimestamp: firstVisibleTimestamp,
-    is_collection: is_collection,
-    spocMessageVariant: spocMessageVariant,
     ctaButtonVariant: ctaButtonVariant,
     ctaButtonSponsors: ctaButtonSponsors,
-    anySectionsFollowed: anySectionsFollowed
+    anySectionsFollowed: anySectionsFollowed,
+    showWeather: weatherEnabled && weatherPlacement === "section" && sectionPosition === 0 && section.sectionKey === dailyBriefSectionId
   }));
 
   // Add a billboard/leaderboard IAB ad to the sectionsToRender array (if enabled/possible).
@@ -11984,11 +12481,1426 @@ function CardSections({
   }, sectionsToRender);
 }
 
-;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamBase/DiscoveryStreamBase.jsx
+;// CONCATENATED MODULE: ./content-src/components/Widgets/Lists/Lists.jsx
+function Lists_extends() { return Lists_extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, Lists_extends.apply(null, arguments); }
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+
+
+
+
+const TASK_TYPE = {
+  IN_PROGRESS: "tasks",
+  COMPLETED: "completed"
+};
+const USER_ACTION_TYPES = {
+  LIST_COPY: "list_copy",
+  LIST_CREATE: "list_create",
+  LIST_EDIT: "list_edit",
+  LIST_DELETE: "list_delete",
+  TASK_CREATE: "task_create",
+  TASK_EDIT: "task_edit",
+  TASK_DELETE: "task_delete",
+  TASK_COMPLETE: "task_complete"
+};
+const PREF_WIDGETS_LISTS_MAX_LISTS = "widgets.lists.maxLists";
+const PREF_WIDGETS_LISTS_MAX_LISTITEMS = "widgets.lists.maxListItems";
+const PREF_WIDGETS_LISTS_BADGE_ENABLED = "widgets.lists.badge.enabled";
+const PREF_WIDGETS_LISTS_BADGE_LABEL = "widgets.lists.badge.label";
+function Lists({
+  dispatch,
+  handleUserInteraction
+}) {
+  const prefs = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Prefs.values);
+  const {
+    selected,
+    lists
+  } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.ListsWidget);
+  const [newTask, setNewTask] = (0,external_React_namespaceObject.useState)("");
+  const [isEditing, setIsEditing] = (0,external_React_namespaceObject.useState)(false);
+  const [pendingNewList, setPendingNewList] = (0,external_React_namespaceObject.useState)(null);
+  const selectedList = (0,external_React_namespaceObject.useMemo)(() => lists[selected], [lists, selected]);
+  const prevCompletedCount = (0,external_React_namespaceObject.useRef)(selectedList?.completed?.length || 0);
+  const inputRef = (0,external_React_namespaceObject.useRef)(null);
+  const selectRef = (0,external_React_namespaceObject.useRef)(null);
+  const reorderListRef = (0,external_React_namespaceObject.useRef)(null);
+  const [canvasRef, fireConfetti] = useConfetti();
+  const handleListInteraction = (0,external_React_namespaceObject.useCallback)(() => handleUserInteraction("lists"), [handleUserInteraction]);
+
+  // store selectedList with useMemo so it isnt re-calculated on every re-render
+  const isValidUrl = (0,external_React_namespaceObject.useCallback)(str => URL.canParse(str), []);
+  const handleIntersection = (0,external_React_namespaceObject.useCallback)(() => {
+    dispatch(actionCreators.AlsoToMain({
+      type: actionTypes.WIDGETS_LISTS_USER_IMPRESSION
+    }));
+  }, [dispatch]);
+  const listsRef = useIntersectionObserver(handleIntersection);
+  const reorderLists = (0,external_React_namespaceObject.useCallback)((draggedElement, targetElement, before = false) => {
+    const draggedIndex = selectedList.tasks.findIndex(({
+      id
+    }) => id === draggedElement.id);
+    const targetIndex = selectedList.tasks.findIndex(({
+      id
+    }) => id === targetElement.id);
+
+    // return early is index is not found
+    if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+      return;
+    }
+    const reordered = [...selectedList.tasks];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    const insertIndex = before ? targetIndex : targetIndex + 1;
+    reordered.splice(insertIndex > draggedIndex ? insertIndex - 1 : insertIndex, 0, removed);
+    const updatedLists = {
+      ...lists,
+      [selected]: {
+        ...selectedList,
+        tasks: reordered
+      }
+    };
+    dispatch(actionCreators.AlsoToMain({
+      type: actionTypes.WIDGETS_LISTS_UPDATE,
+      data: {
+        lists: updatedLists
+      }
+    }));
+    handleListInteraction();
+  }, [lists, selected, selectedList, dispatch, handleListInteraction]);
+  const moveTask = (0,external_React_namespaceObject.useCallback)((task, direction) => {
+    const index = selectedList.tasks.findIndex(({
+      id
+    }) => id === task.id);
+
+    // guardrail a falsey index
+    if (index === -1) {
+      return;
+    }
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    const before = direction === "up";
+    const targetTask = selectedList.tasks[targetIndex];
+    if (targetTask) {
+      reorderLists(task, targetTask, before);
+    }
+  }, [selectedList, reorderLists]);
+  (0,external_React_namespaceObject.useEffect)(() => {
+    const selectNode = selectRef.current;
+    const reorderNode = reorderListRef.current;
+    if (!selectNode || !reorderNode) {
+      return undefined;
+    }
+    function handleSelectChange(e) {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WIDGETS_LISTS_CHANGE_SELECTED,
+        data: e.target.value
+      }));
+      handleListInteraction();
+    }
+    function handleReorder(e) {
+      const {
+        draggedElement,
+        targetElement,
+        position
+      } = e.detail;
+      reorderLists(draggedElement, targetElement, position === -1);
+    }
+    reorderNode.addEventListener("reorder", handleReorder);
+    selectNode.addEventListener("change", handleSelectChange);
+    return () => {
+      selectNode.removeEventListener("change", handleSelectChange);
+      reorderNode.removeEventListener("reorder", handleReorder);
+    };
+  }, [dispatch, isEditing, reorderLists, handleListInteraction]);
+
+  // effect that enables editing new list name only after store has been hydrated
+  (0,external_React_namespaceObject.useEffect)(() => {
+    if (selected === pendingNewList) {
+      setIsEditing(true);
+      setPendingNewList(null);
+    }
+  }, [selected, pendingNewList]);
+  function saveTask() {
+    const trimmedTask = newTask.trimEnd();
+    // only add new task if it has a length, to avoid creating empty tasks
+    if (trimmedTask) {
+      const formattedTask = {
+        value: trimmedTask,
+        completed: false,
+        created: Date.now(),
+        id: crypto.randomUUID(),
+        isUrl: isValidUrl(trimmedTask)
+      };
+      const updatedLists = {
+        ...lists,
+        [selected]: {
+          ...selectedList,
+          tasks: [formattedTask, ...lists[selected].tasks]
+        }
+      };
+      (0,external_ReactRedux_namespaceObject.batch)(() => {
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_LISTS_UPDATE,
+          data: {
+            lists: updatedLists
+          }
+        }));
+        dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WIDGETS_LISTS_USER_EVENT,
+          data: {
+            userAction: USER_ACTION_TYPES.TASK_CREATE
+          }
+        }));
+      });
+      setNewTask("");
+      handleListInteraction();
+    }
+  }
+  function updateTask(updatedTask, type) {
+    const isCompletedType = type === TASK_TYPE.COMPLETED;
+    const isNowCompleted = updatedTask.completed;
+    let newTasks = selectedList.tasks;
+    let newCompleted = selectedList.completed;
+    let userAction;
+
+    // If the task is in the completed array and is now unchecked
+    const shouldMoveToTasks = isCompletedType && !isNowCompleted;
+
+    // If we're moving the task from tasks → completed (user checked it)
+    const shouldMoveToCompleted = !isCompletedType && isNowCompleted;
+
+    //  Move task from completed -> task
+    if (shouldMoveToTasks) {
+      newCompleted = selectedList.completed.filter(task => task.id !== updatedTask.id);
+      newTasks = [...selectedList.tasks, updatedTask];
+      // Move task to completed, but also create local version
+    } else if (shouldMoveToCompleted) {
+      newTasks = selectedList.tasks.filter(task => task.id !== updatedTask.id);
+      newCompleted = [...selectedList.completed, updatedTask];
+      userAction = USER_ACTION_TYPES.TASK_COMPLETE;
+    } else {
+      const targetKey = isCompletedType ? "completed" : "tasks";
+      const updatedArray = selectedList[targetKey].map(task => task.id === updatedTask.id ? updatedTask : task);
+      // In-place update: toggle checkbox (but stay in same array or edit name)
+      if (targetKey === "tasks") {
+        newTasks = updatedArray;
+      } else {
+        newCompleted = updatedArray;
+      }
+      userAction = USER_ACTION_TYPES.TASK_EDIT;
+    }
+    const updatedLists = {
+      ...lists,
+      [selected]: {
+        ...selectedList,
+        tasks: newTasks,
+        completed: newCompleted
+      }
+    };
+    (0,external_ReactRedux_namespaceObject.batch)(() => {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WIDGETS_LISTS_UPDATE,
+        data: {
+          lists: updatedLists
+        }
+      }));
+      if (userAction) {
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_LISTS_USER_EVENT,
+          data: {
+            userAction
+          }
+        }));
+      }
+    });
+    handleListInteraction();
+  }
+  function deleteTask(task, type) {
+    const selectedTasks = lists[selected][type];
+    const updatedTasks = selectedTasks.filter(({
+      id
+    }) => id !== task.id);
+    const updatedLists = {
+      ...lists,
+      [selected]: {
+        ...selectedList,
+        [type]: updatedTasks
+      }
+    };
+    (0,external_ReactRedux_namespaceObject.batch)(() => {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WIDGETS_LISTS_UPDATE,
+        data: {
+          lists: updatedLists
+        }
+      }));
+      dispatch(actionCreators.OnlyToMain({
+        type: actionTypes.WIDGETS_LISTS_USER_EVENT,
+        data: {
+          userAction: USER_ACTION_TYPES.TASK_DELETE
+        }
+      }));
+    });
+    handleListInteraction();
+  }
+  function handleKeyDown(e) {
+    if (e.key === "Enter" && document.activeElement === inputRef.current) {
+      saveTask();
+    } else if (e.key === "Escape" && document.activeElement === inputRef.current) {
+      // Clear out the input when esc is pressed
+      setNewTask("");
+    }
+  }
+  function handleListNameSave(newLabel) {
+    const trimmedLabel = newLabel.trimEnd();
+    if (trimmedLabel && trimmedLabel !== selectedList?.label) {
+      const updatedLists = {
+        ...lists,
+        [selected]: {
+          ...selectedList,
+          label: trimmedLabel
+        }
+      };
+      (0,external_ReactRedux_namespaceObject.batch)(() => {
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_LISTS_UPDATE,
+          data: {
+            lists: updatedLists
+          }
+        }));
+        dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WIDGETS_LISTS_USER_EVENT,
+          data: {
+            userAction: USER_ACTION_TYPES.LIST_EDIT
+          }
+        }));
+      });
+      setIsEditing(false);
+      handleListInteraction();
+    }
+  }
+  function handleCreateNewList() {
+    const id = crypto.randomUUID();
+    const newLists = {
+      ...lists,
+      [id]: {
+        label: "",
+        tasks: [],
+        completed: []
+      }
+    };
+    (0,external_ReactRedux_namespaceObject.batch)(() => {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WIDGETS_LISTS_UPDATE,
+        data: {
+          lists: newLists
+        }
+      }));
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WIDGETS_LISTS_CHANGE_SELECTED,
+        data: id
+      }));
+      dispatch(actionCreators.OnlyToMain({
+        type: actionTypes.WIDGETS_LISTS_USER_EVENT,
+        data: {
+          userAction: USER_ACTION_TYPES.LIST_CREATE
+        }
+      }));
+    });
+    setPendingNewList(id);
+    handleListInteraction();
+  }
+  function handleCancelNewList() {
+    // If current list is new and has no label/tasks, remove it
+    if (!selectedList?.label && selectedList?.tasks?.length === 0) {
+      const updatedLists = {
+        ...lists
+      };
+      delete updatedLists[selected];
+    }
+  }
+  function handleDeleteList() {
+    let updatedLists = {
+      ...lists
+    };
+    if (updatedLists[selected]) {
+      delete updatedLists[selected];
+
+      // if this list was the last one created, add a new list as default
+      if (Object.keys(updatedLists)?.length === 0) {
+        updatedLists = {
+          [crypto.randomUUID()]: {
+            label: "",
+            tasks: [],
+            completed: []
+          }
+        };
+      }
+      const listKeys = Object.keys(updatedLists);
+      const key = listKeys[listKeys.length - 1];
+      (0,external_ReactRedux_namespaceObject.batch)(() => {
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_LISTS_UPDATE,
+          data: {
+            lists: updatedLists
+          }
+        }));
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_LISTS_CHANGE_SELECTED,
+          data: key
+        }));
+        dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WIDGETS_LISTS_USER_EVENT,
+          data: {
+            userAction: USER_ACTION_TYPES.LIST_DELETE
+          }
+        }));
+      });
+    }
+    handleListInteraction();
+  }
+  function handleHideLists() {
+    dispatch(actionCreators.OnlyToMain({
+      type: actionTypes.SET_PREF,
+      data: {
+        name: "widgets.lists.enabled",
+        value: false
+      }
+    }));
+    handleListInteraction();
+  }
+  function handleCopyListToClipboard() {
+    const currentList = lists[selected];
+    if (!currentList) {
+      return;
+    }
+    const {
+      label,
+      tasks = [],
+      completed = []
+    } = currentList;
+    const uncompleted = tasks.filter(task => !task.completed);
+    const currentCompleted = tasks.filter(task => task.completed);
+
+    // In order in include all items, we need to iterate through both current and completed tasks list and mark format all completed tasks accordingly.
+    const formatted = [`List: ${label}`, `---`, ...uncompleted.map(task => `- [ ] ${task.value}`), ...currentCompleted.map(task => `- [x] ${task.value}`), ...completed.map(task => `- [x] ${task.value}`)].join("\n");
+    try {
+      navigator.clipboard.writeText(formatted);
+    } catch (err) {
+      console.error("Copy failed", err);
+    }
+    dispatch(actionCreators.OnlyToMain({
+      type: actionTypes.WIDGETS_LISTS_USER_EVENT,
+      data: {
+        userAction: USER_ACTION_TYPES.LIST_COPY
+      }
+    }));
+    handleListInteraction();
+  }
+  function handleLearnMore() {
+    dispatch(actionCreators.OnlyToMain({
+      type: actionTypes.OPEN_LINK,
+      data: {
+        url: "https://support.mozilla.org/kb/firefox-new-tab-widgets"
+      }
+    }));
+    handleListInteraction();
+  }
+
+  // Reset baseline only when switching lists
+  (0,external_React_namespaceObject.useEffect)(() => {
+    prevCompletedCount.current = selectedList?.completed?.length || 0;
+    // intentionally leaving out selectedList from dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+  (0,external_React_namespaceObject.useEffect)(() => {
+    if (selectedList) {
+      const doneCount = selectedList.completed?.length || 0;
+      const previous = Math.floor(prevCompletedCount.current / 5);
+      const current = Math.floor(doneCount / 5);
+      if (current > previous) {
+        fireConfetti();
+      }
+      prevCompletedCount.current = doneCount;
+    }
+  }, [selectedList, fireConfetti, selected]);
+  if (!lists) {
+    return null;
+  }
+
+  // Enforce maximum count limits to lists
+  const currentListsCount = Object.keys(lists).length;
+  // Ensure a minimum of 1, but allow higher values from prefs
+  const maxListsCount = Math.max(1, prefs[PREF_WIDGETS_LISTS_MAX_LISTS]);
+  const isAtMaxListsLimit = currentListsCount >= maxListsCount;
+
+  // Enforce maximum count limits to list items
+  // The maximum applies to the total number of items (both incomplete and completed items)
+  const currentSelectedListItemsCount = selectedList?.tasks.length + selectedList?.completed.length;
+
+  // Ensure a minimum of 1, but allow higher values from prefs
+  const maxListItemsCount = Math.max(1, prefs[PREF_WIDGETS_LISTS_MAX_LISTITEMS]);
+  const isAtMaxListItemsLimit = currentSelectedListItemsCount >= maxListItemsCount;
+
+  // Figure out if the selected list is the first (default) or a new one.
+  // Index 0 → use "Task list"; any later index → use "New list".
+  // Fallback to 0 if the selected id isn’t found.
+  const listKeys = Object.keys(lists);
+  const selectedIndex = Math.max(0, listKeys.indexOf(selected));
+  const listNamePlaceholder = currentListsCount > 1 && selectedIndex !== 0 ? "newtab-widget-lists-name-placeholder-new" : "newtab-widget-lists-name-placeholder-default";
+  const nimbusBadgeEnabled = prefs.widgetsConfig?.listsBadgeEnabled;
+  const nimbusBadgeLabel = prefs.widgetsConfig?.listsBadgeLabel;
+  const nimbusBadgeTrainhopEnabled = prefs.trainhopConfig?.widgets?.listsBadgeEnabled;
+  const nimbusBadgeTrainhopLabel = prefs.trainhopConfig?.widgets?.listsBadgeLabel;
+  const badgeEnabled = (nimbusBadgeEnabled || nimbusBadgeTrainhopEnabled) ?? prefs[PREF_WIDGETS_LISTS_BADGE_ENABLED] ?? false;
+  const badgeLabel = (nimbusBadgeLabel || nimbusBadgeTrainhopLabel) ?? prefs[PREF_WIDGETS_LISTS_BADGE_LABEL] ?? "";
+  return /*#__PURE__*/external_React_default().createElement("article", {
+    className: "lists",
+    ref: el => {
+      listsRef.current = [el];
+    }
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "select-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement(EditableText, {
+    value: lists[selected]?.label || "",
+    onSave: handleListNameSave,
+    isEditing: isEditing,
+    setIsEditing: setIsEditing,
+    onCancel: handleCancelNewList,
+    type: "list",
+    maxLength: 30,
+    dataL10nId: listNamePlaceholder
+  }, /*#__PURE__*/external_React_default().createElement("moz-select", {
+    ref: selectRef,
+    value: selected
+  }, Object.entries(lists).map(([key, list]) => /*#__PURE__*/external_React_default().createElement("moz-option", Lists_extends({
+    key: key,
+    value: key
+    // On the first/initial list, use default name
+  }, list.label ? {
+    label: list.label
+  } : {
+    "data-l10n-id": "newtab-widget-lists-name-label-default"
+  }))))), !isEditing && badgeEnabled && badgeLabel && /*#__PURE__*/external_React_default().createElement("moz-badge", {
+    "data-l10n-id": (() => {
+      if (badgeLabel === "New") {
+        return "newtab-widget-lists-label-new";
+      }
+      if (badgeLabel === "Beta") {
+        return "newtab-widget-lists-label-beta";
+      }
+      return "";
+    })()
+  }), /*#__PURE__*/external_React_default().createElement("moz-button", {
+    className: "lists-panel-button",
+    iconSrc: "chrome://global/skin/icons/more.svg",
+    menuId: "lists-panel",
+    type: "ghost"
+  }), /*#__PURE__*/external_React_default().createElement("panel-list", {
+    id: "lists-panel"
+  }, /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-lists-menu-edit",
+    onClick: () => setIsEditing(true)
+  }), /*#__PURE__*/external_React_default().createElement("panel-item", Lists_extends({}, isAtMaxListsLimit ? {
+    disabled: true
+  } : {}, {
+    "data-l10n-id": "newtab-widget-lists-menu-create",
+    onClick: () => handleCreateNewList(),
+    className: "create-list"
+  })), /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-lists-menu-delete",
+    onClick: () => handleDeleteList()
+  }), /*#__PURE__*/external_React_default().createElement("hr", null), /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-lists-menu-copy",
+    onClick: () => handleCopyListToClipboard()
+  }), /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-lists-menu-hide",
+    onClick: () => handleHideLists()
+  }), /*#__PURE__*/external_React_default().createElement("panel-item", {
+    className: "learn-more",
+    "data-l10n-id": "newtab-widget-lists-menu-learn-more",
+    onClick: handleLearnMore
+  }))), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "add-task-container"
+  }, /*#__PURE__*/external_React_default().createElement("span", {
+    className: `icon icon-add ${isAtMaxListItemsLimit ? "icon-disabled" : ""}`
+  }), /*#__PURE__*/external_React_default().createElement("input", {
+    ref: inputRef,
+    onBlur: () => saveTask(),
+    onChange: e => setNewTask(e.target.value),
+    value: newTask,
+    "data-l10n-id": "newtab-widget-lists-input-add-an-item",
+    className: "add-task-input",
+    onKeyDown: handleKeyDown,
+    type: "text",
+    maxLength: 100,
+    disabled: isAtMaxListItemsLimit
+  })), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "task-list-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("moz-reorderable-list", {
+    ref: reorderListRef,
+    itemSelector: "fieldset .task-type-tasks",
+    dragSelector: ".checkbox-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("fieldset", null, selectedList?.tasks.length >= 1 && selectedList.tasks.map((task, index) => /*#__PURE__*/external_React_default().createElement(ListItem, {
+    type: TASK_TYPE.IN_PROGRESS,
+    task: task,
+    key: task.id,
+    updateTask: updateTask,
+    deleteTask: deleteTask,
+    moveTask: moveTask,
+    isValidUrl: isValidUrl,
+    isFirst: index === 0,
+    isLast: index === selectedList.tasks.length - 1
+  })), selectedList?.completed.length >= 1 && /*#__PURE__*/external_React_default().createElement("details", {
+    className: "completed-task-wrapper",
+    open: selectedList?.tasks.length < 1
+  }, /*#__PURE__*/external_React_default().createElement("summary", null, /*#__PURE__*/external_React_default().createElement("span", {
+    "data-l10n-id": "newtab-widget-lists-completed-list",
+    "data-l10n-args": JSON.stringify({
+      number: lists[selected]?.completed.length
+    }),
+    className: "completed-title"
+  })), selectedList?.completed.map(completedTask => /*#__PURE__*/external_React_default().createElement(ListItem, {
+    key: completedTask.id,
+    type: TASK_TYPE.COMPLETED,
+    task: completedTask,
+    deleteTask: deleteTask,
+    updateTask: updateTask
+  }))))), selectedList?.tasks.length < 1 && selectedList?.completed.length < 1 && /*#__PURE__*/external_React_default().createElement("div", {
+    className: "empty-list"
+  }, /*#__PURE__*/external_React_default().createElement("picture", null, /*#__PURE__*/external_React_default().createElement("source", {
+    srcSet: "chrome://newtab/content/data/content/assets/lists-empty-state-dark.svg",
+    media: "(prefers-color-scheme: dark)"
+  }), /*#__PURE__*/external_React_default().createElement("source", {
+    srcSet: "chrome://newtab/content/data/content/assets/lists-empty-state-light.svg",
+    media: "(prefers-color-scheme: light)"
+  }), /*#__PURE__*/external_React_default().createElement("img", {
+    width: "100",
+    height: "100",
+    alt: ""
+  })), /*#__PURE__*/external_React_default().createElement("p", {
+    className: "empty-list-text",
+    "data-l10n-id": "newtab-widget-lists-empty-cta"
+  }))), /*#__PURE__*/external_React_default().createElement("canvas", {
+    className: "confetti-canvas",
+    ref: canvasRef
+  }));
+}
+function ListItem({
+  task,
+  updateTask,
+  deleteTask,
+  moveTask,
+  isValidUrl,
+  type,
+  isFirst = false,
+  isLast = false
+}) {
+  const [isEditing, setIsEditing] = (0,external_React_namespaceObject.useState)(false);
+  const [exiting, setExiting] = (0,external_React_namespaceObject.useState)(false);
+  const isCompleted = type === TASK_TYPE.COMPLETED;
+  const prefersReducedMotion = typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function handleCheckboxChange(e) {
+    const {
+      checked
+    } = e.target;
+    const updatedTask = {
+      ...task,
+      completed: checked
+    };
+    if (checked && !prefersReducedMotion) {
+      setExiting(true);
+    } else {
+      updateTask(updatedTask, type);
+    }
+  }
+
+  // When the CSS transition finishes, dispatch the real “completed = true”
+  function handleTransitionEnd(e) {
+    // only fire once for the exit:
+    if (e.propertyName === "opacity" && exiting) {
+      updateTask({
+        ...task,
+        completed: true
+      }, type);
+      setExiting(false);
+    }
+  }
+  function handleSave(newValue) {
+    const trimmedTask = newValue.trimEnd();
+    if (trimmedTask && trimmedTask !== task.value) {
+      updateTask({
+        ...task,
+        value: newValue,
+        isUrl: isValidUrl(trimmedTask)
+      }, type);
+      setIsEditing(false);
+    }
+  }
+  function handleDelete() {
+    deleteTask(task, type);
+  }
+  const taskLabel = task.isUrl ? /*#__PURE__*/external_React_default().createElement("a", {
+    href: task.value,
+    rel: "noopener noreferrer",
+    target: "_blank",
+    className: "task-label",
+    title: task.value
+  }, task.value) : /*#__PURE__*/external_React_default().createElement("label", {
+    className: "task-label",
+    title: task.value,
+    htmlFor: `task-${task.id}`,
+    onClick: () => setIsEditing(true)
+  }, task.value);
+  return /*#__PURE__*/external_React_default().createElement("div", {
+    className: `task-item task-type-${type} ${exiting ? " exiting" : ""}`,
+    id: task.id,
+    key: task.id,
+    onTransitionEnd: handleTransitionEnd
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "checkbox-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("input", {
+    type: "checkbox",
+    onChange: handleCheckboxChange,
+    checked: task.completed || exiting,
+    id: `task-${task.id}`
+  }), isCompleted ? taskLabel : /*#__PURE__*/external_React_default().createElement(EditableText, {
+    isEditing: isEditing,
+    setIsEditing: setIsEditing,
+    value: task.value,
+    onSave: handleSave,
+    type: "task"
+  }, taskLabel)), /*#__PURE__*/external_React_default().createElement("moz-button", {
+    iconSrc: "chrome://global/skin/icons/more.svg",
+    menuId: `panel-task-${task.id}`,
+    type: "ghost"
+  }), /*#__PURE__*/external_React_default().createElement("panel-list", {
+    id: `panel-task-${task.id}`
+  }, !isCompleted && /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, task.isUrl && /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-lists-input-menu-open-link",
+    onClick: () => window.open(task.value, "_blank", "noopener")
+  }), /*#__PURE__*/external_React_default().createElement("panel-item", Lists_extends({}, isFirst ? {
+    disabled: true
+  } : {}, {
+    onClick: () => moveTask(task, "up"),
+    "data-l10n-id": "newtab-widget-lists-input-menu-move-up"
+  })), /*#__PURE__*/external_React_default().createElement("panel-item", Lists_extends({}, isLast ? {
+    disabled: true
+  } : {}, {
+    onClick: () => moveTask(task, "down"),
+    "data-l10n-id": "newtab-widget-lists-input-menu-move-down"
+  })), /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-lists-input-menu-edit",
+    className: "edit-item",
+    onClick: () => setIsEditing(true)
+  })), /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-lists-input-menu-delete",
+    className: "delete-item",
+    onClick: handleDelete
+  })));
+}
+function EditableText({
+  value,
+  isEditing,
+  setIsEditing,
+  onSave,
+  onCancel,
+  children,
+  type,
+  dataL10nId = null,
+  maxLength = 100
+}) {
+  const [tempValue, setTempValue] = (0,external_React_namespaceObject.useState)(value);
+  const inputRef = (0,external_React_namespaceObject.useRef)(null);
+
+  // True if tempValue is empty, null/undefined, or only whitespace
+  const showPlaceholder = (tempValue ?? "").trim() === "";
+  (0,external_React_namespaceObject.useEffect)(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+    } else {
+      setTempValue(value);
+    }
+  }, [isEditing, value]);
+  function handleKeyDown(e) {
+    if (e.key === "Enter") {
+      onSave(tempValue.trim());
+      setIsEditing(false);
+    } else if (e.key === "Escape") {
+      setIsEditing(false);
+      setTempValue(value);
+      onCancel?.();
+    }
+  }
+  function handleOnBlur() {
+    onSave(tempValue.trim());
+    setIsEditing(false);
+  }
+  return isEditing ? /*#__PURE__*/external_React_default().createElement("input", Lists_extends({
+    className: `edit-${type}`,
+    ref: inputRef,
+    type: "text",
+    value: tempValue,
+    maxLength: maxLength,
+    onChange: event => setTempValue(event.target.value),
+    onBlur: handleOnBlur,
+    onKeyDown: handleKeyDown
+    // Note that if a user has a custom name set, it will override the placeholder
+  }, showPlaceholder && dataL10nId ? {
+    "data-l10n-id": dataL10nId
+  } : {})) : [children];
+}
+
+;// CONCATENATED MODULE: ./content-src/components/Widgets/FocusTimer/FocusTimer.jsx
+function FocusTimer_extends() { return FocusTimer_extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, FocusTimer_extends.apply(null, arguments); }
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+
+
+
+
+const FocusTimer_USER_ACTION_TYPES = {
+  TIMER_SET: "timer_set",
+  TIMER_PLAY: "timer_play",
+  TIMER_PAUSE: "timer_pause",
+  TIMER_RESET: "timer_reset",
+  TIMER_END: "timer_end",
+  TIMER_TOGGLE_FOCUS: "timer_toggle_focus",
+  TIMER_TOGGLE_BREAK: "timer_toggle_break"
+};
+
+/**
+ * Calculates the remaining time (in seconds) by subtracting elapsed time from the original duration
+ *
+ * @param duration
+ * @param start
+ * @returns int
+ */
+const calculateTimeRemaining = (duration, start) => {
+  const currentTime = Math.floor(Date.now() / 1000);
+
+  // Subtract the elapsed time from initial duration to get time remaining in the timer
+  return Math.max(duration - (currentTime - start), 0);
+};
+
+/**
+ * Converts a number of seconds into a zero-padded MM:SS time string
+ *
+ * @param seconds
+ * @returns string
+ */
+const formatTime = seconds => {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const secs = (seconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${secs}`;
+};
+
+/**
+ * Converts a polar coordinate (angle on circle) into a percentage-based [x,y] position for clip-path
+ *
+ * @param cx
+ * @param cy
+ * @param radius
+ * @param angle
+ * @returns string
+ */
+const polarToPercent = (cx, cy, radius, angle) => {
+  const rad = (angle - 90) * Math.PI / 180;
+  const x = cx + radius * Math.cos(rad);
+  const y = cy + radius * Math.sin(rad);
+  return `${x}% ${y}%`;
+};
+
+/**
+ * Generates a clip-path polygon string that represents a pie slice from 0 degrees
+ * to the current progress angle
+ *
+ * @returns string
+ * @param progress
+ */
+const getClipPath = progress => {
+  const cx = 50;
+  const cy = 50;
+  const radius = 50;
+  // Show some progress right at the start - 6 degrees is just enough to paint a dot once the timer is ticking
+  const angle = progress > 0 ? Math.max(progress * 360, 6) : 0;
+  const points = [`50% 50%`];
+  for (let a = 0; a <= angle; a += 2) {
+    points.push(polarToPercent(cx, cy, radius, a));
+  }
+  return `polygon(${points.join(", ")})`;
+};
+const FocusTimer = ({
+  dispatch,
+  handleUserInteraction
+}) => {
+  const [timeLeft, setTimeLeft] = (0,external_React_namespaceObject.useState)(0);
+  // calculated value for the progress circle; 1 = 100%
+  const [progress, setProgress] = (0,external_React_namespaceObject.useState)(0);
+  const activeMinutesRef = (0,external_React_namespaceObject.useRef)(null);
+  const activeSecondsRef = (0,external_React_namespaceObject.useRef)(null);
+  const arcRef = (0,external_React_namespaceObject.useRef)(null);
+  const timerType = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.TimerWidget.timerType);
+  const timerData = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.TimerWidget);
+  const {
+    duration,
+    initialDuration,
+    startTime,
+    isRunning
+  } = timerData[timerType];
+  const initialTimerDuration = timerData[timerType].initialDuration;
+  const handleTimerInteraction = (0,external_React_namespaceObject.useCallback)(() => handleUserInteraction("focusTimer"), [handleUserInteraction]);
+  const handleIntersection = (0,external_React_namespaceObject.useCallback)(() => {
+    dispatch(actionCreators.AlsoToMain({
+      type: actionTypes.WIDGETS_TIMER_USER_IMPRESSION
+    }));
+  }, [dispatch]);
+  const timerRef = useIntersectionObserver(handleIntersection);
+  const resetProgressCircle = (0,external_React_namespaceObject.useCallback)(() => {
+    if (arcRef?.current) {
+      arcRef.current.style.clipPath = "polygon(50% 50%)";
+      arcRef.current.style.webkitClipPath = "polygon(50% 50%)";
+    }
+    setProgress(0);
+    handleTimerInteraction();
+  }, [arcRef, handleTimerInteraction]);
+  const prefs = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Prefs.values);
+  const showSystemNotifications = prefs["widgets.focusTimer.showSystemNotifications"];
+  (0,external_React_namespaceObject.useEffect)(() => {
+    // resets default values after timer ends
+    let interval;
+    if (isRunning && duration > 0) {
+      interval = setInterval(() => {
+        const remaining = calculateTimeRemaining(duration, startTime);
+        if (remaining <= 0) {
+          clearInterval(interval);
+          (0,external_ReactRedux_namespaceObject.batch)(() => {
+            dispatch(actionCreators.AlsoToMain({
+              type: actionTypes.WIDGETS_TIMER_END,
+              data: {
+                timerType,
+                duration: initialTimerDuration,
+                initialDuration: initialTimerDuration
+              }
+            }));
+            dispatch(actionCreators.OnlyToMain({
+              type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+              data: {
+                userAction: FocusTimer_USER_ACTION_TYPES.TIMER_END
+              }
+            }));
+          });
+
+          // animate the progress circle to turn solid green
+          setProgress(1);
+
+          // More transitions after a delay to allow the animation above to complete
+          setTimeout(() => {
+            // progress circle goes back to default grey
+            resetProgressCircle();
+
+            // There's more to see!
+            setTimeout(() => {
+              // switch over to the other timer type
+              // eslint-disable-next-line max-nested-callbacks
+              (0,external_ReactRedux_namespaceObject.batch)(() => {
+                dispatch(actionCreators.AlsoToMain({
+                  type: actionTypes.WIDGETS_TIMER_SET_TYPE,
+                  data: {
+                    timerType: timerType === "focus" ? "break" : "focus"
+                  }
+                }));
+                dispatch(actionCreators.OnlyToMain({
+                  type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+                  data: {
+                    userAction: timerType === "focus" ? FocusTimer_USER_ACTION_TYPES.TIMER_TOGGLE_BREAK : FocusTimer_USER_ACTION_TYPES.TIMER_TOGGLE_FOCUS
+                  }
+                }));
+              });
+            }, 1500);
+          }, 1500);
+        }
+
+        // using setTimeLeft to trigger a re-render of the component to show live countdown each second
+        setTimeLeft(remaining);
+        setProgress((initialDuration - remaining) / initialDuration);
+      }, 1000);
+    }
+
+    // Shows the correct live time in the UI whenever the timer state changes
+    const newTime = isRunning ? calculateTimeRemaining(duration, startTime) : duration;
+    setTimeLeft(newTime);
+
+    // Set progress for paused timers (handles page load and timer type toggling)
+    if (!isRunning && duration < initialDuration) {
+      // Show previously elapsed time
+      setProgress((initialDuration - duration) / initialDuration);
+    } else if (!isRunning) {
+      // Reset progress for fresh timers
+      setProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [isRunning, startTime, duration, initialDuration, dispatch, resetProgressCircle, timerType, initialTimerDuration]);
+
+  // Update the clip-path of the gradient circle to match the current progress value
+  (0,external_React_namespaceObject.useEffect)(() => {
+    if (arcRef?.current) {
+      // Only set clip-path if current timer has been started or is running
+      if (progress > 0 || isRunning) {
+        arcRef.current.style.clipPath = getClipPath(progress);
+      } else {
+        arcRef.current.style.clipPath = "";
+      }
+    }
+  }, [progress, isRunning]);
+
+  // set timer function
+  const setTimerDuration = () => {
+    const minutesEl = activeMinutesRef.current;
+    const secondsEl = activeSecondsRef.current;
+    const minutesValue = minutesEl.innerText.trim() || "0";
+    const secondsValue = secondsEl.innerText.trim() || "0";
+    let minutes = parseInt(minutesValue || "0", 10);
+    let seconds = parseInt(secondsValue || "0", 10);
+
+    // Set a limit of 99 minutes
+    minutes = Math.min(minutes, 99);
+    // Set a limit of 59 seconds
+    seconds = Math.min(seconds, 59);
+    const totalSeconds = minutes * 60 + seconds;
+    if (!Number.isNaN(totalSeconds) && totalSeconds > 0 && totalSeconds !== duration) {
+      (0,external_ReactRedux_namespaceObject.batch)(() => {
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_TIMER_SET_DURATION,
+          data: {
+            timerType,
+            duration: totalSeconds
+          }
+        }));
+        dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+          data: {
+            userAction: FocusTimer_USER_ACTION_TYPES.TIMER_SET
+          }
+        }));
+      });
+    }
+    handleTimerInteraction();
+  };
+
+  // Pause timer function
+  const toggleTimer = () => {
+    if (!isRunning && duration > 0) {
+      (0,external_ReactRedux_namespaceObject.batch)(() => {
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_TIMER_PLAY,
+          data: {
+            timerType
+          }
+        }));
+        dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+          data: {
+            userAction: FocusTimer_USER_ACTION_TYPES.TIMER_PLAY
+          }
+        }));
+      });
+    } else if (isRunning) {
+      // calculated to get the new baseline of the timer when it starts or resumes
+      const remaining = calculateTimeRemaining(duration, startTime);
+      (0,external_ReactRedux_namespaceObject.batch)(() => {
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_TIMER_PAUSE,
+          data: {
+            timerType,
+            duration: remaining
+          }
+        }));
+        dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+          data: {
+            userAction: FocusTimer_USER_ACTION_TYPES.TIMER_PAUSE
+          }
+        }));
+      });
+    }
+    handleTimerInteraction();
+  };
+
+  // reset timer function
+  const resetTimer = () => {
+    (0,external_ReactRedux_namespaceObject.batch)(() => {
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WIDGETS_TIMER_RESET,
+        data: {
+          timerType,
+          duration: initialTimerDuration,
+          initialDuration: initialTimerDuration
+        }
+      }));
+      dispatch(actionCreators.OnlyToMain({
+        type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+        data: {
+          userAction: FocusTimer_USER_ACTION_TYPES.TIMER_RESET
+        }
+      }));
+    });
+
+    // Reset progress value and gradient arc on the progress circle
+    resetProgressCircle();
+    handleTimerInteraction();
+  };
+
+  // Toggles between "focus" and "break" timer types
+  const toggleType = type => {
+    const oldTypeRemaining = calculateTimeRemaining(duration, startTime);
+    (0,external_ReactRedux_namespaceObject.batch)(() => {
+      // The type we are toggling away from automatically pauses
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WIDGETS_TIMER_PAUSE,
+        data: {
+          timerType,
+          duration: oldTypeRemaining
+        }
+      }));
+      dispatch(actionCreators.OnlyToMain({
+        type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+        data: {
+          userAction: FocusTimer_USER_ACTION_TYPES.TIMER_PAUSE
+        }
+      }));
+
+      // Sets the current timer type so it persists when opening a new tab
+      dispatch(actionCreators.AlsoToMain({
+        type: actionTypes.WIDGETS_TIMER_SET_TYPE,
+        data: {
+          timerType: type
+        }
+      }));
+      dispatch(actionCreators.OnlyToMain({
+        type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+        data: {
+          userAction: type === "focus" ? FocusTimer_USER_ACTION_TYPES.TIMER_TOGGLE_FOCUS : FocusTimer_USER_ACTION_TYPES.TIMER_TOGGLE_BREAK
+        }
+      }));
+    });
+    handleTimerInteraction();
+  };
+  const handleKeyDown = e => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      setTimerDuration(e);
+      handleTimerInteraction();
+    }
+    if (e.key === "Tab") {
+      setTimerDuration(e);
+      handleTimerInteraction();
+    }
+  };
+  const handleBeforeInput = e => {
+    const input = e.data;
+    const values = e.target.innerText.trim();
+
+    // only allow numerical digits 0–9 for time input
+    if (!/^\d+$/.test(input)) {
+      e.preventDefault();
+    }
+
+    // only allow 2 values each for minutes and seconds
+    if (values.length >= 2) {
+      e.preventDefault();
+    }
+    const selection = window.getSelection();
+    const selectedText = selection.toString();
+
+    // if entire value is selected, replace it with the new input
+    if (selectedText === values) {
+      e.preventDefault(); // prevent default typing
+      e.target.innerText = input;
+
+      // Places the caret at the end of the content-editable text
+      // This is a known problem with content-editable where the caret
+      const range = document.createRange();
+      range.selectNodeContents(e.target);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  };
+  const handleFocus = e => {
+    if (isRunning) {
+      // calculated to get the new baseline of the timer when it starts or resumes
+      const remaining = calculateTimeRemaining(duration, startTime);
+      (0,external_ReactRedux_namespaceObject.batch)(() => {
+        dispatch(actionCreators.AlsoToMain({
+          type: actionTypes.WIDGETS_TIMER_PAUSE,
+          data: {
+            timerType,
+            duration: remaining
+          }
+        }));
+        dispatch(actionCreators.OnlyToMain({
+          type: actionTypes.WIDGETS_TIMER_USER_EVENT,
+          data: {
+            userAction: FocusTimer_USER_ACTION_TYPES.TIMER_PAUSE
+          }
+        }));
+      });
+    }
+
+    // highlight entire text when focused on the time.
+    // this makes it easier to input the new time instead of backspacing
+    const el = e.target;
+    if (document.createRange && window.getSelection) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  };
+  function handleLearnMore() {
+    dispatch(actionCreators.OnlyToMain({
+      type: actionTypes.OPEN_LINK,
+      data: {
+        url: "https://support.mozilla.org/kb/firefox-new-tab-widgets"
+      }
+    }));
+    handleTimerInteraction();
+  }
+  function handlePrefUpdate(prefName, prefValue) {
+    dispatch(actionCreators.OnlyToMain({
+      type: actionTypes.SET_PREF,
+      data: {
+        name: prefName,
+        value: prefValue
+      }
+    }));
+    handleTimerInteraction();
+  }
+  return timerData ? /*#__PURE__*/external_React_default().createElement("article", {
+    className: "focus-timer",
+    ref: el => {
+      timerRef.current = [el];
+    }
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "newtab-widget-timer-notification-title-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("h3", {
+    "data-l10n-id": "newtab-widget-timer-notification-title"
+  }), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "focus-timer-context-menu-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("moz-button", {
+    className: "focus-timer-context-menu-button",
+    iconSrc: "chrome://global/skin/icons/more.svg",
+    menuId: "focus-timer-context-menu",
+    type: "ghost"
+  }), /*#__PURE__*/external_React_default().createElement("panel-list", {
+    id: "focus-timer-context-menu"
+  }, /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": showSystemNotifications ? "newtab-widget-timer-menu-notifications" : "newtab-widget-timer-menu-notifications-on",
+    onClick: () => {
+      handlePrefUpdate("widgets.focusTimer.showSystemNotifications", !showSystemNotifications);
+    }
+  }), /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-timer-menu-hide",
+    onClick: () => {
+      handlePrefUpdate("widgets.focusTimer.enabled", false);
+    }
+  }), /*#__PURE__*/external_React_default().createElement("panel-item", {
+    "data-l10n-id": "newtab-widget-timer-menu-learn-more",
+    onClick: handleLearnMore
+  })))), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "focus-timer-tabs"
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "focus-timer-tabs-buttons"
+  }, /*#__PURE__*/external_React_default().createElement("moz-button", {
+    type: timerType === "focus" ? "default" : "ghost",
+    "data-l10n-id": "newtab-widget-timer-mode-focus",
+    size: "small",
+    onClick: () => toggleType("focus")
+  }), /*#__PURE__*/external_React_default().createElement("moz-button", {
+    type: timerType === "break" ? "default" : "ghost",
+    "data-l10n-id": "newtab-widget-timer-mode-break",
+    size: "small",
+    onClick: () => toggleType("break")
+  }))), /*#__PURE__*/external_React_default().createElement("div", {
+    role: "progress",
+    className: `progress-circle-wrapper ${!showSystemNotifications && !timerData[timerType].isRunning ? "is-small" : ""}`
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: `progress-circle-background${timerType === "break" ? "-break" : ""}`
+  }), /*#__PURE__*/external_React_default().createElement("div", {
+    className: `progress-circle ${timerType === "focus" ? "focus-visible" : "focus-hidden"}`,
+    ref: timerType === "focus" ? arcRef : null
+  }), /*#__PURE__*/external_React_default().createElement("div", {
+    className: `progress-circle ${timerType === "break" ? "break-visible" : "break-hidden"}`,
+    ref: timerType === "break" ? arcRef : null
+  }), /*#__PURE__*/external_React_default().createElement("div", {
+    className: `progress-circle-complete${progress === 1 ? " visible" : ""}`
+  }), /*#__PURE__*/external_React_default().createElement("div", {
+    role: "timer",
+    className: "progress-circle-label"
+  }, /*#__PURE__*/external_React_default().createElement(EditableTimerFields, {
+    minutesRef: activeMinutesRef,
+    secondsRef: activeSecondsRef,
+    onKeyDown: handleKeyDown,
+    onBeforeInput: handleBeforeInput,
+    onFocus: handleFocus,
+    timeLeft: timeLeft,
+    onBlur: () => setTimerDuration()
+  }))), /*#__PURE__*/external_React_default().createElement("div", {
+    className: "set-timer-controls-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: `focus-timer-controls timer-running`
+  }, /*#__PURE__*/external_React_default().createElement("moz-button", FocusTimer_extends({}, !isRunning ? {
+    type: "primary"
+  } : {}, {
+    iconsrc: `chrome://global/skin/media/${isRunning ? "pause" : "play"}-fill.svg`,
+    "data-l10n-id": isRunning ? "newtab-widget-timer-label-pause" : "newtab-widget-timer-label-play",
+    onClick: toggleTimer
+  })), isRunning && /*#__PURE__*/external_React_default().createElement("moz-button", {
+    type: "icon ghost",
+    iconsrc: "chrome://newtab/content/data/content/assets/arrow-clockwise-16.svg",
+    "data-l10n-id": "newtab-widget-timer-reset",
+    onClick: resetTimer
+  }))), !showSystemNotifications && !timerData[timerType].isRunning && /*#__PURE__*/external_React_default().createElement("p", {
+    className: "timer-notification-status",
+    "data-l10n-id": "newtab-widget-timer-notification-warning"
+  })) : null;
+};
+function EditableTimerFields({
+  minutesRef,
+  secondsRef,
+  tabIndex = 0,
+  ...props
+}) {
+  return /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, /*#__PURE__*/external_React_default().createElement("span", {
+    contentEditable: "true",
+    ref: minutesRef,
+    className: "timer-set-minutes",
+    onKeyDown: props.onKeyDown,
+    onBeforeInput: props.onBeforeInput,
+    onFocus: props.onFocus,
+    onBlur: props.onBlur,
+    tabIndex: tabIndex
+  }, formatTime(props.timeLeft).split(":")[0]), ":", /*#__PURE__*/external_React_default().createElement("span", {
+    contentEditable: "true",
+    ref: secondsRef,
+    className: "timer-set-seconds",
+    onKeyDown: props.onKeyDown,
+    onBeforeInput: props.onBeforeInput,
+    onFocus: props.onFocus,
+    onBlur: props.onBlur,
+    tabIndex: tabIndex
+  }, formatTime(props.timeLeft).split(":")[1]));
+}
+;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamComponents/FeatureHighlight/WidgetsFeatureHighlight.jsx
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+
+
+function WidgetsFeatureHighlight({
+  handleDismiss,
+  handleBlock,
+  dispatch
+}) {
+  const {
+    messageData
+  } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Messages);
+  return /*#__PURE__*/React.createElement(FeatureHighlight, {
+    position: "inset-inline-center inset-block-end",
+    arrowPosition: "arrow-top-center",
+    openedOverride: true,
+    showButtonIcon: false,
+    feature: messageData?.content?.feature,
+    modalClassName: "widget-highlight-wrapper",
+    message: /*#__PURE__*/React.createElement("div", {
+      className: "widget-highlight"
+    }, /*#__PURE__*/React.createElement("img", {
+      src: "chrome://newtab/content/data/content/assets/widget-message.png",
+      alt: ""
+    }), /*#__PURE__*/React.createElement("h3", {
+      "data-l10n-id": "newtab-widget-message-title"
+    }), /*#__PURE__*/React.createElement("p", {
+      "data-l10n-id": "newtab-widget-message-copy"
+    })),
+    dispatch: dispatch,
+    dismissCallback: () => {
+      handleDismiss();
+      handleBlock();
+    },
+    outsideClickCallback: handleDismiss
+  });
+}
+
+;// CONCATENATED MODULE: ./content-src/components/Widgets/Widgets.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+
+
+
+
+
+
+
+const PREF_WIDGETS_LISTS_ENABLED = "widgets.lists.enabled";
+const PREF_WIDGETS_SYSTEM_LISTS_ENABLED = "widgets.system.lists.enabled";
+const PREF_WIDGETS_TIMER_ENABLED = "widgets.focusTimer.enabled";
+const PREF_WIDGETS_SYSTEM_TIMER_ENABLED = "widgets.system.focusTimer.enabled";
+const PREF_FEEDS_SECTION_TOPSTORIES = "feeds.section.topstories";
+function Widgets() {
+  const prefs = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Prefs.values);
+  const {
+    messageData
+  } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Messages);
+  const dispatch = (0,external_ReactRedux_namespaceObject.useDispatch)();
+  const nimbusListsEnabled = prefs.widgetsConfig?.listsEnabled;
+  const nimbusTimerEnabled = prefs.widgetsConfig?.timerEnabled;
+  const nimbusListsTrainhopEnabled = prefs.trainhopConfig?.widgets?.listsEnabled;
+  const nimbusTimerTrainhopEnabled = prefs.trainhopConfig?.widgets?.timerEnabled;
+  const listsEnabled = (nimbusListsTrainhopEnabled || nimbusListsEnabled || prefs[PREF_WIDGETS_SYSTEM_LISTS_ENABLED]) && prefs[PREF_WIDGETS_LISTS_ENABLED];
+  const timerEnabled = (nimbusTimerTrainhopEnabled || nimbusTimerEnabled || prefs[PREF_WIDGETS_SYSTEM_TIMER_ENABLED]) && prefs[PREF_WIDGETS_TIMER_ENABLED];
+  const recommendedStoriesEnabled = prefs[PREF_FEEDS_SECTION_TOPSTORIES];
+  function handleUserInteraction(widgetName) {
+    const prefName = `widgets.${widgetName}.interaction`;
+    const hasInteracted = prefs[prefName];
+    // we want to make sure that the value is a strict false (and that the property exists)
+    if (hasInteracted === false) {
+      dispatch(actionCreators.SetPref(prefName, true));
+    }
+  }
+  return /*#__PURE__*/external_React_default().createElement("div", {
+    className: "widgets-wrapper"
+  }, /*#__PURE__*/external_React_default().createElement("div", {
+    className: "widgets-container"
+  }, listsEnabled && /*#__PURE__*/external_React_default().createElement(Lists, {
+    dispatch: dispatch,
+    handleUserInteraction: handleUserInteraction
+  }), timerEnabled && /*#__PURE__*/external_React_default().createElement(FocusTimer, {
+    dispatch: dispatch,
+    handleUserInteraction: handleUserInteraction
+  })), recommendedStoriesEnabled && /*#__PURE__*/external_React_default().createElement("div", {
+    className: "widgets-scroll-message fade-in",
+    "aria-live": "polite"
+  }, /*#__PURE__*/external_React_default().createElement("p", {
+    "data-l10n-id": "newtab-widget-keep-scrolling"
+  })), messageData?.content?.messageType === "WidgetMessage" && /*#__PURE__*/external_React_default().createElement(MessageWrapper, {
+    dispatch: dispatch
+  }, /*#__PURE__*/external_React_default().createElement(WidgetsFeatureHighlight, {
+    dispatch: dispatch
+  })));
+}
+
+;// CONCATENATED MODULE: ./content-src/components/DiscoveryStreamBase/DiscoveryStreamBase.jsx
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 
 
@@ -12106,9 +14018,7 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
           subtitle: component.header && component.header.subtitle,
           link_text: component.header && component.header.link_text,
           link_url: component.header && component.header.link_url,
-          icon: component.header && component.header.icon,
-          essentialReadsHeader: component.essentialReadsHeader,
-          editorsPicksHeader: component.editorsPicksHeader
+          icon: component.header && component.header.icon
         });
       case "SectionTitle":
         return /*#__PURE__*/external_React_default().createElement(SectionTitle, {
@@ -12126,22 +14036,6 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
           newFooterSection: component.newFooterSection,
           privacyNoticeURL: component.properties.privacyNoticeURL
         });
-      case "CollectionCardGrid":
-        {
-          const {
-            DiscoveryStream
-          } = this.props;
-          return /*#__PURE__*/external_React_default().createElement(CollectionCardGrid, {
-            data: component.data,
-            feed: component.feed,
-            spocs: DiscoveryStream.spocs,
-            placement: component.placement,
-            type: component.type,
-            items: component.properties.items,
-            dismissible: this.props.DiscoveryStream.isCollectionDismissible,
-            dispatch: this.props.dispatch
-          });
-        }
       case "CardGrid":
         {
           const sectionsEnabled = this.props.Prefs.values["discoverystream.sections.enabled"];
@@ -12152,10 +14046,8 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
               dispatch: this.props.dispatch,
               type: component.type,
               firstVisibleTimestamp: this.props.firstVisibleTimestamp,
-              is_collection: true,
               ctaButtonSponsors: component.properties.ctaButtonSponsors,
-              ctaButtonVariant: component.properties.ctaButtonVariant,
-              spocMessageVariant: component.properties.spocMessageVariant
+              ctaButtonVariant: component.properties.ctaButtonVariant
             });
           }
           return /*#__PURE__*/external_React_default().createElement(CardGrid, {
@@ -12170,13 +14062,8 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
             hideCardBackground: component.properties.hideCardBackground,
             fourCardLayout: component.properties.fourCardLayout,
             compactGrid: component.properties.compactGrid,
-            essentialReadsHeader: component.properties.essentialReadsHeader,
-            onboardingExperience: component.properties.onboardingExperience,
             ctaButtonSponsors: component.properties.ctaButtonSponsors,
             ctaButtonVariant: component.properties.ctaButtonVariant,
-            spocMessageVariant: component.properties.spocMessageVariant,
-            editorsPicksHeader: component.properties.editorsPicksHeader,
-            recentSavesEnabled: this.props.DiscoveryStream.recentSavesEnabled,
             hideDescriptions: this.props.DiscoveryStream.hideDescriptions,
             firstVisibleTimestamp: this.props.firstVisibleTimestamp,
             spocPositions: component.spocs?.positions
@@ -12188,6 +14075,8 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
         return /*#__PURE__*/external_React_default().createElement(PrivacyLink, {
           properties: component.properties
         });
+      case "Widgets":
+        return /*#__PURE__*/external_React_default().createElement(Widgets, null);
       default:
         return /*#__PURE__*/external_React_default().createElement("div", null, component.type);
     }
@@ -12204,10 +14093,14 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
   }
   render() {
     const {
-      locale,
-      mayHaveSponsoredStories
+      locale
     } = this.props;
-    // Select layout render data by adding spocs and position to recommendations
+    // Bug 1980459 - Note that selectLayoutRender acts as a selector that transforms layout data based on current
+    // preferences and experiment flags. It runs after Redux state is populated but before render.
+    // Components removed in selectLayoutRender (e.g., Widgets or TopSites) will not appear in the
+    // layoutRender result, and therefore will not be rendered here regardless of logic below.
+
+    // Select layout renders data by adding spocs and position to recommendations
     const {
       layoutRender
     } = selectLayoutRender({
@@ -12254,7 +14147,13 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
 
     // Extract TopSites to render before the rest and Message to use for header
     const topSites = extractComponent("TopSites");
-    const sponsoredCollection = extractComponent("CollectionCardGrid");
+
+    // There are two ways to enable widgets:
+    // Via `widgets.system.*` prefs or Nimbus experiment
+    const widgetsNimbusTrainhopEnabled = this.props.Prefs.values.trainhopConfig?.widgets?.enabled;
+    const widgetsNimbusEnabled = this.props.Prefs.values.widgetsConfig?.enabled;
+    const widgetsSystemPrefsEnabled = this.props.Prefs.values["widgets.system.enabled"];
+    const widgets = widgetsNimbusTrainhopEnabled || widgetsNimbusEnabled || widgetsSystemPrefsEnabled;
     const message = extractComponent("Message") || {
       header: {
         link_text: topStories.learnMore.link.message,
@@ -12271,32 +14170,21 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
     };
     let sectionTitle = message.header.title;
     let subTitle = "";
-
-    // If we're in one of these experiments, override the default message.
-    // For now this is English only.
-    if (message.essentialReadsHeader || message.editorsPicksHeader) {
-      learnMore = null;
-      subTitle = "Recommended By Pocket";
-      if (message.essentialReadsHeader) {
-        sectionTitle = "Today’s Essential Reads";
-      } else if (message.editorsPicksHeader) {
-        sectionTitle = "Editor’s Picks";
-      }
-    }
     const {
       DiscoveryStream
     } = this.props;
-    return /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, this.props.DiscoveryStream.isPrivacyInfoModalVisible && /*#__PURE__*/external_React_default().createElement(DSPrivacyModal, {
-      dispatch: this.props.dispatch
-    }), (reportAdsEnabled && spocsEnabled || sectionsEnabled) && /*#__PURE__*/external_React_default().createElement(ReportContent, {
+    return /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, (reportAdsEnabled && spocsEnabled || sectionsEnabled) && /*#__PURE__*/external_React_default().createElement(ReportContent, {
       spocs: DiscoveryStream.spocs
     }), topSites && this.renderLayout([{
       width: 12,
       components: [topSites],
       sectionType: "topsites"
-    }]), sponsoredCollection && this.renderLayout([{
+    }]), widgets && this.renderLayout([{
       width: 12,
-      components: [sponsoredCollection]
+      components: [{
+        type: "Widgets"
+      }],
+      sectionType: "widgets"
     }]), !!layoutRender.length && /*#__PURE__*/external_React_default().createElement(CollapsibleSection, {
       className: "ds-layout",
       collapsed: topStories.pref.collapsed,
@@ -12308,10 +14196,8 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
       showPrefName: topStories.pref.feed,
       title: sectionTitle,
       subTitle: subTitle,
-      mayHaveSponsoredStories: mayHaveSponsoredStories,
       mayHaveTopicsSelection: topicSelectionEnabled,
       sectionsEnabled: sectionsEnabled,
-      spocMessageVariant: message?.properties?.spocMessageVariant,
       eventSource: "CARDGRID"
     }, this.renderLayout(layoutRender)), this.renderLayout([{
       width: 12,
@@ -12327,9 +14213,9 @@ class _DiscoveryStreamBase extends (external_React_default()).PureComponent {
     const styles = [];
     let [data] = layoutRender;
     // Add helper class for topsites
-    const topsitesClass = data.sectionType ? "ds-layout-topsites" : "";
+    const sectionClass = data.sectionType ? `ds-layout-${data.sectionType}` : "";
     return /*#__PURE__*/external_React_default().createElement("div", {
-      className: `discovery-stream ds-layout ${topsitesClass}`
+      className: `discovery-stream ds-layout ${sectionClass}`
     }, layoutRender.map((row, rowIndex) => /*#__PURE__*/external_React_default().createElement("div", {
       key: `row-${rowIndex}`,
       className: `ds-column ds-column-${row.width}`
@@ -12619,6 +14505,7 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
     this.handleChange = this.handleChange.bind(this);
     this.handleReset = this.handleReset.bind(this);
     this.handleCategory = this.handleCategory.bind(this);
+    this.focusCategory = this.focusCategory.bind(this);
     this.handleUpload = this.handleUpload.bind(this);
     this.handleBack = this.handleBack.bind(this);
     this.getRGBColors = this.getRGBColors.bind(this);
@@ -12634,7 +14521,8 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
       showColorPicker: false,
       inputType: "radio",
       activeId: null,
-      isCustomWallpaperError: false
+      customWallpaperErrorType: null,
+      focusedCategoryIndex: 0
     };
   }
   componentDidMount() {
@@ -12698,6 +14586,15 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
       had_uploaded_previously: !!uploadedPreviously
     });
   }
+  focusCategory(focusIndex) {
+    if (!this.categoryRef) {
+      return;
+    }
+    const el = this.categoryRef[focusIndex];
+    if (el) {
+      el.focus();
+    }
+  }
 
   // function implementing arrow navigation for wallpaper category selection
   handleCategoryKeyDown(event, category) {
@@ -12705,7 +14602,7 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
     if (getIndex === -1) {
       return; // prevents errors if wallpaper index isn't found when navigating with arrow keys
     }
-    const isRTL = document.dir === "rtl"; // returns true is page language is right-to-left
+    const isRTL = document.dir === "rtl"; // returns true if page language is right-to-left
     let eventKey = event.key;
     if (eventKey === "ArrowRight" || eventKey === "ArrowLeft") {
       if (isRTL) {
@@ -12718,7 +14615,9 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
     } else if (eventKey === "ArrowLeft") {
       nextIndex = getIndex - 1 >= 0 ? getIndex - 1 : getIndex;
     }
-    this.categoryRef[nextIndex].focus();
+    this.setState({
+      focusedCategoryIndex: nextIndex
+    }, () => this.focusCategory(nextIndex));
   }
 
   // function implementing arrow navigation for wallpaper selection
@@ -12820,34 +14719,45 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
     // Catch cancel events
     fileInput.oncancel = async () => {
       this.setState({
-        isCustomWallpaperError: false
+        customWallpaperErrorType: null
       });
     };
 
     // Reset error state when user begins file selection
     this.setState({
-      isCustomWallpaperError: false
+      customWallpaperErrorType: null
     });
 
     // Fire when user selects a file
     fileInput.onchange = async event => {
       const [file] = event.target.files;
-
-      // Limit image uploaded to a maximum file size if enabled
-      // Note: The max file size pref (customWallpaper.fileSize) is converted to megabytes (MB)
-      // Example: if pref value is 5, max file size is 5 MB
-      const maxSize = wallpaperUploadMaxFileSize * 1024 * 1024;
-      if (wallpaperUploadMaxFileSizeEnabled && file && file.size > maxSize) {
-        console.error("File size exceeds limit");
-        this.setState({
-          isCustomWallpaperError: true
-        });
-        return;
-      }
       if (file) {
+        // Validate file type: Only accept files with a valid image MIME type
+        const isValidImage = file.type && file.type.startsWith("image/");
+        if (!isValidImage) {
+          console.error("Invalid file type");
+          this.setState({
+            customWallpaperErrorType: "fileType"
+          });
+          return;
+        }
+
+        // Limit image uploaded to a maximum file size if enabled
+        // Note: The max file size pref (customWallpaper.fileSize) is converted to megabytes (MB)
+        // Example: if pref value is 5, max file size is 5 MB
+        const maxSize = wallpaperUploadMaxFileSize * 1024 * 1024;
+        if (wallpaperUploadMaxFileSizeEnabled && file.size > maxSize) {
+          console.error("File size exceeds limit");
+          this.setState({
+            customWallpaperErrorType: "fileSize"
+          });
+          return;
+        }
         this.props.dispatch(actionCreators.OnlyToMain({
           type: actionTypes.WALLPAPER_UPLOAD,
-          data: file
+          data: {
+            file
+          }
         }));
 
         // Set active wallpaper ID to "custom"
@@ -12868,8 +14778,12 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
   handleBack() {
     this.setState({
       activeCategory: null
+    }, () => {
+      // Wait for the category grid to be back in the DOM
+      requestAnimationFrame(() => {
+        this.focusCategory(this.state.focusedCategoryIndex);
+      });
     });
-    this.categoryRef[0]?.focus();
   }
 
   // Record user interaction when changing wallpaper and reseting wallpaper to default
@@ -12997,6 +14911,8 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
     }, categories.map((category, index) => {
       const filteredList = wallpaperList.filter(wallpaper => wallpaper.category === category);
       const activeWallpaperObj = activeWallpaper && filteredList.find(wp => wp.title === activeWallpaper);
+      // Detect custom solid color
+      const isCustomSolidColor = category === "solid-colors" && activeWallpaper.startsWith("solid-color-picker");
       const thumbnail = activeWallpaperObj || filteredList[0];
       let fluent_id;
       switch (category) {
@@ -13021,6 +14937,12 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
       } else {
         style.backgroundColor = thumbnail?.solid_color || "";
       }
+      // If custom solid color is active, override the thumbnail to the chosen hex
+      if (isCustomSolidColor) {
+        const hex = activeWallpaper.split("solid-color-picker-")[1] || "";
+        style.backgroundColor = hex;
+      }
+      const isCategorySelected = activeWallpaperObj || isCustomSolidColor;
       return /*#__PURE__*/external_React_default().createElement("div", {
         key: category
       }, /*#__PURE__*/external_React_default().createElement("button", WallpaperCategories_extends({
@@ -13034,24 +14956,46 @@ class _WallpaperCategories extends (external_React_default()).PureComponent {
         onKeyDown: e => this.handleCategoryKeyDown(e, category)
         // Add overrides for custom wallpaper upload UI
         ,
-        onClick: category !== "custom-wallpaper" ? this.handleCategory : this.handleUpload,
-        className: category !== "custom-wallpaper" ? `wallpaper-input` : `wallpaper-input theme-custom-wallpaper`,
-        tabIndex: index === 0 ? 0 : -1
+        onClick: event => {
+          this.setState({
+            focusedCategoryIndex: index
+          });
+          if (category !== "custom-wallpaper") {
+            this.handleCategory(event);
+          } else {
+            this.handleUpload();
+          }
+        },
+        className: `wallpaper-input
+                      ${category === "custom-wallpaper" ? "theme-custom-wallpaper" : ""}
+                      ${isCategorySelected ? "selected" : ""}`,
+        tabIndex: this.state.focusedCategoryIndex === index ? 0 : -1
       }, category === "custom-wallpaper" ? {
         "aria-errormessage": "customWallpaperError"
       } : {})), /*#__PURE__*/external_React_default().createElement("label", {
         htmlFor: category,
         "data-l10n-id": fluent_id
       }, fluent_id));
-    })), this.state.isCustomWallpaperError && /*#__PURE__*/external_React_default().createElement("div", {
+    })), this.state.customWallpaperErrorType && /*#__PURE__*/external_React_default().createElement("div", {
       className: "custom-wallpaper-error",
       id: "customWallpaperError"
     }, /*#__PURE__*/external_React_default().createElement("span", {
       className: "icon icon-info"
-    }), /*#__PURE__*/external_React_default().createElement("span", {
-      "data-l10n-id": "newtab-wallpaper-error-max-file-size",
-      "data-l10n-args": `{"file_size": ${wallpaperUploadMaxFileSize}}`
-    }))), /*#__PURE__*/external_React_default().createElement(external_ReactTransitionGroup_namespaceObject.CSSTransition, {
+    }), (() => {
+      switch (this.state.customWallpaperErrorType) {
+        case "fileSize":
+          return /*#__PURE__*/external_React_default().createElement("span", {
+            "data-l10n-id": "newtab-wallpaper-error-max-file-size",
+            "data-l10n-args": `{"file_size": ${wallpaperUploadMaxFileSize}}`
+          });
+        case "fileType":
+          return /*#__PURE__*/external_React_default().createElement("span", {
+            "data-l10n-id": "newtab-wallpaper-error-upload-file-type"
+          });
+        default:
+          return null;
+      }
+    })())), /*#__PURE__*/external_React_default().createElement(external_ReactTransitionGroup_namespaceObject.CSSTransition, {
       in: !!activeCategory,
       timeout: 300,
       classNames: "wallpaper-list",
@@ -13115,6 +15059,7 @@ const WallpaperCategories = (0,external_ReactRedux_namespaceObject.connect)(stat
   };
 })(_WallpaperCategories);
 ;// CONCATENATED MODULE: ./content-src/components/CustomizeMenu/ContentSection/ContentSection.jsx
+function ContentSection_extends() { return ContentSection_extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, ContentSection_extends.apply(null, arguments); }
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -13143,7 +15088,7 @@ class ContentSection extends (external_React_default()).PureComponent {
     }));
   }
   onPreferenceSelect(e) {
-    // eventSource: WEATHER | TOP_SITES | TOP_STORIES
+    // eventSource: WEATHER | TOP_SITES | TOP_STORIES | WIDGET_LISTS | WIDGET_TIMER | TRENDING_SEARCH
     const {
       preference,
       eventSource
@@ -13186,7 +15131,7 @@ class ContentSection extends (external_React_default()).PureComponent {
     if (drawerRef) {
       let drawerHeight = parseFloat(window.getComputedStyle(drawerRef)?.height) || 0;
       if (isOpen) {
-        drawerRef.style.marginTop = "var(--space-large)";
+        drawerRef.style.marginTop = "var(--space-small)";
       } else {
         drawerRef.style.marginTop = `-${drawerHeight + 3}px`;
       }
@@ -13195,11 +15140,14 @@ class ContentSection extends (external_React_default()).PureComponent {
   render() {
     const {
       enabledSections,
+      enabledWidgets,
       pocketRegion,
       mayHaveInferredPersonalization,
-      mayHaveRecentSaves,
       mayHaveWeather,
       mayHaveTrendingSearch,
+      mayHaveWidgets,
+      mayHaveTimerWidget,
+      mayHaveListsWidget,
       openPreferences,
       wallpapersEnabled,
       activeWallpaper,
@@ -13213,9 +15161,12 @@ class ContentSection extends (external_React_default()).PureComponent {
       weatherEnabled,
       trendingSearchEnabled,
       showInferredPersonalizationEnabled,
-      showRecentSavesEnabled,
       topSitesRowsCount
     } = enabledSections;
+    const {
+      timerEnabled,
+      listsEnabled
+    } = enabledWidgets;
     return /*#__PURE__*/external_React_default().createElement("div", {
       className: "home-section"
     }, wallpapersEnabled && /*#__PURE__*/external_React_default().createElement((external_React_default()).Fragment, null, /*#__PURE__*/external_React_default().createElement("div", {
@@ -13224,11 +15175,17 @@ class ContentSection extends (external_React_default()).PureComponent {
       setPref: setPref,
       activeWallpaper: activeWallpaper,
       exitEventFired: exitEventFired
-    })), /*#__PURE__*/external_React_default().createElement("span", {
+    })), !mayHaveWidgets && /*#__PURE__*/external_React_default().createElement("span", {
       className: "divider",
       role: "separator"
+    })), mayHaveWidgets && /*#__PURE__*/external_React_default().createElement("div", {
+      className: "widgets-section"
+    }, /*#__PURE__*/external_React_default().createElement("div", {
+      className: "category-header"
+    }, /*#__PURE__*/external_React_default().createElement("h2", {
+      "data-l10n-id": "newtab-custom-widget-section-title"
     })), /*#__PURE__*/external_React_default().createElement("div", {
-      className: "settings-toggles"
+      className: "settings-widgets"
     }, mayHaveWeather && /*#__PURE__*/external_React_default().createElement("div", {
       id: "weather-section",
       className: "section"
@@ -13238,8 +15195,53 @@ class ContentSection extends (external_React_default()).PureComponent {
       onToggle: this.onPreferenceSelect,
       "data-preference": "showWeather",
       "data-eventSource": "WEATHER",
-      "data-l10n-id": "newtab-custom-weather-toggle"
+      "data-l10n-id": "newtab-custom-widget-weather-toggle"
+    })), mayHaveListsWidget && /*#__PURE__*/external_React_default().createElement("div", {
+      id: "lists-widget-section",
+      className: "section"
+    }, /*#__PURE__*/external_React_default().createElement("moz-toggle", {
+      id: "lists-toggle",
+      pressed: listsEnabled || null,
+      onToggle: this.onPreferenceSelect,
+      "data-preference": "widgets.lists.enabled",
+      "data-eventSource": "WIDGET_LISTS",
+      "data-l10n-id": "newtab-custom-widget-lists-toggle"
+    })), mayHaveTimerWidget && /*#__PURE__*/external_React_default().createElement("div", {
+      id: "timer-widget-section",
+      className: "section"
+    }, /*#__PURE__*/external_React_default().createElement("moz-toggle", {
+      id: "timer-toggle",
+      pressed: timerEnabled || null,
+      onToggle: this.onPreferenceSelect,
+      "data-preference": "widgets.focusTimer.enabled",
+      "data-eventSource": "WIDGET_TIMER",
+      "data-l10n-id": "newtab-custom-widget-timer-toggle"
     })), mayHaveTrendingSearch && /*#__PURE__*/external_React_default().createElement("div", {
+      id: "trending-search-section",
+      className: "section"
+    }, /*#__PURE__*/external_React_default().createElement("moz-toggle", {
+      id: "trending-search-toggle",
+      pressed: trendingSearchEnabled || null,
+      onToggle: this.onPreferenceSelect,
+      "data-preference": "trendingSearch.enabled",
+      "data-eventSource": "TRENDING_SEARCH",
+      "data-l10n-id": "newtab-custom-widget-trending-search-toggle"
+    })), /*#__PURE__*/external_React_default().createElement("span", {
+      className: "divider",
+      role: "separator"
+    }))), /*#__PURE__*/external_React_default().createElement("div", {
+      className: "settings-toggles"
+    }, !mayHaveWidgets && mayHaveWeather && /*#__PURE__*/external_React_default().createElement("div", {
+      id: "weather-section",
+      className: "section"
+    }, /*#__PURE__*/external_React_default().createElement("moz-toggle", {
+      id: "weather-toggle",
+      pressed: weatherEnabled || null,
+      onToggle: this.onPreferenceSelect,
+      "data-preference": "showWeather",
+      "data-eventSource": "WEATHER",
+      "data-l10n-id": "newtab-custom-weather-toggle"
+    })), !mayHaveWidgets && mayHaveTrendingSearch && /*#__PURE__*/external_React_default().createElement("div", {
       id: "trending-search-section",
       className: "section"
     }, /*#__PURE__*/external_React_default().createElement("moz-toggle", {
@@ -13294,17 +15296,20 @@ class ContentSection extends (external_React_default()).PureComponent {
     }))))))), pocketRegion && /*#__PURE__*/external_React_default().createElement("div", {
       id: "pocket-section",
       className: "section"
-    }, /*#__PURE__*/external_React_default().createElement("moz-toggle", {
+    }, /*#__PURE__*/external_React_default().createElement("moz-toggle", ContentSection_extends({
       id: "pocket-toggle",
       pressed: pocketEnabled || null,
       onToggle: this.onPreferenceSelect,
       "aria-describedby": "custom-pocket-subtitle",
       "data-preference": "feeds.section.topstories",
-      "data-eventSource": "TOP_STORIES",
+      "data-eventSource": "TOP_STORIES"
+    }, mayHaveInferredPersonalization ? {
+      "data-l10n-id": "newtab-custom-stories-personalized-toggle"
+    } : {
       "data-l10n-id": "newtab-custom-stories-toggle"
-    }, /*#__PURE__*/external_React_default().createElement("div", {
+    }), /*#__PURE__*/external_React_default().createElement("div", {
       slot: "nested"
-    }, (mayHaveRecentSaves || mayHaveInferredPersonalization || mayHaveTopicSections) && /*#__PURE__*/external_React_default().createElement("div", {
+    }, (mayHaveInferredPersonalization || mayHaveTopicSections) && /*#__PURE__*/external_React_default().createElement("div", {
       className: "more-info-pocket-wrapper"
     }, /*#__PURE__*/external_React_default().createElement("div", {
       className: "more-information",
@@ -13323,26 +15328,11 @@ class ContentSection extends (external_React_default()).PureComponent {
       "data-eventSource": "INFERRED_PERSONALIZATION"
     }), /*#__PURE__*/external_React_default().createElement("label", {
       className: "customize-menu-checkbox-label",
-      htmlFor: "inferred-personalization"
-    }, "Recommendations inferred from your activity with the feed")), mayHaveTopicSections && /*#__PURE__*/external_React_default().createElement(SectionsMgmtPanel, {
+      htmlFor: "inferred-personalization",
+      "data-l10n-id": "newtab-custom-stories-personalized-checkbox-label"
+    })), mayHaveTopicSections && /*#__PURE__*/external_React_default().createElement(SectionsMgmtPanel, {
       exitEventFired: exitEventFired
-    }), mayHaveRecentSaves && /*#__PURE__*/external_React_default().createElement("div", {
-      className: "check-wrapper",
-      role: "presentation"
-    }, /*#__PURE__*/external_React_default().createElement("input", {
-      id: "recent-saves-pocket",
-      className: "customize-menu-checkbox",
-      disabled: !pocketEnabled,
-      checked: showRecentSavesEnabled,
-      type: "checkbox",
-      onChange: this.onPreferenceSelect,
-      "data-preference": "showRecentSaves",
-      "data-eventSource": "POCKET_RECENT_SAVES"
-    }), /*#__PURE__*/external_React_default().createElement("label", {
-      className: "customize-menu-checkbox-label",
-      htmlFor: "recent-saves-pocket",
-      "data-l10n-id": "newtab-custom-pocket-show-recent-saves"
-    })))))))), /*#__PURE__*/external_React_default().createElement("span", {
+    }))))))), /*#__PURE__*/external_React_default().createElement("span", {
       className: "divider",
       role: "separator"
     }), /*#__PURE__*/external_React_default().createElement("div", null, /*#__PURE__*/external_React_default().createElement("button", {
@@ -13422,23 +15412,28 @@ class _CustomizeMenu extends (external_React_default()).PureComponent {
       "data-l10n-id": "newtab-settings-dialog-label"
     }, /*#__PURE__*/external_React_default().createElement("div", {
       className: "close-button-wrapper"
-    }, /*#__PURE__*/external_React_default().createElement("button", {
+    }, /*#__PURE__*/external_React_default().createElement("moz-button", {
       onClick: () => this.props.onClose(),
-      className: "close-button",
-      "data-l10n-id": "newtab-custom-close-button",
+      id: "close-button",
+      type: "icon ghost",
+      "data-l10n-id": "newtab-custom-close-menu-button",
+      iconsrc: "chrome://global/skin/icons/close.svg",
       ref: c => this.closeButton = c
     })), /*#__PURE__*/external_React_default().createElement(ContentSection, {
       openPreferences: this.props.openPreferences,
       setPref: this.props.setPref,
       enabledSections: this.props.enabledSections,
+      enabledWidgets: this.props.enabledWidgets,
       wallpapersEnabled: this.props.wallpapersEnabled,
       activeWallpaper: this.props.activeWallpaper,
       pocketRegion: this.props.pocketRegion,
       mayHaveTopicSections: this.props.mayHaveTopicSections,
       mayHaveInferredPersonalization: this.props.mayHaveInferredPersonalization,
-      mayHaveRecentSaves: this.props.DiscoveryStream.recentSavesEnabled,
       mayHaveWeather: this.props.mayHaveWeather,
       mayHaveTrendingSearch: this.props.mayHaveTrendingSearch,
+      mayHaveWidgets: this.props.mayHaveWidgets,
+      mayHaveTimerWidget: this.props.mayHaveTimerWidget,
+      mayHaveListsWidget: this.props.mayHaveListsWidget,
       dispatch: this.props.dispatch,
       exitEventFired: this.state.exitEventFired
     }))));
@@ -13606,17 +15601,10 @@ class _Search extends (external_React_default()).PureComponent {
       // (See github ticket #2348 for more details)
       const healthReportKey = IS_NEWTAB ? "newtab" : "abouthome";
 
-      // The "searchSource" needs to be "newtab" or "homepage" and is sent with
-      // the search data and acts as context for the search request (See
-      // nsISearchEngine.getSubmission). It is necessary so that search engine
-      // plugins can correctly atribute referrals. (See github ticket #3321 for
-      // more details)
-      const searchSource = IS_NEWTAB ? "newtab" : "homepage";
-
       // gContentSearchController needs to exist as a global so that tests for
       // the existing about:home can find it; and so it allows these tests to pass.
       // In the future, when activity stream is default about:home, this can be renamed
-      window.gContentSearchController = new ContentSearchUIController(input, input.parentNode, healthReportKey, searchSource);
+      window.gContentSearchController = new ContentSearchUIController(input, input.parentNode, healthReportKey);
       addEventListener("ContentSearchClient", this);
     } else {
       window.gContentSearchController = null;
@@ -13688,399 +15676,6 @@ class _Search extends (external_React_default()).PureComponent {
 const Search_Search = (0,external_ReactRedux_namespaceObject.connect)(state => ({
   Prefs: state.Prefs
 }))(_Search);
-;// CONCATENATED MODULE: ./content-src/components/Weather/LocationSearch.jsx
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
-
-
-function LocationSearch({
-  outerClassName
-}) {
-  // should be the location object from suggestedLocations
-  const [selectedLocation, setSelectedLocation] = (0,external_React_namespaceObject.useState)("");
-  const suggestedLocations = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Weather.suggestedLocations);
-  const locationSearchString = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Weather.locationSearchString);
-  const [userInput, setUserInput] = (0,external_React_namespaceObject.useState)(locationSearchString || "");
-  const inputRef = (0,external_React_namespaceObject.useRef)(null);
-  const dispatch = (0,external_ReactRedux_namespaceObject.useDispatch)();
-  (0,external_React_namespaceObject.useEffect)(() => {
-    if (selectedLocation) {
-      dispatch(actionCreators.AlsoToMain({
-        type: actionTypes.WEATHER_LOCATION_DATA_UPDATE,
-        data: {
-          city: selectedLocation.localized_name,
-          adminName: selectedLocation.administrative_area,
-          country: selectedLocation.country
-        }
-      }));
-      dispatch(actionCreators.SetPref("weather.query", selectedLocation.key));
-      dispatch(actionCreators.BroadcastToContent({
-        type: actionTypes.WEATHER_SEARCH_ACTIVE,
-        data: false
-      }));
-    }
-  }, [selectedLocation, dispatch]);
-
-  // when component mounts, set focus to input
-  (0,external_React_namespaceObject.useEffect)(() => {
-    inputRef?.current?.focus();
-  }, [inputRef]);
-  function handleChange(event) {
-    const {
-      value
-    } = event.target;
-    setUserInput(value);
-    // if the user input contains less than three characters and suggestedLocations is not an empty array,
-    // reset suggestedLocations to [] so there arent incorrect items in the datalist
-    if (value.length < 3 && suggestedLocations.length) {
-      dispatch(actionCreators.AlsoToMain({
-        type: actionTypes.WEATHER_LOCATION_SUGGESTIONS_UPDATE,
-        data: []
-      }));
-    }
-    // find match in suggestedLocation array
-    const match = suggestedLocations?.find(({
-      key
-    }) => key === value);
-    if (match) {
-      setSelectedLocation(match);
-      setUserInput(`${match.localized_name}, ${match.administrative_area.localized_name}`);
-    } else if (value.length >= 3 && !match) {
-      dispatch(actionCreators.AlsoToMain({
-        type: actionTypes.WEATHER_LOCATION_SEARCH_UPDATE,
-        data: value
-      }));
-    }
-  }
-  function handleCloseSearch() {
-    dispatch(actionCreators.BroadcastToContent({
-      type: actionTypes.WEATHER_SEARCH_ACTIVE,
-      data: false
-    }));
-    setUserInput("");
-  }
-  function handleKeyDown(e) {
-    if (e.key === "Escape") {
-      handleCloseSearch();
-    }
-  }
-  return /*#__PURE__*/external_React_default().createElement("div", {
-    className: `${outerClassName} location-search`
-  }, /*#__PURE__*/external_React_default().createElement("div", {
-    className: "location-input-wrapper"
-  }, /*#__PURE__*/external_React_default().createElement("div", {
-    className: "search-icon"
-  }), /*#__PURE__*/external_React_default().createElement("input", {
-    ref: inputRef,
-    list: "merino-location-list",
-    type: "text",
-    "data-l10n-id": "newtab-weather-change-location-search-input-placeholder",
-    onChange: handleChange,
-    value: userInput,
-    onKeyDown: handleKeyDown
-  }), /*#__PURE__*/external_React_default().createElement("moz-button", {
-    class: "close-icon",
-    type: "icon ghost",
-    size: "small",
-    iconSrc: "chrome://global/skin/icons/close.svg",
-    onClick: handleCloseSearch
-  }), /*#__PURE__*/external_React_default().createElement("datalist", {
-    id: "merino-location-list"
-  }, (suggestedLocations || []).map(merinoLcation => /*#__PURE__*/external_React_default().createElement("option", {
-    value: merinoLcation.key,
-    key: merinoLcation.key
-  }, merinoLcation.localized_name, ",", " ", merinoLcation.administrative_area.localized_name)))));
-}
-
-;// CONCATENATED MODULE: ./content-src/components/Weather/Weather.jsx
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this file,
- * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
-
-
-
-
-
-
-const Weather_VISIBLE = "visible";
-const Weather_VISIBILITY_CHANGE_EVENT = "visibilitychange";
-function WeatherPlaceholder() {
-  const [isSeen, setIsSeen] = (0,external_React_namespaceObject.useState)(false);
-
-  // We are setting up a visibility and intersection event
-  // so animations don't happen with headless automation.
-  // The animations causes tests to fail beause they never stop,
-  // and many tests wait until everything has stopped before passing.
-  const ref = useIntersectionObserver(() => setIsSeen(true), 1);
-  const isSeenClassName = isSeen ? `placeholder-seen` : ``;
-  return /*#__PURE__*/external_React_default().createElement("div", {
-    className: `weather weather-placeholder ${isSeenClassName}`,
-    ref: el => {
-      ref.current = [el];
-    }
-  }, /*#__PURE__*/external_React_default().createElement("div", {
-    className: "placeholder-image placeholder-fill"
-  }), /*#__PURE__*/external_React_default().createElement("div", {
-    className: "placeholder-context"
-  }, /*#__PURE__*/external_React_default().createElement("div", {
-    className: "placeholder-header placeholder-fill"
-  }), /*#__PURE__*/external_React_default().createElement("div", {
-    className: "placeholder-description placeholder-fill"
-  })));
-}
-class _Weather extends (external_React_default()).PureComponent {
-  constructor(props) {
-    super(props);
-    this.state = {
-      contextMenuKeyboard: false,
-      showContextMenu: false,
-      url: "https://example.com",
-      impressionSeen: false,
-      errorSeen: false
-    };
-    this.setImpressionRef = element => {
-      this.impressionElement = element;
-    };
-    this.setErrorRef = element => {
-      this.errorElement = element;
-    };
-    this.onClick = this.onClick.bind(this);
-    this.onKeyDown = this.onKeyDown.bind(this);
-    this.onUpdate = this.onUpdate.bind(this);
-    this.onProviderClick = this.onProviderClick.bind(this);
-  }
-  componentDidMount() {
-    const {
-      props
-    } = this;
-    if (!props.dispatch) {
-      return;
-    }
-    if (props.document.visibilityState === Weather_VISIBLE) {
-      // Setup the impression observer once the page is visible.
-      this.setImpressionObservers();
-    } else {
-      // We should only ever send the latest impression stats ping, so remove any
-      // older listeners.
-      if (this._onVisibilityChange) {
-        props.document.removeEventListener(Weather_VISIBILITY_CHANGE_EVENT, this._onVisibilityChange);
-      }
-      this._onVisibilityChange = () => {
-        if (props.document.visibilityState === Weather_VISIBLE) {
-          // Setup the impression observer once the page is visible.
-          this.setImpressionObservers();
-          props.document.removeEventListener(Weather_VISIBILITY_CHANGE_EVENT, this._onVisibilityChange);
-        }
-      };
-      props.document.addEventListener(Weather_VISIBILITY_CHANGE_EVENT, this._onVisibilityChange);
-    }
-  }
-  componentWillUnmount() {
-    // Remove observers on unmount
-    if (this.observer && this.impressionElement) {
-      this.observer.unobserve(this.impressionElement);
-    }
-    if (this.observer && this.errorElement) {
-      this.observer.unobserve(this.errorElement);
-    }
-    if (this._onVisibilityChange) {
-      this.props.document.removeEventListener(Weather_VISIBILITY_CHANGE_EVENT, this._onVisibilityChange);
-    }
-  }
-  setImpressionObservers() {
-    if (this.impressionElement) {
-      this.observer = new IntersectionObserver(this.onImpression.bind(this));
-      this.observer.observe(this.impressionElement);
-    }
-    if (this.errorElement) {
-      this.observer = new IntersectionObserver(this.onError.bind(this));
-      this.observer.observe(this.errorElement);
-    }
-  }
-  onImpression(entries) {
-    if (this.state) {
-      const entry = entries.find(e => e.isIntersecting);
-      if (entry) {
-        if (this.impressionElement) {
-          this.observer.unobserve(this.impressionElement);
-        }
-        this.props.dispatch(actionCreators.OnlyToMain({
-          type: actionTypes.WEATHER_IMPRESSION
-        }));
-
-        // Stop observing since element has been seen
-        this.setState({
-          impressionSeen: true
-        });
-      }
-    }
-  }
-  onError(entries) {
-    if (this.state) {
-      const entry = entries.find(e => e.isIntersecting);
-      if (entry) {
-        if (this.errorElement) {
-          this.observer.unobserve(this.errorElement);
-        }
-        this.props.dispatch(actionCreators.OnlyToMain({
-          type: actionTypes.WEATHER_LOAD_ERROR
-        }));
-
-        // Stop observing since element has been seen
-        this.setState({
-          errorSeen: true
-        });
-      }
-    }
-  }
-  openContextMenu(isKeyBoard) {
-    if (this.props.onUpdate) {
-      this.props.onUpdate(true);
-    }
-    this.setState({
-      showContextMenu: true,
-      contextMenuKeyboard: isKeyBoard
-    });
-  }
-  onClick(event) {
-    event.preventDefault();
-    this.openContextMenu(false, event);
-  }
-  onKeyDown(event) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      this.openContextMenu(true, event);
-    }
-  }
-  onUpdate(showContextMenu) {
-    if (this.props.onUpdate) {
-      this.props.onUpdate(showContextMenu);
-    }
-    this.setState({
-      showContextMenu
-    });
-  }
-  onProviderClick() {
-    this.props.dispatch(actionCreators.OnlyToMain({
-      type: actionTypes.WEATHER_OPEN_PROVIDER_URL,
-      data: {
-        source: "WEATHER"
-      }
-    }));
-  }
-  render() {
-    // Check if weather should be rendered
-    const isWeatherEnabled = this.props.Prefs.values["system.showWeather"];
-    if (!isWeatherEnabled) {
-      return false;
-    }
-    if (this.props.App.isForStartupCache.Weather || !this.props.Weather.initialized) {
-      return /*#__PURE__*/external_React_default().createElement(WeatherPlaceholder, null);
-    }
-    const {
-      showContextMenu
-    } = this.state;
-    const {
-      props
-    } = this;
-    const {
-      dispatch,
-      Prefs,
-      Weather
-    } = props;
-    const WEATHER_SUGGESTION = Weather.suggestions?.[0];
-    const outerClassName = ["weather", Weather.searchActive && "search"].filter(v => v).join(" ");
-    const showDetailedView = Prefs.values["weather.display"] === "detailed";
-
-    // Note: The temperature units/display options will become secondary menu items
-    const WEATHER_SOURCE_CONTEXT_MENU_OPTIONS = [...(Prefs.values["weather.locationSearchEnabled"] ? ["ChangeWeatherLocation"] : []), ...(Prefs.values["weather.temperatureUnits"] === "f" ? ["ChangeTempUnitCelsius"] : ["ChangeTempUnitFahrenheit"]), ...(Prefs.values["weather.display"] === "simple" ? ["ChangeWeatherDisplayDetailed"] : ["ChangeWeatherDisplaySimple"]), "HideWeather", "OpenLearnMoreURL"];
-    const WEATHER_SOURCE_ERROR_CONTEXT_MENU_OPTIONS = [...(Prefs.values["weather.locationSearchEnabled"] ? ["ChangeWeatherLocation"] : []), "HideWeather", "OpenLearnMoreURL"];
-    const contextMenu = contextOpts => /*#__PURE__*/external_React_default().createElement("div", {
-      className: "weatherButtonContextMenuWrapper"
-    }, /*#__PURE__*/external_React_default().createElement("button", {
-      "aria-haspopup": "true",
-      onKeyDown: this.onKeyDown,
-      onClick: this.onClick,
-      "data-l10n-id": "newtab-menu-section-tooltip",
-      className: "weatherButtonContextMenu"
-    }, showContextMenu ? /*#__PURE__*/external_React_default().createElement(LinkMenu, {
-      dispatch: dispatch,
-      index: 0,
-      source: "WEATHER",
-      onUpdate: this.onUpdate,
-      options: contextOpts,
-      site: {
-        url: "https://support.mozilla.org/kb/customize-items-on-firefox-new-tab-page"
-      },
-      link: "https://support.mozilla.org/kb/customize-items-on-firefox-new-tab-page",
-      shouldSendImpressionStats: false
-    }) : null));
-    if (Weather.searchActive) {
-      return /*#__PURE__*/external_React_default().createElement(LocationSearch, {
-        outerClassName: outerClassName
-      });
-    } else if (WEATHER_SUGGESTION) {
-      return /*#__PURE__*/external_React_default().createElement("div", {
-        ref: this.setImpressionRef,
-        className: outerClassName
-      }, /*#__PURE__*/external_React_default().createElement("div", {
-        className: "weatherCard"
-      }, /*#__PURE__*/external_React_default().createElement("a", {
-        "data-l10n-id": "newtab-weather-see-forecast",
-        "data-l10n-args": "{\"provider\": \"AccuWeather\xAE\"}",
-        href: WEATHER_SUGGESTION.forecast.url,
-        className: "weatherInfoLink",
-        onClick: this.onProviderClick
-      }, /*#__PURE__*/external_React_default().createElement("div", {
-        className: "weatherIconCol"
-      }, /*#__PURE__*/external_React_default().createElement("span", {
-        className: `weatherIcon iconId${WEATHER_SUGGESTION.current_conditions.icon_id}`
-      })), /*#__PURE__*/external_React_default().createElement("div", {
-        className: "weatherText"
-      }, /*#__PURE__*/external_React_default().createElement("div", {
-        className: "weatherForecastRow"
-      }, /*#__PURE__*/external_React_default().createElement("span", {
-        className: "weatherTemperature"
-      }, WEATHER_SUGGESTION.current_conditions.temperature[Prefs.values["weather.temperatureUnits"]], "\xB0", Prefs.values["weather.temperatureUnits"])), /*#__PURE__*/external_React_default().createElement("div", {
-        className: "weatherCityRow"
-      }, /*#__PURE__*/external_React_default().createElement("span", {
-        className: "weatherCity"
-      }, Weather.locationData.city)), showDetailedView ? /*#__PURE__*/external_React_default().createElement("div", {
-        className: "weatherDetailedSummaryRow"
-      }, /*#__PURE__*/external_React_default().createElement("div", {
-        className: "weatherHighLowTemps"
-      }, /*#__PURE__*/external_React_default().createElement("span", null, WEATHER_SUGGESTION.forecast.high[Prefs.values["weather.temperatureUnits"]], "\xB0", Prefs.values["weather.temperatureUnits"]), /*#__PURE__*/external_React_default().createElement("span", null, "\u2022"), /*#__PURE__*/external_React_default().createElement("span", null, WEATHER_SUGGESTION.forecast.low[Prefs.values["weather.temperatureUnits"]], "\xB0", Prefs.values["weather.temperatureUnits"])), /*#__PURE__*/external_React_default().createElement("span", {
-        className: "weatherTextSummary"
-      }, WEATHER_SUGGESTION.current_conditions.summary)) : null)), contextMenu(WEATHER_SOURCE_CONTEXT_MENU_OPTIONS)), /*#__PURE__*/external_React_default().createElement("span", {
-        className: "weatherSponsorText"
-      }, /*#__PURE__*/external_React_default().createElement("span", {
-        "data-l10n-id": "newtab-weather-sponsored",
-        "data-l10n-args": "{\"provider\": \"AccuWeather\xAE\"}"
-      })));
-    }
-    return /*#__PURE__*/external_React_default().createElement("div", {
-      ref: this.setErrorRef,
-      className: outerClassName
-    }, /*#__PURE__*/external_React_default().createElement("div", {
-      className: "weatherNotAvailable"
-    }, /*#__PURE__*/external_React_default().createElement("span", {
-      className: "icon icon-info-warning"
-    }), " ", /*#__PURE__*/external_React_default().createElement("p", {
-      "data-l10n-id": "newtab-weather-error-not-available"
-    }), contextMenu(WEATHER_SOURCE_ERROR_CONTEXT_MENU_OPTIONS)));
-  }
-}
-const Weather_Weather = (0,external_ReactRedux_namespaceObject.connect)(state => ({
-  App: state.App,
-  Weather: state.Weather,
-  Prefs: state.Prefs,
-  IntersectionObserver: globalThis.IntersectionObserver,
-  document: globalThis.document
-}))(_Weather);
 ;// CONCATENATED MODULE: ./content-src/components/DownloadModalToggle/DownloadModalToggle.jsx
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
@@ -14483,7 +16078,7 @@ function TopicSelection({
 const PREF_MOBILE_DOWNLOAD_HIGHLIGHT_VARIANT_A = "mobileDownloadModal.variant-a";
 const PREF_MOBILE_DOWNLOAD_HIGHLIGHT_VARIANT_B = "mobileDownloadModal.variant-b";
 const PREF_MOBILE_DOWNLOAD_HIGHLIGHT_VARIANT_C = "mobileDownloadModal.variant-c";
-const DownloadMobilePromoHighlight_FEATURE_ID = "FEATURE_DOWNLOAD_MOBILE_PROMO";
+const FEATURE_ID = "FEATURE_DOWNLOAD_MOBILE_PROMO";
 function DownloadMobilePromoHighlight({
   position,
   dispatch,
@@ -14498,7 +16093,7 @@ function DownloadMobilePromoHighlight({
       event: "FEATURE_HIGHLIGHT_DISMISS",
       source: "FEATURE_HIGHLIGHT",
       value: {
-        feature: DownloadMobilePromoHighlight_FEATURE_ID
+        feature: FEATURE_ID
       }
     }));
     handleDismiss();
@@ -14512,7 +16107,7 @@ function DownloadMobilePromoHighlight({
         event: "FEATURE_HIGHLIGHT_IMPRESSION",
         source: "FEATURE_HIGHLIGHT",
         value: {
-          feature: DownloadMobilePromoHighlight_FEATURE_ID
+          feature: FEATURE_ID
         }
       }));
     }
@@ -14563,7 +16158,7 @@ function DownloadMobilePromoHighlight({
     className: "download-firefox-feature-highlight"
   }, /*#__PURE__*/external_React_default().createElement(FeatureHighlight, {
     position: position,
-    feature: DownloadMobilePromoHighlight_FEATURE_ID,
+    feature: FEATURE_ID,
     dispatch: dispatch,
     message: /*#__PURE__*/external_React_default().createElement("div", {
       className: "download-firefox-feature-highlight-content"
@@ -14594,6 +16189,7 @@ function DownloadMobilePromoHighlight({
 
 
 
+
 function WallpaperFeatureHighlight({
   position,
   dispatch,
@@ -14615,12 +16211,17 @@ function WallpaperFeatureHighlight({
     handleClick(elementId);
     onDismiss();
   }, [dispatch, onDismiss, handleClick]);
+
+  // Extract the strings and feature ID from OMC
+  const {
+    messageData
+  } = (0,external_ReactRedux_namespaceObject.useSelector)(state => state.Messages);
   return /*#__PURE__*/external_React_default().createElement("div", {
     className: "wallpaper-feature-highlight"
   }, /*#__PURE__*/external_React_default().createElement(FeatureHighlight, {
     position: position,
     "data-l10n-id": "feature-highlight-wallpaper",
-    feature: "FEATURE_HIGHLIGHT_WALLPAPER",
+    feature: messageData.content.feature,
     dispatch: dispatch,
     message: /*#__PURE__*/external_React_default().createElement("div", {
       className: "wallpaper-feature-highlight-content"
@@ -14631,16 +16232,16 @@ function WallpaperFeatureHighlight({
       height: "195"
     }), /*#__PURE__*/external_React_default().createElement("p", {
       className: "title",
-      "data-l10n-id": "newtab-custom-wallpaper-title"
+      "data-l10n-id": messageData.content.title
     }), /*#__PURE__*/external_React_default().createElement("p", {
       className: "subtitle",
-      "data-l10n-id": "newtab-custom-wallpaper-subtitle"
+      "data-l10n-id": messageData.content.subtitle
     }), /*#__PURE__*/external_React_default().createElement("span", {
       className: "button-wrapper"
     }, /*#__PURE__*/external_React_default().createElement("moz-button", {
       type: "default",
       onClick: () => onToggleClick("open-customize-menu"),
-      "data-l10n-id": "newtab-custom-wallpaper-cta"
+      "data-l10n-id": messageData.content.cta
     }))),
     toggle: /*#__PURE__*/external_React_default().createElement("div", {
       className: "icon icon-help"
@@ -14656,6 +16257,7 @@ function Base_extends() { return Base_extends = Object.assign ? Object.assign.bi
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 
 
 
@@ -14706,19 +16308,6 @@ class _Base extends (external_React_default()).PureComponent {
   notifyContent(state) {
     this.setState(state);
   }
-  componentWillUnmount() {
-    this.updateTheme();
-  }
-  componentWillUpdate() {
-    this.updateTheme();
-  }
-  updateTheme() {
-    const bodyClassName = ["activity-stream",
-    // If we skipped the about:welcome overlay and removed the CSS classes
-    // we don't want to add them back to the Activity Stream view
-    document.body.classList.contains("inline-onboarding") ? "inline-onboarding" : ""].filter(v => v).join(" ");
-    globalThis.document.body.className = bodyClassName;
-  }
   render() {
     const {
       props
@@ -14755,6 +16344,7 @@ class BaseContent extends (external_React_default()).PureComponent {
     this.shouldDisplayTopicSelectionModal = this.shouldDisplayTopicSelectionModal.bind(this);
     this.toggleDownloadHighlight = this.toggleDownloadHighlight.bind(this);
     this.handleDismissDownloadHighlight = this.handleDismissDownloadHighlight.bind(this);
+    this.applyBodyClasses = this.applyBodyClasses.bind(this);
     this.state = {
       fixedSearch: false,
       firstVisibleTimestamp: null,
@@ -14772,6 +16362,7 @@ class BaseContent extends (external_React_default()).PureComponent {
     }
   }
   componentDidMount() {
+    this.applyBodyClasses();
     __webpack_require__.g.addEventListener("scroll", this.onWindowScroll);
     __webpack_require__.g.addEventListener("keydown", this.handleOnKeyDown);
     const prefs = this.props.Prefs.values;
@@ -14799,7 +16390,16 @@ class BaseContent extends (external_React_default()).PureComponent {
     }
   }
   componentDidUpdate(prevProps) {
+    this.applyBodyClasses();
     const prefs = this.props.Prefs.values;
+
+    // Check if weather widget was re-enabled from customization menu
+    const wasWeatherDisabled = !prevProps.Prefs.values.showWeather;
+    const isWeatherEnabled = this.props.Prefs.values.showWeather;
+    if (wasWeatherDisabled && isWeatherEnabled) {
+      // If weather widget was enabled from customization menu, display opt-in dialog
+      this.props.dispatch(actionCreators.SetPref("weather.optInDisplayed", true));
+    }
     const wallpapersEnabled = prefs["newtabWallpapers.enabled"];
     if (wallpapersEnabled) {
       // destructure current and previous props with fallbacks
@@ -14821,6 +16421,8 @@ class BaseContent extends (external_React_default()).PureComponent {
       } = prevProps;
       const selectedWallpaper = prefs["newtabWallpapers.wallpaper"];
       const prevSelectedWallpaper = prevPrefs["newtabWallpapers.wallpaper"];
+      const uploadedWallpaperTheme = prefs["newtabWallpapers.customWallpaper.theme"];
+      const prevUploadedWallpaperTheme = prevPrefs["newtabWallpapers.customWallpaper.theme"];
 
       // don't update wallpaper unless the wallpaper is being changed.
       if (selectedWallpaper !== prevSelectedWallpaper ||
@@ -14829,17 +16431,21 @@ class BaseContent extends (external_React_default()).PureComponent {
       // uploading a new wallpaper
       wallpaperList !== prevWallpaperList ||
       // remote settings wallpaper list updates
-      this.props.App.isForStartupCache.Wallpaper !== prevProps.App.isForStartupCache.Wallpaper // Startup cached page wallpaper is updating
-      ) {
+      this.props.App.isForStartupCache.Wallpaper !== prevProps.App.isForStartupCache.Wallpaper ||
+      // Startup cached page wallpaper is updating
+      uploadedWallpaperTheme !== prevUploadedWallpaperTheme) {
         this.updateWallpaper();
       }
     }
   }
   handleColorModeChange() {
     const colorMode = this.prefersDarkQuery?.matches ? "dark" : "light";
-    this.setState({
-      colorMode
-    });
+    if (colorMode !== this.state.colorMode) {
+      this.setState({
+        colorMode
+      });
+      this.updateWallpaper();
+    }
   }
   componentWillUnmount() {
     this.prefersDarkQuery?.removeEventListener("change", this.handleColorModeChange);
@@ -14944,6 +16550,17 @@ class BaseContent extends (external_React_default()).PureComponent {
   setPref(pref, value) {
     this.props.dispatch(actionCreators.SetPref(pref, value));
   }
+  applyBodyClasses() {
+    const {
+      body
+    } = this.props.document;
+    if (!body) {
+      return;
+    }
+    if (!body.classList.contains("activity-stream")) {
+      body.classList.add("activity-stream");
+    }
+  }
   renderWallpaperAttribution() {
     const {
       wallpaperList
@@ -14984,72 +16601,55 @@ class BaseContent extends (external_React_default()).PureComponent {
     const selectedWallpaper = prefs["newtabWallpapers.wallpaper"];
     const {
       wallpaperList,
-      uploadedWallpaper
+      uploadedWallpaper: uploadedWallpaperUrl
     } = this.props.Wallpapers;
-    let lightWallpaper = {};
-    let darkWallpaper = {};
-    if (selectedWallpaper === "custom" && uploadedWallpaper) {
-      // revoke ObjectURL to prevent memory leaks
-      if (this.uploadedWallpaperUrl) {
-        URL.revokeObjectURL(this.uploadedWallpaperUrl);
-      }
-      try {
-        const uploadedWallpaperUrl = URL.createObjectURL(uploadedWallpaper);
-        __webpack_require__.g.document?.body.style.setProperty("--newtab-wallpaper", `url(${uploadedWallpaperUrl})`);
-        __webpack_require__.g.document?.body.style.setProperty("--newtab-wallpaper-color", "transparent");
+    const uploadedWallpaperTheme = prefs["newtabWallpapers.customWallpaper.theme"];
+    // Uuse this.prefersDarkQuery since this.state.colorMode can be undefined when this is called
+    const colorMode = this.prefersDarkQuery?.matches ? "dark" : "light";
+    let url = "";
+    let color = "transparent";
+    let newTheme = colorMode;
 
-        // Based on the current colorMode, add the corresponding dark/light CSS classes
-        if (this.state.colorMode) {
-          this.setState(prevState => ({
-            wallpaperTheme: prevState.colorMode
-          }));
-        }
-      } catch (e) {}
+    // if no selected wallpaper fallback to browser/theme styles
+    if (!selectedWallpaper) {
+      __webpack_require__.g.document?.body.style.removeProperty("--newtab-wallpaper");
+      __webpack_require__.g.document?.body.style.removeProperty("--newtab-wallpaper-color");
+      __webpack_require__.g.document?.body.classList.remove("lightWallpaper", "darkWallpaper");
       return;
     }
-    if (wallpaperList) {
-      let wallpaper = wallpaperList.find(wp => wp.title === selectedWallpaper);
-      if (selectedWallpaper && wallpaper) {
-        // if selectedWallpaper exists - we override what light and dark prefs are to match that
-        lightWallpaper = wallpaper;
-        darkWallpaper = wallpaper;
-      }
 
-      // solid-color-picker-#00d100
-      const regexRGB = /#([a-fA-F0-9]{6})/;
-
-      // Override Remote Settings to set custom HEX bg color
+    // uploaded wallpaper
+    if (selectedWallpaper === "custom" && uploadedWallpaperUrl) {
+      url = uploadedWallpaperUrl;
+      color = "transparent";
+      newTheme = uploadedWallpaperTheme || colorMode;
+    } else if (wallpaperList) {
+      const wallpaper = wallpaperList.find(wp => wp.title === selectedWallpaper);
+      // solid color picker
       if (selectedWallpaper.includes("solid-color-picker")) {
-        wallpaper = {
-          theme: wallpaper?.theme || "light",
-          title: "solid-color-picker",
-          category: "solid-colors",
-          solid_color: selectedWallpaper.match(regexRGB)?.[0]
-        };
-      }
-      const wallpaperColor = wallpaper?.solid_color || "";
-      __webpack_require__.g.document?.body.style.setProperty("--newtab-wallpaper", `url(${wallpaper?.wallpaperUrl || ""})`);
-      __webpack_require__.g.document?.body.style.setProperty("--newtab-wallpaper-color", wallpaperColor || "transparent");
-      let wallpaperTheme = "";
-
-      // If we have a solid colour set, let's see how dark it is.
-      if (wallpaperColor) {
-        const rgbColors = this.getRGBColors(wallpaperColor);
-        const isColorDark = this.isWallpaperColorDark(rgbColors);
-        wallpaperTheme = isColorDark ? "dark" : "light";
-      } else {
-        // Grab the contrast of the currently displayed wallpaper.
-        const {
-          theme
-        } = this.state.colorMode === "light" ? lightWallpaper : darkWallpaper;
-        if (theme) {
-          wallpaperTheme = theme;
+        const regexRGB = /#([a-fA-F0-9]{6})/;
+        const hex = selectedWallpaper.match(regexRGB)?.[0];
+        url = "";
+        color = hex;
+        const rgbColors = this.getRGBColors(hex);
+        newTheme = this.isWallpaperColorDark(rgbColors) ? "dark" : "light";
+        // standard wallpaper & solid colors
+      } else if (selectedWallpaper) {
+        url = wallpaper?.wallpaperUrl || "";
+        color = wallpaper?.solid_color || "transparent";
+        newTheme = wallpaper?.theme || colorMode;
+        // if a solid color, determine if dark or light
+        if (wallpaper?.solid_color) {
+          const rgbColors = this.getRGBColors(wallpaper.solid_color);
+          const isColorDark = this.isWallpaperColorDark(rgbColors);
+          newTheme = isColorDark ? "dark" : "light";
         }
       }
-      this.setState({
-        wallpaperTheme
-      });
     }
+    __webpack_require__.g.document?.body.style.setProperty("--newtab-wallpaper", `url(${url})`);
+    __webpack_require__.g.document?.body.style.setProperty("--newtab-wallpaper-color", color || "transparent");
+    __webpack_require__.g.document?.body.classList.remove("lightWallpaper", "darkWallpaper");
+    __webpack_require__.g.document?.body.classList.add(newTheme === "dark" ? "darkWallpaper" : "lightWallpaper");
   }
   shouldShowOMCHighlight(componentId) {
     const messageData = this.props.Messages?.messageData;
@@ -15131,7 +16731,6 @@ class BaseContent extends (external_React_default()).PureComponent {
       customizeMenuVisible
     } = App;
     const prefs = props.Prefs.values;
-    const shortcutsRefresh = prefs["newtabShortcuts.refresh"];
     const activeWallpaper = prefs[`newtabWallpapers.wallpaper`];
     const wallpapersEnabled = prefs["newtabWallpapers.enabled"];
     const weatherEnabled = prefs.showWeather;
@@ -15139,15 +16738,8 @@ class BaseContent extends (external_React_default()).PureComponent {
       showTopicSelection
     } = DiscoveryStream;
     const mayShowTopicSelection = showTopicSelection && prefs["discoverystream.topicSelection.enabled"];
-    const {
-      pocketConfig
-    } = prefs;
     const isDiscoveryStream = props.DiscoveryStream.config && props.DiscoveryStream.config.enabled;
     let filteredSections = props.Sections.filter(section => section.id !== "topstories");
-    let spocMessageVariant = "";
-    if (props.App.locale?.startsWith("en-") && pocketConfig?.spocMessageVariant === "variant-c") {
-      spocMessageVariant = pocketConfig.spocMessageVariant;
-    }
     const pocketEnabled = prefs["feeds.section.topstories"] && prefs["feeds.system.topstories"];
     const noSectionsEnabled = !prefs["feeds.topsites"] && !pocketEnabled && filteredSections.filter(section => section.enabled).length === 0;
     const searchHandoffEnabled = prefs["improvesearch.handoffToAwesomebar"];
@@ -15155,19 +16747,36 @@ class BaseContent extends (external_React_default()).PureComponent {
       topSitesEnabled: prefs["feeds.topsites"],
       pocketEnabled: prefs["feeds.section.topstories"],
       showInferredPersonalizationEnabled: prefs[Base_PREF_INFERRED_PERSONALIZATION_USER],
-      showRecentSavesEnabled: prefs.showRecentSaves,
       topSitesRowsCount: prefs.topSitesRows,
       weatherEnabled: prefs.showWeather,
       trendingSearchEnabled: prefs["trendingSearch.enabled"]
     };
     const pocketRegion = prefs["feeds.system.topstories"];
-    const mayHaveSponsoredStories = prefs["system.showSponsored"];
     const mayHaveInferredPersonalization = prefs[PREF_INFERRED_PERSONALIZATION_SYSTEM];
     const mayHaveWeather = prefs["system.showWeather"];
-    const {
-      mayHaveSponsoredTopSites
-    } = prefs;
     const supportUrl = prefs["support.url"];
+
+    // Weather can be enabled and not rendered in the top right corner
+    const shouldDisplayWeather = prefs.showWeather && this.props.weatherPlacement === "header";
+
+    // Widgets experiment pref check
+    const nimbusWidgetsEnabled = prefs.widgetsConfig?.enabled;
+    const nimbusListsEnabled = prefs.widgetsConfig?.listsEnabled;
+    const nimbusTimerEnabled = prefs.widgetsConfig?.timerEnabled;
+    const nimbusWidgetsTrainhopEnabled = prefs.trainhopConfig?.widgets?.enabled;
+    const nimbusListsTrainhopEnabled = prefs.trainhopConfig?.widgets?.listsEnabled;
+    const nimbusTimerTrainhopEnabled = prefs.trainhopConfig?.widgets?.timerEnabled;
+    const mayHaveWidgets = prefs["widgets.system.enabled"] || nimbusWidgetsEnabled || nimbusWidgetsTrainhopEnabled;
+    const mayHaveListsWidget = prefs["widgets.system.lists.enabled"] || nimbusListsEnabled || nimbusListsTrainhopEnabled;
+    const mayHaveTimerWidget = prefs["widgets.system.focusTimer.enabled"] || nimbusTimerEnabled || nimbusTimerTrainhopEnabled;
+
+    // These prefs set the initial values on the Customize panel toggle switches
+    const enabledWidgets = {
+      listsEnabled: prefs["widgets.lists.enabled"],
+      timerEnabled: prefs["widgets.focusTimer.enabled"],
+      trendingSearchEnabled: prefs["trendingSearch.enabled"],
+      weatherEnabled: prefs.showWeather
+    };
 
     // Trending Searches experiment pref check
     const mayHaveTrendingSearch = prefs["system.trendingSearch.enabled"] && prefs["trendingSearch.defaultSearchEngine"].toLowerCase() === "google";
@@ -15178,7 +16787,7 @@ class BaseContent extends (external_React_default()).PureComponent {
     const mobileDownloadPromoVariantBEnabled = prefs["mobileDownloadModal.variant-b"];
     const mobileDownloadPromoVariantCEnabled = prefs["mobileDownloadModal.variant-c"];
     const mobileDownloadPromoVariantABorC = mobileDownloadPromoVariantAEnabled || mobileDownloadPromoVariantBEnabled || mobileDownloadPromoVariantCEnabled;
-    const mobileDownloadPromoWrapperHeightModifier = prefs["weather.display"] === "detailed" && weatherEnabled && mayHaveWeather ? "is-tall" : "";
+    const mobileDownloadPromoWrapperHeightModifier = prefs["weather.display"] === "detailed" && weatherEnabled && shouldDisplayWeather && mayHaveWeather ? "is-tall" : "";
     const hasThumbsUpDownLayout = prefs["discoverystream.thumbsUpDown.searchTopsitesCompact"];
     const hasThumbsUpDown = prefs["discoverystream.thumbsUpDown.enabled"];
     const sectionsEnabled = prefs["discoverystream.sections.enabled"];
@@ -15190,26 +16799,13 @@ class BaseContent extends (external_React_default()).PureComponent {
     const mayHavePersonalizedTopicSections = sectionsPersonalizationEnabled && topicLabelsEnabled && sectionsEnabled && sectionsCustomizeMenuPanelEnabled && DiscoveryStream.feeds.loaded;
     const featureClassName = [mobileDownloadPromoEnabled && mobileDownloadPromoVariantABorC && "has-mobile-download-promo",
     // Mobile download promo modal is enabled/visible
-    weatherEnabled && mayHaveWeather && "has-weather",
+    weatherEnabled && mayHaveWeather && shouldDisplayWeather && "has-weather",
     // Weather widget is enabled/visible
     prefs.showSearch ? "has-search" : "no-search",
     // layoutsVariantAEnabled ? "layout-variant-a" : "", // Layout experiment variant A
     // layoutsVariantBEnabled ? "layout-variant-b" : "", // Layout experiment variant B
-    shortcutsRefresh ? "shortcuts-refresh" : "",
-    // Shortcuts refresh experiment
     pocketEnabled ? "has-recommended-stories" : "no-recommended-stories", sectionsEnabled ? "has-sections-grid" : ""].filter(v => v).join(" ");
     const outerClassName = ["outer-wrapper", isDiscoveryStream && pocketEnabled && "ds-outer-wrapper-search-alignment", isDiscoveryStream && "ds-outer-wrapper-breakpoint-override", prefs.showSearch && this.state.fixedSearch && !noSectionsEnabled && "fixed-search", prefs.showSearch && noSectionsEnabled && "only-search", prefs["feeds.topsites"] && !pocketEnabled && !prefs.showSearch && "only-topsites", noSectionsEnabled && "no-sections", prefs["logowordmark.alwaysVisible"] && "visible-logo", hasThumbsUpDownLayout && hasThumbsUpDown && "thumbs-ui-compact"].filter(v => v).join(" ");
-    if (wallpapersEnabled) {
-      // Add helper class to body if user has a wallpaper selected
-      if (this.state.wallpaperTheme === "light") {
-        __webpack_require__.g.document?.body.classList.add("lightWallpaper");
-        __webpack_require__.g.document?.body.classList.remove("darkWallpaper");
-      }
-      if (this.state.wallpaperTheme === "dark") {
-        __webpack_require__.g.document?.body.classList.add("darkWallpaper");
-        __webpack_require__.g.document?.body.classList.remove("lightWallpaper");
-      }
-    }
 
     // If state.showDownloadHighlightOverride has value, let it override the logic
     // Otherwise, defer to OMC message display logic
@@ -15224,16 +16820,17 @@ class BaseContent extends (external_React_default()).PureComponent {
       openPreferences: this.openPreferences,
       setPref: this.setPref,
       enabledSections: enabledSections,
+      enabledWidgets: enabledWidgets,
       wallpapersEnabled: wallpapersEnabled,
       activeWallpaper: activeWallpaper,
       pocketRegion: pocketRegion,
       mayHaveTopicSections: mayHavePersonalizedTopicSections,
-      mayHaveSponsoredTopSites: mayHaveSponsoredTopSites,
-      mayHaveSponsoredStories: mayHaveSponsoredStories,
       mayHaveInferredPersonalization: mayHaveInferredPersonalization,
       mayHaveWeather: mayHaveWeather,
       mayHaveTrendingSearch: mayHaveTrendingSearch,
-      spocMessageVariant: spocMessageVariant,
+      mayHaveWidgets: mayHaveWidgets,
+      mayHaveTimerWidget: mayHaveTimerWidget,
+      mayHaveListsWidget: mayHaveListsWidget,
       showing: customizeMenuVisible
     }), this.shouldShowOMCHighlight("CustomWallpaperHighlight") && /*#__PURE__*/external_React_default().createElement(MessageWrapper, {
       dispatch: this.props.dispatch
@@ -15242,7 +16839,7 @@ class BaseContent extends (external_React_default()).PureComponent {
       dispatch: this.props.dispatch
     }))), /*#__PURE__*/external_React_default().createElement("div", {
       className: "weatherWrapper"
-    }, weatherEnabled && /*#__PURE__*/external_React_default().createElement(ErrorBoundary, null, /*#__PURE__*/external_React_default().createElement(Weather_Weather, null))), /*#__PURE__*/external_React_default().createElement("div", {
+    }, shouldDisplayWeather && /*#__PURE__*/external_React_default().createElement(ErrorBoundary, null, /*#__PURE__*/external_React_default().createElement(Weather_Weather, null))), /*#__PURE__*/external_React_default().createElement("div", {
       className: `mobileDownloadPromoWrapper ${mobileDownloadPromoWrapperHeightModifier}`
     }, mobileDownloadPromoEnabled && mobileDownloadPromoVariantABorC && /*#__PURE__*/external_React_default().createElement(ErrorBoundary, null, /*#__PURE__*/external_React_default().createElement(DownloadModalToggle, {
       isActive: shouldShowDownloadHighlight,
@@ -15271,7 +16868,6 @@ class BaseContent extends (external_React_default()).PureComponent {
       className: "borderless-error"
     }, /*#__PURE__*/external_React_default().createElement(DiscoveryStreamBase, {
       locale: props.App.locale,
-      mayHaveSponsoredStories: mayHaveSponsoredStories,
       firstVisibleTimestamp: this.state.firstVisibleTimestamp
     })) : /*#__PURE__*/external_React_default().createElement(Sections_Sections, null)), /*#__PURE__*/external_React_default().createElement(ConfirmDialog, null), wallpapersEnabled && this.renderWallpaperAttribution()), /*#__PURE__*/external_React_default().createElement("aside", null, this.props.Notifications?.showNotifications && /*#__PURE__*/external_React_default().createElement(ErrorBoundary, null, /*#__PURE__*/external_React_default().createElement(Notifications_Notifications, {
       dispatch: this.props.dispatch
@@ -15292,7 +16888,8 @@ const Base = (0,external_ReactRedux_namespaceObject.connect)(state => ({
   Notifications: state.Notifications,
   Search: state.Search,
   Wallpapers: state.Wallpapers,
-  Weather: state.Weather
+  Weather: state.Weather,
+  weatherPlacement: selectWeatherPlacement(state)
 }))(_Base);
 ;// CONCATENATED MODULE: ./content-src/lib/detect-user-session-start.mjs
 /* This Source Code Form is subject to the terms of the Mozilla Public

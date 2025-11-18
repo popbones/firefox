@@ -80,6 +80,10 @@ export class DataSourceBase {
     this.#aggregatorApi.discardChangesConfirmed();
   }
 
+  setPrimaryPasswordAuthenticated(isAuthenticated) {
+    this.#aggregatorApi.setPrimaryPasswordAuthenticated(isAuthenticated);
+  }
+
   // eslint-disable-next-line mozilla/no-browser-refs-in-toolkit
   formatMessages = createFormatMessages("browser/contextual-manager.ftl");
   static ftl = new Localization([
@@ -177,7 +181,9 @@ export class DataSourceBase {
       const { BrowserWindowTracker } = ChromeUtils.importESModule(
         "resource:///modules/BrowserWindowTracker.sys.mjs"
       );
-      const browser = BrowserWindowTracker.getTopWindow().gBrowser;
+      const browser = BrowserWindowTracker.getTopWindow({
+        allowFromInactiveWorkspace: true,
+      }).gBrowser;
       browser.addWebTab(url, { inBackground: false });
     },
 

@@ -4,54 +4,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "nsXULPopupManager.h"
+
+#include "PopupQueue.h"
 #include "XULButtonElement.h"
+#include "mozilla/AnimationUtils.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Attributes.h"
-#include "mozilla/FlushType.h"
-#include "mozilla/UniquePtr.h"
-#include "nsGkAtoms.h"
-#include "nsISound.h"
-#include "nsXULPopupManager.h"
-#include "nsMenuPopupFrame.h"
-#include "nsContentUtils.h"
-#include "nsXULElement.h"
-#include "nsIDOMXULCommandDispatcher.h"
-#include "nsCSSFrameConstructor.h"
-#include "nsGlobalWindowOuter.h"
-#include "nsIContentInlines.h"
-#include "nsLayoutUtils.h"
-#include "nsViewManager.h"
-#include "nsITimer.h"
-#include "nsFocusManager.h"
-#include "nsIDocShell.h"
-#include "nsPIDOMWindow.h"
-#include "nsIInterfaceRequestorUtils.h"
-#include "nsIBaseWindow.h"
-#include "nsCaret.h"
-#include "mozilla/dom/Document.h"
-#include "nsPIWindowRoot.h"
-#include "nsFrameManager.h"
-#include "nsPresContextInlines.h"
-#include "nsIObserverService.h"
-#include "mozilla/AnimationUtils.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/dom/Element.h"
-#include "mozilla/dom/Event.h"  // for Event
-#include "mozilla/dom/HTMLSlotElement.h"
-#include "mozilla/dom/KeyboardEvent.h"
-#include "mozilla/dom/KeyboardEventBinding.h"
-#include "mozilla/dom/MouseEvent.h"
-#include "mozilla/dom/UIEvent.h"
-#include "mozilla/dom/UserActivation.h"
-#include "mozilla/dom/PopupPositionedEvent.h"
-#include "mozilla/dom/PopupPositionedEventBinding.h"
-#include "mozilla/dom/XULCommandEvent.h"
-#include "mozilla/dom/XULMenuElement.h"
-#include "mozilla/dom/XULMenuBarElement.h"
-#include "mozilla/dom/XULPopupElement.h"
 #include "mozilla/AutoRestore.h"
 #include "mozilla/EventDispatcher.h"
 #include "mozilla/EventStateManager.h"
+#include "mozilla/FlushType.h"
 #include "mozilla/LookAndFeel.h"
 #include "mozilla/MouseEvents.h"
 #include "mozilla/PointerLockManager.h"
@@ -59,9 +22,47 @@
 #include "mozilla/ScopeExit.h"
 #include "mozilla/Services.h"
 #include "mozilla/StaticPrefs_ui.h"
-#include "mozilla/widget/nsAutoRollup.h"
+#include "mozilla/UniquePtr.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
+#include "mozilla/dom/Element.h"
+#include "mozilla/dom/Event.h"  // for Event
+#include "mozilla/dom/HTMLSlotElement.h"
+#include "mozilla/dom/KeyboardEvent.h"
+#include "mozilla/dom/KeyboardEventBinding.h"
+#include "mozilla/dom/MouseEvent.h"
+#include "mozilla/dom/PopupPositionedEvent.h"
+#include "mozilla/dom/PopupPositionedEventBinding.h"
+#include "mozilla/dom/UIEvent.h"
+#include "mozilla/dom/UserActivation.h"
+#include "mozilla/dom/XULCommandEvent.h"
+#include "mozilla/dom/XULMenuBarElement.h"
+#include "mozilla/dom/XULMenuElement.h"
+#include "mozilla/dom/XULPopupElement.h"
 #include "mozilla/widget/NativeMenuSupport.h"
-#include "PopupQueue.h"
+#include "mozilla/widget/nsAutoRollup.h"
+#include "nsCSSFrameConstructor.h"
+#include "nsCaret.h"
+#include "nsContentUtils.h"
+#include "nsFocusManager.h"
+#include "nsFrameManager.h"
+#include "nsGkAtoms.h"
+#include "nsGlobalWindowOuter.h"
+#include "nsIBaseWindow.h"
+#include "nsIContentInlines.h"
+#include "nsIDOMXULCommandDispatcher.h"
+#include "nsIDocShell.h"
+#include "nsIInterfaceRequestorUtils.h"
+#include "nsIObserverService.h"
+#include "nsISound.h"
+#include "nsITimer.h"
+#include "nsLayoutUtils.h"
+#include "nsMenuPopupFrame.h"
+#include "nsPIDOMWindow.h"
+#include "nsPIWindowRoot.h"
+#include "nsPresContextInlines.h"
+#include "nsViewManager.h"
+#include "nsXULElement.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -1628,7 +1629,7 @@ void nsXULPopupManager::HidePopupAfterDelay(nsMenuPopupFrame* aPopup,
           pm->KillMenuTimer();
         }
       },
-      nullptr, aDelay, nsITimer::TYPE_ONE_SHOT, "KillMenuTimer", target);
+      nullptr, aDelay, nsITimer::TYPE_ONE_SHOT, "KillMenuTimer"_ns, target);
   // the popup will call PopupDestroyed if it is destroyed, which checks if it
   // is set to mTimerMenu, so it should be safe to keep a reference to it
   mTimerMenu = aPopup;
@@ -1789,6 +1790,9 @@ nsEventStatus nsXULPopupManager::FirePopupShowingEvent(
   event.mInputSource = aPendingPopup.MouseInputSource();
   event.mRefPoint = aPendingPopup.mMousePoint;
   event.mModifiers = aPendingPopup.mModifiers;
+  if (aPendingPopup.mEvent) {
+    event.mTriggerEvent = aPendingPopup.mEvent;
+  }
   RefPtr<nsIContent> popup = aPendingPopup.mPopup;
   EventDispatcher::Dispatch(popup, aPresContext, &event, nullptr, &status);
 
@@ -2148,8 +2152,7 @@ bool nsXULPopupManager::MayShowPopup(nsMenuPopupFrame* aPopup) {
 
   // platforms respond differently when an popup is opened in a minimized
   // window, so this is always disabled.
-  nsCOMPtr<nsIWidget> mainWidget;
-  baseWin->GetMainWidget(getter_AddRefs(mainWidget));
+  nsCOMPtr<nsIWidget> mainWidget = baseWin->GetMainWidget();
   if (mainWidget && mainWidget->SizeMode() == nsSizeMode_Minimized) {
     return false;
   }

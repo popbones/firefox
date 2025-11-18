@@ -24,10 +24,8 @@ import org.mozilla.fenix.helpers.SearchDispatcher
 import org.mozilla.fenix.helpers.TestAssetHelper.getGenericAsset
 import org.mozilla.fenix.helpers.TestAssetHelper.waitingTimeLong
 import org.mozilla.fenix.helpers.TestHelper.appContext
-import org.mozilla.fenix.helpers.TestHelper.clickSnackbarButton
 import org.mozilla.fenix.helpers.TestHelper.exitMenu
 import org.mozilla.fenix.helpers.TestHelper.restartApp
-import org.mozilla.fenix.helpers.TestHelper.verifySnackBarText
 import org.mozilla.fenix.helpers.TestSetup
 import org.mozilla.fenix.helpers.perf.DetectMemoryLeaksRule
 import org.mozilla.fenix.nimbus.FxNimbus
@@ -285,7 +283,6 @@ class SettingsSearchTest : TestSetup() {
             typeCustomEngineDetails(customSearchEngine.title, customSearchEngine.url)
             verifySaveSearchEngineButtonEnabled(true)
             saveNewSearchEngine()
-            verifySnackBarText("Created ${customSearchEngine.title}")
             verifyEngineListContains(customSearchEngine.title, shouldExist = true)
             openEngineOverflowMenu(customSearchEngine.title)
             pressBack()
@@ -370,7 +367,6 @@ class SettingsSearchTest : TestSetup() {
             clickEdit()
             typeCustomEngineDetails(customSearchEngine.newTitle, customSearchEngine.url)
             saveEditSearchEngine()
-            verifySnackBarText("Saved ${customSearchEngine.newTitle}")
             verifyEngineListContains(customSearchEngine.newTitle, shouldExist = true)
             pressBack()
             openManageShortcutsMenu()
@@ -421,12 +417,6 @@ class SettingsSearchTest : TestSetup() {
         }.openSearchSubMenu {
             openDefaultSearchEngineMenu()
             verifyEngineListContains(customSearchEngineTitle, shouldExist = true)
-            openEngineOverflowMenu(customSearchEngineTitle)
-            clickDeleteSearchEngine()
-            verifySnackBarText("Deleted $customSearchEngineTitle")
-            clickSnackbarButton(activityTestRule, "UNDO")
-            verifyEngineListContains(customSearchEngineTitle, shouldExist = true)
-            changeDefaultSearchEngine(customSearchEngineTitle)
             openEngineOverflowMenu(customSearchEngineTitle)
             clickDeleteSearchEngine()
             verifyEngineListContains(customSearchEngineTitle, shouldExist = false)
@@ -652,8 +642,8 @@ class SettingsSearchTest : TestSetup() {
                 EngineShortcut(name = "Google", checkboxIndex = 1, isChecked = true),
                 EngineShortcut(name = "Bing", checkboxIndex = 4, isChecked = true),
                 EngineShortcut(name = "DuckDuckGo", checkboxIndex = 7, isChecked = true),
-                EngineShortcut(name = "Reddit", checkboxIndex = 10, isChecked = false),
-                EngineShortcut(name = "Wikipedia (en)", checkboxIndex = 13, isChecked = true),
+                EngineShortcut(name = "Wikipedia (en)", checkboxIndex = 10, isChecked = true),
+                EngineShortcut(name = "Reddit", checkboxIndex = 13, isChecked = false),
                 EngineShortcut(name = "YouTube", checkboxIndex = 16, isChecked = false),
             )
         }
@@ -669,7 +659,7 @@ class SettingsSearchTest : TestSetup() {
         }.openSearchSubMenu {
             openManageShortcutsMenu()
             selectSearchShortcut(EngineShortcut(name = "Google", checkboxIndex = 1))
-            selectSearchShortcut(EngineShortcut(name = "Reddit", checkboxIndex = 10))
+            selectSearchShortcut(EngineShortcut(name = "Reddit", checkboxIndex = 13))
             selectSearchShortcut(EngineShortcut(name = "YouTube", checkboxIndex = 16))
             exitMenu()
         }

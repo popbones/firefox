@@ -24,10 +24,11 @@ XPCOMUtils.defineLazyServiceGetters(lazy, {
 ChromeUtils.defineESModuleGetters(lazy, {
   AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
   BookmarksPolicies: "resource:///modules/policies/BookmarksPolicies.sys.mjs",
-  CustomizableUI: "resource:///modules/CustomizableUI.sys.mjs",
+  CustomizableUI:
+    "moz-src:///browser/components/customizableui/CustomizableUI.sys.mjs",
   FileUtils: "resource://gre/modules/FileUtils.sys.mjs",
   ProxyPolicies: "resource:///modules/policies/ProxyPolicies.sys.mjs",
-  QuickSuggest: "resource:///modules/QuickSuggest.sys.mjs",
+  QuickSuggest: "moz-src:///browser/components/urlbar/QuickSuggest.sys.mjs",
   WebsiteFilter: "resource:///modules/policies/WebsiteFilter.sys.mjs",
 });
 
@@ -1099,13 +1100,13 @@ export var Policies = {
       ) {
         switch (param) {
           case "default-on":
-            value = "false";
+            value = false;
             break;
           case "default-off":
-            value = "true";
+            value = true;
             break;
           default:
-            value = (!param).toString();
+            value = !param;
             break;
         }
         // This policy is meant to change the default behavior, not to force it.
@@ -1116,25 +1117,25 @@ export var Policies = {
             BROWSER_DOCUMENT_URL,
             "toolbar-menubar",
             "autohide",
-            value
+            value ? "" : "-moz-missing\n"
           );
         });
       } else {
         switch (param) {
           case "always":
-            value = "false";
+            value = false;
             break;
           case "never":
             // Make sure Alt key doesn't show the menubar
             setAndLockPref("ui.key.menuAccessKeyFocuses", false);
-            value = "true";
+            value = true;
             break;
         }
         Services.xulStore.setValue(
           BROWSER_DOCUMENT_URL,
           "toolbar-menubar",
           "autohide",
-          value
+          value ? "" : "-moz-missing\n"
         );
         manager.disallowFeature("hideShowMenuBar");
       }
@@ -1202,9 +1203,20 @@ export var Policies = {
         // startup anyway.
         ContentBlockingPrefs.setPrefsToCategory(
           param.Category,
-          true // locked
+          true, // locked
+          false // preserveAllowListSettings
         );
         ContentBlockingPrefs.matchCBCategory();
+        // We don't want to lock the new exceptions UI unless
+        // that policy was explicitly set.
+        if (param.Category == "strict") {
+          Services.prefs.unlockPref(
+            "privacy.trackingprotection.allow_list.baseline.enabled"
+          );
+          Services.prefs.unlockPref(
+            "privacy.trackingprotection.allow_list.convenience.enabled"
+          );
+        }
       }
     },
     onBeforeUIStartup(manager, param) {
@@ -1265,6 +1277,21 @@ export var Policies = {
         PoliciesUtils.setDefaultPref(
           "privacy.fingerprintingProtection.pbmode",
           param.SuspectedFingerprinting,
+          param.Locked
+        );
+      }
+      if ("BaselineExceptions" in param) {
+        PoliciesUtils.setDefaultPref(
+          "privacy.trackingprotection.allow_list.baseline.enabled",
+          param.BaselineExceptions,
+          param.Locked
+        );
+      }
+
+      if ("ConvenienceExceptions" in param) {
+        PoliciesUtils.setDefaultPref(
+          "privacy.trackingprotection.allow_list.convenience.enabled",
+          param.ConvenienceExceptions,
           param.Locked
         );
       }
@@ -1576,6 +1603,25 @@ export var Policies = {
     },
   },
 
+  GenerativeAI: {
+    onBeforeAddons(manager, param) {
+      const defaultValue = "Enabled" in param ? param.Enabled : undefined;
+
+      const features = [
+        ["Chatbot", "browser.ml.chat.enabled"],
+        ["LinkPreviews", "browser.ml.linkPreview.optin"],
+        ["TabGroups", "browser.tabs.groups.smart.userEnabled"],
+      ];
+
+      for (const [key, pref] of features) {
+        const value = key in param ? param[key] : defaultValue;
+        if (value !== undefined) {
+          PoliciesUtils.setDefaultPref(pref, value, param.Locked);
+        }
+      }
+    },
+  },
+
   GoToIntranetSiteForSingleWordEntryInAddressBar: {
     onBeforeAddons(manager, param) {
       setAndLockPref("browser.fixup.dns_first_for_single_words", param);
@@ -1779,6 +1825,51 @@ export var Policies = {
     },
   },
 
+  LocalNetworkAccess: {
+    onBeforeAddons(manager, param) {
+      // Only process if "Enabled" is explicitly specified
+      if ("Enabled" in param) {
+        PoliciesUtils.setDefaultPref(
+          "network.lna.enabled",
+          param.Enabled,
+          param.Locked
+        );
+
+        if (param.Enabled === false) {
+          // If LNA is explicitly disabled, disable other features too
+          PoliciesUtils.setDefaultPref(
+            "network.lna.block_trackers",
+            false,
+            param.Locked
+          );
+          PoliciesUtils.setDefaultPref(
+            "network.lna.blocking",
+            false,
+            param.Locked
+          );
+        } else {
+          // LNA is enabled - handle fine-grained controls
+          // For backward compatibility, default to true if not specified
+          let blockTrackers =
+            "BlockTrackers" in param ? param.BlockTrackers : true;
+          let enablePrompting =
+            "EnablePrompting" in param ? param.EnablePrompting : true;
+
+          PoliciesUtils.setDefaultPref(
+            "network.lna.block_trackers",
+            blockTrackers,
+            param.Locked
+          );
+          PoliciesUtils.setDefaultPref(
+            "network.lna.blocking",
+            enablePrompting,
+            param.Locked
+          );
+        }
+      }
+    },
+  },
+
   ManagedBookmarks: {},
 
   ManualAppUpdateOnly: {
@@ -1955,6 +2046,15 @@ export var Policies = {
         );
         setDefaultPermission("xr", param.VirtualReality);
       }
+
+      if ("ScreenShare" in param) {
+        addAllowDenyPermissions(
+          "screen",
+          param.ScreenShare.Allow,
+          param.ScreenShare.Block
+        );
+        setDefaultPermission("screen", param.ScreenShare);
+      }
     },
   },
 
@@ -2071,6 +2171,7 @@ export var Policies = {
         "security.tls.hello_downgrade_check",
         "security.tls.version.enable-deprecated",
         "security.warn_submit_secure_to_insecure",
+        "security.webauthn.always_allow_direct_attestation",
       ];
       const blockedPrefs = [
         "app.update.channel",
@@ -2643,14 +2744,8 @@ export var Policies = {
   SkipTermsOfUse: {
     onBeforeAddons(manager, param) {
       if (param) {
-        setAndLockPref(
-          "datareporting.policy.dataSubmissionPolicyAcceptedVersion",
-          999
-        );
-        setAndLockPref(
-          "datareporting.policy.dataSubmissionPolicyNotifiedTime",
-          Date.now().toString()
-        );
+        setAndLockPref("termsofuse.acceptedVersion", 999);
+        setAndLockPref("termsofuse.acceptedDate", Date.now().toString());
       }
     },
   },
@@ -2779,6 +2874,12 @@ export var Policies = {
   UseSystemPrintDialog: {
     onBeforeAddons(manager, param) {
       setAndLockPref("print.prefer_system_dialog", param);
+    },
+  },
+
+  VisualSearchEnabled: {
+    onBeforeAddons(manager, param) {
+      setAndLockPref("browser.search.visualSearch.featureGate", param);
     },
   },
 

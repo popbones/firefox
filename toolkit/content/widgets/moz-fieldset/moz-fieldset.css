@@ -15,11 +15,37 @@ fieldset {
 legend {
   padding: 0;
   font-weight: var(--font-weight-bold);
-  display: inline-block;
+  display: inline-flex;
+  gap: var(--space-small);
+  align-items: baseline;
 
   &:has(+ #description) {
-    display: block;
+    display: flex;
   }
+
+  /* Hack to handle vertical alignment in cases where we have an icon + heading
+  followed by a support link */
+  &:has(.icon) + a[is="moz-support-link"],
+  &:has(.icon) + ::slotted([slot="support-link"]) {
+    vertical-align: baseline;
+  }
+}
+
+.icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  -moz-context-properties: fill;
+  fill: var(--icon-color);
+  align-self: center;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
 }
 
 #description {
@@ -35,13 +61,16 @@ legend {
   display: flex;
   flex-direction: column;
   gap: var(--space-large);
-  margin-top: var(--space-small);
 
   fieldset[aria-orientation="horizontal"] & {
     flex-direction: row;
     flex-wrap: wrap;
     row-gap: var(--space-small);
     column-gap: var(--space-medium);
+  }
+
+  :is(legend, #description) ~ & {
+    margin-top: var(--space-small);
   }
 }
 

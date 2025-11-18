@@ -10,83 +10,94 @@
 
 #include "nsINode.h"
 
+#include <algorithm>
+
 #include "AccessCheck.h"
-#include "jsapi.h"
+#include "GeometryUtils.h"
+#include "HTMLLegendElement.h"
+#include "WrapperFactory.h"
+#include "XPathGenerator.h"
 #include "js/ForOfIterator.h"  // JS::ForOfIterator
 #include "js/JSON.h"           // JS_ParseJSON
+#include "jsapi.h"
 #include "mozAutoDocUpdate.h"
 #include "mozilla/AsyncEventDispatcher.h"
-#include "mozilla/ClearOnShutdown.h"
 #include "mozilla/CORSMode.h"
+#include "mozilla/ClearOnShutdown.h"
 #include "mozilla/EventDispatcher.h"
 #include "mozilla/EventListenerManager.h"
 #include "mozilla/HTMLEditor.h"
-#include "mozilla/InternalMutationEvent.h"
 #include "mozilla/Likely.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/MemoryReporting.h"
+#include "mozilla/Preferences.h"
 #include "mozilla/PresShell.h"
+#include "mozilla/ProfilerLabels.h"
 #include "mozilla/ServoBindings.h"
+#include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/TextControlElement.h"
 #include "mozilla/TextControlState.h"
 #include "mozilla/TextEditor.h"
 #include "mozilla/TimeStamp.h"
+#include "mozilla/dom/AncestorIterator.h"
+#include "mozilla/dom/Attr.h"
 #include "mozilla/dom/BindContext.h"
+#include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/CharacterData.h"
 #include "mozilla/dom/ChildIterator.h"
 #include "mozilla/dom/CustomElementRegistry.h"
 #include "mozilla/dom/DebuggerNotificationBinding.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
 #include "mozilla/dom/DocumentType.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/ElementBinding.h"
 #include "mozilla/dom/Event.h"
 #include "mozilla/dom/Exceptions.h"
-#include "mozilla/dom/Link.h"
 #include "mozilla/dom/HTMLButtonElement.h"
-#include "mozilla/dom/HTMLDialogElement.h"
 #include "mozilla/dom/HTMLDetailsElement.h"
+#include "mozilla/dom/HTMLDialogElement.h"
 #include "mozilla/dom/HTMLImageElement.h"
 #include "mozilla/dom/HTMLMediaElement.h"
 #include "mozilla/dom/HTMLTemplateElement.h"
+#include "mozilla/dom/L10nOverlays.h"
+#include "mozilla/dom/Link.h"
 #include "mozilla/dom/MutationObservers.h"
-#include "mozilla/dom/Selection.h"
-#include "mozilla/dom/ShadowRoot.h"
+#include "mozilla/dom/NodeBinding.h"
+#include "mozilla/dom/NodeInfo.h"
+#include "mozilla/dom/NodeInfoInlines.h"
+#include "mozilla/dom/PolicyContainer.h"
 #include "mozilla/dom/SVGUseElement.h"
 #include "mozilla/dom/ScriptSettings.h"
-#include "mozilla/dom/L10nOverlays.h"
-#include "mozilla/ProfilerLabels.h"
-#include "mozilla/StaticPrefs_layout.h"
+#include "mozilla/dom/Selection.h"
+#include "mozilla/dom/ShadowRoot.h"
+#include "nsAtom.h"
 #include "nsAttrValueOrString.h"
 #include "nsCCUncollectableMarker.h"
+#include "nsCOMArray.h"
+#include "nsChildContentList.h"
 #include "nsContentCreatorFunctions.h"
 #include "nsContentList.h"
 #include "nsContentUtils.h"
-#include "nsCOMArray.h"
 #include "nsCycleCollectionParticipant.h"
-#include "mozilla/dom/Attr.h"
 #include "nsDOMAttributeMap.h"
 #include "nsDOMCID.h"
 #include "nsDOMCSSAttrDeclaration.h"
-#include "nsError.h"
-#include "nsExpirationTracker.h"
 #include "nsDOMMutationObserver.h"
 #include "nsDOMString.h"
 #include "nsDOMTokenList.h"
+#include "nsError.h"
+#include "nsExpirationTracker.h"
 #include "nsFocusManager.h"
 #include "nsFrameSelection.h"
 #include "nsGenericHTMLElement.h"
 #include "nsGkAtoms.h"
+#include "nsGlobalWindowInner.h"
+#include "nsIAnimationObserver.h"
 #include "nsIAnonymousContentCreator.h"
-#include "nsAtom.h"
 #include "nsIContentInlines.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/DocumentInlines.h"
 #include "nsIFrameInlines.h"
-#include "mozilla/dom/NodeInfo.h"
-#include "mozilla/dom/NodeInfoInlines.h"
 #include "nsIScriptGlobalObject.h"
-#include "nsView.h"
-#include "nsViewManager.h"
 #include "nsIWidget.h"
 #include "nsLayoutUtils.h"
 #include "nsNameSpaceManager.h"
@@ -100,23 +111,12 @@
 #include "nsStyleConsts.h"
 #include "nsTextNode.h"
 #include "nsUnicharUtils.h"
+#include "nsView.h"
+#include "nsViewManager.h"
 #include "nsWindowSizes.h"
-#include "mozilla/Preferences.h"
-#include "xpcpublic.h"
-#include "HTMLLegendElement.h"
 #include "nsWrapperCacheInlines.h"
-#include "WrapperFactory.h"
-#include <algorithm>
-#include "nsGlobalWindowInner.h"
-#include "GeometryUtils.h"
-#include "nsIAnimationObserver.h"
-#include "nsChildContentList.h"
-#include "mozilla/dom/NodeBinding.h"
-#include "mozilla/dom/BindingDeclarations.h"
-#include "mozilla/dom/AncestorIterator.h"
 #include "xpcprivate.h"
-
-#include "XPathGenerator.h"
+#include "xpcpublic.h"
 
 #ifdef ACCESSIBILITY
 #  include "mozilla/dom/AccessibleNode.h"
@@ -172,24 +172,28 @@ bool nsINode::IsInclusiveFlatTreeDescendantOf(const nsINode* aNode) const {
   return false;
 }
 
+bool nsINode::IsShadowIncludingDescendantOf(const nsINode* aNode) const {
+  MOZ_ASSERT(aNode, "The node is nullptr.");
+
+  const nsINode* node = this;
+  while ((node = node->GetParentOrShadowHostNode())) {
+    if (node == aNode) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool nsINode::IsShadowIncludingInclusiveDescendantOf(
     const nsINode* aNode) const {
   MOZ_ASSERT(aNode, "The node is nullptr.");
 
-  if (this->GetComposedDoc() == aNode) {
+  if (this->GetComposedDoc() == aNode || this == aNode) {
     return true;
   }
 
-  const nsINode* node = this;
-  do {
-    if (node == aNode) {
-      return true;
-    }
-
-    node = node->GetParentOrShadowHostNode();
-  } while (node);
-
-  return false;
+  return IsShadowIncludingDescendantOf(aNode);
 }
 
 nsINode::nsSlots::nsSlots() : mWeakReference(nullptr) {}
@@ -266,8 +270,11 @@ void nsINode::AssertInvariantsOnNodeInfoChange() {
 
 #ifdef DEBUG
 void nsINode::AssertIsRootElementSlow(bool aIsRoot) const {
-  const bool isRootSlow = this == OwnerDoc()->GetRootElement();
-  MOZ_ASSERT(aIsRoot == isRootSlow);
+  auto* root = OwnerDoc()->GetRootElement();
+  const bool isRootSlow = this == root;
+  // If we're mid unbind of the root element, IsRootElement() might return true
+  // but the document might not be able to reach the root element anymore.
+  MOZ_ASSERT(aIsRoot == isRootSlow || !root);
 }
 #endif
 
@@ -301,8 +308,8 @@ void* nsINode::TakeProperty(const nsAtom* aPropertyName, nsresult* aStatus) {
   return OwnerDoc()->PropertyTable().TakeProperty(this, aPropertyName, aStatus);
 }
 
-nsIContentSecurityPolicy* nsINode::GetCsp() const {
-  return OwnerDoc()->GetCsp();
+nsIPolicyContainer* nsINode::GetPolicyContainer() const {
+  return OwnerDoc()->GetPolicyContainer();
 }
 
 nsINode::nsSlots* nsINode::CreateSlots() { return new nsSlots(); }
@@ -1021,7 +1028,9 @@ static const char* NodeTypeAsString(nsINode* aNode) {
   return NodeTypeStrings[nodeType];
 }
 
-nsINode* nsINode::RemoveChild(nsINode& aOldChild, ErrorResult& aError) {
+nsINode* nsINode::RemoveChildInternal(
+    nsINode& aOldChild, MutationEffectOnScript aMutationEffectOnScript,
+    ErrorResult& aError) {
   if (!aOldChild.IsContent()) {
     // aOldChild can't be one of our children.
     aError.ThrowNotFoundError(
@@ -1030,7 +1039,7 @@ nsINode* nsINode::RemoveChild(nsINode& aOldChild, ErrorResult& aError) {
   }
 
   if (aOldChild.GetParentNode() == this) {
-    nsContentUtils::MaybeFireNodeRemoved(&aOldChild, this);
+    nsContentUtils::NotifyDevToolsOfNodeRemoval(aOldChild);
   }
 
   // Check again, we may not be the child's parent anymore.
@@ -1043,7 +1052,8 @@ nsINode* nsINode::RemoveChild(nsINode& aOldChild, ErrorResult& aError) {
     return nullptr;
   }
 
-  RemoveChildNode(aOldChild.AsContent(), true);
+  RemoveChildNode(aOldChild.AsContent(), true, nullptr, nullptr,
+                  aMutationEffectOnScript);
   return &aOldChild;
 }
 
@@ -1076,22 +1086,18 @@ void nsINode::Normalize() {
     return;
   }
 
-  // We're relying on mozAutoSubtreeModified to keep the doc alive here.
-  RefPtr<Document> doc = OwnerDoc();
+  const RefPtr<Document> doc = OwnerDoc();
 
-  // Batch possible DOMSubtreeModified events.
-  mozAutoSubtreeModified subtree(doc, nullptr);
-
-  // Fire all DOMNodeRemoved events. Optimize the common case of there being
-  // no listeners
-  bool hasRemoveListeners = nsContentUtils::HasMutationListeners(
-      doc, NS_EVENT_BITS_MUTATION_NODEREMOVED);
-  if (hasRemoveListeners) {
-    for (nsCOMPtr<nsIContent>& node : nodes) {
+  // Let DevTools know the node removals if and only if DevTools is observing
+  // the mutations.
+  const bool notifyDevToolsOfNodeRemovals =
+      MaybeNeedsToNotifyDevToolsOfNodeRemovalsInOwnerDoc();
+  if (MOZ_UNLIKELY(notifyDevToolsOfNodeRemovals)) {
+    for (const nsCOMPtr<nsIContent>& node : nodes) {
       // Node may have already been removed.
-      if (nsCOMPtr<nsINode> parentNode = node->GetParentNode()) {
-        // TODO: Bug 1622253
-        nsContentUtils::MaybeFireNodeRemoved(MOZ_KnownLive(node), parentNode);
+      if (node->GetParentNode()) {
+        // TODO: MOZ_KnownLive because of Bug 1620312
+        nsContentUtils::NotifyDevToolsOfNodeRemoval(MOZ_KnownLive(*node));
       }
     }
   }
@@ -1103,21 +1109,24 @@ void nsINode::Normalize() {
   for (uint32_t i = 0; i < nodes.Length(); ++i) {
     nsIContent* node = nodes[i];
     // Merge with previous node unless empty
-    const nsTextFragment* text = node->GetText();
-    if (text->GetLength()) {
+    const CharacterDataBuffer* characterDataBuffer =
+        node->GetCharacterDataBuffer();
+    if (characterDataBuffer->GetLength()) {
       nsIContent* target = node->GetPreviousSibling();
-      NS_ASSERTION(
-          (target && target->NodeType() == TEXT_NODE) || hasRemoveListeners,
-          "Should always have a previous text sibling unless "
-          "mutation events messed us up");
-      if (!hasRemoveListeners || (target && target->NodeType() == TEXT_NODE)) {
+      NS_ASSERTION((target && target->NodeType() == TEXT_NODE) ||
+                       notifyDevToolsOfNodeRemovals,
+                   "Should always have a previous text sibling unless "
+                   "mutation events messed us up");
+      if (MOZ_LIKELY(!notifyDevToolsOfNodeRemovals) ||
+          (target && target->NodeType() == TEXT_NODE)) {
         nsTextNode* t = static_cast<nsTextNode*>(target);
-        if (text->Is2b()) {
-          t->AppendTextForNormalize(text->Get2b(), text->GetLength(), true,
+        if (characterDataBuffer->Is2b()) {
+          t->AppendTextForNormalize(characterDataBuffer->Get2b(),
+                                    characterDataBuffer->GetLength(), true,
                                     node);
         } else {
           tmpStr.Truncate();
-          text->AppendTo(tmpStr);
+          characterDataBuffer->AppendTo(tmpStr);
           t->AppendTextForNormalize(tmpStr.get(), tmpStr.Length(), true, node);
         }
       }
@@ -1125,11 +1134,12 @@ void nsINode::Normalize() {
 
     // Remove node
     nsCOMPtr<nsINode> parent = node->GetParentNode();
-    NS_ASSERTION(parent || hasRemoveListeners,
+    NS_ASSERTION(parent || notifyDevToolsOfNodeRemovals,
                  "Should always have a parent unless "
                  "mutation events messed us up");
     if (parent) {
-      parent->RemoveChildNode(node, true);
+      parent->RemoveChildNode(node, true, nullptr, nullptr,
+                              MutationEffectOnScript::KeepTrustWorthiness);
     }
   }
 }
@@ -1704,8 +1714,9 @@ static nsresult UpdateGlobalsInSubtree(nsIContent* aRoot) {
   return NS_OK;
 }
 
-void nsINode::InsertChildBefore(nsIContent* aKid, nsIContent* aBeforeThis,
-                                bool aNotify, ErrorResult& aRv) {
+void nsINode::InsertChildBefore(
+    nsIContent* aKid, nsIContent* aBeforeThis, bool aNotify, ErrorResult& aRv,
+    nsINode* aOldParent, MutationEffectOnScript aMutationEffectOnScript) {
   if (!IsContainerNode()) {
     aRv.ThrowHierarchyRequestError(
         "Parent is not a Document, DocumentFragment, or Element node.");
@@ -1740,6 +1751,7 @@ void nsINode::InsertChildBefore(nsIContent* aKid, nsIContent* aBeforeThis,
   // XXXbz Do we even need this code anymore?
   bool wasInNACScope = ShouldUseNACScope(aKid);
   BindContext context(*this);
+  context.SetIsMove(aOldParent != nullptr);
   aRv = aKid->BindToTree(context, *this);
   if (!aRv.Failed() && !wasInNACScope && ShouldUseNACScope(aKid)) {
     MOZ_ASSERT(ShouldUseNACScope(this),
@@ -1762,18 +1774,15 @@ void nsINode::InsertChildBefore(nsIContent* aKid, nsIContent* aBeforeThis,
     // Note that we always want to call ContentInserted when things are added
     // as kids to documents
     if (parent && !aBeforeThis) {
-      MutationObservers::NotifyContentAppended(parent, aKid, {});
+      ContentAppendInfo info;
+      info.mOldParent = aOldParent;
+      info.mMutationEffectOnScript = aMutationEffectOnScript;
+      MutationObservers::NotifyContentAppended(parent, aKid, info);
     } else {
-      MutationObservers::NotifyContentInserted(this, aKid, {});
-    }
-
-    if (nsContentUtils::WantMutationEvents(
-            aKid, NS_EVENT_BITS_MUTATION_NODEINSERTED, this)) {
-      InternalMutationEvent mutation(true, eLegacyNodeInserted);
-      mutation.mRelatedNode = this;
-
-      mozAutoSubtreeModified subtree(OwnerDoc(), this);
-      AsyncEventDispatcher::RunDOMEventWhenSafe(*aKid, mutation);
+      ContentInsertInfo info;
+      info.mOldParent = aOldParent;
+      info.mMutationEffectOnScript = aMutationEffectOnScript;
+      MutationObservers::NotifyContentInserted(this, aKid, info);
     }
   }
 }
@@ -1912,6 +1921,21 @@ nsIContent* nsINode::GetChildAt_Deprecated(uint32_t aIndex) const {
   }
 
   return child;
+}
+
+nsINode* nsINode::GetChildAtInFlatTree(uint32_t aIndex) const {
+  if (const auto* slot = HTMLSlotElement::FromNode(this)) {
+    const auto& assignedNodes = slot->AssignedNodes();
+    if (!assignedNodes.IsEmpty()) {
+      if (aIndex >= assignedNodes.Length()) {
+        return nullptr;
+      }
+      return assignedNodes[aIndex];
+    }
+  } else if (auto* shadowRoot = GetShadowRoot()) {
+    return shadowRoot->GetChildAtInFlatTree(aIndex);
+  }
+  return GetChildAt_Deprecated(aIndex);
 }
 
 int32_t nsINode::ComputeIndexOf_Deprecated(
@@ -2311,7 +2335,8 @@ void nsINode::ReplaceChildren(const Sequence<OwningNodeOrString>& aNodes,
   return ReplaceChildren(node, aRv);
 }
 
-void nsINode::ReplaceChildren(nsINode* aNode, ErrorResult& aRv) {
+void nsINode::ReplaceChildren(nsINode* aNode, ErrorResult& aRv,
+                              MutationEffectOnScript aMutationEffectOnScript) {
   if (aNode) {
     EnsurePreInsertionValidity(*aNode, nullptr, aRv);
     if (aRv.Failed()) {
@@ -2319,24 +2344,25 @@ void nsINode::ReplaceChildren(nsINode* aNode, ErrorResult& aRv) {
     }
   }
   nsCOMPtr<nsINode> node = aNode;
+  const RefPtr<Document> doc = OwnerDoc();
 
-  // Batch possible DOMSubtreeModified events.
-  mozAutoSubtreeModified subtree(OwnerDoc(), nullptr);
-
-  if (nsContentUtils::HasMutationListeners(
-          OwnerDoc(), NS_EVENT_BITS_MUTATION_NODEREMOVED)) {
-    FireNodeRemovedForChildren();
+  if (MOZ_UNLIKELY(MaybeNeedsToNotifyDevToolsOfNodeRemovalsInOwnerDoc())) {
+    NotifyDevToolsOfRemovalsOfChildren();
+    // FIXME: There is no guarantee that node->OwnerDoc() == OwnerDoc().
+    // Thus, we may not require to notify DevTools of any node removals
+    // in the same document, but the node or its children may be in different
+    // document and its removal may be observed by the DevTools.
     if (node) {
       if (node->NodeType() == DOCUMENT_FRAGMENT_NODE) {
-        node->FireNodeRemovedForChildren();
-      } else if (nsCOMPtr<nsINode> parent = node->GetParentNode()) {
-        nsContentUtils::MaybeFireNodeRemoved(node, parent);
+        node->NotifyDevToolsOfRemovalsOfChildren();
+      } else if (node->GetParentNode()) {
+        nsContentUtils::NotifyDevToolsOfNodeRemoval(*node);
       }
     }
   }
 
   // Needed when used in combination with contenteditable (maybe)
-  mozAutoDocUpdate updateBatch(OwnerDoc(), true);
+  mozAutoDocUpdate updateBatch(doc, true);
 
   nsAutoMutationBatch mb(this, true, true);
 
@@ -2348,13 +2374,106 @@ void nsINode::ReplaceChildren(nsINode* aNode, ErrorResult& aRv) {
   mb.RemovalDone();
 
   if (aNode) {
-    AppendChild(*aNode, aRv);
+    AppendChildInternal(*aNode, aMutationEffectOnScript, aRv);
     mb.NodesAdded();
   }
 }
 
+static bool IsDoctypeOrHasFollowingDoctype(nsINode* aNode) {
+  for (; aNode; aNode = aNode->GetNextSibling()) {
+    if (aNode->NodeType() == nsINode::DOCUMENT_TYPE_NODE) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// https://dom.spec.whatwg.org/#dom-parentnode-movebefore
+void nsINode::MoveBefore(nsINode& aNode, nsINode* aChild, ErrorResult& aRv) {
+  nsINode* referenceChild = aChild;
+  if (referenceChild == &aNode) {
+    referenceChild = aNode.GetNextSibling();
+  }
+
+  // Move algorithm
+  // https://dom.spec.whatwg.org/#move
+  // Step 1.
+  nsINode& newParent = *this;
+  GetRootNodeOptions options;
+  options.mComposed = true;
+  if (newParent.GetRootNode(options) != aNode.GetRootNode(options)) {
+    aRv.ThrowHierarchyRequestError("Different root node.");
+    return;
+  }
+
+  // Step 2.
+  if (nsContentUtils::ContentIsHostIncludingDescendantOf(&newParent, &aNode)) {
+    aRv.ThrowHierarchyRequestError("Node is an ancestor of the new parent.");
+    return;
+  }
+
+  // Step 3.
+  if (referenceChild && referenceChild->GetParentNode() != &newParent) {
+    aRv.ThrowNotFoundError("Wrong reference child.");
+    return;
+  }
+
+  // Step 4.
+  if (!aNode.IsElement() && !aNode.IsCharacterData()) {
+    aRv.ThrowHierarchyRequestError("Wrong type of node.");
+    return;
+  }
+
+  // Step 5.
+  if (aNode.IsText() && newParent.IsDocument()) {
+    aRv.ThrowHierarchyRequestError(
+        "Can't move a text node to be a child of a document.");
+    return;
+  }
+
+  // Step 6.
+  if (newParent.IsDocument() && aNode.IsElement() &&
+      (newParent.AsDocument()->GetRootElement() ||
+       IsDoctypeOrHasFollowingDoctype(referenceChild))) {
+    aRv.ThrowHierarchyRequestError(
+        "Can't move an element to be a child of the document.");
+    return;
+  }
+
+  // Step 7.
+  nsINode* oldParent = aNode.GetParentNode();
+
+  // Step 8.
+  MOZ_ASSERT(oldParent);
+
+  // Steps 9-12 happen implicitly in when triggering
+  // nsIMutationObserver notifications.
+  // Step 13, and UnbindFromTree runs step 14 and step 15 and step 16,
+  // and also Step 25..
+  mozAutoDocUpdate updateBatch(GetComposedDoc(), true);
+  {  // Scope for AutoSuppressNotifyingDevToolsOfNodeRemovals
+    // XXX Do we really need to suppress notifying DevTools of this node
+    // removal? If we stop suppressing that, we need to check whether
+    // `referenceChild` is still in `oldParent` after that because the user
+    // can change the DOM with Inspector or Console.
+    AutoSuppressNotifyingDevToolsOfNodeRemovals suppressNotifyingDevTools(
+        *OwnerDoc());
+    oldParent->RemoveChildNode(aNode.AsContent(), true, nullptr, &newParent);
+
+    // Steps 17-24 and Step 26.
+    // FIXME: I think this InsertChildBefore() call can be moved outside the
+    // scope of AutoSuppressNotifyingDevToolsOfNodeRemovals.
+    InsertChildBefore(aNode.AsContent(),
+                      referenceChild ? referenceChild->AsContent() : nullptr,
+                      true, aRv, oldParent);
+  }
+}
+
 void nsINode::RemoveChildNode(nsIContent* aKid, bool aNotify,
-                              const BatchRemovalState* aState) {
+                              const BatchRemovalState* aState,
+                              nsINode* aNewParent,
+                              MutationEffectOnScript aMutationEffectOnScript) {
   // NOTE: This function must not trigger any calls to
   // Document::GetRootElement() calls until *after* it has removed aKid from
   // aChildArray. Any calls before then could potentially restore a stale
@@ -2367,7 +2486,11 @@ void nsINode::RemoveChildNode(nsIContent* aKid, bool aNotify,
   mozAutoDocUpdate updateBatch(GetComposedDoc(), aNotify);
 
   if (aNotify) {
-    MutationObservers::NotifyContentWillBeRemoved(this, aKid, {aState});
+    ContentRemoveInfo info;
+    info.mBatchRemovalState = aState;
+    info.mNewParent = aNewParent;
+    info.mMutationEffectOnScript = aMutationEffectOnScript;
+    MutationObservers::NotifyContentWillBeRemoved(this, aKid, info);
   }
 
   // Since aKid is use also after DisconnectChild, ensure it stays alive.
@@ -2376,7 +2499,7 @@ void nsINode::RemoveChildNode(nsIContent* aKid, bool aNotify,
 
   // Invalidate cached array of child nodes
   InvalidateChildNodes();
-  aKid->UnbindFromTree();
+  aKid->UnbindFromTree(aNewParent);
 }
 
 // When replacing, aRefChild is the content being replaced; when
@@ -2649,9 +2772,9 @@ void nsINode::EnsurePreInsertionValidity2(bool aReplace, nsINode& aNewChild,
   EnsureAllowedAsChild(&aNewChild, this, aReplace, aRefChild, aError);
 }
 
-nsINode* nsINode::ReplaceOrInsertBefore(bool aReplace, nsINode* aNewChild,
-                                        nsINode* aRefChild,
-                                        ErrorResult& aError) {
+nsINode* nsINode::ReplaceOrInsertBefore(
+    bool aReplace, nsINode* aNewChild, nsINode* aRefChild,
+    MutationEffectOnScript aMutationEffectOnScript, ErrorResult& aError) {
   // XXXbz I wish I could assert that nsContentUtils::IsSafeToRunScript() so we
   // could rely on scriptblockers going out of scope to actually run XBL
   // teardown, but various crud adds nodes under scriptblockers (e.g. native
@@ -2684,19 +2807,20 @@ nsINode* nsINode::ReplaceOrInsertBefore(bool aReplace, nsINode* aNewChild,
     // If we're replacing, fire for node-to-be-replaced.
     // If aRefChild == aNewChild then we'll fire for it in check below
     if (aReplace && aRefChild != aNewChild) {
-      nsContentUtils::MaybeFireNodeRemoved(aRefChild, this);
+      nsContentUtils::NotifyDevToolsOfNodeRemoval(*aRefChild);
     }
 
     // If the new node already has a parent, fire for removing from old
     // parent
-    if (nsCOMPtr<nsINode> oldParent = aNewChild->GetParentNode()) {
-      nsContentUtils::MaybeFireNodeRemoved(aNewChild, oldParent);
+    if (aNewChild->GetParentNode()) {
+      nsContentUtils::NotifyDevToolsOfNodeRemoval(*aNewChild);
     }
 
     // If we're inserting a fragment, fire for all the children of the
     // fragment
     if (nodeType == DOCUMENT_FRAGMENT_NODE) {
-      static_cast<FragmentOrElement*>(aNewChild)->FireNodeRemovedForChildren();
+      static_cast<FragmentOrElement*>(aNewChild)
+          ->NotifyDevToolsOfRemovalsOfChildren();
     }
 
     if (guard.Mutated(0)) {
@@ -2743,7 +2867,8 @@ nsINode* nsINode::ReplaceOrInsertBefore(bool aReplace, nsINode* aNewChild,
       // ScriptBlocker ensures previous and next stay alive.
       nsIContent* previous = aNewChild->GetPreviousSibling();
       nsIContent* next = aNewChild->GetNextSibling();
-      oldParent->RemoveChildNode(aNewChild->AsContent(), true);
+      oldParent->RemoveChildNode(aNewChild->AsContent(), true, nullptr, nullptr,
+                                 aMutationEffectOnScript);
       if (nsAutoMutationBatch::GetCurrentBatch() == &mb) {
         mb.RemovalDone();
         mb.SetPrevSibling(previous);
@@ -2900,7 +3025,8 @@ nsINode* nsINode::ReplaceOrInsertBefore(bool aReplace, nsINode* aNewChild,
                                   : GetLastChild();
     MOZ_ASSERT(toBeRemoved);
 
-    RemoveChildNode(toBeRemoved, true);
+    RemoveChildNode(toBeRemoved, true, nullptr, nullptr,
+                    aMutationEffectOnScript);
   }
 
   // Move new child over to our document if needed. Do this after removing
@@ -2957,8 +3083,10 @@ nsINode* nsINode::ReplaceOrInsertBefore(bool aReplace, nsINode* aNewChild,
       if (aError.Failed()) {
         // Make sure to notify on any children that we did succeed to insert
         if (appending && i != 0) {
+          ContentAppendInfo info;
+          info.mMutationEffectOnScript = aMutationEffectOnScript;
           MutationObservers::NotifyContentAppended(
-              static_cast<nsIContent*>(this), firstInsertedContent, {});
+              static_cast<nsIContent*>(this), firstInsertedContent, info);
         }
         return nullptr;
       }
@@ -2970,15 +3098,12 @@ nsINode* nsINode::ReplaceOrInsertBefore(bool aReplace, nsINode* aNewChild,
 
     // Notify and fire mutation events when appending
     if (appending) {
+      ContentAppendInfo info;
+      info.mMutationEffectOnScript = aMutationEffectOnScript;
       MutationObservers::NotifyContentAppended(static_cast<nsIContent*>(this),
-                                               firstInsertedContent, {});
+                                               firstInsertedContent, info);
       if (mutationBatch) {
         mutationBatch->NodesAdded();
-      }
-      // Optimize for the case when there are no listeners
-      if (nsContentUtils::HasMutationListeners(
-              doc, NS_EVENT_BITS_MUTATION_NODEINSERTED)) {
-        Element::FireNodeInserted(doc, this, *fragChildren);
       }
     }
   } else {
@@ -2995,7 +3120,8 @@ nsINode* nsINode::ReplaceOrInsertBefore(bool aReplace, nsINode* aNewChild,
                             : GetLastChild());
       mb.SetNextSibling(nodeToInsertBefore);
     }
-    InsertChildBefore(newContent, nodeToInsertBefore, true, aError);
+    InsertChildBefore(newContent, nodeToInsertBefore, true, aError, nullptr,
+                      aMutationEffectOnScript);
     if (aError.Failed()) {
       return nullptr;
     }
@@ -3145,7 +3271,7 @@ class SelectorCache final : public nsExpirationTracker<SelectorCacheKey, 4> {
 
   SelectorCache()
       : nsExpirationTracker<SelectorCacheKey, 4>(
-            1000, "SelectorCache", GetMainThreadSerialEventTarget()) {}
+            1000, "SelectorCache"_ns, GetMainThreadSerialEventTarget()) {}
 
   void NotifyExpired(SelectorCacheKey* aSelector) final {
     MOZ_ASSERT(NS_IsMainThread());
@@ -3408,7 +3534,7 @@ Element* nsINode::GetNearestInclusiveOpenPopover() const {
 
 Element* nsINode::GetNearestInclusiveTargetPopoverForInvoker() const {
   for (auto* el : InclusiveFlatTreeAncestorsOfType<Element>()) {
-    if (auto* popover = el->GetEffectiveInvokeTargetElement()) {
+    if (auto* popover = el->GetEffectiveCommandForElement()) {
       if (popover->IsAutoPopover() && popover->IsPopoverOpen()) {
         return popover;
       }
@@ -3422,7 +3548,7 @@ Element* nsINode::GetNearestInclusiveTargetPopoverForInvoker() const {
   return nullptr;
 }
 
-nsGenericHTMLElement* nsINode::GetEffectiveInvokeTargetElement() const {
+nsGenericHTMLElement* nsINode::GetEffectiveCommandForElement() const {
   if (!StaticPrefs::dom_element_commandfor_enabled()) {
     return nullptr;
   }
@@ -3659,7 +3785,6 @@ already_AddRefed<nsINode> nsINode::CloneAndAdopt(
     if (nsPIDOMWindowInner* window = newDoc->GetInnerWindow()) {
       EventListenerManager* elm = aNode->GetExistingListenerManager();
       if (elm) {
-        window->SetMutationListeners(elm->MutationListenerBits());
         if (elm->MayHaveDOMActivateListeners()) {
           window->SetHasDOMActivateEventListeners();
         }
@@ -3835,6 +3960,8 @@ already_AddRefed<nsINode> nsINode::CloneAndAdopt(
         return nullptr;
       }
       newShadowRoot->SetIsDeclarative(originalShadowRoot->IsDeclarative());
+      nsAtom* referenceTarget = originalShadowRoot->ReferenceTarget();
+      newShadowRoot->SetReferenceTarget(referenceTarget);
 
       for (nsIContent* origChild = originalShadowRoot->GetFirstChild();
            origChild; origChild = origChild->GetNextSibling()) {
@@ -3970,18 +4097,30 @@ void nsINode::RemoveMutationObserver(
   }
 }
 
-void nsINode::FireNodeRemovedForChildren() {
-  Document* doc = OwnerDoc();
+bool nsINode::MaybeNeedsToNotifyDevToolsOfNodeRemovalsInOwnerDoc() const {
+  // XXX Should we check SuppressedNotifyingDevToolsOfNodeRemovals() here too?
+  // Then, we could skip to handle some node removals while we're handling some
+  // APIs.
+  return OwnerDoc()->DevToolsWatchingDOMMutations();
+}
+
+bool nsINode::DevToolsShouldBeNotifiedOfThisRemoval() const {
+  return MOZ_UNLIKELY(MaybeNeedsToNotifyDevToolsOfNodeRemovalsInOwnerDoc()) &&
+         IsInComposedDoc() &&
+         !OwnerDoc()->SuppressedNotifyingDevToolsOfNodeRemovals() &&
+         !ChromeOnlyAccess();
+}
+
+void nsINode::NotifyDevToolsOfRemovalsOfChildren() {
   // Optimize the common case
-  if (!nsContentUtils::HasMutationListeners(
-          doc, NS_EVENT_BITS_MUTATION_NODEREMOVED)) {
+  if (MOZ_LIKELY(!MaybeNeedsToNotifyDevToolsOfNodeRemovalsInOwnerDoc())) {
     return;
   }
 
-  nsCOMPtr<nsINode> child;
-  for (child = GetFirstChild(); child && child->GetParentNode() == this;
+  for (nsCOMPtr<nsIContent> child = GetFirstChild();
+       child && child->GetParentNode() == this;
        child = child->GetNextSibling()) {
-    nsContentUtils::MaybeFireNodeRemoved(child, this);
+    nsContentUtils::NotifyDevToolsOfNodeRemoval(*child);
   }
 }
 
@@ -4012,62 +4151,89 @@ ShadowRoot* nsINode::GetShadowRootForSelection() const {
   return shadowRoot;
 }
 
-// https://html.spec.whatwg.org/#ancestor-hidden-until-found-revealing-algorithm
-void nsINode::RevealAncestorHiddenUntilFoundAndFireBeforematchEvent(
-    ErrorResult& aRv) {
-  if (!StaticPrefs::dom_hidden_until_found_enabled()) {
-    return;
-  }
-  // 1. While currentNode has a parent node within the flat tree:
-  auto* currentNode = this;
-  while (RefPtr parentNode = currentNode->GetFlattenedTreeParentNode()) {
-    // 1.1. If currentNode has the hidden attribute in the hidden until found
-    //      state, then:
-    if (RefPtr currentAsElement = Element::FromNode(currentNode);
+enum class RevealType : uint8_t {
+  UntilFound,
+  Details,
+};
+// https://html.spec.whatwg.org/#ancestor-revealing-algorithm
+void nsINode::AncestorRevealingAlgorithm(ErrorResult& aRv) {
+  // 1. Let ancestorsToReveal be an empty list.
+  AutoTArray<std::pair<RefPtr<nsINode>, RevealType>, 16> ancestorsToReveal;
+  // 2. Let ancestor be target.
+  // 3. While ancestor has a parent node within the flat tree:
+  for (nsINode* ancestor : InclusiveFlatTreeAncestors(*this)) {
+    // 3.1 If ancestor has a hidden attribute in the hidden until found state,
+    //     then append (ancestor, "until-found") to ancestorsToReveal.
+    if (Element* currentAsElement = Element::FromNode(ancestor);
         currentAsElement &&
         currentAsElement->AttrValueIs(kNameSpaceID_None, nsGkAtoms::hidden,
                                       nsGkAtoms::untilFound, eIgnoreCase)) {
-      // 1.1.1 Fire an event named beforematch at currentNode.
-      currentAsElement->FireBeforematchEvent(aRv);
+      ancestorsToReveal.AppendElement(
+          std::make_pair(ancestor, RevealType::UntilFound));
+    }
+
+    // 3.2 If ancestor is slotted into the second slot of a details element
+    //     which does not have an open attribute, then append (ancestor's
+    //     parent node, "details") to ancestorsToReveal.
+    if (HTMLSlotElement* slot = HTMLSlotElement::FromNode(ancestor)) {
+      // Note: There are two slots in the details element. Gecko names the
+      //       summary, and leaves the content slot unnamed.
+      if (HTMLDetailsElement* details = HTMLDetailsElement::FromNodeOrNull(
+              slot->GetContainingShadowHost());
+          details && !details->Open() && !slot->HasName()) {
+        ancestorsToReveal.AppendElement(
+            std::make_pair(details, RevealType::Details));
+      }
+    }
+
+    // 3.3 Set ancestor to ancestor's parent node within the flat tree.
+  }
+
+  // 4. For each (ancestor, type) in ancestorsToReveal:
+  for (const auto& [ancestor, revealType] : ancestorsToReveal) {
+    // 4.1 If ancestorToReveal is not connected, then return.
+    if (!ancestor->IsInComposedDoc()) {
+      return;
+    }
+
+    // 4.2 If type is "until-found", then:
+    if (revealType == RevealType::UntilFound) {
+      // 4.2.1 If ancestorToReveal's hidden attribute is not in the Hidden Until
+      //       Found state, then return.
+      RefPtr ancestorAsElement = Element::FromNode(ancestor);
+      if (!ancestorAsElement ||
+          !ancestorAsElement->AttrValueIs(kNameSpaceID_None, nsGkAtoms::hidden,
+                                          nsGkAtoms::untilFound, eIgnoreCase)) {
+        return;
+      }
+      // 4.2.2 Fire an event named beforematch at ancestorToReveal with the
+      //       bubbles attribute initialized to true.
+      ancestorAsElement->FireBeforematchEvent(aRv);
       if (MOZ_UNLIKELY(aRv.Failed())) {
         return;
       }
-
-      // 1.1.2 Remove the hidden attribute from currentNode.
-      currentAsElement->UnsetAttr(kNameSpaceID_None, nsGkAtoms::hidden,
-                                  /*aNotify=*/true);
+      // 4.2.3 If ancestorToReveal is not connected, then return.
+      if (!ancestor->IsInComposedDoc()) {
+        return;
+      }
+      // 4.2.4 Remove the hidden attribute from ancestorToReveal.
+      ancestorAsElement->UnsetAttr(kNameSpaceID_None, nsGkAtoms::hidden,
+                                   /*aNotify=*/true);
+    } else {  // 4.3 Otherwise
+      // 4.3.1 Assert: revealType is "details".
+      MOZ_ASSERT(revealType == RevealType::Details);
+      // 4.3.2 If ancestorToReveal has an open attribute, then return.
+      RefPtr details = HTMLDetailsElement::FromNode(ancestor);
+      MOZ_ASSERT(details);
+      if (details->Open()) {
+        return;
+      }
+      // 4.3.3 Set the open attribute on ancestorToReveal to the empty string.
+      details->SetOpen(true, aRv);
+      if (MOZ_UNLIKELY(aRv.Failed())) {
+        return;
+      }
     }
-    // 1.2 Set currentNode to the parent node of currentNode within the flat
-    //     tree.
-    currentNode = parentNode;
-  }
-}
-
-// https://html.spec.whatwg.org/#ancestor-details-revealing-algorithm
-void nsINode::RevealAncestorClosedDetails() {
-  AutoTArray<RefPtr<HTMLDetailsElement>, 16> detailsElements;
-  // 1. While currentNode has a parent node within the flat tree:
-  for (auto* currentNode : InclusiveFlatTreeAncestors(*this)) {
-    // 1.1 If currentNode is slotted into the second slot of a details element:
-    auto* slot = HTMLSlotElement::FromNode(currentNode);
-    if (!slot) {
-      continue;
-    }
-    // Note: There are two slots in the details element. Gecko names the
-    //       summary, and leaves the content slot unnamed.
-    if (auto* details =
-            HTMLDetailsElement::FromNodeOrNull(slot->GetContainingShadowHost());
-        details && !details->Open() && !slot->HasName()) {
-      detailsElements.AppendElement(details);
-      // 1.1.1 Set currentNode to the details element which currentNode is
-      //       slotted into.
-      // Note: This step is omitted because we use the custom iterator.
-    }
-  }
-  // 1.1.2 If the open attribute is not set on currentNode, then set the
-  //       open attribute on currentNode to the empty string.
-  for (auto& details : detailsElements) {
-    details->SetOpen(true, IgnoreErrors());
   }
 }
 

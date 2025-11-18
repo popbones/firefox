@@ -78,22 +78,6 @@ extern JS_PUBLIC_API bool JS_IsDeadWrapper(JSObject* obj);
 extern JS_PUBLIC_API JSObject* JS_NewDeadWrapper(
     JSContext* cx, JSObject* origObject = nullptr);
 
-namespace js {
-
-/**
- * Get the script private value associated with an object, if any.
- *
- * The private value is set with SetScriptPrivate() or SetModulePrivate() and is
- * internally stored on the relevant ScriptSourceObject.
- *
- * This is used by the cycle collector to trace through
- * ScriptSourceObjects. This allows private values to contain an nsISupports
- * pointer and hence support references to cycle collected C++ objects.
- */
-JS_PUBLIC_API JS::Value MaybeGetScriptPrivate(JSObject* object);
-
-}  // namespace js
-
 /*
  * Used by the cycle collector to trace through a shape or object group and
  * all cycle-participating data it reaches, using bounded stack space.
@@ -467,6 +451,8 @@ JS_PUBLIC_API void SetPreserveWrapperCallbacks(
     JSContext* cx, PreserveWrapperCallback preserveWrapper,
     HasReleasedWrapperCallback hasReleasedWrapper);
 
+JS_PUBLIC_API void CommitPendingWrapperPreservations(JSContext* cx);
+
 JS_PUBLIC_API bool IsObjectInContextCompartment(JSObject* obj,
                                                 const JSContext* cx);
 
@@ -486,9 +472,15 @@ using DOMInstanceClassHasProtoAtDepth = bool (*)(const JSClass*, uint32_t,
                                                  uint32_t);
 using DOMInstanceClassIsError = bool (*)(const JSClass*);
 
+using DOMExtractExceptionInfo = bool (*)(JSContext*, JS::HandleObject, bool*,
+                                         JS::MutableHandle<JSString*>,
+                                         uint32_t*, uint32_t*,
+                                         JS::MutableHandle<JSString*>);
+
 struct JSDOMCallbacks {
   DOMInstanceClassHasProtoAtDepth instanceClassMatchesProto;
   DOMInstanceClassIsError instanceClassIsError;
+  DOMExtractExceptionInfo extractExceptionInfo;
 };
 using DOMCallbacks = struct JSDOMCallbacks;
 
@@ -787,11 +779,8 @@ using SharedMemoryMap =
 extern JS_PUBLIC_API const gc::SharedMemoryMap& GetSharedMemoryUsageForZone(
     JS::Zone* zone);
 
-/**
- * This function only reports GC heap memory,
- * and not malloc allocated memory associated with GC things.
- * It reports the total of all memory for the whole Runtime.
- */
+// Get the total amount of GC heap memory used by the runtime, including malloc
+// memory.
 extern JS_PUBLIC_API uint64_t GetGCHeapUsage(JSContext* cx);
 
 class JS_PUBLIC_API CompartmentTransplantCallback {

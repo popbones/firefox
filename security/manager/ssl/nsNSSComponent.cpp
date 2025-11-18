@@ -1077,27 +1077,13 @@ void nsNSSComponent::setValidationOptions(
   CertVerifier::CertificateTransparencyConfig ctConfig(
       ctMode, std::move(skipCTForHosts), std::move(skipCTForSPKIHashes));
 
-  NetscapeStepUpPolicy netscapeStepUpPolicy = static_cast<NetscapeStepUpPolicy>(
-      StaticPrefs::security_pki_netscape_step_up_policy());
-  switch (netscapeStepUpPolicy) {
-    case NetscapeStepUpPolicy::AlwaysMatch:
-    case NetscapeStepUpPolicy::MatchBefore23August2016:
-    case NetscapeStepUpPolicy::MatchBefore23August2015:
-    case NetscapeStepUpPolicy::NeverMatch:
-      break;
-    default:
-      netscapeStepUpPolicy = NetscapeStepUpPolicy::AlwaysMatch;
-      break;
-  }
-
-  CRLiteMode defaultCRLiteMode = CRLiteMode::Disabled;
+  CRLiteMode defaultCRLiteMode = CRLiteMode::Enforce;
   CRLiteMode crliteMode =
       static_cast<CRLiteMode>(StaticPrefs::security_pki_crlite_mode());
   switch (crliteMode) {
     case CRLiteMode::Disabled:
     case CRLiteMode::TelemetryOnly:
     case CRLiteMode::Enforce:
-    case CRLiteMode::ConfirmRevocations:
       break;
     default:
       crliteMode = defaultCRLiteMode;
@@ -1115,7 +1101,7 @@ void nsNSSComponent::setValidationOptions(
 
   mDefaultCertVerifier = new SharedCertVerifier(
       odc, osc, softTimeout, hardTimeout, certShortLifetimeInDays,
-      netscapeStepUpPolicy, std::move(ctConfig), crliteMode, mEnterpriseCerts);
+      std::move(ctConfig), crliteMode, mEnterpriseCerts);
 }
 
 void nsNSSComponent::UpdateCertVerifierWithEnterpriseRoots() {
@@ -1134,8 +1120,7 @@ void nsNSSComponent::UpdateCertVerifierWithEnterpriseRoots() {
       oldCertVerifier->mOCSPStrict ? CertVerifier::ocspStrict
                                    : CertVerifier::ocspRelaxed,
       oldCertVerifier->mOCSPTimeoutSoft, oldCertVerifier->mOCSPTimeoutHard,
-      oldCertVerifier->mCertShortLifetimeInDays,
-      oldCertVerifier->mNetscapeStepUpPolicy, std::move(ctConfig),
+      oldCertVerifier->mCertShortLifetimeInDays, std::move(ctConfig),
       oldCertVerifier->mCRLiteMode, mEnterpriseCerts);
 }
 
@@ -1697,7 +1682,6 @@ nsNSSComponent::Observe(nsISupports* aSubject, const char* aTopic,
             "security.pki.certificate_transparency.disable_for_hosts") ||
         prefName.EqualsLiteral(
             "security.pki.certificate_transparency.disable_for_spki_hashes") ||
-        prefName.EqualsLiteral("security.pki.netscape_step_up_policy") ||
         prefName.EqualsLiteral("security.OCSP.timeoutMilliseconds.soft") ||
         prefName.EqualsLiteral("security.OCSP.timeoutMilliseconds.hard") ||
         prefName.EqualsLiteral("security.pki.crlite_mode")) {

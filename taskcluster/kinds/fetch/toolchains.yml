@@ -6,7 +6,7 @@ binutils-2.31.1:
     description: binutils 2.31.1 source code
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/binutils/binutils-2.31.1.tar.xz
+        url: https://ftpmirror.gnu.org/gnu/binutils/binutils-2.31.1.tar.xz
         sha256: 5d20086ecf5752cc7d9134246e9588fa201740d540f7eb84d795b1f7a93bca86
         size: 20467996
         gpg-signature:
@@ -20,7 +20,7 @@ binutils-2.41:
     description: binutils 2.41 source code
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.xz
+        url: https://ftpmirror.gnu.org/gnu/binutils/binutils-2.41.tar.xz
         sha256: ae9a5789e23459e59606e6714723f2d3ffc31c03174191ef0d015bdf06007450
         size: 26765692
         gpg-signature:
@@ -34,7 +34,7 @@ gcc-8.5.0:
     description: GCC 8.5.0 source code
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/gcc/gcc-8.5.0/gcc-8.5.0.tar.xz
+        url: https://ftpmirror.gnu.org/gnu/gcc/gcc-8.5.0/gcc-8.5.0.tar.xz
         sha256: d308841a511bb830a6100397b0042db24ce11f642dab6ea6ee44842e5325ed50
         size: 63841008
         gpg-signature:
@@ -48,9 +48,23 @@ gcc-9.5.0:
     description: GCC 9.5.0 source code
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/gcc/gcc-9.5.0/gcc-9.5.0.tar.xz
+        url: https://ftpmirror.gnu.org/gnu/gcc/gcc-9.5.0/gcc-9.5.0.tar.xz
         sha256: 27769f64ef1d4cd5e2be8682c0c93f9887983e6cfd1a927ce5a0a2915a95cf8f
         size: 72462752
+        gpg-signature:
+            sig-url: "{url}.sig"
+            key-path: build/unix/build-gcc/7F74F97C103468EE5D750B583AB00996FC26A641.key
+        artifact-name: gcc-source.tar.zst
+        strip-components: 1
+        add-prefix: gcc-source/
+
+gcc-10.5.0:
+    description: GCC 10.5.0 source code
+    fetch:
+        type: static-url
+        url: https://ftpmirror.gnu.org/gnu/gcc/gcc-10.5.0/gcc-10.5.0.tar.xz
+        sha256: 25109543fdf46f397c347b5d8b7a2c7e5694a5a51cce4b9c6e1ea8a71ca307c1
+        size: 77846412
         gpg-signature:
             sig-url: "{url}.sig"
             key-path: build/unix/build-gcc/7F74F97C103468EE5D750B583AB00996FC26A641.key
@@ -62,7 +76,7 @@ gcc-11.4.0:
     description: GCC 11.4.0 source code
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz
+        url: https://ftpmirror.gnu.org/gnu/gcc/gcc-11.4.0/gcc-11.4.0.tar.xz
         sha256: 3f2db222b007e8a4a23cd5ba56726ef08e8b1f1eb2055ee72c1402cea73a8dd9
         size: 79837032
         gpg-signature:
@@ -76,7 +90,7 @@ gcc-14.2.0:
     description: GCC 14.2.0 source code
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz
+        url: https://ftpmirror.gnu.org/gnu/gcc/gcc-14.2.0/gcc-14.2.0.tar.xz
         sha256: a7b39bc69cbf9e25826c5a60ab26477001f7c08d85cec04bc0e29cabed6f3cc9
         size: 92306460
         gpg-signature:
@@ -90,7 +104,7 @@ gmp-6.1.0:
     description: GMP 6.1.0 source code
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/gmp/gmp-6.1.0.tar.bz2
+        url: https://ftpmirror.gnu.org/gnu/gmp/gmp-6.1.0.tar.bz2
         sha256: 498449a994efeba527885c10405993427995d3f86b8768d8cdf8d9dd7c6b73e8
         size: 2383840
         gpg-signature:
@@ -123,7 +137,7 @@ mpc-1.0.3:
     description: mpc 1.0.3 source code
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz
+        url: https://ftpmirror.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz
         sha256: 617decc6ea09889fb08ede330917a00b16809b8db88c29c31bfbb49cbf88ecc3
         size: 669925
         gpg-signature:
@@ -303,7 +317,7 @@ gn:
     fetch:
         type: git
         repo: https://gn.googlesource.com/gn
-        revision: 7e05276308f3d49f8514ef02afe4f94487b1efb2
+        revision: f98b6d7275c2e823e0983fa7f874facfe6980778
 
 grcov:
     description: grcov source code
@@ -332,7 +346,7 @@ mingw-w64:
     fetch:
         type: git
         repo: https://git.code.sf.net/p/mingw-w64/mingw-w64
-        revision: 2ca6f1348cab58b5b994fd5916ff57445ade22f8
+        revision: 849a151baf187f32eb57b34c00365cbc7d2353a7
 
 mingw-w64-trunk:
     description: mingw-w64 master branch source code
@@ -361,19 +375,19 @@ android-ndk-rs:
         repo: https://github.com/jamienicol/android-ndk-rs
         revision: 595f4e14a78371e3ab59b12f7bd8131f2ec5b4a1
 
-clang-8.0:
-    description: clang 8.0.0 source code
-    fetch:
-        type: git
-        repo: https://github.com/llvm/llvm-project
-        revision: d2298e74235598f15594fe2c99bbac870a507c59
-
 clang-14:
     description: clang 14.0.5 source code
     fetch:
         type: git
         repo: https://github.com/llvm/llvm-project
         revision: 4bc1d0b51c8e488d78ab69c8b19cfbcd1f7db6a4
+
+clang-17:
+    description: clang 17.0.6 source code
+    fetch:
+        type: git
+        repo: https://github.com/llvm/llvm-project
+        revision: 6009708b4367171ccdbf4b5905cb6a803753fe18
 
 clang-19:
     description: clang 19.1.7 source code
@@ -383,11 +397,11 @@ clang-19:
         revision: cd708029e0b2869e80abe31ddb175f7c35361f90
 
 clang-20:
-    description: clang 20.1.5 source code
+    description: clang 20.1.8 source code
     fetch:
         type: git
         repo: https://github.com/llvm/llvm-project
-        revision: 7b09d7b446383b71b63d429b21ee45ba389c5134
+        revision: 87f0227cb60147a26a1eeb4fb06e3b505e9c7261
 
 clang-trunk:
     description: clang main branch source code
@@ -540,9 +554,9 @@ jdk-8-linux64:
     description: Java 8 JDK
     fetch:
         type: static-url
-        url: https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u452-b09/OpenJDK8U-jdk_x64_linux_hotspot_8u452b09.tar.gz
-        sha256: 9448308a21841960a591b47927cf2d44fdc4c0533a5f8111a4b243a6bafb5d27
-        size: 103082903
+        url: https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u462-b08/OpenJDK8U-jdk_x64_linux_hotspot_8u462b08.tar.gz
+        sha256: 5d64ae542b59a962b3caadadd346f4b1c3010879a28bb02d928326993de16e79
+        size: 103087414
         artifact-name: jdk-8.tar.zst
         strip-components: 1
         add-prefix: jdk-8/
@@ -642,7 +656,7 @@ gnumake:
     description: GNU make source
     fetch:
         type: static-url
-        url: https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz
+        url: https://ftpmirror.gnu.org/gnu/make/make-4.4.1.tar.gz
         sha256: dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3
         size: 2348200
         artifact-name: make.tar.zst
@@ -686,7 +700,7 @@ symbol-scrapers:
     fetch:
         type: git
         repo: https://github.com/mozilla/symbol-scrapers
-        revision: 5ab449cf4bcef7516cd35ec3b11770ce03df3d3f
+        revision: 4a589bc872995b76fa18b5f8746715e5c86fa4bb
 
 xz-5.4.4:
     description: xz 5.4.4 source code
@@ -741,6 +755,8 @@ cpython-3.11.7.exe:
 
 windows-rs:
     description: Source of the windows rust crate
+    attributes:
+        local-fetch: true
     fetch:
         type: static-url
         url: https://crates.io/api/v1/crates/windows/0.58.0/download
@@ -806,3 +822,10 @@ jj:
         type: git
         repo: https://github.com/jj-vcs/jj
         revision: 94269d2e7228ff502b2116258e5ae6b3b07ec434
+
+firefox-profiler:
+    description: firefox profiler source code
+    fetch:
+        type: git
+        repo: https://github.com/firefox-devtools/profiler
+        revision: 5a054f9ae741515b8112d4c248e8ac096ee7a3ce

@@ -13,7 +13,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
     "resource:///modules/FirefoxBridgeExtensionUtils.sys.mjs",
   LoginHelper: "resource://gre/modules/LoginHelper.sys.mjs",
   PlacesUIUtils: "moz-src:///browser/components/places/PlacesUIUtils.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
   UsageReporting: "resource://gre/modules/UsageReporting.sys.mjs",
 });
 
@@ -263,7 +263,7 @@ export let ProfileDataUpgrader = {
       // from default placement. This is done early enough that it doesn't
       // impact adding new managed bookmarks.
       const { CustomizableUI } = ChromeUtils.importESModule(
-        "resource:///modules/CustomizableUI.sys.mjs"
+        "moz-src:///browser/components/customizableui/CustomizableUI.sys.mjs"
       );
       CustomizableUI.removeWidgetFromArea("managed-bookmarks");
     }
@@ -903,6 +903,30 @@ export let ProfileDataUpgrader = {
     if (AppConstants.NIGHTLY_BUILD && existingDataVersion === 158) {
       lazy.LoginHelper.setOSAuthEnabled(false);
       lazy.FormAutofillUtils.setOSAuthEnabled(false);
+    }
+
+    if (existingDataVersion < 159) {
+      // Bug 1979014 / bug 1980398 - autohide attribute becomes a real boolean attribute.
+      let menubarWasEnabled =
+        Services.xulStore.getValue(
+          BROWSER_DOCURL,
+          "toolbar-menubar",
+          "autohide"
+        ) == "false";
+      if (menubarWasEnabled) {
+        Services.xulStore.setValue(
+          BROWSER_DOCURL,
+          "toolbar-menubar",
+          "autohide",
+          "-moz-missing\n"
+        );
+      }
+    }
+
+    if (existingDataVersion < 160) {
+      // Force all logins to be re-encrypted to make use of more modern crypto.
+      // This pref is checked in the initialization of the LoginManagerStorage.
+      Services.prefs.setBoolPref("signon.reencryptionNeeded", true);
     }
 
     // Update the migration version.

@@ -1,7 +1,6 @@
 /* This Source Code Form is subject to the terms of the Mozilla PublicddonMa
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 const FXA_ENABLED_PREF = "identity.fxaccounts.enabled";
 const TOPIC_SELECTION_MODAL_LAST_DISPLAYED_PREF =
   "browser.newtabpage.activity-stream.discoverystream.topicSelection.onboarding.lastDisplayed";
@@ -31,7 +30,7 @@ const { NewTabUtils } = ChromeUtils.importESModule(
 
 // eslint-disable-next-line mozilla/use-static-import
 const { ShellService } = ChromeUtils.importESModule(
-  "resource:///modules/ShellService.sys.mjs"
+  "moz-src:///browser/components/shell/ShellService.sys.mjs"
 );
 
 // eslint-disable-next-line mozilla/use-static-import
@@ -39,18 +38,29 @@ const { ClientID } = ChromeUtils.importESModule(
   "resource://gre/modules/ClientID.sys.mjs"
 );
 
+// eslint-disable-next-line mozilla/use-static-import
+const { PlacesUtils } = ChromeUtils.importESModule(
+  "resource://gre/modules/PlacesUtils.sys.mjs"
+);
+
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
+  AboutNewTabResourceMapping:
+    "resource:///modules/AboutNewTabResourceMapping.sys.mjs",
   AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
   AboutNewTab: "resource:///modules/AboutNewTab.sys.mjs",
   ASRouterPreferences:
     "resource:///modules/asrouter/ASRouterPreferences.sys.mjs",
-  AttributionCode: "resource:///modules/AttributionCode.sys.mjs",
+  AttributionCode:
+    "moz-src:///browser/components/attribution/AttributionCode.sys.mjs",
+  BackupService: "resource:///modules/backup/BackupService.sys.mjs",
   BrowserUtils: "resource://gre/modules/BrowserUtils.sys.mjs",
   BrowserWindowTracker: "resource:///modules/BrowserWindowTracker.sys.mjs",
   ClientEnvironment: "resource://normandy/lib/ClientEnvironment.sys.mjs",
-  CustomizableUI: "resource:///modules/CustomizableUI.sys.mjs",
+  CustomizableUI:
+    "moz-src:///browser/components/customizableui/CustomizableUI.sys.mjs",
+  ExtensionUtils: "resource://gre/modules/ExtensionUtils.sys.mjs",
   FeatureCalloutBroker:
     "resource:///modules/asrouter/FeatureCalloutBroker.sys.mjs",
   HomePage: "resource:///modules/HomePage.sys.mjs",
@@ -208,7 +218,12 @@ const { activityStreamProvider: asProvider } = NewTabUtils;
 const FRECENT_SITES_UPDATE_INTERVAL = 6 * 60 * 60 * 1000; // Six hours
 const FRECENT_SITES_IGNORE_BLOCKED = false;
 const FRECENT_SITES_NUM_ITEMS = 25;
-const FRECENT_SITES_MIN_FRECENCY = 100;
+// 2 visits, 30 days ago.
+const FRECENT_SITES_MIN_FRECENCY = PlacesUtils.history.pageFrecencyThreshold(
+  30,
+  2,
+  false
+);
 
 const CACHE_EXPIRATION = 5 * 60 * 1000;
 const jexlEvaluationCache = new Map();
@@ -264,7 +279,11 @@ function CacheUnhandledCampaignAction() {
         if (!lazy.didHandleCampaignAction) {
           const attributionData =
             lazy.AttributionCode.getCachedAttributionData();
-          const ALLOWED_CAMPAIGN_ACTIONS = ["SET_DEFAULT_BROWSER"];
+          const ALLOWED_CAMPAIGN_ACTIONS = [
+            "PIN_AND_DEFAULT",
+            "PIN_FIREFOX_TO_TASKBAR",
+            "SET_DEFAULT_BROWSER",
+          ];
           const campaign = attributionData?.campaign?.toUpperCase();
           if (campaign && ALLOWED_CAMPAIGN_ACTIONS.includes(campaign)) {
             this._value = campaign;
@@ -401,6 +420,22 @@ export const QueryCache = {
       FRECENT_SITES_UPDATE_INTERVAL,
       ClientID
     ),
+    backupsInfo: new CachedTargetingGetter(
+      "findBackupsInWellKnownLocations",
+      null,
+      FRECENT_SITES_UPDATE_INTERVAL,
+      {
+        async findBackupsInWellKnownLocations() {
+          let bs;
+          try {
+            bs = lazy.BackupService.get();
+          } catch {
+            bs = lazy.BackupService.init();
+          }
+          return bs.findBackupsInWellKnownLocations();
+        },
+      }
+    ),
   },
 };
 
@@ -500,7 +535,7 @@ function parseAboutPageURL(url) {
     isCustomUrl: false,
     urls: [],
   };
-  if (url.startsWith("moz-extension://")) {
+  if (lazy.ExtensionUtils.isExtensionUrl(url)) {
     ret.isWebExt = true;
     ret.urls.push({ url, host: "" });
   } else {
@@ -712,13 +747,18 @@ const TargetingGetters = {
       return Promise.resolve(NONE);
     }
     return new Promise(resolve => {
-      // Note: calling init ensures this code is only executed after Search has been initialized
+      // Note: calling getAppProvidedEngines, calls Services.search.init which
+      // ensures this code is only executed after Search has been initialized.
       Services.search
         .getAppProvidedEngines()
         .then(engines => {
+          let { defaultEngine } = Services.search;
           resolve({
-            current: Services.search.defaultEngine.identifier,
-            installed: engines.map(engine => engine.identifier),
+            // Skip reporting the id for third party engines.
+            current: defaultEngine.isAppProvided ? defaultEngine.id : null,
+            // We don't need to filter the id here, as getAppProvidedEngines has
+            // already done that for us.
+            installed: engines.map(engine => engine.id),
           });
         })
         .catch(() => resolve(NONE));
@@ -779,7 +819,9 @@ const TargetingGetters = {
     return lazy.SessionStore.getSavedTabGroups().length;
   },
   get currentTabGroups() {
-    let win = lazy.BrowserWindowTracker.getTopWindow();
+    let win = lazy.BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
     // If there's no window, there can't be any current tab groups.
     if (!win) {
       return 0;
@@ -905,7 +947,9 @@ const TargetingGetters = {
       return false;
     }
 
-    let window = lazy.BrowserWindowTracker.getTopWindow();
+    let window = lazy.BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
 
     // Technically this doesn't mean we have active notifications,
     // but because we use !activeNotifications to check for conflicts, this should return true
@@ -931,7 +975,15 @@ const TargetingGetters = {
     ) {
       return true;
     }
-
+    // use observer service to query Newtab
+    const subjectWithBrowser = {
+      browser: window.gBrowser,
+      activeNewtabMessage: false,
+    };
+    Services.obs.notifyObservers(subjectWithBrowser, "newtab-message-query");
+    if (subjectWithBrowser.activeNewtabMessage) {
+      return true;
+    }
     return false;
   },
 
@@ -1121,6 +1173,15 @@ const TargetingGetters = {
   },
 
   /**
+   * Returns the version number of the New Tab built-in addon being used
+   * by the build.
+   * @return {string}
+   */
+  get newtabAddonVersion() {
+    return lazy.AboutNewTabResourceMapping.addonVersion;
+  },
+
+  /**
    * Whether the user installed Firefox via the RTAMO flow.
    * @return {boolean} `true` when RTAMO has been used to download Firefox,
    * `false` otherwise.
@@ -1234,6 +1295,10 @@ const TargetingGetters = {
 
   get buildId() {
     return parseInt(AppConstants.MOZ_BUILDID, 10);
+  },
+
+  get backupsInfo() {
+    return QueryCache.getters.backupsInfo.get().catch(() => null);
   },
 };
 

@@ -75,8 +75,6 @@ class MenuTelemetryMiddleware(
                 ),
             )
 
-            MenuAction.Navigate.CustomizeHomepage -> AppMenu.customizeHomepage.record(NoExtras())
-
             MenuAction.Navigate.Downloads -> Events.browserMenuAction.record(
                 Events.BrowserMenuActionExtra(
                     item = "downloads",
@@ -138,9 +136,48 @@ class MenuTelemetryMiddleware(
                 ),
             )
 
+            is MenuAction.Navigate.Back -> Events.browserMenuAction.record(
+                Events.BrowserMenuActionExtra(
+                    item = when {
+                        action.viewHistory && accessPoint == MenuAccessPoint.External ->
+                            "custom_back_long_press"
+                        action.viewHistory -> "back_long_press"
+                        accessPoint == MenuAccessPoint.External -> "custom_back"
+                        else -> "back"
+                    },
+                ),
+            )
+
+            is MenuAction.Navigate.Forward -> Events.browserMenuAction.record(
+                Events.BrowserMenuActionExtra(
+                    item = when {
+                        action.viewHistory && accessPoint == MenuAccessPoint.External ->
+                            "custom_forward_long_press"
+                        action.viewHistory -> "forward_long_press"
+                        accessPoint == MenuAccessPoint.External -> "custom_forward"
+                        else -> "forward"
+                    },
+                ),
+            )
+
+            is MenuAction.Navigate.Reload -> Events.browserMenuAction.record(
+                Events.BrowserMenuActionExtra(
+                    item = "reload",
+                ),
+            )
+
+            is MenuAction.Navigate.Stop -> Events.browserMenuAction.record(
+                Events.BrowserMenuActionExtra(
+                    item = "stop",
+                ),
+            )
+
             MenuAction.Navigate.Share -> Events.browserMenuAction.record(
                 Events.BrowserMenuActionExtra(
-                    item = "share",
+                    item = when (accessPoint) {
+                        MenuAccessPoint.External -> "custom_share"
+                        else -> "share"
+                    },
                 ),
             )
 
@@ -162,7 +199,22 @@ class MenuTelemetryMiddleware(
 
             MenuAction.FindInPage -> Events.browserMenuAction.record(
                 Events.BrowserMenuActionExtra(
-                    item = "find_in_page",
+                    item = when (accessPoint) {
+                        MenuAccessPoint.External -> "custom_find_in_page"
+                        else -> "find_in_page"
+                    },
+                ),
+            )
+
+            is MenuAction.MenuBanner -> Events.browserMenuAction.record(
+                Events.BrowserMenuActionExtra(
+                    item = "menu_banner",
+                ),
+            )
+
+            MenuAction.DismissMenuBanner -> Events.browserMenuAction.record(
+                Events.BrowserMenuActionExtra(
+                    item = "dismiss_menu_banner",
                 ),
             )
 
@@ -180,13 +232,19 @@ class MenuTelemetryMiddleware(
 
             is MenuAction.RequestDesktopSite -> Events.browserMenuAction.record(
                 Events.BrowserMenuActionExtra(
-                    item = "desktop_view_on",
+                    item = when (accessPoint) {
+                        MenuAccessPoint.External -> "custom_desktop_view_on"
+                        else -> "desktop_view_on"
+                    },
                 ),
             )
 
             is MenuAction.RequestMobileSite -> Events.browserMenuAction.record(
                 Events.BrowserMenuActionExtra(
-                    item = "desktop_view_off",
+                    item = when (accessPoint) {
+                        MenuAccessPoint.External -> "custom_desktop_view_off"
+                        else -> "desktop_view_off"
+                    },
                 ),
             )
 
@@ -228,6 +286,14 @@ class MenuTelemetryMiddleware(
                 )
             }
 
+            is MenuAction.Navigate.InstalledAddonDetails -> {
+                Events.browserMenuAction.record(
+                    Events.BrowserMenuActionExtra(
+                        item = "installed_addon_details",
+                    ),
+                )
+            }
+
             is MenuAction.Navigate.WebCompatReporter -> {
                 Events.browserMenuAction.record(
                     Events.BrowserMenuActionExtra(
@@ -261,11 +327,6 @@ class MenuTelemetryMiddleware(
             is MenuAction.UpdateShowDisabledExtensionsOnboarding,
             is MenuAction.UpdateManageExtensionsMenuItemVisibility,
             is MenuAction.UpdateAvailableAddons,
-            is MenuAction.Navigate.Back,
-            is MenuAction.Navigate.Forward,
-            is MenuAction.Navigate.Reload,
-            is MenuAction.Navigate.Stop,
-            is MenuAction.Navigate.InstalledAddonDetails,
             -> Unit
         }
     }

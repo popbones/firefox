@@ -3,9 +3,26 @@
 
 "use strict";
 
+let TEST_PROFILE_PATH;
+
 add_setup(async () => {
   MockFilePicker.init(window.browsingContext);
-  registerCleanupFunction(() => {
+  TEST_PROFILE_PATH = await IOUtils.createUniqueDirectory(
+    PathUtils.tempDir,
+    "testBackup"
+  );
+
+  await SpecialPowers.pushPrefEnv({
+    set: [["browser.backup.location", TEST_PROFILE_PATH]],
+  });
+
+  // It's possible for other tests to change the internal state of the BackupService
+  // which can lead to complications with the auto detection behaviour. Let's just reset
+  // these states before testing
+  let bs = BackupService.get();
+  bs.resetLastBackupInternalState();
+
+  registerCleanupFunction(async () => {
     MockFilePicker.cleanup();
   });
 });
@@ -14,16 +31,17 @@ add_setup(async () => {
  * Tests that the a backup file can be restored from the settings page.
  */
 add_task(async function test_restore_from_backup() {
-  await BrowserTestUtils.withNewTab("about:preferences", async browser => {
+  await BrowserTestUtils.withNewTab("about:preferences#sync", async browser => {
     let sandbox = sinon.createSandbox();
     let recoverFromBackupArchiveStub = sandbox
       .stub(BackupService.prototype, "recoverFromBackupArchive")
       .resolves();
 
     const mockBackupFilePath = await IOUtils.createUniqueFile(
-      PathUtils.tempDir,
+      TEST_PROFILE_PATH,
       "backup.html"
     );
+
     const mockBackupFile = Cc["@mozilla.org/file/local;1"].createInstance(
       Ci.nsIFile
     );
@@ -61,7 +79,9 @@ add_task(async function test_restore_from_backup() {
     );
 
     restoreFromBackup.chooseButtonEl.click();
+
     await filePickerShownPromise;
+    restoreFromBackup.backupFileToRestore = mockBackupFilePath;
 
     await infoPromise;
     // Set mock file info
@@ -82,6 +102,10 @@ add_task(async function test_restore_from_backup() {
     Assert.ok(
       restoreFromBackup.confirmButtonEl,
       "Confirm button should be found"
+    );
+    Assert.ok(
+      !restoreFromBackup.confirmButtonEl.disabled,
+      "Confirm button should not be disabled"
     );
 
     await restoreFromBackup.updateComplete;
@@ -112,7 +136,7 @@ add_task(async function test_restore_from_backup() {
  * Tests that the dialog stays open while restoring from the settings page.
  */
 add_task(async function test_restore_in_progress() {
-  await BrowserTestUtils.withNewTab("about:preferences", async browser => {
+  await BrowserTestUtils.withNewTab("about:preferences#sync", async browser => {
     let sandbox = sinon.createSandbox();
     let bs = BackupService.get();
 
@@ -138,6 +162,15 @@ add_task(async function test_restore_in_progress() {
     let restoreFromBackup = settings.restoreFromBackupEl;
 
     Assert.ok(restoreFromBackup, "restore-from-backup should be found");
+
+    Assert.equal(
+      restoreFromBackup.filePicker.value,
+      "",
+      "File picker has no value assigned automatically"
+    );
+
+    // There is a backup file, but it is not a valid one
+    // we don't automatically pick it
     Assert.ok(
       restoreFromBackup.confirmButtonEl.disabled,
       "Confirm button should be disabled."

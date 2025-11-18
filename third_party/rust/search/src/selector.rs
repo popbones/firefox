@@ -160,7 +160,6 @@ mod tests {
     use super::*;
     use crate::{types::*, SearchApiError};
     use mockito::mock;
-    use pretty_assertions::assert_eq;
     use remote_settings::{RemoteSettingsConfig2, RemoteSettingsContext, RemoteSettingsServer};
     use serde_json::json;
 
@@ -427,7 +426,16 @@ mod tests {
                           "name": "search-form-name",
                           "value": "search-form-value",
                         }]
-                      }
+                      },
+                      "visualSearch": {
+                        "base": "https://example.com/visual-search",
+                        "method": "GET",
+                        "params": [{
+                          "name": "visual-search-name",
+                          "value": "visual-search-value",
+                        }],
+                        "searchTermParamName": "url",
+                      },
                     }
                   },
                   "variants": [{
@@ -504,7 +512,8 @@ mod tests {
                                     enterprise_value: Some("enterprise-value".to_string()),
                                     experiment_config: None
                                 }],
-                                search_term_param_name: Some("q".to_string())
+                                search_term_param_name: Some("q".to_string()),
+                                ..Default::default()
                             },
                             suggestions: Some(SearchEngineUrl {
                                 base: "https://example.com/suggestions".to_string(),
@@ -515,7 +524,8 @@ mod tests {
                                     enterprise_value: None,
                                     experiment_config: None
                                 }],
-                                search_term_param_name: Some("suggest".to_string())
+                                search_term_param_name: Some("suggest".to_string()),
+                                ..Default::default()
                             }),
                             trending: Some(SearchEngineUrl {
                                 base: "https://example.com/trending".to_string(),
@@ -528,7 +538,7 @@ mod tests {
                                         "trending-experiment-value".to_string()
                                     )
                                 }],
-                                search_term_param_name: None
+                                ..Default::default()
                             }),
                             search_form: Some(SearchEngineUrl {
                                 base: "https://example.com/search-form".to_string(),
@@ -539,7 +549,19 @@ mod tests {
                                     experiment_config: None,
                                     enterprise_value: None,
                                 }],
-                                search_term_param_name: None,
+                                ..Default::default()
+                            }),
+                            visual_search: Some(SearchEngineUrl {
+                                base: "https://example.com/visual-search".to_string(),
+                                method: "GET".to_string(),
+                                params: vec![SearchUrlParam {
+                                    name: "visual-search-name".to_string(),
+                                    value: Some("visual-search-value".to_string()),
+                                    experiment_config: None,
+                                    enterprise_value: None,
+                                }],
+                                search_term_param_name: Some("url".to_string()),
+                                ..Default::default()
                             }),
                         },
                         ..Default::default()
@@ -549,6 +571,7 @@ mod tests {
                         charset: "UTF-8".to_string(),
                         classification: SearchEngineClassification::Unknown,
                         identifier: "test2".to_string(),
+                        is_new_until: None,
                         name: "Test 2".to_string(),
                         optional: false,
                         order_hint: None,
@@ -557,13 +580,13 @@ mod tests {
                         urls: SearchEngineUrls {
                             search: SearchEngineUrl {
                                 base: "https://example.com/2".to_string(),
-                                method: "GET".to_string(),
-                                params: Vec::new(),
-                                search_term_param_name: Some("search".to_string())
+                                search_term_param_name: Some("search".to_string()),
+                                ..Default::default()
                             },
                             suggestions: None,
                             trending: None,
-                            search_form: None
+                            search_form: None,
+                            visual_search: None,
                         },
                         click_url: None,
                     }
@@ -638,7 +661,16 @@ mod tests {
                           "name": "search-form-name",
                           "value": "search-form-value",
                         }]
-                      }
+                      },
+                      "visualSearch": {
+                        "base": "https://example.com/visual-search",
+                        "method": "GET",
+                        "params": [{
+                          "name": "visual-search-name",
+                          "value": "visual-search-value",
+                        }],
+                        "searchTermParamName": "url",
+                      },
                     }
                   },
                   "variants": [{
@@ -734,7 +766,8 @@ mod tests {
                                     enterprise_value: None,
                                     experiment_config: None
                                 }],
-                                search_term_param_name: Some("q".to_string())
+                                search_term_param_name: Some("q".to_string()),
+                                ..Default::default()
                             },
                             suggestions: Some(SearchEngineUrl {
                                 base: "https://example.com/suggestions".to_string(),
@@ -745,7 +778,8 @@ mod tests {
                                     enterprise_value: None,
                                     experiment_config: None
                                 }],
-                                search_term_param_name: Some("suggest".to_string())
+                                search_term_param_name: Some("suggest".to_string()),
+                                ..Default::default()
                             }),
                             trending: Some(SearchEngineUrl {
                                 base: "https://example.com/trending".to_string(),
@@ -756,7 +790,7 @@ mod tests {
                                     enterprise_value: None,
                                     experiment_config: Some("area-param".to_string())
                                 }],
-                                search_term_param_name: None
+                                ..Default::default()
                             }),
                             search_form: Some(SearchEngineUrl {
                                 base: "https://example.com/search-form".to_string(),
@@ -767,7 +801,19 @@ mod tests {
                                     enterprise_value: None,
                                     experiment_config: None,
                                 }],
-                                search_term_param_name: None,
+                                ..Default::default()
+                            }),
+                            visual_search: Some(SearchEngineUrl {
+                                base: "https://example.com/visual-search".to_string(),
+                                method: "GET".to_string(),
+                                params: vec![SearchUrlParam {
+                                    name: "visual-search-name".to_string(),
+                                    value: Some("visual-search-value".to_string()),
+                                    enterprise_value: None,
+                                    experiment_config: None,
+                                }],
+                                search_term_param_name: Some("url".to_string()),
+                                ..Default::default()
                             }),
                         },
                         ..Default::default()
@@ -783,9 +829,8 @@ mod tests {
                         urls: SearchEngineUrls {
                             search: SearchEngineUrl {
                                 base: "https://example.com/2".to_string(),
-                                method: "GET".to_string(),
-                                params: Vec::new(),
-                                search_term_param_name: Some("search".to_string())
+                                search_term_param_name: Some("search".to_string()),
+                                ..Default::default()
                             },
                             ..Default::default()
                         },
@@ -861,7 +906,16 @@ mod tests {
                           "name": "search-form-name",
                           "value": "search-form-value",
                         }]
-                      }
+                      },
+                      "visualSearch": {
+                        "base": "https://example.com/visual-search",
+                        "method": "GET",
+                        "params": [{
+                          "name": "visual-search-name",
+                          "value": "visual-search-value",
+                        }],
+                        "searchTermParamName": "url",
+                      },
                     }
                   },
                   "variants": [{
@@ -960,7 +1014,8 @@ mod tests {
                                 enterprise_value: None,
                                 experiment_config: None
                             }],
-                            search_term_param_name: Some("q".to_string())
+                            search_term_param_name: Some("q".to_string()),
+                            ..Default::default()
                         },
                         suggestions: Some(SearchEngineUrl {
                             base: "https://example.com/suggestions".to_string(),
@@ -971,7 +1026,8 @@ mod tests {
                                 enterprise_value: None,
                                 experiment_config: None
                             }],
-                            search_term_param_name: Some("suggest".to_string())
+                            search_term_param_name: Some("suggest".to_string()),
+                            ..Default::default()
                         }),
                         trending: Some(SearchEngineUrl {
                             base: "https://example.com/trending".to_string(),
@@ -982,7 +1038,8 @@ mod tests {
                                 enterprise_value: None,
                                 experiment_config: Some("area-param".to_string())
                             }],
-                            search_term_param_name: None
+                            search_term_param_name: None,
+                            ..Default::default()
                         }),
                         search_form: Some(SearchEngineUrl {
                             base: "https://example.com/search-form".to_string(),
@@ -994,6 +1051,19 @@ mod tests {
                                 experiment_config: None,
                             }],
                             search_term_param_name: None,
+                            ..Default::default()
+                        }),
+                        visual_search: Some(SearchEngineUrl {
+                            base: "https://example.com/visual-search".to_string(),
+                            method: "GET".to_string(),
+                            params: vec![SearchUrlParam {
+                                name: "visual-search-name".to_string(),
+                                value: Some("visual-search-value".to_string()),
+                                enterprise_value: None,
+                                experiment_config: None,
+                            }],
+                            search_term_param_name: Some("url".to_string()),
+                            ..Default::default()
                         }),
                     },
                     ..Default::default()
@@ -1033,7 +1103,8 @@ mod tests {
                                 enterprise_value: None,
                                 experiment_config: None
                             }],
-                            search_term_param_name: Some("q".to_string())
+                            search_term_param_name: Some("q".to_string()),
+                            ..Default::default()
                         },
                         suggestions: Some(SearchEngineUrl {
                             base: "https://example.com/suggestions".to_string(),
@@ -1044,7 +1115,8 @@ mod tests {
                                 enterprise_value: None,
                                 experiment_config: None
                             }],
-                            search_term_param_name: Some("suggest".to_string())
+                            search_term_param_name: Some("suggest".to_string()),
+                            ..Default::default()
                         }),
                         trending: Some(SearchEngineUrl {
                             base: "https://example.com/trending".to_string(),
@@ -1055,7 +1127,8 @@ mod tests {
                                 enterprise_value: None,
                                 experiment_config: Some("area-param".to_string())
                             }],
-                            search_term_param_name: None
+                            search_term_param_name: None,
+                            ..Default::default()
                         }),
                         search_form: Some(SearchEngineUrl {
                             base: "https://example.com/search-form".to_string(),
@@ -1067,6 +1140,19 @@ mod tests {
                                 experiment_config: None,
                             }],
                             search_term_param_name: None,
+                            ..Default::default()
+                        }),
+                        visual_search: Some(SearchEngineUrl {
+                            base: "https://example.com/visual-search".to_string(),
+                            method: "GET".to_string(),
+                            params: vec![SearchUrlParam {
+                                name: "visual-search-name".to_string(),
+                                value: Some("visual-search-value".to_string()),
+                                enterprise_value: None,
+                                experiment_config: None,
+                            }],
+                            search_term_param_name: Some("url".to_string()),
+                            ..Default::default()
                         }),
                     },
                     ..Default::default()
@@ -1207,9 +1293,8 @@ mod tests {
                         urls: SearchEngineUrls {
                             search: SearchEngineUrl {
                                 base: "https://example.com/1".to_string(),
-                                method: "GET".to_string(),
-                                params: Vec::new(),
-                                search_term_param_name: Some("q".to_string())
+                                search_term_param_name: Some("q".to_string()),
+                                ..Default::default()
                             },
                             ..Default::default()
                         },
@@ -1244,9 +1329,8 @@ mod tests {
                         urls: SearchEngineUrls {
                             search: SearchEngineUrl {
                                 base: "https://example.com/1".to_string(),
-                                method: "GET".to_string(),
-                                params: Vec::new(),
-                                search_term_param_name: Some("q".to_string())
+                                search_term_param_name: Some("q".to_string()),
+                                ..Default::default()
                             },
                             ..Default::default()
                         },
@@ -1260,9 +1344,8 @@ mod tests {
                         urls: SearchEngineUrls {
                             search: SearchEngineUrl {
                                 base: "https://example.com/2".to_string(),
-                                method: "GET".to_string(),
-                                params: Vec::new(),
-                                search_term_param_name: Some("search".to_string())
+                                search_term_param_name: Some("search".to_string()),
+                                ..Default::default()
                             },
                             ..Default::default()
                         },
@@ -1298,9 +1381,8 @@ mod tests {
                         urls: SearchEngineUrls {
                             search: SearchEngineUrl {
                                 base: "https://example.com/1".to_string(),
-                                method: "GET".to_string(),
-                                params: Vec::new(),
-                                search_term_param_name: Some("q".to_string())
+                                search_term_param_name: Some("q".to_string()),
+                                ..Default::default()
                             },
                             ..Default::default()
                         },
@@ -1314,9 +1396,8 @@ mod tests {
                         urls: SearchEngineUrls {
                             search: SearchEngineUrl {
                                 base: "https://example.com/3".to_string(),
-                                method: "GET".to_string(),
-                                params: Vec::new(),
-                                search_term_param_name: Some("trek".to_string())
+                                search_term_param_name: Some("trek".to_string()),
+                                ..Default::default()
                             },
                             ..Default::default()
                         },
@@ -1451,9 +1532,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -1467,9 +1546,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -1483,9 +1560,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -1889,7 +1964,7 @@ mod tests {
         expect_sync_successful: bool,
     ) -> Arc<SearchEngineSelector> {
         error_support::init_for_tests();
-        viaduct_reqwest::use_reqwest_backend();
+        viaduct_dev::init_backend_dev();
 
         let config = RemoteSettingsConfig2 {
             server: Some(RemoteSettingsServer::Custom {
@@ -2360,14 +2435,13 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com/search-overrides".to_string(),
-                    method: "GET".to_string(),
                     params: vec![SearchUrlParam {
                         name: "overrides-name".to_string(),
                         value: Some("overrides-value".to_string()),
                         enterprise_value: None,
                         experiment_config: None,
                     }],
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2417,9 +2491,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2433,9 +2505,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2449,9 +2519,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2531,9 +2599,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2547,9 +2613,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2698,14 +2762,13 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com/search-overrides".to_string(),
-                    method: "GET".to_string(),
                     params: vec![SearchUrlParam {
                         name: "overrides-name".to_string(),
                         value: Some("overrides-value".to_string()),
                         enterprise_value: None,
                         experiment_config: None,
                     }],
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2722,9 +2785,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com/search-distro".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2843,9 +2904,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },
@@ -2859,9 +2918,7 @@ mod tests {
             urls: SearchEngineUrls {
                 search: SearchEngineUrl {
                     base: "https://example.com".to_string(),
-                    method: "GET".to_string(),
-                    params: Vec::new(),
-                    search_term_param_name: None,
+                    ..Default::default()
                 },
                 ..Default::default()
             },

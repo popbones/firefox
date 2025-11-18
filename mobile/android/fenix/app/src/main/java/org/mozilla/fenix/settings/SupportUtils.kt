@@ -52,9 +52,11 @@ object SupportUtils {
         SMARTBLOCK("smartblock-enhanced-tracking-protection"),
         SPONSOR_PRIVACY("sponsor-privacy"),
         HTTPS_ONLY_MODE("https-only-mode-firefox-android"),
-        DNS_OVER_HTTPS("https-only-mode-firefox-android"), // FIXME
-        DNS_OVER_HTTPS_LOCAL_PROVIDER("https-only-mode-firefox-android"), // FIXME
-        DNS_OVER_HTTPS_NETWORK("https-only-mode-firefox-android"), // FIXME
+        DNS_OVER_HTTPS("configure-dns-over-https-protection-levels-firefox-android"),
+        DNS_OVER_HTTPS_LOCAL_PROVIDER(
+            "configure-dns-over-https-protection-levels-firefox-android#w_what-is-a-local-provider",
+        ),
+        DNS_OVER_HTTPS_NETWORK("configure-dns-over-https-protection-levels-firefox-android"),
         UNSIGNED_ADDONS("unsigned-addons"),
         REVIEW_QUALITY_CHECK("review_checker_mobile"),
         FX_SUGGEST("search-suggestions-firefox"),
@@ -67,6 +69,12 @@ object SupportUtils {
         USAGE_PING_SETTINGS("usage-ping-settings-mobile"),
         MARKETING_DATA("mobile-marketing-data"),
         REQUESTED_CRASH_MINIDUMP("unsent-crash-reports-in-firefox-android"),
+        TERMS_OF_USE("firefox-terms-of-use-faq"),
+
+        /**
+         * SUMO page for Local Network Access & Local Device Access permissions
+         */
+        LOCAL_NETWORK_AND_DEVICE_ACCESS("control-personal-device-local-network-permissions-firefox-android"),
     }
 
     enum class MozillaPage(internal val path: String) {
@@ -82,13 +90,19 @@ object SupportUtils {
         context: Context,
         topic: SumoTopic,
         locale: Locale = Locale.getDefault(),
+        useMobilePage: Boolean = true,
     ): String {
         val escapedTopic = getEncodedTopicUTF8(topic.topicStr)
         // Remove the whitespace so a search is not triggered:
         val appVersion = context.appVersionName.replace(" ", "")
         val osTarget = "Android"
         val langTag = getLanguageTag(locale)
-        return "https://support.mozilla.org/1/mobile/$appVersion/$osTarget/$langTag/$escapedTopic"
+        val platform = if (useMobilePage) {
+            "mobile"
+        } else {
+            "firefox"
+        }
+        return "https://support.mozilla.org/1/$platform/$appVersion/$osTarget/$langTag/$escapedTopic"
     }
 
     /**

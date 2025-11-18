@@ -11,9 +11,6 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
 import io.mockk.verify
-import mozilla.components.browser.state.state.BrowserState
-import mozilla.components.browser.state.state.createTab
-import mozilla.components.browser.state.store.BrowserStore
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -30,10 +27,7 @@ class DefaultBrowsingModeManagerTest {
     @MockK lateinit var settings: Settings
 
     @MockK(relaxed = true)
-    lateinit var modeDidChange: (BrowsingMode) -> Unit
-
-    @MockK(relaxed = true)
-    lateinit var updateAppStateMode: (BrowsingMode) -> Unit
+    lateinit var onModeChange: (BrowsingMode) -> Unit
 
     @get:Rule
     val mockkRule = MockkRetryTestRule()
@@ -47,36 +41,32 @@ class DefaultBrowsingModeManagerTest {
     }
 
     @Test
-    fun `WHEN mode is set THEN modeDidChange and updateAppState callbacks are invoked and last known mode setting is set`() {
-        val manager = buildBrowsingModeManger()
+    fun `WHEN mode is set THEN onModeChange callback is invoked and last known browsing mode setting is set`() {
+        val manager = buildBrowsingModeManager()
 
-        verify(exactly = 0) {
-            modeDidChange.invoke(any())
-            settings.lastKnownMode = any()
-            updateAppStateMode.invoke(any())
+        verify {
+            onModeChange.invoke(BrowsingMode.Normal)
+            settings.lastKnownMode = BrowsingMode.Normal
         }
 
         manager.mode = BrowsingMode.Private
 
         verify {
-            modeDidChange(BrowsingMode.Private)
+            onModeChange(BrowsingMode.Private)
             settings.lastKnownMode = BrowsingMode.Private
-            updateAppStateMode(BrowsingMode.Private)
         }
 
         manager.mode = BrowsingMode.Normal
-        manager.mode = BrowsingMode.Normal
 
         verify {
-            modeDidChange(BrowsingMode.Normal)
+            onModeChange(BrowsingMode.Normal)
             settings.lastKnownMode = BrowsingMode.Normal
-            updateAppStateMode(BrowsingMode.Normal)
         }
     }
 
     @Test
     fun `WHEN mode is set THEN it should be returned from get`() {
-        val manager = buildBrowsingModeManger()
+        val manager = buildBrowsingModeManager()
 
         assertEquals(BrowsingMode.Normal, manager.mode)
 
@@ -92,37 +82,31 @@ class DefaultBrowsingModeManagerTest {
     }
 
     @Test
-    fun `GIVEN browsing mode is not set by intent and private mode with a tab persisted WHEN browsing mode manager is initialized THEN set browsing mode to private`() {
+    fun `GIVEN last known mode is private mode WHEN browsing mode manager is initialized THEN set browsing mode to private`() {
         every { settings.lastKnownMode } returns BrowsingMode.Private
 
-        val browserStore = BrowserStore(
-            BrowserState(
-                tabs = listOf(
-                    createTab(url = "https://mozilla.org", private = true),
-                ),
-            ),
-        )
-        val manager = buildBrowsingModeManger(store = browserStore)
+        val manager = buildBrowsingModeManager()
 
         assertEquals(BrowsingMode.Private, manager.mode)
-    }
 
-    @Test
-    fun `GIVEN last known mode is private mode and no tabs persisted WHEN browsing mode manager is initialized THEN set browsing mode to normal`() {
-        every { settings.lastKnownMode } returns BrowsingMode.Private
-
-        val manager = buildBrowsingModeManger()
-
-        assertEquals(BrowsingMode.Normal, manager.mode)
+        verify {
+            onModeChange.invoke(BrowsingMode.Private)
+            settings.lastKnownMode = BrowsingMode.Private
+        }
     }
 
     @Test
     fun `GIVEN last known mode is normal mode WHEN browsing mode manager is initialized THEN set browsing mode to normal`() {
         every { settings.lastKnownMode } returns BrowsingMode.Normal
 
-        val manager = buildBrowsingModeManger()
+        val manager = buildBrowsingModeManager()
 
         assertEquals(BrowsingMode.Normal, manager.mode)
+
+        verify {
+            onModeChange.invoke(BrowsingMode.Normal)
+            settings.lastKnownMode = BrowsingMode.Normal
+        }
     }
 
     @Test
@@ -130,9 +114,14 @@ class DefaultBrowsingModeManagerTest {
         val intent = Intent()
         intent.putExtra(PRIVATE_BROWSING_MODE, true)
 
-        val manager = buildBrowsingModeManger(intent = intent)
+        val manager = buildBrowsingModeManager(intent = intent)
 
         assertEquals(BrowsingMode.Private, manager.mode)
+
+        verify {
+            onModeChange.invoke(BrowsingMode.Private)
+            settings.lastKnownMode = BrowsingMode.Private
+        }
     }
 
     @Test
@@ -140,7 +129,7 @@ class DefaultBrowsingModeManagerTest {
         val intent = Intent()
         intent.putExtra(PRIVATE_BROWSING_MODE, true)
 
-        val manager = buildBrowsingModeManger()
+        val manager = buildBrowsingModeManager()
 
         assertEquals(BrowsingMode.Normal, manager.mode)
 
@@ -150,19 +139,12 @@ class DefaultBrowsingModeManagerTest {
     }
 
     @Test
-    fun `GIVEN browsing mode is not set by intent and private mode with a tab persisted WHEN update mode is called THEN set browsing mode to private`() {
-        val browserStore = BrowserStore(
-            BrowserState(
-                tabs = listOf(
-                    createTab(url = "https://mozilla.org", private = true),
-                ),
-            ),
-        )
-        val manager = buildBrowsingModeManger(store = browserStore)
-
-        assertEquals(BrowsingMode.Normal, manager.mode)
-
+    fun `GIVEN browsing mode is not set by intent and last known mode is private mode WHEN update mode is called THEN set browsing mode to private`() {
         every { settings.lastKnownMode } returns BrowsingMode.Private
+
+        val manager = buildBrowsingModeManager()
+
+        assertEquals(BrowsingMode.Private, manager.mode)
 
         manager.updateMode()
 
@@ -170,23 +152,10 @@ class DefaultBrowsingModeManagerTest {
     }
 
     @Test
-    fun `GIVEN browsing mode is not set by intent and private mode and no tabs persisted WHEN update mode is called THEN set browsing mode to normal`() {
-        every { settings.lastKnownMode } returns BrowsingMode.Private
-
-        val manager = buildBrowsingModeManger()
-
-        assertEquals(BrowsingMode.Normal, manager.mode)
-
-        manager.updateMode()
-
-        assertEquals(BrowsingMode.Normal, manager.mode)
-    }
-
-    @Test
     fun `GIVEN last known mode is normal mode WHEN update mode is called THEN set browsing mode to normal`() {
         every { settings.lastKnownMode } returns BrowsingMode.Normal
 
-        val manager = buildBrowsingModeManger()
+        val manager = buildBrowsingModeManager()
 
         assertEquals(BrowsingMode.Normal, manager.mode)
 
@@ -195,16 +164,13 @@ class DefaultBrowsingModeManagerTest {
         assertEquals(BrowsingMode.Normal, manager.mode)
     }
 
-    private fun buildBrowsingModeManger(
+    private fun buildBrowsingModeManager(
         intent: Intent? = null,
-        store: BrowserStore = BrowserStore(),
     ): BrowsingModeManager {
         return DefaultBrowsingModeManager(
             intent = intent,
-            store = store,
             settings = settings,
-            modeDidChange = modeDidChange,
-            updateAppStateMode = updateAppStateMode,
+            onModeChange = onModeChange,
         )
     }
 }

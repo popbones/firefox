@@ -4,6 +4,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "TextDirectiveUtil.h"
+
+#include "ContentIterator.h"
+#include "Document.h"
+#include "Text.h"
+#include "fragmentdirectives_ffi_generated.h"
+#include "mozilla/ContentIterator.h"
+#include "mozilla/ResultVariant.h"
+#include "mozilla/SelectionMovementUtils.h"
+#include "mozilla/intl/WordBreaker.h"
 #include "nsComputedDOMStyle.h"
 #include "nsDOMAttributeMap.h"
 #include "nsFind.h"
@@ -16,14 +25,6 @@
 #include "nsString.h"
 #include "nsTArray.h"
 #include "nsUnicharUtils.h"
-#include "ContentIterator.h"
-#include "Document.h"
-#include "fragmentdirectives_ffi_generated.h"
-#include "Text.h"
-#include "mozilla/ContentIterator.h"
-#include "mozilla/ResultVariant.h"
-#include "mozilla/intl/WordBreaker.h"
-#include "mozilla/SelectionMovementUtils.h"
 
 namespace mozilla::dom {
 LazyLogModule gFragmentDirectiveLog("FragmentDirective");
@@ -53,8 +54,7 @@ Result<nsString, ErrorResult> TextDirectiveUtil::RangeContentAsString(
                                                       : current->Length(),
                  current->Length());
     const Text* text = Text::FromNode(current);
-    text->TextFragment().AppendTo(content, startOffset,
-                                  endOffset - startOffset);
+    text->DataBuffer().AppendTo(content, startOffset, endOffset - startOffset);
   }
   content.CompressWhitespace();
   return content;
@@ -71,19 +71,18 @@ Result<nsString, ErrorResult> TextDirectiveUtil::RangeContentAsString(
 }
 
 /* static */ RefPtr<nsRange> TextDirectiveUtil::FindStringInRange(
-    const RangeBoundary& aSearchStart, const RangeBoundary& aSearchEnd,
-    const nsAString& aQuery, bool aWordStartBounded, bool aWordEndBounded,
-    nsContentUtils::NodeIndexCache* aCache) {
+    nsFind* aFinder, const RangeBoundary& aSearchStart,
+    const RangeBoundary& aSearchEnd, const nsAString& aQuery,
+    bool aWordStartBounded, bool aWordEndBounded) {
+  MOZ_DIAGNOSTIC_ASSERT(aFinder);
   TEXT_FRAGMENT_LOG("query='{}', wordStartBounded='{}', wordEndBounded='{}'.\n",
                     NS_ConvertUTF16toUTF8(aQuery), aWordStartBounded,
                     aWordEndBounded);
-  RefPtr<nsFind> finder = new nsFind();
-  finder->SetWordStartBounded(aWordStartBounded);
-  finder->SetWordEndBounded(aWordEndBounded);
-  finder->SetCaseSensitive(false);
-  finder->SetNodeIndexCache(aCache);
+  aFinder->SetWordStartBounded(aWordStartBounded);
+  aFinder->SetWordEndBounded(aWordEndBounded);
+  aFinder->SetCaseSensitive(false);
   RefPtr<nsRange> result =
-      finder->FindFromRangeBoundaries(aQuery, aSearchStart, aSearchEnd);
+      aFinder->FindFromRangeBoundaries(aQuery, aSearchStart, aSearchEnd);
   if (!result || result->Collapsed()) {
     TEXT_FRAGMENT_LOG("Did not find query '{}'", NS_ConvertUTF16toUTF8(aQuery));
   } else {
@@ -102,14 +101,14 @@ Result<nsString, ErrorResult> TextDirectiveUtil::RangeContentAsString(
   if (!aText || aText->Length() == 0 || aPos >= aText->Length()) {
     return false;
   }
-  const nsTextFragment& frag = aText->TextFragment();
+  const CharacterDataBuffer& characterDataBuffer = aText->DataBuffer();
   const char NBSP_CHAR = char(0xA0);
-  if (frag.Is2b()) {
-    const char16_t* content = frag.Get2b();
+  if (characterDataBuffer.Is2b()) {
+    const char16_t* content = characterDataBuffer.Get2b();
     return IsSpaceCharacter(content[aPos]) ||
            content[aPos] == char16_t(NBSP_CHAR);
   }
-  const char* content = frag.Get1b();
+  const char* content = characterDataBuffer.Get1b();
   return IsSpaceCharacter(content[aPos]) || content[aPos] == NBSP_CHAR;
 }
 
@@ -245,14 +244,27 @@ RangeBoundary TextDirectiveUtil::MoveToNextBoundaryPoint(
   uint32_t pos =
       *aPoint.Offset(RangeBoundary::OffsetFilter::kValidOrInvalidOffsets);
   if (!node) {
-    return {};
+    return RangeBoundary{};
   }
   ++pos;
   if (pos < node->Length() &&
-      node->GetText()->IsLowSurrogateFollowingHighSurrogateAt(pos)) {
+      node->GetCharacterDataBuffer()->IsLowSurrogateFollowingHighSurrogateAt(
+          pos)) {
     ++pos;
   }
   return {node, pos};
+}
+
+/* static */ bool TextDirectiveUtil::WordIsJustWhitespaceOrPunctuation(
+    const nsAString& aString, uint32_t aWordBegin, uint32_t aWordEnd) {
+  MOZ_ASSERT(aWordEnd <= aString.Length());
+  MOZ_ASSERT(aWordBegin < aWordEnd);
+
+  auto word = aString.View().substr(aWordBegin, aWordEnd - aWordBegin);
+  return std::all_of(word.cbegin(), word.cend(), [](const char16_t ch) {
+    return nsContentUtils::IsHTMLWhitespaceOrNBSP(ch) ||
+           mozilla::IsPunctuationForWordSelect(ch);
+  });
 }
 
 }  // namespace mozilla::dom

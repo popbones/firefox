@@ -277,7 +277,7 @@ export class StyleEditorUI extends EventEmitter {
         if (!this.selectedEditor) {
           return;
         }
-
+        this.#prettyPrintButton.classList.add("pretty");
         this.selectedEditor.prettifySourceText();
       },
       eventListenersConfig
@@ -1359,6 +1359,10 @@ export class StyleEditorUI extends EventEmitter {
     if (disable !== this.#prettyPrintButton.hasAttribute("disabled")) {
       this.#prettyPrintButton.toggleAttribute("disabled");
     }
+    this.#prettyPrintButton.classList.toggle(
+      "pretty",
+      this.selectedEditor?.isPrettyPrinted || false
+    );
     let l10nString;
     if (disable) {
       if (isReadOnly) {
@@ -1654,7 +1658,14 @@ export class StyleEditorUI extends EventEmitter {
         continue;
       }
 
-      if (resource.name === "will-navigate") {
+      if (
+        resource.name === "will-navigate" &&
+        // When selecting a document in the Browser Toolbox iframe picker, we're getting
+        // a will-navigate event. In such case, we don't want to clear the list (see Bug 1981937)
+        (!this.#commands.targetCommand.descriptorFront
+          .isBrowserProcessDescriptor ||
+          !resource.isFrameSwitching)
+      ) {
         this.#startLoadingStyleSheets();
         this.#clear();
       } else if (resource.name === "dom-complete") {

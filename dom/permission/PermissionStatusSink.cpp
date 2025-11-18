@@ -5,14 +5,15 @@
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "PermissionStatusSink.h"
+
 #include "PermissionObserver.h"
 #include "PermissionStatus.h"
-
 #include "mozilla/Permission.h"
 #include "mozilla/PermissionDelegateHandler.h"
 #include "mozilla/PermissionManager.h"
 #include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/dom/WorkerRef.h"
+#include "nsGlobalWindowInner.h"
 
 namespace mozilla::dom {
 

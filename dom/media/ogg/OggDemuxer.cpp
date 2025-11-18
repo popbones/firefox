@@ -5,25 +5,25 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "OggDemuxer.h"
-#include "OggRLBox.h"
+
+#include <algorithm>
+
 #include "MediaDataDemuxer.h"
 #include "OggCodecState.h"
+#include "OggRLBox.h"
 #include "TimeUnits.h"
 #include "XiphExtradata.h"
 #include "mozilla/AbstractThread.h"
 #include "mozilla/Atomics.h"
 #include "mozilla/PodOperations.h"
-#include "mozilla/ScopeExit.h"
 #include "mozilla/SchedulerGroup.h"
+#include "mozilla/ScopeExit.h"
 #include "mozilla/SharedThreadPool.h"
 #include "mozilla/TimeStamp.h"
-#include "nsDebug.h"
 #include "nsAutoRef.h"
+#include "nsDebug.h"
 #include "nsError.h"
 
-#include <algorithm>
-
-extern mozilla::LazyLogModule gMediaDemuxerLog;
 #define OGG_DEBUG(arg, ...)                                           \
   DDMOZ_LOG(gMediaDemuxerLog, mozilla::LogLevel::Debug, "::%s: " arg, \
             __func__, ##__VA_ARGS__)

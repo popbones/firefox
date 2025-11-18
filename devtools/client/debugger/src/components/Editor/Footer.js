@@ -32,7 +32,7 @@ import {
   isSelectedMappedSourceLoading,
 } from "../../selectors/index";
 
-import { isPretty, shouldBlackbox } from "../../utils/source";
+import { shouldBlackbox } from "../../utils/source";
 
 import { PaneToggleButton } from "../shared/Button/index";
 import AccessibleImage from "../shared/AccessibleImage";
@@ -68,6 +68,7 @@ class SourceFooter extends PureComponent {
       canPrettyPrint,
       prettyPrintMessage,
       prettyPrintAndSelectSource,
+      removePrettyPrintedSource,
       sourceLoaded,
     } = this.props;
 
@@ -91,19 +92,22 @@ class SourceFooter extends PureComponent {
     return button(
       {
         onClick: () => {
+          if (selectedSource.isPrettyPrinted) {
+            removePrettyPrintedSource(selectedSource);
+            return;
+          }
           if (!canPrettyPrint) {
             return;
           }
           prettyPrintAndSelectSource(selectedSource);
         },
         className: classnames("action", type, {
-          active: sourceLoaded && canPrettyPrint,
-          pretty: isPretty(selectedSource),
+          pretty: selectedSource.isPrettyPrinted,
         }),
         key: type,
         title: prettyPrintMessage,
         "aria-label": prettyPrintMessage,
-        disabled: !canPrettyPrint,
+        disabled: !canPrettyPrint && !selectedSource.isPrettyPrinted,
       },
       React.createElement(AccessibleImage, {
         className: type,
@@ -190,8 +194,8 @@ class SourceFooter extends PureComponent {
 
     const tooltip = L10N.getFormatStr(
       mappedSource.isOriginal
-        ? "sourceFooter.mappedOriginalSource.tooltip"
-        : "sourceFooter.mappedGeneratedSource.tooltip",
+        ? "sourceFooter.mappedGeneratedSource.tooltip"
+        : "sourceFooter.mappedOriginalSource.tooltip",
       mappedSource.url
     );
     const label = L10N.getFormatStr(
@@ -273,6 +277,7 @@ class SourceFooter extends PureComponent {
   renderSourceMapButton() {
     const { toolboxDoc } = this.context;
 
+    const selectedSource = this.props.selectedLocation?.source;
     return React.createElement(
       MenuButton,
       {
@@ -284,9 +289,10 @@ class SourceFooter extends PureComponent {
           loading: this.props.isSourceMapLoading,
           disabled: !this.props.areSourceMapsEnabled,
           "not-mapped":
-            !this.props.selectedLocation?.source.isOriginal &&
+            (!selectedSource?.isOriginal || selectedSource?.isPrettyPrinted) &&
             !this.props.isSourceActorWithSourceMap,
-          original: this.props.selectedLocation?.source.isOriginal,
+          original:
+            selectedSource?.isOriginal && !selectedSource.isPrettyPrinted,
         }),
         title: this.getSourceMapTitle(),
         label: this.getSourceMapLabel(),
@@ -465,6 +471,7 @@ const mapStateToProps = state => {
 };
 
 export default connect(mapStateToProps, {
+  removePrettyPrintedSource: actions.removePrettyPrintedSource,
   prettyPrintAndSelectSource: actions.prettyPrintAndSelectSource,
   toggleBlackBox: actions.toggleBlackBox,
   jumpToMappedLocation: actions.jumpToMappedLocation,

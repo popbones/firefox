@@ -143,8 +143,7 @@ class CodeGeneratorShared : public LElementVisitor {
   inline Address ToAddress(const LInt64Allocation& a) const;
 
   static inline Address ToAddress(Register elements, const LAllocation* index,
-                                  Scalar::Type type,
-                                  int32_t offsetAdjustment = 0);
+                                  Scalar::Type type);
 
   uint32_t frameSize() const { return frameDepth_; }
 
@@ -156,6 +155,7 @@ class CodeGeneratorShared : public LElementVisitor {
  public:
   MIRGenerator& mirGen() const { return *gen; }
   const wasm::CodeMetadata* wasmCodeMeta() const { return wasmCodeMeta_; }
+  IonPerfSpewer& perfSpewer() const { return mirGen().perfSpewer(); }
 
   // When appending to runtimeData_, the vector might realloc, leaving pointers
   // int the origianl vector stale and unusable. DataPtr acts like a pointer,
@@ -243,8 +243,8 @@ class CodeGeneratorShared : public LElementVisitor {
   void emitTruncateDouble(FloatRegister src, Register dest, MInstruction* mir);
   void emitTruncateFloat32(FloatRegister src, Register dest, MInstruction* mir);
 
-  void emitPreBarrier(Register elements, const LAllocation* index);
   void emitPreBarrier(Address address);
+  void emitPreBarrier(BaseObjectElementIndex address);
 
   // We don't emit code for trivial blocks, so if we want to branch to the
   // given block, and it's trivial, return the ultimate block we should

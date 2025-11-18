@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -75,7 +76,7 @@ private fun ComponentShowBiometricPromptButton(showBiometricPrompt: () -> Unit) 
     Button(
         onClick = showBiometricPrompt,
         colors = ButtonDefaults.textButtonColors(
-            backgroundColor = colorResource(R.color.biometric_show_button_background),
+            containerColor = colorResource(R.color.biometric_show_button_background),
         ),
         modifier = Modifier
             .padding(16.dp)
@@ -89,11 +90,7 @@ private fun ComponentShowBiometricPromptButton(showBiometricPrompt: () -> Unit) 
         )
         Text(
             color = PhotonColors.White,
-            text = AnnotatedString(
-                LocalContext.current.resources.getString(
-                    R.string.show_biometric_button_text,
-                ),
-            ),
+            text = AnnotatedString(stringResource(id = R.string.show_biometric_button_text)),
         )
     }
 }

@@ -126,30 +126,6 @@ events:
     metadata:
       tags:
         - Search
-  browser_toolbar_action:
-    type: event
-    description: |
-      A browser toolbar item was tapped.
-      The name of the item that the user tapped is stored in extras with the
-      key `item`.
-    extra_keys:
-      item:
-        description: |
-          A string containing the name of the item the user tapped. These items
-          include:
-          back, back_long_press, custom_back, custom_back_long_press, forward,
-          forward_long_press, custom_forward, custom_forward_long_press, new_tab,
-          new_tab_long_press, tabs_tray, tabs_tray_long_press, menu_press.
-        type: string
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1937593
-    data_reviews:
-      - https://phabricator.services.mozilla.com/D232243
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
   browser_menu_action:
     type: event
     description: |
@@ -162,13 +138,15 @@ events:
           A string containing the name of the item the user tapped. These items
           include:
           add_bookmark, add_to_homescreen, add_to_top_sites, addon_details, addons_manager,
-          back, back_long_press, bookmark, bookmarks, desktop_view_off, desktop_view_on,
-          discover_more_extensions, web_extension_browser_action_clicked,
-          downloads, edit_bookmark, extensions_learn_more,
-          find_in_page, forward, forward_long_press, history, install_addon, new_tab,
-          new_private_tab, open_in_app, open_in_fenix, quit, reader_mode_appearance, reload,
-          remove_from_top_sites, save_to_collection, set_default_browser,
-          settings, share, stop, sync_account, translate and print_content.
+          back, back_long_press, bookmark, bookmarks, custom_back, custom_back_long_press,
+          custom_desktop_view_off, custom_desktop_view_on, custom_find_in_page,
+          custom_forward, custom_forward_long_press, custom_share, desktop_view_off,
+          desktop_view_on, discover_more_extensions, dismiss_menu_banner, downloads,
+          edit_bookmark, extensions_learn_more, find_in_page, forward, forward_long_press,
+          history, install_addon, installed_addon_details, menu_banner, new_tab, open_in_app,
+          open_in_fenix, print_content, quit, reader_mode_appearance, reload, remove_from_top_sites,
+          save_to_collection, set_default_browser, settings, share, stop, sync_account,
+          translate and web_extension_browser_action_clicked.
         type: string
     bugs:
       - https://github.com/mozilla-mobile/fenix/issues/1024
@@ -496,74 +474,6 @@ events:
     metadata:
       tags:
         - ContextMenu
-  browser_toolbar_home_tapped:
-    type: event
-    description: |
-      An event that indicates that a user has tapped
-      home button on browser toolbar.
-    bugs:
-      - https://github.com/mozilla-mobile/fenix/issues/19915
-    data_reviews:
-      - https://github.com/mozilla-mobile/fenix/pull/19936
-      - https://github.com/mozilla-mobile/fenix/pull/19924#issuecomment-861423789
-      - https://github.com/mozilla-mobile/fenix/pull/21316#issuecomment-944615938
-      - https://github.com/mozilla-mobile/fenix/pull/27295
-      - https://github.com/mozilla-mobile/firefox-android/pull/4039
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-  browser_toolbar_security_indicator_tapped:
-    type: event
-    description: |
-      An event that indicates that a user has tapped
-      the security indicator icon (at the start of the domain name).
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1869664
-    data_reviews:
-      - https://github.com/mozilla-mobile/firefox-android/pull/5019#issuecomment-1876329933
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-    metadata:
-      tags:
-        - Toolbar
-  browser_toolbar_input_cleared:
-    type: event
-    description: |
-      A user pressed the circle cross icon, clearing the input in the toolbar.
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1869664
-    data_reviews:
-      - https://github.com/mozilla-mobile/firefox-android/pull/5019#issuecomment-1876329933
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-    metadata:
-      tags:
-        - Toolbar
-  browser_toolbar_qr_scan_tapped:
-    type: event
-    description: |
-      An event that indicates that a user has tapped
-      QR scan button on browser toolbar.
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1862096
-    data_reviews:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1862096
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-    metadata:
-      tags:
-        - Toolbar
   browser_toolbar_qr_scan_completed:
     type: event
     description: |
@@ -596,6 +506,32 @@ events:
     metadata:
       tags:
         - Toolbar
+  toolbar_tab_swipe_cfr_shown:
+    type: event
+    description: |
+      Address bar swipe CFR was shown to the user.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1935696
+    data_reviews:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1935696
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+  toolbar_tab_swipe_cfr_dismissed:
+    type: event
+    description: |
+      Address bar swipe CFR was dismissed by the user.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1935696
+    data_reviews:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1935696
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
   tab_view_changed:
     type: event
     description: |
@@ -2100,6 +2036,226 @@ onboarding:
       tags:
         - Onboarding
 
+terms_of_use:
+  impression:
+    type: event
+    description: The Terms of Use prompt was displayed to the user.
+    extra_keys:
+      tou_version:
+        type: quantity
+        description: The Terms of Use version, e.g., 1, 2. No semantic versioning.
+        unit: version
+      surface:
+        type: string
+        description: The surface on which the Terms of Use prompt was displayed, e.g. Homescreen, Browser.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  impression_count:
+    type: counter
+    lifetime: application
+    description: Records the number of Terms of Use prompt impressions the user has had.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  accepted:
+    type: event
+    description: The user accepted the Terms of Use.
+    extra_keys:
+      tou_version:
+        type: quantity
+        description: The version of the Terms of Use the user accepted.
+        unit: version
+      surface:
+        type: string
+        description: The surface on which the Terms of Use prompt was displayed, e.g. Homescreen, Browser.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  version:
+    type: quantity
+    lifetime: application
+    description: The version of the Terms of Use the user accepted.
+    unit: version
+    send_in_pings:
+      - metrics
+    notification_emails:
+      - android-probes@mozilla.com
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    expires: never
+
+  date:
+    type: datetime
+    lifetime: application
+    description: The timestamp when the user accepted the Terms of Use.
+    time_unit: millisecond
+    send_in_pings:
+      - metrics
+    notification_emails:
+      - android-probes@mozilla.com
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    expires: never
+
+  remind_me_later_click:
+    type: event
+    description: The user clicked the 'remind me later' link on the Terms of Use prompt.
+    extra_keys:
+      tou_version:
+        type: quantity
+        description: The Terms of Use version, e.g., 1, 2. No semantic versioning.
+        unit: version
+      surface:
+        type: string
+        description: The surface on which the Terms of Use prompt was displayed, e.g. Homescreen, Browser.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  remind_me_later_count:
+    type: counter
+    lifetime: application
+    description: Records the number of times the user clicked 'remind me later' on the Terms of Use prompt.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  learn_more_click:
+    type: event
+    description: The user clicked the 'learn more' link on the Terms of Use prompt.
+    extra_keys:
+      tou_version:
+        type: quantity
+        description: The Terms of Use version, e.g., 1, 2. No semantic versioning.
+        unit: version
+      surface:
+        type: string
+        description: The surface on which the Terms of Use prompt was displayed, e.g. Homescreen, Browser.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  privacy_notice_click:
+    type: event
+    description: The user clicked the 'privacy notice' link on the Terms of Use prompt.
+    extra_keys:
+      tou_version:
+        type: quantity
+        description: The Terms of Use version, e.g., 1, 2. No semantic versioning.
+        unit: version
+      surface:
+        type: string
+        description: The surface on which the Terms of Use prompt was displayed, e.g. Homescreen, Browser.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  terms_of_use_click:
+    type: event
+    description: The user clicked the 'terms of use' link on the Terms of Use prompt.
+    extra_keys:
+      tou_version:
+        type: quantity
+        description: The Terms of Use version, e.g., 1, 2. No semantic versioning.
+        unit: version
+      surface:
+        type: string
+        description: The surface on which the Terms of Use prompt was displayed, e.g. Homescreen, Browser.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  dismiss:
+    type: event
+    description: The user dismissed the Terms of Use prompt.
+    extra_keys:
+      tou_version:
+        type: quantity
+        description: The Terms of Use version, e.g., 1, 2. No semantic versioning.
+        unit: version
+      surface:
+        type: string
+        description: The surface on which the Terms of Use prompt was displayed, e.g. Homescreen, Browser.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+  dismiss_count:
+    type: counter
+    lifetime: application
+    description: Records the number of times the user dismissed the Terms of Use prompt.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1963720
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260153
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
 private_browsing_locked:
   feature_enabled:
     type: event
@@ -2266,11 +2422,12 @@ custom_review_prompt:
       - android-probes@mozilla.com
     expires: never
 
-  open_mozilla_connect_clicked:
+  leave_feedback_clicked:
     type: event
-    description: Logged when the user chooses to open Mozilla Connect from the custom review prompt.
+    description: Logged when the user chooses to leave feedback from the custom review prompt.
     bugs:
       - https://bugzilla.mozilla.org/show_bug.cgi?id=1966653
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1978806
     data_reviews:
       - https://phabricator.services.mozilla.com/D253398
     data_sensitivity:
@@ -2311,49 +2468,6 @@ search_shortcuts:
       - https://github.com/mozilla-mobile/fenix/pull/20517#pullrequestreview-718069041
       - https://github.com/mozilla-mobile/fenix/pull/23453#issuecomment-1024694220
       - https://github.com/mozilla-mobile/fenix/pull/28502
-      - https://github.com/mozilla-mobile/firefox-android/pull/4039
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-    metadata:
-      tags:
-        - Search
-        - Shortcuts
-
-unified_search:
-  search_menu_tapped:
-    type: event
-    description: |
-      A user tapped on the unified search selector menu.
-    bugs:
-      - https://github.com/mozilla-mobile/fenix/issues/24522
-    data_reviews:
-      - https://github.com/mozilla-mobile/fenix/pull/25544
-      - https://github.com/mozilla-mobile/firefox-android/pull/1875
-      - https://github.com/mozilla-mobile/firefox-android/pull/4039
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-    metadata:
-      tags:
-        - Search
-        - Shortcuts
-  engine_selected:
-    type: event
-    description: |
-      A user used unified search to select a search shortcut engine to use
-    extra_keys:
-      engine:
-        type: string
-        description: |
-          The name of the built-in search engine the user selected as a string
-    bugs:
-      - https://github.com/mozilla-mobile/fenix/issues/24522
-    data_reviews:
-      - https://github.com/mozilla-mobile/fenix/pull/25544
-      - https://github.com/mozilla-mobile/firefox-android/pull/1875
       - https://github.com/mozilla-mobile/firefox-android/pull/4039
     notification_emails:
       - android-probes@mozilla.com
@@ -2546,22 +2660,6 @@ generated_password_dialog:
       tags:
         - Logins
 metrics:
-  client_association:
-    type: string
-    description: |
-      The Mozilla Account UID associated with the user.
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1970661
-    data_reviews:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1970661
-    data_sensitivity:
-      - highly_sensitive
-    notification_emails:
-      - fmasalha@mozilla.com
-      - mtighe@mozilla.com
-    expires: never
-    send_in_pings:
-      - fx-accounts
   default_browser:
     type: boolean
     lifetime: application
@@ -3642,7 +3740,6 @@ customize_home:
       - https://github.com/mozilla-mobile/fenix/pull/28709#issuecomment-1410642835
     data_sensitivity:
       - interaction
-    lifetime: application
     notification_emails:
       - android-probes@mozilla.com
     expires: never
@@ -3753,6 +3850,48 @@ preferences:
       - https://github.com/mozilla-mobile/fenix/pull/19924#issuecomment-861423789
       - https://github.com/mozilla-mobile/fenix/pull/20517#pullrequestreview-718069041
       - https://github.com/mozilla-mobile/fenix/pull/23453#issuecomment-1024694220
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+    metadata:
+      tags:
+        - Search
+        - Settings
+  show_sponsor_suggestions_enabled:
+    type: boolean
+    lifetime: application
+    description: |
+      Whether or not the user has sponsor search suggestions enabled
+      default: true
+    send_in_pings:
+      - metrics
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1987009
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D263806
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+    metadata:
+      tags:
+        - Search
+        - Settings
+  show_non_sponsor_suggestions_enabled:
+    type: boolean
+    lifetime: application
+    description: |
+      Whether or not the user has non sponsor search suggestions enabled
+      default: true
+    send_in_pings:
+      - metrics
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1987009
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D263806
     data_sensitivity:
       - interaction
     notification_emails:
@@ -4082,6 +4221,26 @@ preferences:
       tags:
         - Toolbar
         - Settings
+  toolbar_mode_setting:
+    type: string
+    description: |
+      The mode of the toolbar. Possible values are: simple or expanded.
+    send_in_pings:
+      - metrics
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1971858
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D259115
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+    metadata:
+      tags:
+        - Toolbar
+        - Settings
+
   accessibility_services:
     type: string_list
     lifetime: application
@@ -4172,6 +4331,25 @@ preferences:
     notification_emails:
       - android-probes@mozilla.com
     expires: never
+  isolated_content_processes_enabled:
+    type: boolean
+    lifetime: application
+    description: True when isolated content processes are enabled on the runtime.
+    send_in_pings:
+      - metrics
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1983811
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D263564
+    data_sensitivity:
+      - technical
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+    metadata:
+      tags:
+        - Settings
+        - Performance
 
 search.default_engine:
   code:
@@ -12124,6 +12302,19 @@ fx_suggest:
     expires: never
     send_in_pings:
       - fx-suggest
+  query_count:
+    type: quantity
+    description: |
+      The number of suggestions returned from query.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1984499
+    data_reviews: []
+    expires: never
+    notification_emails:
+      - rmalicdem@mozilla.com
+    send_in_pings:
+      - fx-suggest-api
+    unit: integer
 debug_drawer:
   debug_drawer_enabled:
     type: boolean
@@ -12513,73 +12704,6 @@ navigation_bar:
       tags:
         - Performance
 
-address_toolbar:
-  share_tapped:
-    type: event
-    description: |
-      When share button is tapped on the toolbar.
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1889484
-    data_reviews:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1889484
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-  reload_tapped:
-    type: event
-    description: |
-      When reload button is tapped on the toolbar.
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1889484
-    data_reviews:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1889484
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-  cancel_tapped:
-    type: event
-    description: |
-      When cancel button is tapped on the toolbar.
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1889484
-    data_reviews:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1889484
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-  swipe_cfr_shown:
-    type: event
-    description: |
-      Address bar swipe CFR was shown to the user.
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1935696
-    data_reviews:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1935696
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-  swipe_cfr_dismissed:
-    type: event
-    description: |
-      Address bar swipe CFR was dismissed by the user.
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1935696
-    data_reviews:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1935696
-    data_sensitivity:
-      - interaction
-    notification_emails:
-      - android-probes@mozilla.com
-    expires: never
-
 customization_settings:
   dynamic_toolbar:
     type: boolean
@@ -12600,6 +12724,39 @@ customization_settings:
     metadata:
       tags:
         - Settings
+  app_icon_selection_tapped:
+    type: event
+    description: When select app icon section is tapped.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1979161
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260059
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+app_icon_selection:
+  app_icon_selection_confirmed:
+    type: event
+    description: When a new app icon was selected and user confirmed the app restart.
+    extra_keys:
+      old_icon:
+        description: The title of the previously selected app icon.
+        type: string
+      new_icon:
+        description: The title of the new selected app icon.
+        type: string
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1979161
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D260059
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
 
 nimbus_system:
   recorded_nimbus_context:
@@ -12649,12 +12806,28 @@ nimbus_system:
           type: string
         device_model:
           type: string
+        user_accepted_tou:
+          type: boolean
+        no_shortcuts_or_stories_opt_outs:
+          type: boolean
+        user_clicked_tou_prompt_link:
+          type: boolean
+        user_clicked_tou_prompt_remind_me_later:
+          type: boolean
     description: |
       The Nimbus context object that is recorded to Glean
     bugs:
       - 'https://bugzilla.mozilla.org/show_bug.cgi?id=1898552'
+      - 'https://bugzilla.mozilla.org/show_bug.cgi?id=1970135'
+      - 'https://bugzilla.mozilla.org/show_bug.cgi?id=1970165'
+      - 'https://bugzilla.mozilla.org/show_bug.cgi?id=1981877'
+      - 'https://bugzilla.mozilla.org/show_bug.cgi?id=1984639'
     data_reviews:
       - 'https://bugzilla.mozilla.org/show_bug.cgi?id=1898552#c3'
+      - 'https://phabricator.services.mozilla.com/D258942'
+      - 'https://phabricator.services.mozilla.com/D259407'
+      - 'https://phabricator.services.mozilla.com/D260845'
+      - 'https://phabricator.services.mozilla.com/D262139'
     data_sensitivity:
       - interaction
     notification_emails:
@@ -13031,6 +13204,22 @@ broken_site_report.tab_info:
     send_in_pings:
       - broken-site-report
 broken_site_report.tab_info.antitracking:
+  blocked_origins:
+    type: string_list
+    expires: never
+    data_sensitivity:
+      - highly_sensitive
+    description: >
+      List of origins which were blocked by antitracking.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1970745
+    data_reviews:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1970745
+    notification_emails:
+      - twisniewski@mozilla.com
+      - webcompat-reporting-tool-telemetry@mozilla.com
+    send_in_pings:
+      - broken-site-report
   block_list:
     type: string
     expires: never
@@ -13536,22 +13725,6 @@ broken_site_report.browser_info.prefs:
       - webcompat-reporting-tool-telemetry@mozilla.com
     send_in_pings:
       - broken-site-report
-  h1_in_section_useragent_styles_enabled:
-    type: boolean
-    expires: never
-    data_sensitivity:
-      - interaction
-    description: >
-      Value of `layout.css.h1-in-section-ua-styles.enabled`
-    bugs:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1952996
-    data_reviews:
-      - https://bugzilla.mozilla.org/show_bug.cgi?id=1852340#c16
-    notification_emails:
-      - twisniewski@mozilla.com
-      - webcompat-reporting-tool-telemetry@mozilla.com
-    send_in_pings:
-      - broken-site-report
   resist_fingerprinting_enabled:
     type: boolean
     expires: never
@@ -13692,6 +13865,21 @@ webcompatreporting:
       - interaction
     notification_emails:
       - twisniewski@mozilla.com
+      - webcompat-reporting-tool-telemetry@mozilla.com
+    expires: never
+  learn_more:
+    type: event
+    description: |
+      The user will be redirected to a SUMO article (https://support.mozilla.org/km/kb/report-breakage-due-blocking) to learn more about reporting a broken site.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1970705
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D255555
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - twisniewski@mozilla.com
+      - android-probes@mozilla.com
       - webcompat-reporting-tool-telemetry@mozilla.com
     expires: never
 
@@ -13943,6 +14131,59 @@ downloads:
       - https://bugzilla.mozilla.org/show_bug.cgi?id=1968735
     data_reviews:
       - https://phabricator.services.mozilla.com/D251698
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - android-probes@mozilla.com
+    expires: never
+
+client_association:
+  uid:
+    type: string
+    description: |
+      The Mozilla Account UID associated with the user.
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1970661
+    data_reviews:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1970661
+    data_sensitivity:
+      - highly_sensitive
+    notification_emails:
+      - fmasalha@mozilla.com
+      - mtighe@mozilla.com
+    expires: never
+    send_in_pings:
+      - fx-accounts
+
+toolbar:
+  button_tapped:
+    type: event
+    description: |
+      A toolbar button was tapped.
+      The name of the item that the user tapped is stored in extras with the
+      key `item`.
+    extra_keys:
+      source:
+        description: |
+          Where the interaction occurred. One of: url_bar, navigation_bar, custom_bar.
+        type: string
+      item:
+        description: |
+          A string containing the name of the button the user tapped. These items include:
+          navigate_back, navigate_back_long_press, navigate_forward, navigate_forward_long_press,
+          add_new_tab, add_new_tab_long_press, add_new_private_tab, tab_counter, tab_counter_long_press,
+          menu, share, clear, refresh, stop, add_bookmark, edit_bookmark, security_indicator, qr_code,
+          home, reader_mode, microphone, open_in_fenix, close, site_custom, search_engine_selector,
+          search_engine_selected.
+        type: string
+      extra:
+        description: |
+          Any extra information about the button that was tapped.
+        type: string
+    bugs:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1971857
+    data_reviews:
+      - https://phabricator.services.mozilla.com/D264134
     data_sensitivity:
       - interaction
     notification_emails:

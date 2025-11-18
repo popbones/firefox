@@ -14,12 +14,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.VisibleForTesting
-import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.preference.SwitchPreference
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -40,6 +40,7 @@ import org.mozilla.fenix.settings.SharedPreferenceUpdater
 import org.mozilla.fenix.settings.SyncPreferenceView
 import org.mozilla.fenix.settings.biometric.BiometricPromptPreferenceFragment
 import org.mozilla.fenix.settings.requirePreference
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * Autofill settings fragment displays a list of settings related to autofilling, adding and
@@ -181,6 +182,31 @@ class AutofillSettingFragment : BiometricPromptPreferenceFragment() {
             },
         )
 
+        if (requireComponents.settings.isAddressSyncEnabled) {
+            SyncPreferenceView(
+                syncPreference = requirePreference(R.string.pref_key_addresses_sync_cards_across_devices),
+                lifecycleOwner = viewLifecycleOwner,
+                accountManager = requireComponents.backgroundServices.accountManager,
+                syncEngine = SyncEngine.Addresses,
+                loggedOffTitle = requireContext()
+                    .getString(R.string.preferences_addresses_sync_addresses_across_devices),
+                loggedInTitle = requireContext()
+                    .getString(R.string.preferences_addresses_sync_addresses),
+                onSyncSignInClicked = {
+                    findNavController().navigate(
+                        NavGraphDirections.actionGlobalTurnOnSync(entrypoint = FenixFxAEntryPoint.AutofillSetting),
+                    )
+                },
+                onReconnectClicked = {
+                    findNavController().navigate(
+                        AutofillSettingFragmentDirections.actionGlobalAccountProblemFragment(
+                            entrypoint = FenixFxAEntryPoint.AutofillSetting,
+                        ),
+                    )
+                },
+            )
+        }
+
         togglePrefsEnabled(creditCardPreferences, true)
     }
 
@@ -195,12 +221,17 @@ class AutofillSettingFragment : BiometricPromptPreferenceFragment() {
         val manageAddressesPreference =
             requirePreference<Preference>(R.string.pref_key_addresses_manage_addresses)
 
+        // show address sync preference if address sync is enabled
+        val addressSyncPreference =
+            requirePreference<Preference>(R.string.pref_key_addresses_sync_cards_across_devices)
+        addressSyncPreference.isVisible = requireComponents.settings.isAddressSyncEnabled
+
         if (hasAddresses) {
             manageAddressesPreference.icon = null
             manageAddressesPreference.title =
                 getString(R.string.preferences_addresses_manage_addresses)
         } else {
-            manageAddressesPreference.setIcon(R.drawable.ic_new)
+            manageAddressesPreference.setIcon(iconsR.drawable.mozac_ic_plus_24)
             manageAddressesPreference.title =
                 getString(R.string.preferences_addresses_add_address)
         }
@@ -236,7 +267,7 @@ class AutofillSettingFragment : BiometricPromptPreferenceFragment() {
             manageSavedCardsPreference.title =
                 getString(R.string.preferences_credit_cards_manage_saved_cards_2)
         } else {
-            manageSavedCardsPreference.setIcon(R.drawable.ic_new)
+            manageSavedCardsPreference.setIcon(iconsR.drawable.mozac_ic_plus_24)
             manageSavedCardsPreference.title =
                 getString(R.string.preferences_credit_cards_add_credit_card_2)
         }
@@ -281,7 +312,7 @@ class AutofillSettingFragment : BiometricPromptPreferenceFragment() {
      * only used when BiometricPrompt is unavailable on the device.
      */
     override fun showPinDialogWarning(context: Context) {
-        AlertDialog.Builder(context).apply {
+        MaterialAlertDialogBuilder(context).apply {
             setTitle(getString(R.string.credit_cards_warning_dialog_title_2))
             setMessage(getString(R.string.credit_cards_warning_dialog_message_3))
 

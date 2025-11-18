@@ -36,7 +36,8 @@ var { XPCOMUtils } = ChromeUtils.importESModule(
 );
 
 ChromeUtils.defineESModuleGetters(this, {
-  DownloadsViewUI: "resource:///modules/DownloadsViewUI.sys.mjs",
+  DownloadsViewUI:
+    "moz-src:///browser/components/downloads/DownloadsViewUI.sys.mjs",
   FileUtils: "resource://gre/modules/FileUtils.sys.mjs",
   NetUtil: "resource://gre/modules/NetUtil.sys.mjs",
   PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
@@ -186,11 +187,6 @@ var DownloadsPanel = {
    */
   showPanel(openedManually = false, isKeyPress = false) {
     Glean.downloads.panelShown.add(1);
-    // GLAM EXPERIMENT
-    // This metric is temporary, disabled by default, and will be enabled only
-    // for the purpose of experimenting with client-side sampling of data for
-    // GLAM use. See Bug 1947604 for more information.
-    Glean.glamExperiment.panelShown.add(1);
 
     DownloadsCommon.log("Opening the downloads panel.");
 

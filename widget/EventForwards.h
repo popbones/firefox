@@ -420,7 +420,7 @@ const char* ToChar(Command aCommand);
  *                              additional parameter and sets this to nullptr,
  *                              will return Command::DoNothing with warning.
  */
-Command GetInternalCommand(const char* aCommandName,
+Command GetInternalCommand(const nsACString& aCommandName,
                            const nsCommandParams* aCommandParams = nullptr);
 
 }  // namespace mozilla
@@ -522,6 +522,8 @@ inline MouseButtonsFlag MouseButtonsFlagToChange(MouseButton aMouseButton) {
       return MouseButtonsFlag::eNoButtons;
   }
 }
+
+nsCString InputSourceToString(uint16_t aInputSource);
 
 enum class TextRangeType : RawTextRangeType;
 

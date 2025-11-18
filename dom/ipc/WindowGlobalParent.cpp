@@ -8,89 +8,84 @@
 
 #include <algorithm>
 
+#include "MMPrinter.h"
 #include "mozilla/AntiTrackingUtils.h"
 #include "mozilla/AsyncEventDispatcher.h"
-#include "mozilla/BounceTrackingStorageObserver.h"
 #include "mozilla/BounceTrackingProtection.h"
+#include "mozilla/BounceTrackingStorageObserver.h"
 #include "mozilla/ClearOnShutdown.h"
-#include "mozilla/ContentBlockingAllowList.h"
-#include "mozilla/dom/InProcessParent.h"
-#include "mozilla/dom/BrowserBridgeParent.h"
-#include "mozilla/dom/BrowsingContextGroup.h"
-#include "mozilla/dom/CanonicalBrowsingContext.h"
-#include "mozilla/dom/ClientInfo.h"
-#include "mozilla/dom/ClientIPCTypes.h"
-#include "mozilla/dom/ContentChild.h"
-#include "mozilla/dom/ContentParent.h"
-#include "mozilla/dom/BrowserHost.h"
-#include "mozilla/dom/BrowserParent.h"
-#include "mozilla/dom/IdentityCredential.h"
-#include "mozilla/dom/MediaController.h"
-#include "mozilla/dom/NavigatorLogin.h"
-#include "mozilla/dom/WebAuthnTransactionParent.h"
-#include "mozilla/dom/WebIdentityParent.h"
-#include "mozilla/dom/WindowGlobalChild.h"
-#include "mozilla/dom/ChromeUtils.h"
-#include "mozilla/dom/UseCounterMetrics.h"
-#include "mozilla/dom/ipc/IdType.h"
-#include "mozilla/dom/ipc/StructuredCloneData.h"
-#include "mozilla/glean/DomMediaMetrics.h"
-#include "mozilla/glean/DomUseCounterMetrics.h"
-#include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
-#include "mozilla/glean/GeckoviewMetrics.h"
-#include "mozilla/glean/CaptchadetectionMetrics.h"
 #include "mozilla/Components.h"
+#include "mozilla/ContentBlockingAllowList.h"
 #include "mozilla/IdentityCredentialRequestManager.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/ServoCSSParser.h"
 #include "mozilla/ServoStyleSet.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/StaticPrefs_network.h"
-#include "mozilla/glean/DomSecurityMetrics.h"
 #include "mozilla/Variant.h"
+#include "mozilla/dom/BrowserBridgeParent.h"
+#include "mozilla/dom/BrowserHost.h"
+#include "mozilla/dom/BrowserParent.h"
+#include "mozilla/dom/BrowsingContextGroup.h"
+#include "mozilla/dom/CanonicalBrowsingContext.h"
+#include "mozilla/dom/ChromeUtils.h"
+#include "mozilla/dom/ClientIPCTypes.h"
+#include "mozilla/dom/ClientInfo.h"
+#include "mozilla/dom/ContentChild.h"
+#include "mozilla/dom/ContentParent.h"
+#include "mozilla/dom/DOMException.h"
+#include "mozilla/dom/DOMExceptionBinding.h"
+#include "mozilla/dom/IdentityCredential.h"
+#include "mozilla/dom/InProcessParent.h"
+#include "mozilla/dom/JSActorService.h"
+#include "mozilla/dom/JSWindowActorBinding.h"
+#include "mozilla/dom/JSWindowActorParent.h"
+#include "mozilla/dom/MediaController.h"
+#include "mozilla/dom/NavigatorLogin.h"
+#include "mozilla/dom/PBackgroundSessionStorageCache.h"
+#include "mozilla/dom/UseCounterMetrics.h"
+#include "mozilla/dom/WebAuthnTransactionParent.h"
+#include "mozilla/dom/WebIdentityParent.h"
+#include "mozilla/dom/WindowGlobalChild.h"
+#include "mozilla/dom/ipc/IdType.h"
+#include "mozilla/dom/ipc/StructuredCloneData.h"
+#include "mozilla/glean/CaptchadetectionMetrics.h"
+#include "mozilla/glean/DomMediaMetrics.h"
+#include "mozilla/glean/DomSecurityMetrics.h"
+#include "mozilla/glean/DomUseCounterMetrics.h"
+#include "mozilla/glean/GeckoviewMetrics.h"
+#include "mozilla/glean/NetwerkProtocolHttpMetrics.h"
 #include "mozilla/ipc/ProtocolUtils.h"
-#include "MMPrinter.h"
+#include "mozilla/net/CookieServiceParent.h"
+#include "mozilla/net/NeckoParent.h"
+#include "mozilla/net/PCookieServiceParent.h"
 #include "nsContentUtils.h"
 #include "nsDocShell.h"
 #include "nsDocShellLoadState.h"
 #include "nsError.h"
 #include "nsFrameLoader.h"
 #include "nsFrameLoaderOwner.h"
+#include "nsIBrowser.h"
 #include "nsICookieManager.h"
 #include "nsICookieService.h"
-#include "nsQueryObject.h"
-#include "nsNetUtil.h"
-#include "nsSandboxFlags.h"
-#include "nsSerializationHelper.h"
-#include "nsIBrowser.h"
 #include "nsIEffectiveTLDService.h"
 #include "nsIHttpsOnlyModePermission.h"
+#include "nsIOService.h"
 #include "nsIPromptCollection.h"
+#include "nsISessionStoreFunctions.h"
+#include "nsISharePicker.h"
 #include "nsITimer.h"
 #include "nsITransportSecurityInfo.h"
-#include "nsISharePicker.h"
 #include "nsIURIMutator.h"
 #include "nsIWebProgressListener.h"
-#include "nsScriptSecurityManager.h"
-#include "nsIOService.h"
-
-#include "mozilla/dom/DOMException.h"
-#include "mozilla/dom/DOMExceptionBinding.h"
-
-#include "mozilla/dom/JSActorService.h"
-#include "mozilla/dom/JSWindowActorBinding.h"
-#include "mozilla/dom/JSWindowActorParent.h"
-
-#include "mozilla/net/NeckoParent.h"
-#include "mozilla/net/PCookieServiceParent.h"
-#include "mozilla/net/CookieServiceParent.h"
-
-#include "nsISessionStoreFunctions.h"
 #include "nsIXPConnect.h"
-#include "nsImportModule.h"
 #include "nsIXULRuntime.h"
-
-#include "mozilla/dom/PBackgroundSessionStorageCache.h"
+#include "nsImportModule.h"
+#include "nsNetUtil.h"
+#include "nsQueryObject.h"
+#include "nsSandboxFlags.h"
+#include "nsScriptSecurityManager.h"
+#include "nsSerializationHelper.h"
 
 using namespace mozilla::ipc;
 using namespace mozilla::dom::ipc;
@@ -390,37 +385,34 @@ mozilla::ipc::IPCResult WindowGlobalParent::RecvInternalLoad(
 IPCResult WindowGlobalParent::RecvUpdateDocumentURI(NotNull<nsIURI*> aURI) {
   // XXX(nika): Assert that the URI change was one which makes sense (either
   // about:blank -> a real URI, or a legal push/popstate URI change):
-  if (StaticPrefs::dom_security_setdocumenturi()) {
-    nsAutoCString scheme;
-    if (NS_FAILED(aURI->GetScheme(scheme))) {
-      return IPC_FAIL(this, "Setting DocumentURI without scheme.");
-    }
+  nsAutoCString scheme;
+  if (NS_FAILED(aURI->GetScheme(scheme))) {
+    return IPC_FAIL(this, "Setting DocumentURI without scheme.");
+  }
 
-    nsCOMPtr<nsIIOService> ios = do_GetIOService();
-    if (!ios) {
-      return IPC_FAIL(this, "Cannot get IOService");
-    }
-    nsCOMPtr<nsIProtocolHandler> handler;
-    ios->GetProtocolHandler(scheme.get(), getter_AddRefs(handler));
-    if (!handler) {
-      return IPC_FAIL(this, "Setting DocumentURI with unknown protocol.");
-    }
+  nsCOMPtr<nsIIOService> ios = do_GetIOService();
+  if (!ios) {
+    return IPC_FAIL(this, "Cannot get IOService");
+  }
+  nsCOMPtr<nsIProtocolHandler> handler;
+  ios->GetProtocolHandler(scheme.get(), getter_AddRefs(handler));
+  if (!handler) {
+    return IPC_FAIL(this, "Setting DocumentURI with unknown protocol.");
+  }
 
-    nsCOMPtr<nsIURI> principalURI = mDocumentPrincipal->GetURI();
-    if (mDocumentPrincipal->GetIsNullPrincipal()) {
-      nsCOMPtr<nsIPrincipal> precursor =
-          mDocumentPrincipal->GetPrecursorPrincipal();
-      if (precursor) {
-        principalURI = precursor->GetURI();
-      }
+  nsCOMPtr<nsIURI> principalURI = mDocumentPrincipal->GetURI();
+  if (mDocumentPrincipal->GetIsNullPrincipal()) {
+    if (nsCOMPtr<nsIPrincipal> precursor =
+            mDocumentPrincipal->GetPrecursorPrincipal()) {
+      principalURI = precursor->GetURI();
     }
+  }
 
-    if (nsScriptSecurityManager::IsHttpOrHttpsAndCrossOrigin(principalURI,
-                                                             aURI)) {
-      return IPC_FAIL(this,
-                      "Setting DocumentURI with a different Origin than "
-                      "principal URI");
-    }
+  if (nsScriptSecurityManager::IsHttpOrHttpsAndCrossOrigin(principalURI,
+                                                           aURI)) {
+    return IPC_FAIL(this,
+                    "Setting DocumentURI with a different Origin than "
+                    "principal URI");
   }
 
   mDocumentURI = aURI;
@@ -560,16 +552,16 @@ IPCResult WindowGlobalParent::RecvDestroy() {
 }
 
 IPCResult WindowGlobalParent::RecvRawMessage(
-    const JSActorMessageMeta& aMeta, const Maybe<ClonedMessageData>& aData,
-    const Maybe<ClonedMessageData>& aStack) {
-  Maybe<StructuredCloneData> data;
+    const JSActorMessageMeta& aMeta, const UniquePtr<ClonedMessageData>& aData,
+    const UniquePtr<ClonedMessageData>& aStack) {
+  UniquePtr<StructuredCloneData> data;
   if (aData) {
-    data.emplace();
+    data = MakeUnique<StructuredCloneData>();
     data->BorrowFromClonedMessageData(*aData);
   }
-  Maybe<StructuredCloneData> stack;
+  UniquePtr<StructuredCloneData> stack;
   if (aStack) {
-    stack.emplace();
+    stack = MakeUnique<StructuredCloneData>();
     stack->BorrowFromClonedMessageData(*aStack);
   }
   MMPrinter::Print("WindowGlobalParent::RecvRawMessage", aMeta.actorName(),
@@ -789,15 +781,37 @@ namespace {
 class CheckPermitUnloadRequest final : public PromiseNativeHandler,
                                        public nsITimerCallback {
  public:
-  CheckPermitUnloadRequest(WindowGlobalParent* aWGP, bool aHasInProcessBlocker,
-                           nsIDocumentViewer::PermitUnloadAction aAction,
-                           std::function<void(bool)>&& aResolver)
+  CheckPermitUnloadRequest(
+      WindowGlobalParent* aWGP, bool aHasInProcessBlocker,
+      nsIDocumentViewer::PermitUnloadAction aAction,
+      std::function<void(nsIDocumentViewer::PermitUnloadResult)>&& aResolver)
       : mResolver(std::move(aResolver)),
         mWGP(aWGP),
         mAction(aAction),
         mFoundBlocker(aHasInProcessBlocker) {}
 
-  void Run(ContentParent* aIgnoreProcess = nullptr, uint32_t aTimeout = 0) {
+  // Special case for when we also want to dispatch a "navigate" event to the
+  // top level window's navigation object. The target session history entry that
+  // we dispatch is what we use when we #fire-a-traverse-navigate-event. This
+  // will _only_ run `DispatchBeforeUnloadToSubtree` for the content process of
+  // the top level window. See further comments below in `Run` and in
+  // `DispatchBeforeUnloadToSubtree`.
+  void RunTraversable(const SessionHistoryInfo& aInfo) {
+    MOZ_DIAGNOSTIC_ASSERT(mWGP->BrowsingContext()->IsTop());
+    Run(nullptr, 0, Some(aInfo));
+  }
+
+  // The complementing special case for `RunTraversable`, which is short hand
+  // for running `DispatchBeforeUnloadToSubtree` for all content processes
+  // except for the content process of the top level window. See further
+  // comments below in `Run` and in `DispatchBeforeUnloadToSubtree`.
+  void RunChildNavigables() {
+    MOZ_DIAGNOSTIC_ASSERT(mWGP->BrowsingContext()->IsTop());
+    Run(mWGP->BrowsingContext()->GetContentParent(), 0);
+  }
+
+  void Run(ContentParent* aIgnoreProcess = nullptr, uint32_t aTimeout = 0,
+           const Maybe<SessionHistoryInfo>& aInfo = Nothing()) {
     MOZ_ASSERT(mState == State::UNINITIALIZED);
     mState = State::WAITING;
 
@@ -809,28 +823,45 @@ class CheckPermitUnloadRequest final : public PromiseNativeHandler,
     }
 
     BrowsingContext* bc = mWGP->GetBrowsingContext();
-    bc->PreOrderWalk([&](dom::BrowsingContext* aBC) {
-      if (WindowGlobalParent* wgp =
-              aBC->Canonical()->GetCurrentWindowGlobal()) {
-        ContentParent* cp = wgp->GetContentParent();
-        if (wgp->HasBeforeUnload() && !seen.ContainsSorted(cp)) {
-          seen.InsertElementSorted(cp);
-          mPendingRequests++;
-          auto resolve = [self](bool blockNavigation) {
-            if (blockNavigation) {
-              self->mFoundBlocker = true;
+    auto resolve = [self](nsIDocumentViewer::PermitUnloadResult aResult) {
+      self->mFoundBlocker =
+          aResult == nsIDocumentViewer::eCanceledByBeforeUnload;
+      self->mReason = aResult;
+      self->ResolveRequest();
+    };
+    auto reject = [self](auto) { self->ResolveRequest(); };
+    // If `aInfo` is passed, only dispatch to the content process of the top
+    // level window.
+    if (aInfo) {
+      ContentParent* cp = mWGP->GetContentParent();
+      mPendingRequests++;
+      cp->SendDispatchBeforeUnloadToSubtree(bc, aInfo, resolve, reject);
+    } else {
+      bc->PreOrderWalk([&](dom::BrowsingContext* aBC) {
+        if (WindowGlobalParent* wgp =
+                aBC->Canonical()->GetCurrentWindowGlobal()) {
+          ContentParent* cp = wgp->GetContentParent();
+          // `seen` contains processes that we've already dispatched
+          // "beforeunload" to.
+          if (wgp->NeedsBeforeUnload() && !seen.ContainsSorted(cp)) {
+            seen.InsertElementSorted(cp);
+            mPendingRequests++;
+
+            if (cp) {
+              cp->SendDispatchBeforeUnloadToSubtree(bc, Nothing(), resolve,
+                                                    reject);
+            } else {
+              NS_DispatchToMainThread(NS_NewRunnableFunction(
+                  "DispatchBeforeUnloadToSubtree",
+                  [bc = RefPtr{bc}, resolve]() {
+                    ContentChild::DispatchBeforeUnloadToSubtree(bc, Nothing(),
+                                                                resolve);
+                  }));
             }
-            self->ResolveRequest();
-          };
-          if (cp) {
-            cp->SendDispatchBeforeUnloadToSubtree(
-                bc, resolve, [self](auto) { self->ResolveRequest(); });
-          } else {
-            ContentChild::DispatchBeforeUnloadToSubtree(bc, resolve);
           }
         }
-      }
-    });
+      });
+    }
 
     if (mPendingRequests && aTimeout) {
       Unused << NS_NewTimerWithCallback(getter_AddRefs(mTimer), this, aTimeout,
@@ -870,7 +901,7 @@ class CheckPermitUnloadRequest final : public PromiseNativeHandler,
     mTimer = nullptr;
 
     if (!mFoundBlocker) {
-      SendReply(true);
+      SendReply();
       return;
     }
 
@@ -879,13 +910,21 @@ class CheckPermitUnloadRequest final : public PromiseNativeHandler,
       action = nsIDocumentViewer::eDontPromptAndUnload;
     }
     if (action != nsIDocumentViewer::ePrompt) {
-      SendReply(action == nsIDocumentViewer::eDontPromptAndUnload);
+      if (action == nsIDocumentViewer::eDontPromptAndUnload) {
+        mReason = nsIDocumentViewer::eContinue;
+      } else {
+        mReason = nsIDocumentViewer::eCanceledByBeforeUnload;
+      }
+      SendReply();
       return;
     }
 
     // Handle any failure in prompting by aborting the navigation. See comment
     // in nsDocumentViewer::PermitUnload for reasoning.
-    auto cleanup = MakeScopeExit([&]() { SendReply(false); });
+    auto cleanup = MakeScopeExit([&]() {
+      mReason = nsIDocumentViewer::eCanceledByBeforeUnload;
+      SendReply();
+    });
 
     if (nsCOMPtr<nsIPromptCollection> prompt =
             do_GetService("@mozilla.org/embedcomp/prompt-collection;1")) {
@@ -902,24 +941,30 @@ class CheckPermitUnloadRequest final : public PromiseNativeHandler,
     }
   }
 
-  void SendReply(bool aAllow) {
+  void SendReply() {
     MOZ_ASSERT(mState != State::REPLIED);
-    mResolver(aAllow);
+    mResolver(mReason);
     mState = State::REPLIED;
   }
 
   void ResolvedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
                         ErrorResult& aRv) override {
     MOZ_ASSERT(mState == State::PROMPTING);
+    if (!JS::ToBoolean(aValue)) {
+      mReason = nsIDocumentViewer::eCanceledByBeforeUnload;
+    } else {
+      mReason = nsIDocumentViewer::eContinue;
+    }
 
-    SendReply(JS::ToBoolean(aValue));
+    SendReply();
   }
 
   void RejectedCallback(JSContext* aCx, JS::Handle<JS::Value> aValue,
                         ErrorResult& aRv) override {
     MOZ_ASSERT(mState == State::PROMPTING);
 
-    SendReply(false);
+    mReason = nsIDocumentViewer::eCanceledByBeforeUnload;
+    SendReply();
   }
 
   NS_DECL_ISUPPORTS
@@ -929,7 +974,8 @@ class CheckPermitUnloadRequest final : public PromiseNativeHandler,
     // We may get here without having sent a reply if the promise we're waiting
     // on is destroyed without being resolved or rejected.
     if (mState != State::REPLIED) {
-      SendReply(false);
+      mReason = nsIDocumentViewer::eCanceledByBeforeUnload;
+      SendReply();
     }
   }
 
@@ -941,7 +987,7 @@ class CheckPermitUnloadRequest final : public PromiseNativeHandler,
     REPLIED,
   };
 
-  std::function<void(bool)> mResolver;
+  std::function<void(nsIDocumentViewer::PermitUnloadResult)> mResolver;
 
   RefPtr<WindowGlobalParent> mWGP;
   nsCOMPtr<nsITimer> mTimer;
@@ -953,6 +999,8 @@ class CheckPermitUnloadRequest final : public PromiseNativeHandler,
   State mState = State::UNINITIALIZED;
 
   bool mFoundBlocker = false;
+
+  nsIDocumentViewer::PermitUnloadResult mReason = nsIDocumentViewer::eContinue;
 };
 
 NS_IMPL_ISUPPORTS(CheckPermitUnloadRequest, nsITimerCallback)
@@ -968,7 +1016,11 @@ mozilla::ipc::IPCResult WindowGlobalParent::RecvCheckPermitUnload(
   }
 
   auto request = MakeRefPtr<CheckPermitUnloadRequest>(
-      this, aHasInProcessBlocker, aAction, std::move(aResolver));
+      this, aHasInProcessBlocker, aAction,
+      [resolver = std::move(aResolver)](
+          nsIDocumentViewer::PermitUnloadResult aResult) {
+        resolver(aResult == nsIDocumentViewer::eContinue);
+      });
   request->Run(/* aIgnoreProcess */ GetContentParent());
 
   return IPC_OK();
@@ -985,17 +1037,43 @@ already_AddRefed<Promise> WindowGlobalParent::PermitUnload(
   auto request = MakeRefPtr<CheckPermitUnloadRequest>(
       this, /* aHasInProcessBlocker */ false,
       nsIDocumentViewer::PermitUnloadAction(aAction),
-      [promise](bool aAllow) { promise->MaybeResolve(aAllow); });
+      [promise](nsIDocumentViewer::PermitUnloadResult aResult) {
+        promise->MaybeResolve(aResult == nsIDocumentViewer::eContinue);
+      });
   request->Run(/* aIgnoreProcess */ nullptr, aTimeout);
 
   return promise.forget();
 }
 
-void WindowGlobalParent::PermitUnload(std::function<void(bool)>&& aResolver) {
-  RefPtr<CheckPermitUnloadRequest> request = new CheckPermitUnloadRequest(
-      this, /* aHasInProcessBlocker */ false,
-      nsIDocumentViewer::PermitUnloadAction::ePrompt, std::move(aResolver));
+void WindowGlobalParent::PermitUnload(
+    std::function<void(nsIDocumentViewer::PermitUnloadResult)>&& aResolver) {
+  RefPtr<CheckPermitUnloadRequest> request =
+      MakeRefPtr<CheckPermitUnloadRequest>(
+          this, /* aHasInProcessBlocker */ false,
+          nsIDocumentViewer::PermitUnloadAction::ePrompt, std::move(aResolver));
   request->Run();
+}
+
+void WindowGlobalParent::PermitUnloadTraversable(
+    const SessionHistoryInfo& aInfo,
+    nsIDocumentViewer::PermitUnloadAction aAction,
+    std::function<void(nsIDocumentViewer::PermitUnloadResult)>&& aResolver) {
+  MOZ_DIAGNOSTIC_ASSERT(BrowsingContext()->IsTop());
+  RefPtr<CheckPermitUnloadRequest> request =
+      MakeRefPtr<CheckPermitUnloadRequest>(this,
+                                           /* aHasInProcessBlocker */ false,
+                                           aAction, std::move(aResolver));
+  request->RunTraversable(aInfo);
+}
+
+void WindowGlobalParent::PermitUnloadChildNavigables(
+    nsIDocumentViewer::PermitUnloadAction aAction,
+    std::function<void(nsIDocumentViewer::PermitUnloadResult)>&& aResolver) {
+  RefPtr<CheckPermitUnloadRequest> request =
+      MakeRefPtr<CheckPermitUnloadRequest>(this,
+                                           /* aHasInProcessBlocker */ false,
+                                           aAction, std::move(aResolver));
+  request->RunChildNavigables();
 }
 
 already_AddRefed<mozilla::dom::Promise> WindowGlobalParent::DrawSnapshot(

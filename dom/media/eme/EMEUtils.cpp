@@ -6,9 +6,9 @@
 
 #include "mozilla/EMEUtils.h"
 
-#include "jsfriendapi.h"
-#include "MediaData.h"
 #include "KeySystemConfig.h"
+#include "MediaData.h"
+#include "jsfriendapi.h"
 #include "mozilla/StaticPrefs_media.h"
 #include "mozilla/dom/BufferSourceBinding.h"
 #include "mozilla/dom/Document.h"
@@ -53,7 +53,7 @@ bool IsWidevineKeySystem(const nsAString& aKeySystem) {
 
 #ifdef MOZ_WMF_CDM
 bool IsMediaFoundationCDMPlaybackEnabled() {
-  // 1=enabled encrypted and clear, 2=enabled encrytped.
+  // 1=enabled encrypted and clear, 2=enabled encrypted.
   return StaticPrefs::media_wmf_media_engine_enabled() == 1 ||
          StaticPrefs::media_wmf_media_engine_enabled() == 2;
 }

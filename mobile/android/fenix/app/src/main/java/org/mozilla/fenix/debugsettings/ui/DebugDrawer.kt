@@ -6,6 +6,7 @@ package org.mozilla.fenix.debugsettings.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +34,7 @@ import androidx.navigation.compose.rememberNavController
 import org.mozilla.fenix.R
 import org.mozilla.fenix.debugsettings.navigation.DebugDrawerDestination
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * The debug drawer UI.
@@ -70,7 +72,7 @@ fun DebugDrawer(
                             onClick = onBackButtonClick,
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.mozac_ic_back_24),
+                                painter = painterResource(iconsR.drawable.mozac_ic_back_24),
                                 contentDescription = stringResource(
                                     id = R.string.debug_drawer_back_button_content_description,
                                 ),
@@ -79,6 +81,10 @@ fun DebugDrawer(
                         }
                     }
                 },
+                windowInsets = WindowInsets(
+                    top = 0.dp,
+                    bottom = 0.dp,
+                ),
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = FirefoxTheme.colors.layer1),
             )
         },

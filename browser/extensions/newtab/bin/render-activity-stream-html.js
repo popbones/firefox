@@ -104,6 +104,11 @@ function templateHTML(options) {
     <script
       async
       type="module"
+      src="chrome://global/content/elements/moz-badge.mjs"
+    ></script>
+    <script
+      async
+      type="module"
       src="chrome://global/content/elements/moz-button.mjs"
     ></script>
     <script
@@ -125,6 +130,22 @@ function templateHTML(options) {
       async
       type="module"
       src="chrome://global/content/elements/moz-radio-group.mjs"
+    ></script>
+    <script
+      async
+      type="module"
+      src="chrome://global/content/elements/moz-select.mjs"
+    ></script>
+    <script
+      async
+      type="module"
+      src="chrome://global/content/elements/moz-reorderable-list.mjs"
+    ></script>
+    </script>
+      <script
+      async
+      type="module"
+      src="chrome://global/content/elements/panel-list.js"
     ></script>
   </body>
 </html>

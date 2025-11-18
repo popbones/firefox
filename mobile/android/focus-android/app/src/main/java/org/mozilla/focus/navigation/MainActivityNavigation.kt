@@ -4,8 +4,8 @@
 
 package org.mozilla.focus.navigation
 
-import android.os.Build
 import android.os.Bundle
+import androidx.fragment.app.commit
 import org.mozilla.focus.R
 import org.mozilla.focus.activity.MainActivity
 import org.mozilla.focus.autocomplete.AutocompleteAddFragment
@@ -27,6 +27,8 @@ import org.mozilla.focus.fragment.onboarding.OnboardingSecondFragment
 import org.mozilla.focus.fragment.onboarding.OnboardingStep
 import org.mozilla.focus.fragment.onboarding.OnboardingStorage
 import org.mozilla.focus.locale.screen.LanguageFragment
+import org.mozilla.focus.navigation.MainActivityNavigation.SessionWidgetPromoThresholds.FIFTH_CLEAR_SESSION_COUNT
+import org.mozilla.focus.navigation.MainActivityNavigation.SessionWidgetPromoThresholds.FIRST_CLEAR_SESSION_COUNT
 import org.mozilla.focus.nimbus.FocusNimbus
 import org.mozilla.focus.nimbus.Onboarding
 import org.mozilla.focus.searchwidget.SearchWidgetUtils
@@ -47,13 +49,11 @@ import org.mozilla.focus.settings.privacy.PrivacySecuritySettingsFragment
 import org.mozilla.focus.state.AppAction
 import org.mozilla.focus.state.Screen
 import org.mozilla.focus.utils.ViewUtils
-import kotlin.collections.forEach as withEach
 
 /**
  * Class performing the actual navigation in [MainActivity] by performing fragment transactions if
  * needed.
  */
-@Suppress("TooManyFunctions")
 class MainActivityNavigation(
     private val activity: MainActivity,
 ) {
@@ -117,7 +117,6 @@ class MainActivityNavigation(
      * Display the widget promo at first data clearing action and if it wasn't added after 5th Focus session
      * or display branded snackbar when widget promo is not shown.
      */
-    @Suppress("MagicNumber")
     private fun showPromoteSearchWidgetDialogOrBrandedSnackbar() {
         val onboardingFeature = FocusNimbus.features.onboarding
         val onboardingConfig = onboardingFeature.value()
@@ -127,7 +126,7 @@ class MainActivityNavigation(
 
         if (shouldShowPromoteSearchWidgetDialog(onboardingConfig) &&
             (
-                clearBrowsingSessions == 0 || clearBrowsingSessions == 4
+                clearBrowsingSessions == FIRST_CLEAR_SESSION_COUNT || clearBrowsingSessions == FIFTH_CLEAR_SESSION_COUNT
                 )
         ) {
             onboardingFeature.recordExposure()
@@ -239,10 +238,6 @@ class MainActivityNavigation(
      * be redirected to a certain screen. It comes from the external intent.
      */
     fun lock(bundle: Bundle? = null) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            throw IllegalStateException("Trying to lock unsupported device")
-        }
-
         val fragmentManager = activity.supportFragmentManager
 
         val biometricAuthenticationFragment =
@@ -252,28 +247,21 @@ class MainActivityNavigation(
             return
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity.isInPictureInPictureMode) {
+        if (activity.isInPictureInPictureMode) {
             return
         }
 
-        val transaction = fragmentManager
-            .beginTransaction()
-
-        fragmentManager.fragments.withEach { fragment ->
-            transaction.remove(fragment)
-        }
-
-        fragmentManager
-            .beginTransaction()
-            .replace(
+        fragmentManager.commit {
+            fragmentManager.fragments.forEach { remove(it) }
+            replace(
                 R.id.container,
                 BiometricAuthenticationFragment.createWithDestinationData(bundle),
                 BiometricAuthenticationFragment.FRAGMENT_TAG,
             )
-            .commit()
+        }
     }
 
-    @Suppress("ComplexMethod")
+    @Suppress("CyclomaticComplexMethod")
     fun settings(page: Screen.Settings.Page) {
         val fragment = when (page) {
             Screen.Settings.Page.Start -> SettingsFragment()
@@ -321,5 +309,10 @@ class MainActivityNavigation(
                 SitePermissionOptionsFragment.FRAGMENT_TAG,
             )
             .commit()
+    }
+
+    private object SessionWidgetPromoThresholds {
+        const val FIRST_CLEAR_SESSION_COUNT = 0
+        const val FIFTH_CLEAR_SESSION_COUNT = 4
     }
 }

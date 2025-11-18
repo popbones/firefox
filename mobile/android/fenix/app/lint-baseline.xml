@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues format="6" by="lint 8.10.1" type="baseline" client="gradle" dependencies="false" name="AGP (8.10.1)" variant="all" version="8.10.1">
+<issues format="6" by="lint 8.13.0" type="baseline" client="gradle" dependencies="false" name="AGP (8.13.0)" variant="all" version="8.13.0">
 
     <issue
         id="NoStaticMocking"
@@ -9,105 +9,6 @@
         <location
             file="src/test/java/org/mozilla/fenix/settings/about/AboutPageAdapterTest.kt"
             line="71"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.AppStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/AppStoreTest.kt"
-            line="344"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.AppStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/AppStoreTest.kt"
-            line="375"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.AppStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/AppStoreTest.kt"
-            line="431"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.AppStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/AppStoreTest.kt"
-            line="484"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.AppStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/AppStoreTest.kt"
-            line="666"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.AppStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/AppStoreTest.kt"
-            line="702"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.AppStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/AppStoreTest.kt"
-            line="748"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(*objects)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/browser/BaseBrowserFragmentTest.kt"
-            line="775"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(*objects)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/browser/BaseBrowserFragmentTest.kt"
-            line="778"
             column="9"/>
     </issue>
 
@@ -268,54 +169,32 @@
     <issue
         id="NoStaticMocking"
         message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarCFRPresenterTest.kt"
-            line="53"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::isTabStripEnabled)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarCFRPresenterTest.kt"
-            line="54"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarCFRPresenterTest.kt"
-            line="59"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(Context::isTabStripEnabled)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarCFRPresenterTest.kt"
-            line="60"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::settings) {"
+        errorLine1="        mockkStatic(&quot;mozilla.components.service.pocket.ext.PocketStoryKt&quot;) {"
         errorLine2="        ^">
         <location
-            file="src/test/java/org/mozilla/fenix/home/toolbar/BrowserToolbarMiddlewareTest.kt"
+            file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
+            line="220"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NoStaticMocking"
+        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
+        errorLine1="        mockkStatic(&quot;mozilla.components.service.pocket.ext.PocketStoryKt&quot;) {"
+        errorLine2="        ^">
+        <location
+            file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
+            line="272"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="NoStaticMocking"
+        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
+        errorLine1="        mockkStatic(&quot;mozilla.components.service.pocket.ext.PocketStoryKt&quot;) {"
+        errorLine2="        ^">
+        <location
+            file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
             line="413"
             column="9"/>
     </issue>
@@ -323,264 +202,11 @@
     <issue
         id="NoStaticMocking"
         message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(NavController::nav) {"
-        errorLine2="            ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="414"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(NavController::nav) {"
+        errorLine1="        mockkStatic(&quot;mozilla.components.service.pocket.ext.PocketStoryKt&quot;) {"
         errorLine2="        ^">
         <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="443"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::settings) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="450"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(NavController::nav) {"
-        errorLine2="            ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="451"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(NavController::nav) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="462"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(NavController::nav) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="491"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(NavController::nav) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="521"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::settings) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="523"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(NavController::nav) {"
-        errorLine2="            ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="524"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::settings) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="567"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(NavController::nav) {"
-        errorLine2="            ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="568"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::settings) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="713"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(NavController::nav) {"
-        errorLine2="            ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="714"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::settings) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="760"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(NavController::nav) {"
-        errorLine2="            ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="761"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::isLargeWindow) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="1365"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::isLargeWindow) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="1424"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::isLargeWindow) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="1496"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::isLargeWindow) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/BrowserToolbarMiddlewareTest.kt"
-            line="1569"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/CustomEtpCookiesOptionsDropDownListPreferenceTest.kt"
-            line="30"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/CustomEtpCookiesOptionsDropDownListPreferenceTest.kt"
-            line="45"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic("
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/DefaultBrowserToolbarMenuControllerTest.kt"
-            line="153"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(&quot;org.mozilla.fenix.settings.deletebrowsingdata.DeleteAndQuitKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/DefaultBrowserToolbarMenuControllerTest.kt"
-            line="187"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;androidx.lifecycle.LifecycleOwnerKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/DefaultBrowserToolbarMenuControllerTest.kt"
-            line="299"
+            file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
+            line="465"
             column="9"/>
     </issue>
 
@@ -591,348 +217,7 @@
         errorLine2="        ^">
         <location
             file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
-            line="216"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.service.pocket.ext.PocketStoryKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
-            line="267"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.service.pocket.ext.PocketStoryKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
-            line="408"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.service.pocket.ext.PocketStoryKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
-            line="459"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.service.pocket.ext.PocketStoryKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/pocket/DefaultPocketStoriesControllerTest.kt"
-            line="511"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.state.SearchStateKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/DefaultSessionControlControllerTest.kt"
-            line="742"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.state.SearchStateKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/DefaultSessionControlControllerTest.kt"
-            line="758"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.state.SearchStateKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/DefaultSessionControlControllerTest.kt"
-            line="780"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.state.SearchStateKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/DefaultSessionControlControllerTest.kt"
-            line="788"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.utils.AddSearchWidgetPromptKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/DefaultSessionControlControllerTest.kt"
-            line="1608"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="275"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="282"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="307"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="316"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="460"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="475"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="490"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="501"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="521"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="530"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="550"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="559"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="571"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="580"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="592"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="601"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;org.mozilla.fenix.ext.BrowserStateKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="999"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;org.mozilla.fenix.ext.BrowserStateKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="1009"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="1126"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="1142"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.collections.CollectionsDialogKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="1240"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(&quot;org.mozilla.fenix.collections.CollectionsDialogKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/DefaultTabsTrayControllerTest.kt"
-            line="1253"
+            line="518"
             column="9"/>
     </issue>
 
@@ -1049,61 +334,6 @@
     <issue
         id="NoStaticMocking"
         message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(View::increaseTapArea)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/toolbar/IncreasedTapAreaActionDecoratorTest.kt"
-            line="31"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;org.mozilla.fenix.utils.UndoKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/InstrumentedHomeFragmentTest.kt"
-            line="66"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;androidx.lifecycle.LifecycleOwnerKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/InstrumentedHomeFragmentTest.kt"
-            line="67"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;org.mozilla.fenix.utils.UndoKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/InstrumentedHomeFragmentTest.kt"
-            line="101"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;androidx.lifecycle.LifecycleOwnerKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/home/InstrumentedHomeFragmentTest.kt"
-            line="102"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
         errorLine1="        mockkStatic(&quot;org.mozilla.fenix.settings.advanced.LocaleManagerExtensionKt&quot;)"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
@@ -1115,165 +345,11 @@
     <issue
         id="NoStaticMocking"
         message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Log::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/ext/LogTest.kt"
-            line="24"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;com.google.android.gms.ads.identifier.AdvertisingIdClient&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/metrics/MetricsUtilsTest.kt"
-            line="30"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(&quot;com.google.android.gms.ads.identifier.AdvertisingIdClient&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/metrics/MetricsUtilsTest.kt"
-            line="47"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(AdvertisingIdClient::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/metrics/MetricsUtilsTest.kt"
-            line="52"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(AdvertisingIdClient::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/metrics/MetricsUtilsTest.kt"
-            line="66"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Base64::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/metrics/MetricsUtilsTest.kt"
-            line="84"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            mockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/NavigationInteractorTest.kt"
-            line="148"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="            unmockkStatic(&quot;mozilla.components.browser.state.selector.SelectorsKt&quot;)"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/NavigationInteractorTest.kt"
-            line="156"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;) {"
+        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.search.SearchFragmentStoreKt&quot;) {"
         errorLine2="        ^">
         <location
-            file="src/test/java/org/mozilla/fenix/perf/PerformanceInflaterTest.kt"
-            line="63"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/PreferenceBackedRadioButtonTest.kt"
-            line="72"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/PreferenceBackedRadioButtonTest.kt"
-            line="85"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(ShortcutManagerCompat::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/PrivateShortcutCreateManagerTest.kt"
-            line="34"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(PendingIntent::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/PrivateShortcutCreateManagerTest.kt"
-            line="35"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(ShortcutManagerCompat::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/PrivateShortcutCreateManagerTest.kt"
-            line="40"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(PendingIntent::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/PrivateShortcutCreateManagerTest.kt"
-            line="41"
+            file="src/test/java/org/mozilla/fenix/search/SearchFragmentStoreTest.kt"
+            line="87"
             column="9"/>
     </issue>
 
@@ -1284,18 +360,7 @@
         errorLine2="        ^">
         <location
             file="src/test/java/org/mozilla/fenix/search/SearchFragmentStoreTest.kt"
-            line="84"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.search.SearchFragmentStoreKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/SearchFragmentStoreTest.kt"
-            line="609"
+            line="616"
             column="9"/>
     </issue>
 
@@ -1329,171 +394,6 @@
         <location
             file="src/test/java/org/mozilla/fenix/search/toolbar/SearchSelectorToolbarActionTest.kt"
             line="171"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="60"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.support.ktx.android.content.ContextKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="61"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="93"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(&quot;mozilla.components.support.ktx.android.content.ContextKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="94"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.browser.state.state.SearchStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="1242"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.browser.state.state.SearchStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="1265"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.browser.state.state.SearchStateKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="1286"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(NotificationManagerCompat::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/SettingsFragmentTest.kt"
-            line="195"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(NotificationManagerCompat::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/SettingsFragmentTest.kt"
-            line="202"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(NotificationManagerCompat::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/SettingsFragmentTest.kt"
-            line="211"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(NotificationManagerCompat::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/SettingsFragmentTest.kt"
-            line="218"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;mozilla.components.browser.state.state.SearchStateKt&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/SettingsFragmentTest.kt"
-            line="276"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/tabstray/ext/SnackbarKtTest.kt"
-            line="44"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(StrictMode::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/perf/StrictModeManagerTest.kt"
-            line="41"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(StrictMode::class)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/perf/StrictModeManagerTest.kt"
-            line="56"
             column="9"/>
     </issue>
 
@@ -1676,72 +576,6 @@
     <issue
         id="NoStaticMocking"
         message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::components)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/ToolbarMenuBuilderTest.kt"
-            line="28"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::bookmarkStorage)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/ToolbarMenuBuilderTest.kt"
-            line="29"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(Context::settings)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/ToolbarMenuBuilderTest.kt"
-            line="30"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(Context::components)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/ToolbarMenuBuilderTest.kt"
-            line="35"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(Context::bookmarkStorage)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/ToolbarMenuBuilderTest.kt"
-            line="36"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;unmockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        unmockkStatic(Context::settings)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/ToolbarMenuBuilderTest.kt"
-            line="37"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
         errorLine1="        mockkStatic(&quot;org.mozilla.fenix.ext.ContextKt&quot;) {"
         errorLine2="        ^">
         <location
@@ -1819,22 +653,11 @@
     <issue
         id="NoStaticMocking"
         message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
-        errorLine1="        mockkStatic(NavController::nav) {"
-        errorLine2="        ^">
-        <location
-            file="src/test/java/org/mozilla/fenix/browser/TranslationsBindingTest.kt"
-            line="259"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoStaticMocking"
-        message="Usage of MockK&apos;s &apos;mockkStatic&apos; for static mocking is discouraged. Refactor to use dependency injection."
         errorLine1="        mockkStatic(&quot;mozilla.components.support.ktx.android.content.ContextKt&quot;)"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/androidTest/java/org/mozilla/fenix/ui/UnsubmittedCrashDialogTest.kt"
-            line="52"
+            line="46"
             column="9"/>
     </issue>
 
@@ -1845,7 +668,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/androidTest/java/org/mozilla/fenix/ui/UnsubmittedCrashDialogTest.kt"
-            line="62"
+            line="56"
             column="9"/>
     </issue>
 
@@ -1856,7 +679,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/test/java/org/mozilla/fenix/ext/ViewTest.kt"
-            line="46"
+            line="43"
             column="9"/>
     </issue>
 
@@ -1867,7 +690,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/test/java/org/mozilla/fenix/ext/ViewTest.kt"
-            line="47"
+            line="44"
             column="9"/>
     </issue>
 
@@ -1878,7 +701,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/test/java/org/mozilla/fenix/ext/ViewTest.kt"
-            line="48"
+            line="45"
             column="9"/>
     </issue>
 
@@ -1916,223 +739,14 @@
     </issue>
 
     <issue
-        id="UnusedAttribute"
-        message="Attribute `android:foreground` has no effect on API levels lower than 23 (current min is 21)"
-        errorLine1="    android:foreground=&quot;?android:attr/selectableItemBackground&quot;"
-        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/account_preference.xml"
-            line="8"
-            column="5"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `android:foreground` has no effect on API levels lower than 23 (current min is 21)"
-        errorLine1="        android:foreground=&quot;@drawable/rounded_ripple&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/component_collection_creation.xml"
-            line="144"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutId=&quot;password_manager&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/debug/res/xml/shortcuts.xml"
-            line="8"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutId=&quot;password_manager&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/shortcuts.xml"
-            line="8"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutShortLabel=&quot;@string/home_screen_shortcut_passwords&quot;>"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/debug/res/xml/shortcuts.xml"
-            line="11"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutShortLabel=&quot;@string/home_screen_shortcut_passwords&quot;>"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/shortcuts.xml"
-            line="11"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutId=&quot;open_new_tab&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/debug/res/xml/shortcuts.xml"
-            line="18"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutId=&quot;open_new_tab&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/shortcuts.xml"
-            line="18"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutShortLabel=&quot;@string/home_screen_shortcut_open_new_tab_2&quot;>"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/debug/res/xml/shortcuts.xml"
-            line="21"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutShortLabel=&quot;@string/home_screen_shortcut_open_new_tab_2&quot;>"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/shortcuts.xml"
-            line="21"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutId=&quot;open_new_private_tab&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/debug/res/xml/shortcuts.xml"
-            line="28"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutId` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutId=&quot;open_new_private_tab&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/shortcuts.xml"
-            line="28"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutShortLabel=&quot;@string/home_screen_shortcut_open_new_private_tab_2&quot;>"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/debug/res/xml/shortcuts.xml"
-            line="31"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="UnusedAttribute"
-        message="Attribute `shortcutShortLabel` is only used in API level 25 and higher (current min is 21)"
-        errorLine1="        android:shortcutShortLabel=&quot;@string/home_screen_shortcut_open_new_private_tab_2&quot;>"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/xml/shortcuts.xml"
-            line="31"
-            column="9"/>
-    </issue>
-
-    <issue
         id="AppBundleLocaleChanges"
         message="Found dynamic locale changes, but did not find corresponding Play Core library calls for downloading languages and splitting by language is not disabled in the `bundle` configuration"
         errorLine1="        config.setLocale(Locale.Builder().setLanguage(&quot;en&quot;).build())"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/java/org/mozilla/fenix/ext/Context.kt"
-            line="81"
+            line="83"
             column="9"/>
-    </issue>
-
-    <issue
-        id="InflateParams"
-        message="Avoid passing `null` as the view root (needed to resolve layout parameters on the inflated layout&apos;s root element)"
-        errorLine1="                .inflate(R.layout.crash_extension_dialog, null, false)"
-        errorLine2="                                                          ~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/addons/ExtensionsProcessDisabledForegroundController.kt"
-            line="80"
-            column="59"/>
-    </issue>
-
-    <issue
-        id="InflateParams"
-        message="Avoid passing `null` as the view root (needed to resolve layout parameters on the inflated layout&apos;s root element)"
-        errorLine1="                val layout = getLayoutInflater().inflate(R.layout.delete_history_time_range_dialog, null)"
-        errorLine2="                                                                                                    ~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/library/history/HistoryFragment.kt"
-            line="527"
-            column="101"/>
-    </issue>
-
-    <issue
-        id="IntentFilterUniqueDataAttributes"
-        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
-        errorLine1="                &lt;data android:scheme=&quot;${deepLinkScheme}&quot;"
-        errorLine2="                ^">
-        <location
-            file="src/main/AndroidManifest.xml"
-            line="489"
-            column="17"/>
-    </issue>
-
-    <issue
-        id="IntentFilterUniqueDataAttributes"
-        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
-        errorLine1="                &lt;data android:scheme=&quot;${deepLinkScheme}&quot;"
-        errorLine2="                ^">
-        <location
-            file="src/main/AndroidManifest.xml"
-            line="491"
-            column="17"/>
-    </issue>
-
-    <issue
-        id="IntentFilterUniqueDataAttributes"
-        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
-        errorLine1="                &lt;data android:scheme=&quot;${deepLinkScheme}&quot;"
-        errorLine2="                ^">
-        <location
-            file="src/main/AndroidManifest.xml"
-            line="493"
-            column="17"/>
     </issue>
 
     <issue
@@ -2323,201 +937,36 @@
     </issue>
 
     <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.about_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~">
+        id="IntentFilterUniqueDataAttributes"
+        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
+        errorLine1="                &lt;data android:scheme=&quot;${deepLinkScheme}&quot;"
+        errorLine2="                ^">
         <location
-            file="src/main/java/org/mozilla/fenix/settings/about/viewholders/AboutItemViewHolder.kt"
-            line="34"
-            column="31"/>
+            file="src/main/AndroidManifest.xml"
+            line="529"
+            column="17"/>
     </issue>
 
     <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.account_share_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        id="IntentFilterUniqueDataAttributes"
+        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
+        errorLine1="                &lt;data android:scheme=&quot;${deepLinkScheme}&quot;"
+        errorLine2="                ^">
         <location
-            file="src/main/java/org/mozilla/fenix/share/viewholders/AccountDeviceViewHolder.kt"
-            line="61"
-            column="31"/>
+            file="src/main/AndroidManifest.xml"
+            line="531"
+            column="17"/>
     </issue>
 
     <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.app_share_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        id="IntentFilterUniqueDataAttributes"
+        message="Consider splitting data tag into multiple tags with individual attributes to avoid confusion"
+        errorLine1="                &lt;data android:scheme=&quot;${deepLinkScheme}&quot;"
+        errorLine2="                ^">
         <location
-            file="src/main/java/org/mozilla/fenix/share/viewholders/AppViewHolder.kt"
-            line="38"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.bookmark_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/library/bookmarks/viewholders/BookmarkNodeViewHolder.kt"
-            line="129"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.library_separator"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/library/bookmarks/viewholders/BookmarkSeparatorViewHolder.kt"
-            line="16"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.collection_tab_list_row"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/collections/CollectionCreationTabListAdapter.kt"
-            line="119"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.credit_card_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/creditcards/view/CreditCardItemViewHolder.kt"
-            line="59"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.component_credit_cards"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/creditcards/view/CreditCardsManagementView.kt"
-            line="44"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.exceptions_description"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/exceptions/viewholders/ExceptionsHeaderViewHolder.kt"
-            line="28"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.site_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/exceptions/viewholders/ExceptionsListItemViewHolder.kt"
-            line="42"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.history_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/library/history/viewholders/HistoryListItemViewHolder.kt"
-            line="165"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.history_metadata_group_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/library/historymetadata/view/HistoryMetadataGroupItemViewHolder.kt"
-            line="70"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.no_collections_message"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/home/sessioncontrol/viewholders/NoCollectionsMessageViewHolder.kt"
-            line="108"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.history_list_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/library/recentlyclosed/RecentlyClosedItemViewHolder.kt"
-            line="63"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.top_placeholder_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/home/TopPlaceholderViewHolder.kt"
-            line="22"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.top_site_item"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/home/topsites/TopSiteItemViewHolder.kt"
-            line="159"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.component_top_sites_pager"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/home/topsites/TopSitePagerViewHolder.kt"
-            line="80"
-            column="31"/>
-    </issue>
-
-    <issue
-        id="NonConstantResourceId"
-        message="Resource IDs will be non-final by default in Android Gradle Plugin version 8.0, avoid using them in const fields"
-        errorLine1="        const val LAYOUT_ID = R.layout.component_top_sites"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/home/topsites/TopSiteViewHolder.kt"
-            line="42"
-            column="31"/>
+            file="src/main/AndroidManifest.xml"
+            line="533"
+            column="17"/>
     </issue>
 
     <issue
@@ -2676,78 +1125,12 @@
 
     <issue
         id="VisibleForTests"
-        message="This declaration implicitly references Country, which should only be accessed from tests or within private scope"
-        errorLine1="            countries.values.map { it.displayName },"
-        errorLine2="                                 ~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/address/view/AddressEditorView.kt"
-            line="126"
-            column="34"/>
-    </issue>
-
-    <issue
-        id="VisibleForTests"
-        message="This declaration implicitly references Country, which should only be accessed from tests or within private scope"
-        errorLine1="            .indexOfFirst { it.countryCode == selectedCountryKey }"
-        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/address/view/AddressEditorView.kt"
-            line="134"
-            column="27"/>
-    </issue>
-
-    <issue
-        id="VisibleForTests"
-        message="This declaration implicitly references Country, which should only be accessed from tests or within private scope"
-        errorLine1="                countries[newCountryKey]?.let { country ->"
-        errorLine2="                                                ~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/address/view/AddressEditorView.kt"
-            line="148"
-            column="49"/>
-    </issue>
-
-    <issue
-        id="VisibleForTests"
-        message="This declaration implicitly references Country, which should only be accessed from tests or within private scope"
-        errorLine1="                countries[newCountryKey]?.let { country ->"
-        errorLine2="                                                ~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/address/view/AddressEditorView.kt"
-            line="148"
-            column="49"/>
-    </issue>
-
-    <issue
-        id="VisibleForTests"
-        message="This declaration implicitly references Country, which should only be accessed from tests or within private scope"
-        errorLine1="        countries[selectedCountryKey]?.let { country ->"
-        errorLine2="                                             ~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/address/view/AddressEditorView.kt"
-            line="156"
-            column="46"/>
-    </issue>
-
-    <issue
-        id="VisibleForTests"
-        message="This class should only be accessed from tests or within private scope"
-        errorLine1="    private fun bindSubregionDropdown(country: Country) {"
-        errorLine2="                                               ~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/address/view/AddressEditorView.kt"
-            line="161"
-            column="48"/>
-    </issue>
-
-    <issue
-        id="VisibleForTests"
         message="This method should only be accessed from tests or within private scope"
         errorLine1="                recentTabs = state.recentTabs.filterOutTab(action.recentTab),"
         errorLine2="                                              ~~~~~~~~~~~~">
         <location
             file="src/main/java/org/mozilla/fenix/components/appstate/AppStoreReducer.kt"
-            line="80"
+            line="85"
             column="47"/>
     </issue>
 
@@ -2758,7 +1141,7 @@
         errorLine2="        ~~~~~~~~~~~~~">
         <location
             file="src/main/java/org/mozilla/fenix/browser/BrowserFragment.kt"
-            line="542"
+            line="589"
             column="9"/>
     </issue>
 
@@ -2851,24 +1234,13 @@
     </issue>
 
     <issue
-        id="SetJavaScriptEnabled"
-        message="Using `setJavaScriptEnabled` can introduce XSS vulnerabilities into your application, review carefully"
-        errorLine1="        webView.settings.javaScriptEnabled = true"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/home/mozonline/PrivacyContentDisplayActivity.kt"
-            line="34"
-            column="9"/>
-    </issue>
-
-    <issue
         id="ExportedReceiver"
         message="Exported receiver does not require permission"
         errorLine1="        &lt;receiver android:name=&quot;.onboarding.WidgetPinnedReceiver&quot;"
         errorLine2="         ~~~~~~~~">
         <location
             file="src/main/AndroidManifest.xml"
-            line="723"
+            line="730"
             column="10"/>
     </issue>
 
@@ -2890,7 +1262,7 @@
         errorLine2="     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/layout/component_collection_creation.xml"
-            line="137"
+            line="136"
             column="6"/>
     </issue>
 
@@ -2901,7 +1273,7 @@
         errorLine2="     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/layout/component_collection_creation_name_collection.xml"
-            line="108"
+            line="107"
             column="6"/>
     </issue>
 
@@ -2912,7 +1284,7 @@
         errorLine2="     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/layout/component_collection_creation_select_collection.xml"
-            line="112"
+            line="111"
             column="6"/>
     </issue>
 
@@ -3134,39 +1506,6 @@
             file="src/main/res/layout/quicksettings_protections_panel.xml"
             line="18"
             column="6"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    var debugDrawerFabOffsetX by remember { mutableStateOf(INITIAL_FAB_OFFSET_X) }"
-        errorLine2="                                            ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/debugsettings/ui/DebugOverlay.kt"
-            line="82"
-            column="45"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableFloatStateOf` instead of `mutableStateOf`"
-        errorLine1="    var debugDrawerFabOffsetY by remember { mutableStateOf(INITIAL_FAB_OFFSET_Y) }"
-        errorLine2="                                            ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/debugsettings/ui/DebugOverlay.kt"
-            line="83"
-            column="45"/>
-    </issue>
-
-    <issue
-        id="AutoboxingStateCreation"
-        message="Prefer `mutableIntStateOf` instead of `mutableStateOf`"
-        errorLine1="    var offsetY by remember { mutableStateOf(INITIAL_OFFSET) }"
-        errorLine2="                              ~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/experiments/view/ResearchSurfaceSurvey.kt"
-            line="66"
-            column="31"/>
     </issue>
 
     <issue
@@ -3534,13 +1873,6 @@
 
     <issue
         id="UnusedResources"
-        message="The resource `R.mipmap.ic_launcher_private` appears to be unused">
-        <location
-            file="src/main/res/mipmap-hdpi/ic_launcher_private.webp"/>
-    </issue>
-
-    <issue
-        id="UnusedResources"
         message="The resource `R.drawable.ic_onboarding_key_features` appears to be unused"
         errorLine1="&lt;vector xmlns:aapt=&quot;http://schemas.android.com/aapt&quot; xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot; android:height=&quot;320dp&quot; android:viewportHeight=&quot;193.94&quot; android:viewportWidth=&quot;200&quot; android:width=&quot;329.99896dp&quot;>"
         errorLine2="^">
@@ -3579,7 +1911,7 @@
         errorLine2="                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="src/main/res/values-vi/strings.xml"
-            line="3645"
+            line="3652"
             column="62"/>
     </issue>
 
@@ -3622,6 +1954,13 @@
     </issue>
 
     <issue
+        id="IconLocation"
+        message="Found bitmap drawable `res/drawable/onboarding_redesign_background.webp` in densityless folder">
+        <location
+            file="src/main/res/drawable/onboarding_redesign_background.webp"/>
+    </issue>
+
+    <issue
         id="IconDensities"
         message="Missing the following drawables in `drawable-mdpi`: fenix_search_widget.webp (found in drawable-hdpi)">
         <location
@@ -3643,35 +1982,13 @@
     </issue>
 
     <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="            preferences.edit().putBoolean(sharedKey, true).apply()"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/ToggleRadioButtonPreference.kt"
-            line="80"
-            column="13"/>
-    </issue>
-
-    <issue
-        id="UseKtx"
-        message="Use the KTX extension function `SharedPreferences.edit` instead?"
-        errorLine1="            preferences.edit().putBoolean(sharedKey, false).apply()"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/settings/ToggleRadioButtonPreference.kt"
-            line="87"
-            column="13"/>
-    </issue>
-
-    <issue
         id="ClickableViewAccessibility"
         message="Custom view ``SearchDialogFragmentConstraintLayout`` has `setOnTouchListener` called on it but does not override `performClick`"
         errorLine1="                binding.searchWrapper.setOnTouchListener { _, _ ->"
         errorLine2="                ^">
         <location
             file="src/main/java/org/mozilla/fenix/search/SearchDialogFragment.kt"
-            line="400"
+            line="397"
             column="17"/>
     </issue>
 
@@ -3682,7 +1999,7 @@
         errorLine2="                                                         ^">
         <location
             file="src/main/java/org/mozilla/fenix/search/SearchDialogFragment.kt"
-            line="400"
+            line="397"
             column="58"/>
     </issue>
 
@@ -3693,7 +2010,7 @@
         errorLine2="                ^">
         <location
             file="src/main/java/org/mozilla/fenix/search/SearchDialogFragment.kt"
-            line="410"
+            line="407"
             column="17"/>
     </issue>
 
@@ -3704,7 +2021,7 @@
         errorLine2="                                                         ^">
         <location
             file="src/main/java/org/mozilla/fenix/search/SearchDialogFragment.kt"
-            line="410"
+            line="407"
             column="58"/>
     </issue>
 
@@ -3715,7 +2032,7 @@
         errorLine2="                ^">
         <location
             file="src/main/java/org/mozilla/fenix/search/SearchDialogFragment.kt"
-            line="416"
+            line="413"
             column="17"/>
     </issue>
 
@@ -3726,19 +2043,8 @@
         errorLine2="                                                         ^">
         <location
             file="src/main/java/org/mozilla/fenix/search/SearchDialogFragment.kt"
-            line="416"
+            line="413"
             column="58"/>
-    </issue>
-
-    <issue
-        id="ClickableViewAccessibility"
-        message="Custom view `SwipeGestureLayout` overrides `onTouchEvent` but not `performClick`"
-        errorLine1="    override fun onTouchEvent(event: MotionEvent): Boolean {"
-        errorLine2="                 ~~~~~~~~~~~~">
-        <location
-            file="src/main/java/org/mozilla/fenix/browser/SwipeGestureLayout.kt"
-            line="128"
-            column="18"/>
     </issue>
 
     <issue
@@ -3772,28 +2078,6 @@
             file="src/main/res/layout/checkbox_left_sub_preference.xml"
             line="15"
             column="5"/>
-    </issue>
-
-    <issue
-        id="RtlHardcoded"
-        message="Consider replacing `android:layout_marginLeft` with `android:layout_marginStart=&quot;10dp&quot;` to better support right-to-left layouts"
-        errorLine1="                    android:layout_marginLeft=&quot;10dp&quot;"
-        errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/res/layout/activity_privacy_content_display.xml"
-            line="25"
-            column="21"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(LocaleManager)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/advanced/BaseLocaleViewHolderTest.kt"
-            line="31"
-            column="9"/>
     </issue>
 
     <issue
@@ -3957,7 +2241,7 @@
         errorLine2="        ^">
         <location
             file="src/test/java/org/mozilla/fenix/browser/store/BrowserScreenMiddlewareTest.kt"
-            line="50"
+            line="56"
             column="9"/>
     </issue>
 
@@ -3968,29 +2252,7 @@
         errorLine2="        ^">
         <location
             file="src/test/java/org/mozilla/fenix/browser/store/BrowserScreenMiddlewareTest.kt"
-            line="98"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(Snackbar.Companion)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/DefaultBrowserToolbarMenuControllerTest.kt"
-            line="158"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;unmockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        unmockkObject(Snackbar.Companion)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/toolbar/DefaultBrowserToolbarMenuControllerTest.kt"
-            line="188"
+            line="100"
             column="9"/>
     </issue>
 
@@ -4057,127 +2319,6 @@
         <location
             file="src/test/java/org/mozilla/fenix/settings/advanced/LocaleSettingsControllerTest.kt"
             line="46"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(Config)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/ext/LogTest.kt"
-            line="25"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(MetricsUtils)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/components/metrics/MetricsUtilsTest.kt"
-            line="91"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(Snackbar)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/nimbus/NimbusBranchesControllerTest.kt"
-            line="58"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(MetricsUtils)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/SearchDialogControllerTest.kt"
-            line="95"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;unmockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        unmockkObject(MetricsUtils)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/SearchDialogControllerTest.kt"
-            line="112"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(SearchSuggestionsProvidersBuilder.Companion)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="62"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;unmockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        unmockkObject(SearchSuggestionsProvidersBuilder.Companion)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/search/awesomebar/SearchSuggestionsProvidersBuilderTest.kt"
-            line="95"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(FeatureFlags)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/SettingsFragmentTest.kt"
-            line="66"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;unmockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        unmockkObject(Config)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/SettingsFragmentTest.kt"
-            line="125"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;unmockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        unmockkObject(FeatureFlags)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/settings/SettingsFragmentTest.kt"
-            line="421"
-            column="9"/>
-    </issue>
-
-    <issue
-        id="NoObjectMocking"
-        message="Usage of MockK&apos;s &apos;mockkObject&apos; for object/singleton mocking is discouraged. Consider providing dependencies explicitly."
-        errorLine1="        mockkObject(Snackbar)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/test/java/org/mozilla/fenix/browser/StandardSnackbarErrorBindingTest.kt"
-            line="43"
             column="9"/>
     </issue>
 

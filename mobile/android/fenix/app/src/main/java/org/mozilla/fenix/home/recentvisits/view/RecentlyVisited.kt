@@ -4,13 +4,11 @@
 
 package org.mozilla.fenix.home.recentvisits.view
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowColumn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -27,7 +26,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -38,7 +36,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import mozilla.components.compose.base.Divider
 import mozilla.components.compose.base.menu.DropdownMenu
 import mozilla.components.compose.base.menu.MenuItem
 import mozilla.components.compose.base.modifier.thenConditional
@@ -70,7 +67,6 @@ private val contentPadding = 16.dp
  * the [RecentlyVisitedItem] that was clicked and the second parameter is the "page" or column number
  * the item resides in.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RecentlyVisited(
     recentVisits: List<RecentlyVisitedItem>,
@@ -137,7 +133,7 @@ fun RecentlyVisited(
                         }
 
                         if (showDivider) {
-                            Divider(
+                            HorizontalDivider(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .padding(horizontal = contentPadding),
@@ -157,10 +153,6 @@ fun RecentlyVisited(
  * @param menuItems List of [RecentVisitMenuItem] to display in a recent visit dropdown menu.
  * @param onRecentVisitClick Invoked when the user clicks on a recent visit.
  */
-@OptIn(
-    ExperimentalFoundationApi::class,
-    ExperimentalComposeUiApi::class,
-)
 @Composable
 private fun RecentlyVisitedHistoryGroup(
     recentVisit: RecentHistoryGroup,
@@ -207,10 +199,6 @@ private fun RecentlyVisitedHistoryGroup(
  * @param menuItems List of [RecentVisitMenuItem] to display in a recent visit dropdown menu.
  * @param onRecentVisitClick Invoked when the user clicks on a recent visit.
  */
-@OptIn(
-    ExperimentalFoundationApi::class,
-    ExperimentalComposeUiApi::class,
-)
 @Composable
 private fun RecentlyVisitedHistoryHighlight(
     recentVisit: RecentHistoryHighlight,

@@ -10,7 +10,24 @@ use alloc::sync::Arc;
 
 use super::TimestampQuerySupport;
 
-const MAX_COMMAND_BUFFERS: u64 = 2048;
+/// Maximum number of command buffers for `MTLCommandQueue`s that we create.
+///
+/// If a [new command buffer] is requested when Metal has run out of command
+/// buffers, it waits indefinitely for one to become available. If the
+/// outstanding command buffers are actively executing on the GPU, this will
+/// happen relatively quickly. But if the outstanding command buffers will only
+/// be recovered upon GC, and attempting to get a new command buffer prevents
+/// forward progress towards that GC, there is a deadlock.
+///
+/// This is mostly a problem for the CTS, which frequently creates command
+/// buffers that it does not submit. It is unclear how likely command buffer
+/// exhaustion is in real applications.
+///
+/// This limit was increased from a previous value of 2048 for
+/// <https://bugzilla.mozilla.org/show_bug.cgi?id=1971452>.
+///
+/// [new command buffer]: https://developer.apple.com/documentation/metal/mtlcommandqueue/makecommandbuffer()?language=objc
+const MAX_COMMAND_BUFFERS: u64 = 4096;
 
 unsafe impl Send for super::Adapter {}
 unsafe impl Sync for super::Adapter {}
@@ -273,6 +290,7 @@ impl crate::Adapter for super::Adapter {
                 flags
             }
             Tf::NV12 => return Tfc::empty(),
+            Tf::P010 => return Tfc::empty(),
             Tf::Rgb9e5Ufloat => {
                 if pc.msaa_apple3 {
                     all_caps
@@ -899,7 +917,6 @@ impl super::PrivateCapabilities {
         use wgt::Features as F;
 
         let mut features = F::empty()
-            | F::MSL_SHADER_PASSTHROUGH
             | F::MAPPABLE_PRIMARY_BUFFERS
             | F::VERTEX_WRITABLE_STORAGE
             | F::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES
@@ -909,13 +926,12 @@ impl super::PrivateCapabilities {
             | F::TEXTURE_FORMAT_16BIT_NORM
             | F::SHADER_F16
             | F::DEPTH32FLOAT_STENCIL8
-            | F::BGRA8UNORM_STORAGE;
+            | F::BGRA8UNORM_STORAGE
+            | F::EXPERIMENTAL_PASSTHROUGH_SHADERS
+            | F::EXTERNAL_TEXTURE;
 
         features.set(F::FLOAT32_FILTERABLE, self.supports_float_filtering);
-        features.set(
-            F::INDIRECT_FIRST_INSTANCE | F::MULTI_DRAW_INDIRECT,
-            self.indirect_draw_dispatch,
-        );
+        features.set(F::INDIRECT_FIRST_INSTANCE, self.indirect_draw_dispatch);
         features.set(
             F::TIMESTAMP_QUERY | F::TIMESTAMP_QUERY_INSIDE_ENCODERS,
             self.timestamp_query_support
@@ -1060,6 +1076,22 @@ impl super::PrivateCapabilities {
                 max_compute_workgroups_per_dimension: 0xFFFF,
                 max_buffer_size: self.max_buffer_size,
                 max_non_sampler_bindings: u32::MAX,
+
+                max_task_workgroup_total_count: 0,
+                max_task_workgroups_per_dimension: 0,
+                max_mesh_multiview_count: 0,
+                max_mesh_output_layers: 0,
+
+                max_blas_primitive_count: 0, // When added: 2^28 from https://developer.apple.com/documentation/metal/mtlaccelerationstructureusage/extendedlimits
+                max_blas_geometry_count: 0,  // When added: 2^24
+                max_tlas_instance_count: 0,  // When added: 2^24
+                // Unsure what this will be when added: acceleration structures count as a buffer so
+                // it may be worth using argument buffers for this all acceleration structures, then
+                // there will be no limit.
+                // From 2.17.7 in https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
+                // > [Acceleration structures] are opaque objects that can be bound directly using
+                // buffer binding points or via argument buffers
+                max_acceleration_structures_per_shader_stage: 0,
             },
             alignments: crate::Alignments {
                 buffer_copy_offset: wgt::BufferSize::new(self.buffer_alignment).unwrap(),
@@ -1142,6 +1174,7 @@ impl super::PrivateCapabilities {
                 }
             }
             Tf::NV12 => unreachable!(),
+            Tf::P010 => unreachable!(),
             Tf::Rgb9e5Ufloat => MTL::RGB9E5Float,
             Tf::Bc1RgbaUnorm => MTL::BC1_RGBA,
             Tf::Bc1RgbaUnormSrgb => MTL::BC1_RGBA_sRGB,

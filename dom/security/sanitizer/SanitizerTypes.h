@@ -5,8 +5,8 @@
 #ifndef mozilla_dom_SanitizerTypes_h
 #define mozilla_dom_SanitizerTypes_h
 
-#include "mozilla/dom/SanitizerBinding.h"
 #include "mozilla/Maybe.h"
+#include "mozilla/dom/SanitizerBinding.h"
 
 namespace mozilla::dom::sanitizer {
 
@@ -19,6 +19,10 @@ class CanonicalName {
   CanonicalName(nsStaticAtom* aLocalName, nsStaticAtom* aNamespace)
       : mLocalName(aLocalName), mNamespace(aNamespace) {}
   ~CanonicalName() = default;
+
+  // Caution: Only use this for attribute names, not elements!
+  // Returns true for names that start with data-* and have a null namespace.
+  bool IsDataAttribute() const;
 
   bool operator==(const CanonicalName& aOther) const {
     return mLocalName == aOther.mLocalName && mNamespace == aOther.mNamespace;
@@ -41,6 +45,9 @@ class ListSet {
  public:
   ListSet() = default;
 
+  explicit ListSet(nsTArray<ValueType>&& aValues)
+      : mValues(std::move(aValues)) {}
+
   void Insert(ValueType&& aValue) {
     if (Contains(aValue)) {
       return;
@@ -48,11 +55,9 @@ class ListSet {
 
     mValues.AppendElement(std::move(aValue));
   }
-  void InsertNew(ValueType&& aValue) {
-    MOZ_ASSERT(!Contains(aValue));
-    mValues.AppendElement(std::move(aValue));
+  bool Remove(const CanonicalName& aValue) {
+    return mValues.RemoveElement(aValue);
   }
-  void Remove(const CanonicalName& aValue) { mValues.RemoveElement(aValue); }
   bool Contains(const CanonicalName& aValue) const {
     return mValues.Contains(aValue);
   }
@@ -67,6 +72,9 @@ class ListSet {
   }
 
   const nsTArray<ValueType>& Values() const { return mValues; }
+  nsTArray<ValueType>& Values() { return mValues; }
+
+  bool HasDuplicates() const;
 
  private:
   nsTArray<ValueType> mValues;
@@ -76,6 +84,8 @@ class CanonicalElementWithAttributes : public CanonicalName {
  public:
   explicit CanonicalElementWithAttributes(CanonicalName&& aName)
       : CanonicalName(std::move(aName)) {}
+
+  bool EqualAttributes(const CanonicalElementWithAttributes& aOther) const;
 
   SanitizerElementNamespaceWithAttributes
   ToSanitizerElementNamespaceWithAttributes() const;

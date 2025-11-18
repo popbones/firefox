@@ -1261,8 +1261,11 @@ bool RStrictConstantCompareInt32::recover(JSContext* cx,
                                           SnapshotIterator& iter) const {
   JS::Value lhs = iter.read();
 
-  iter.storeInstructionResult(
-      BooleanValue(lhs.isNumber() && lhs.toNumber() == constant_));
+  bool result = lhs.isNumber() && lhs.toNumber() == constant_;
+  if (jsop_ == JSOp::StrictNe) {
+    result = !result;
+  }
+  iter.storeInstructionResult(BooleanValue(result));
   return true;
 }
 
@@ -1288,8 +1291,11 @@ bool RStrictConstantCompareBoolean::recover(JSContext* cx,
                                             SnapshotIterator& iter) const {
   JS::Value lhs = iter.read();
 
-  iter.storeInstructionResult(
-      BooleanValue(lhs.isBoolean() && lhs.toBoolean() == constant_));
+  bool result = lhs == BooleanValue(constant_);
+  if (jsop_ == JSOp::StrictNe) {
+    result = !result;
+  }
+  iter.storeInstructionResult(BooleanValue(result));
   return true;
 }
 
@@ -1655,12 +1661,10 @@ bool MNearbyInt::writeRecoverData(CompactBufferWriter& writer) const {
   }
 }
 
-RNearbyInt::RNearbyInt(CompactBufferReader& reader) {
-  roundingMode_ = reader.readByte();
-}
-
-bool RNearbyInt::recover(JSContext* cx, SnapshotIterator& iter) const {
-  MOZ_CRASH("Unsupported rounding mode.");
+bool MRoundToDouble::writeRecoverData(CompactBufferWriter& writer) const {
+  MOZ_ASSERT(canRecoverOnBailout());
+  writer.writeUnsigned(uint32_t(RInstruction::Recover_Round));
+  return true;
 }
 
 bool MSign::writeRecoverData(CompactBufferWriter& writer) const {
@@ -2197,6 +2201,36 @@ bool RFunctionWithProto::recover(JSContext* cx, SnapshotIterator& iter) const {
   return true;
 }
 
+bool MCallee::writeRecoverData(CompactBufferWriter& writer) const {
+  MOZ_ASSERT(canRecoverOnBailout());
+  writer.writeUnsigned(uint32_t(RInstruction::Recover_Callee));
+  return true;
+}
+
+RCallee::RCallee(CompactBufferReader& reader) {}
+
+bool RCallee::recover(JSContext* cx, SnapshotIterator& iter) const {
+  JSFunction* callee = CalleeTokenToFunction(iter.frame()->calleeToken());
+  iter.storeInstructionResult(ObjectValue(*callee));
+  return true;
+}
+
+bool MFunctionEnvironment::writeRecoverData(CompactBufferWriter& writer) const {
+  MOZ_ASSERT(canRecoverOnBailout());
+  writer.writeUnsigned(uint32_t(RInstruction::Recover_FunctionEnvironment));
+  return true;
+}
+
+RFunctionEnvironment::RFunctionEnvironment(CompactBufferReader& reader) {}
+
+bool RFunctionEnvironment::recover(JSContext* cx,
+                                   SnapshotIterator& iter) const {
+  JSObject* obj = iter.readObject();
+  JSObject* env = obj->as<JSFunction>().environment();
+  iter.storeInstructionResult(ObjectValue(*env));
+  return true;
+}
+
 bool MNewCallObject::writeRecoverData(CompactBufferWriter& writer) const {
   MOZ_ASSERT(canRecoverOnBailout());
   writer.writeUnsigned(uint32_t(RInstruction::Recover_NewCallObject));
@@ -2567,5 +2601,27 @@ bool RRest::recover(JSContext* cx, SnapshotIterator& iter) const {
   }
 
   iter.storeInstructionResult(ObjectValue(*rest));
+  return true;
+}
+
+bool MTypedArraySubarray::writeRecoverData(CompactBufferWriter& writer) const {
+  MOZ_ASSERT(canRecoverOnBailout());
+  writer.writeUnsigned(uint32_t(RInstruction::Recover_TypedArraySubarray));
+  return true;
+}
+
+RTypedArraySubarray::RTypedArraySubarray(CompactBufferReader& reader) {}
+
+bool RTypedArraySubarray::recover(JSContext* cx, SnapshotIterator& iter) const {
+  Rooted<TypedArrayObject*> obj(cx, &iter.readObject()->as<TypedArrayObject>());
+  intptr_t start = iter.readIntPtr();
+  intptr_t length = iter.readIntPtr();
+
+  auto* result = TypedArraySubarrayRecover(cx, obj, start, length);
+  if (!result) {
+    return false;
+  }
+
+  iter.storeInstructionResult(ObjectValue(*result));
   return true;
 }

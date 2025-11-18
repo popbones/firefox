@@ -8,12 +8,10 @@
 #define mozilla_BindgenUniquePtr_h
 
 #include <memory>
+
 #include "mozilla/UniquePtr.h"
 
 namespace mozilla {
-
-template <typename T>
-class DefaultDelete;
 
 /// <div rustbindgen="true" replaces="mozilla::BindgenUniquePtr">
 template <typename T>

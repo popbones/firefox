@@ -262,7 +262,11 @@ function waitForSelectedSource(dbg, sourceOrUrl) {
         // or a Source object.
         if (typeof sourceOrUrl == "string") {
           const url = location.source.url;
-          if (typeof url != "string" || !url.includes(encodeURI(sourceOrUrl))) {
+          if (
+            typeof url != "string" ||
+            (!url.includes(encodeURI(sourceOrUrl)) &&
+              !url.includes(sourceOrUrl))
+          ) {
             return false;
           }
         } else if (location.source.id != sourceOrUrl.id) {
@@ -711,7 +715,7 @@ function assertFrameIsNotSelected(dbg, frameElement, expectedTitle) {
  */
 async function clearDebuggerPreferences(prefs = []) {
   resetSchemaVersion();
-  asyncStorage.clear();
+  await asyncStorage.clear();
   Services.prefs.clearUserPref("devtools.debugger.alphabetize-outline");
   Services.prefs.clearUserPref("devtools.debugger.pause-on-exceptions");
   Services.prefs.clearUserPref("devtools.debugger.pause-on-caught-exceptions");
@@ -936,11 +940,14 @@ async function selectSource(dbg, url, line, column) {
 }
 
 async function closeTab(dbg, url) {
-  await dbg.actions.closeTab(findSource(dbg, url));
+  const source = findSource(dbg, url);
+  await dbg.actions.closeTabForSource(source);
 }
 
 function countTabs(dbg) {
-  return findElement(dbg, "sourceTabs").children.length;
+  // The sourceTabs elements won't be rendered if there is no source.
+  const sourceTabs = findElement(dbg, "sourceTabs");
+  return sourceTabs ? sourceTabs.children.length : 0;
 }
 
 /**
@@ -1273,9 +1280,15 @@ async function invokeWithBreakpoint(
   await invokeResult;
 }
 
-function prettyPrint(dbg) {
+async function togglePrettyPrint(dbg) {
   const source = dbg.selectors.getSelectedSource();
-  return dbg.actions.prettyPrintAndSelectSource(source);
+  clickElement(dbg, "prettyPrintButton");
+  if (source.isPrettyPrinted) {
+    await waitForSelectedSource(dbg, source.generatedSource);
+  } else {
+    const prettyURL = source.url ? source.url : source.id.split("/").at(-1);
+    await waitForSelectedSource(dbg, prettyURL + ":formatted");
+  }
 }
 
 async function expandAllScopes(dbg) {
@@ -1922,6 +1935,7 @@ const selectors = {
   conditionalBreakpointInSecPane: ".breakpoint.is-conditional",
   logPointPanel: ".conditional-breakpoint-panel.log-point",
   logPointInSecPane: ".breakpoint.is-log",
+  tracePanel: ".trace-panel",
   searchField: ".search-field",
   blackbox: ".action.black-box",
   projectSearchSearchInput: ".project-text-search .search-field input",
@@ -2971,7 +2985,7 @@ async function waitForSourcesInSourceTree(
     );
   } catch (e) {
     // Craft a custom error message to help understand what's wrong with the Source Tree content
-    const displayedSources = getDisplayedSources();
+    const displayedSources = getDisplayedSources(dbg);
     let msg = "Invalid Source Tree Content.\n";
     const missingElements = [];
     for (const source of sources) {
@@ -3202,7 +3216,7 @@ function assertMenuItemChecked(menuItem, isChecked) {
   );
 }
 
-async function toggleDebbuggerSettingsMenuItem(dbg, { className, isChecked }) {
+async function toggleDebuggerSettingsMenuItem(dbg, { className, isChecked }) {
   const menuButton = findElementWithSelector(
     dbg,
     ".command-bar .debugger-settings-menu-button"

@@ -23,7 +23,7 @@ use crate::media_queries::Device;
 use crate::parser::ParserContext;
 use crate::selector_parser::PseudoElement;
 use crate::stylist::Stylist;
-use style_traits::{CssWriter, KeywordsCollectFn, ParseError, SpecifiedValueInfo, StyleParseErrorKind, ToCss};
+use style_traits::{CssWriter, KeywordsCollectFn, ParseError, SpecifiedValueInfo, StyleParseErrorKind, ToCss, TypedValue, ToTyped};
 use crate::stylesheets::{CssRuleType, CssRuleTypes, Origin};
 use crate::logical_geometry::{LogicalAxis, LogicalCorner, LogicalSide};
 use crate::use_counters::UseCounters;
@@ -409,6 +409,19 @@ impl PropertyDeclaration {
         }
     }
 
+    /// Like the method on ToTyped.
+    pub fn to_typed(&self) -> Option<TypedValue> {
+        use self::PropertyDeclaration::*;
+
+        match *self {
+            % for ty, vs in groupby(variants, key=lambda x: x["type"]):
+            ${" | ".join("{}(ref value)".format(v["name"]) for v in vs)} => {
+                value.to_typed()
+            }
+            % endfor
+        }
+    }
+
     /// Returns the color value of a given property, for high-contrast-mode tweaks.
     pub(super) fn color_value(&self) -> Option<&crate::values::specified::Color> {
         ${static_longhand_id_set("COLOR_PROPERTIES", lambda p: p.predefined_type == "Color")}
@@ -548,8 +561,9 @@ impl NonCustomPropertyId {
             rule_types.contains(CssRuleType::Keyframe) ||
             rule_types.contains(CssRuleType::Page) ||
             rule_types.contains(CssRuleType::Style) ||
+            rule_types.contains(CssRuleType::Scope) ||
             rule_types.contains(CssRuleType::PositionTry),
-            "Declarations are only expected inside a keyframe, page, or style rule."
+            "Given rule type does not allow declarations."
         );
 
         static MAP: [u32; property_counts::NON_CUSTOM] = [
@@ -1288,7 +1302,7 @@ impl PropertyId {
 impl PropertyDeclaration {
     /// Given a property declaration, return the property declaration id.
     #[inline]
-    pub fn id(&self) -> PropertyDeclarationId {
+    pub fn id(&self) -> PropertyDeclarationId<'_> {
         match *self {
             PropertyDeclaration::Custom(ref declaration) => {
                 return PropertyDeclarationId::Custom(&declaration.name)
@@ -1395,7 +1409,7 @@ pub use super::gecko::style_structs;
 /// The module where all the style structs are defined.
 #[cfg(feature = "servo")]
 pub mod style_structs {
-    use fxhash::FxHasher;
+    use rustc_hash::FxHasher;
     use super::longhands;
     use std::hash::{Hash, Hasher};
     use crate::values::specified::color::ColorSchemeFlags;
@@ -1577,7 +1591,7 @@ pub mod style_structs {
                 /// Iterate over the values of ${longhand.name}.
                 #[allow(non_snake_case)]
                 #[inline]
-                pub fn ${longhand.ident}_iter(&self) -> ${longhand.camel_case}Iter {
+                pub fn ${longhand.ident}_iter(&self) -> ${longhand.camel_case}Iter<'_> {
                     ${longhand.camel_case}Iter {
                         style_struct: self,
                         current: 0,
@@ -1830,6 +1844,31 @@ impl ComputedValues {
                 } else {
                     value.to_css(&mut dest)
                 }
+            }
+            % endfor
+        }
+    }
+
+    /// Returns the computed value of the given longhand as a strongly-typed
+    /// `TypedValue`, if supported.
+    pub fn computed_typed_value(
+        &self,
+        property_id: LonghandId,
+    ) -> Option<TypedValue> {
+        let property_id = property_id.to_physical(self.writing_mode);
+        match property_id {
+            % for specified_type, props in groupby(data.longhands, key=lambda x: x.specified_type()):
+            <% props = list(props) %>
+            ${" |\n".join("LonghandId::{}".format(p.camel_case) for p in props)} => {
+                let value = match property_id {
+                    % for prop in props:
+                    % if not prop.logical:
+                    LonghandId::${prop.camel_case} => self.clone_${prop.ident}(),
+                    % endif
+                    % endfor
+                    _ => unsafe { debug_unreachable!() },
+                };
+                value.to_typed()
             }
             % endfor
         }
@@ -2223,40 +2262,6 @@ impl ComputedValuesInner {
             // Return the computed value if not overridden by the above exceptions
             box_.transform_style
         }
-    }
-
-    /// Whether given this transform value, the compositor would require a
-    /// layer.
-    pub fn transform_requires_layer(&self) -> bool {
-        use crate::values::generics::transform::TransformOperation;
-        // Check if the transform matrix is 2D or 3D
-        for transform in &*self.get_box().transform.0 {
-            match *transform {
-                TransformOperation::Perspective(..) => {
-                    return true;
-                }
-                TransformOperation::Matrix3D(m) => {
-                    // See http://dev.w3.org/csswg/css-transforms/#2d-matrix
-                    if m.m31 != 0.0 || m.m32 != 0.0 ||
-                       m.m13 != 0.0 || m.m23 != 0.0 ||
-                       m.m43 != 0.0 || m.m14 != 0.0 ||
-                       m.m24 != 0.0 || m.m34 != 0.0 ||
-                       m.m33 != 1.0 || m.m44 != 1.0 {
-                        return true;
-                    }
-                }
-                TransformOperation::Translate3D(_, _, z) |
-                TransformOperation::TranslateZ(z) => {
-                    if z.px() != 0. {
-                        return true;
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        // Neither perspective nor transform present
-        false
     }
 }
 
@@ -2968,7 +2973,7 @@ macro_rules! longhand_properties_idents {
 #[cfg(feature = "gecko")]
 size_of_test!(ComputedValues, 248);
 #[cfg(feature = "servo")]
-size_of_test!(ComputedValues, 208);
+size_of_test!(ComputedValues, 216);
 
 // FFI relies on this.
 size_of_test!(Option<Arc<ComputedValues>>, 8);
@@ -2996,29 +3001,16 @@ const_assert!(std::mem::size_of::<longhands::${longhand.ident}::SpecifiedValue>(
 % endfor
 
 % if engine == "servo":
-% for effect_name in ["repaint", "reflow_out_of_flow", "reflow", "rebuild_and_reflow_inline", "rebuild_and_reflow"]:
-    macro_rules! restyle_damage_${effect_name} {
-        ($old: ident, $new: ident, $damage: ident, [ $($effect:expr),* ]) => ({
-            restyle_damage_${effect_name}!($old, $new, $damage, [$($effect),*], false)
-        });
-        ($old: ident, $new: ident, $damage: ident, [ $($effect:expr),* ], $extra:expr) => ({
-            if
-                % for style_struct in data.active_style_structs():
-                    % for longhand in style_struct.longhands:
-                        % if effect_name in longhand.servo_restyle_damage.split() and not longhand.logical:
-                            $old.get_${style_struct.name_lower}().${longhand.ident} !=
-                            $new.get_${style_struct.name_lower}().${longhand.ident} ||
-                        % endif
-                    % endfor
-                % endfor
-
-                $extra || false {
-                    $damage.insert($($effect)|*);
-                    true
-            } else {
-                false
-            }
-        });
-    }
+% for effect_name in ["repaint", "recalculate_overflow", "rebuild_stacking_context", "rebuild_box"]:
+pub(crate) fn restyle_damage_${effect_name} (old: &ComputedValues, new: &ComputedValues) -> bool {
+    % for style_struct in data.active_style_structs():
+        % for longhand in style_struct.longhands:
+            % if effect_name in longhand.servo_restyle_damage.split() and not longhand.logical:
+                old.get_${style_struct.name_lower}().${longhand.ident} != new.get_${style_struct.name_lower}().${longhand.ident} ||
+            % endif
+        % endfor
+    % endfor
+    false
+}
 % endfor
 % endif

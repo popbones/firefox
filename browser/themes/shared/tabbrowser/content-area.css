@@ -12,7 +12,7 @@
     --tabpanel-background-color: #2b2a33;
   }
   &[privatebrowsingmode="temporary"] {
-    /* Value for --in-content-page-background in aboutPrivateBrowsing.css.
+    /* Value for --background-color-canvas in aboutPrivateBrowsing.css.
        !important overrides the direct setting of this variable in
        ThemeVariableMap.sys.mjs when the user has a theme that defines
        ntp_background. */
@@ -80,12 +80,18 @@
     @media -moz-pref("sidebar.revamp.round-content-area") {
       :root:not([inDOMFullscreen]) &[sidebar-shown] {
         overflow: clip;
-        border-start-end-radius: var(--border-radius-medium);
+        border-radius: var(--border-radius-medium);
+        margin-top: 0px;
+        margin-left: 8px;
+        margin-right: 0px;
+        margin-bottom: 8px;
 
         /* stylelint-disable-next-line media-query-no-invalid */
         @media -moz-pref("sidebar.position_start") {
-          border-start-start-radius: var(--border-radius-medium);
-          border-start-end-radius: 0;
+          /* border-start-start-radius: var(--border-radius-medium);
+          border-start-end-radius: var(--border-radius-medium); */
+          margin-left: 0px;
+          margin-right: 8px;
         }
       }
     }
@@ -143,6 +149,14 @@
 
   browser[tabDialogShowing] {
     -moz-user-focus: none !important;
+  }
+
+  .split-view-panel[column="0"] {
+    grid-column: 1;
+  }
+
+  .split-view-panel[column="1"] {
+    grid-column: 2;
   }
 }
 
@@ -323,7 +337,7 @@
 
   &:not(.spotlightBox) {
     box-shadow: var(--box-shadow-popup);
-    border-radius: 8px;
+    border-radius: var(--border-radius-medium);
   }
 
   /*

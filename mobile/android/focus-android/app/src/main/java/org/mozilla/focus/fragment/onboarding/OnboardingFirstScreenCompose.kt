@@ -12,10 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Text
-import androidx.compose.material.minimumInteractiveComponentSize
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -185,15 +185,11 @@ private fun ComponentGoToOnBoardingSecondScreen(goToOnBoardingSecondScreen: () -
             .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 74.dp)
             .fillMaxWidth(),
         colors = ButtonDefaults.textButtonColors(
-            backgroundColor = colorResource(R.color.onboardingButtonOneColor),
+            containerColor = colorResource(R.color.onboardingButtonOneColor),
         ),
     ) {
         Text(
-            text = AnnotatedString(
-                LocalContext.current.resources.getString(
-                    R.string.onboarding_first_screen_button_agree_and_continue_2,
-                ),
-            ),
+            text = AnnotatedString(stringResource(id = R.string.onboarding_first_screen_button_agree_and_continue_2)),
             color = PhotonColors.White,
         )
     }

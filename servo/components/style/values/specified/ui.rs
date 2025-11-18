@@ -87,6 +87,7 @@ impl SpecifiedValueInfo for CursorImage {
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(transparent)]
 pub struct BoolInteger(pub bool);
@@ -157,6 +158,7 @@ impl Parse for ScrollbarColor {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum UserSelect {
@@ -246,6 +248,7 @@ pub enum CursorKind {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum MozTheme {
@@ -272,6 +275,7 @@ pub enum MozTheme {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum PointerEvents {
@@ -312,35 +316,12 @@ pub enum PointerEvents {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum Inert {
     None,
     Inert,
-}
-
-/// Non-standard user-input property.
-/// https://developer.mozilla.org/en-US/docs/Web/CSS/-moz-user-input
-#[allow(missing_docs)]
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    FromPrimitive,
-    MallocSizeOf,
-    Parse,
-    PartialEq,
-    SpecifiedValueInfo,
-    ToComputedValue,
-    ToCss,
-    ToResolvedValue,
-    ToShmem,
-)]
-#[repr(u8)]
-pub enum UserInput {
-    Auto,
-    None,
 }
 
 /// Internal -moz-user-focus property.
@@ -360,6 +341,7 @@ pub enum UserInput {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum UserFocus {

@@ -8,26 +8,27 @@
 #define nsFrameSelection_h___
 
 #include <stdint.h>
-#include "mozilla/intl/BidiEmbeddingLevel.h"
+
+#include "WordMovementType.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/CaretAssociationHint.h"
 #include "mozilla/CompactPair.h"
 #include "mozilla/EnumSet.h"
 #include "mozilla/EventForwards.h"
-#include "mozilla/dom/Element.h"
-#include "mozilla/dom/Highlight.h"
-#include "mozilla/dom/Selection.h"
 #include "mozilla/Result.h"
 #include "mozilla/TextRange.h"
 #include "mozilla/UniquePtr.h"
-#include "nsIFrame.h"
+#include "mozilla/dom/Element.h"
+#include "mozilla/dom/Highlight.h"
+#include "mozilla/dom/Selection.h"
+#include "mozilla/intl/BidiEmbeddingLevel.h"
+#include "nsBidiPresUtils.h"
 #include "nsIContent.h"
+#include "nsIFrame.h"
 #include "nsISelectionController.h"
 #include "nsISelectionListener.h"
 #include "nsITableCellLayout.h"
-#include "WordMovementType.h"
-#include "nsBidiPresUtils.h"
 
 class nsRange;
 
@@ -42,7 +43,14 @@ struct SelectionDetails {
       : mStart(), mEnd(), mSelectionType(mozilla::SelectionType::eInvalid) {
     MOZ_COUNT_CTOR(SelectionDetails);
   }
-  MOZ_COUNTED_DTOR(SelectionDetails)
+  ~SelectionDetails() {
+    MOZ_COUNT_DTOR(SelectionDetails);
+    // Destroy the linked list without recursion.
+    auto next = std::move(mNext);
+    while (next) {
+      next = std::move(next->mNext);
+    }
+  }
 
   int32_t mStart;
   int32_t mEnd;

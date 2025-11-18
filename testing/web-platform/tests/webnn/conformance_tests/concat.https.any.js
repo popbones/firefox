@@ -14,14 +14,6 @@
 // MLOperand concat(
 //     sequence<MLOperand> inputs, [EnforceRange] unsigned long axis);
 
-
-const getConcatPrecisionTolerance = (graphResources) => {
-  const toleranceValueDict = {float32: 0, float16: 0};
-  const expectedDataType =
-      getExpectedDataTypeOfSingleOutput(graphResources.expectedOutputs);
-  return {metricType: 'ULP', value: toleranceValueDict[expectedDataType]};
-};
-
 const concatTests = [
   {
     'name': 'concat two float32 1D constant tensors of same shape along axis 0',
@@ -2381,11 +2373,4 @@ const concatTests = [
   }
 ];
 
-if (navigator.ml) {
-  concatTests.forEach((test) => {
-    webnn_conformance_test(
-      buildAndExecuteGraph, getConcatPrecisionTolerance, test);
-  });
-} else {
-  test(() => assert_implements(navigator.ml, 'missing navigator.ml'));
-}
+webnn_conformance_test(concatTests, buildAndExecuteGraph, getZeroULPTolerance);

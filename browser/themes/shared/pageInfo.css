@@ -9,7 +9,6 @@
   #topBar {
     position: relative;
     -moz-window-dragging: drag;
-    padding-top: env(-moz-mac-titlebar-height);
     border-bottom: 1px solid ThreeDShadow;
 
     align-items: center;
@@ -121,7 +120,7 @@
       font: menu;
       margin: 0 2px;
       padding: 3px 6px;
-      border-radius: 3px;
+      border-radius: var(--border-radius-xsmall);
 
       &:hover,
       &[selected] {

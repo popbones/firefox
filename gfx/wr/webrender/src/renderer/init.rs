@@ -35,6 +35,8 @@ use crate::renderer::{
     upload::UploadTexturePool,
     shade::{Shaders, SharedShaders},
 };
+#[cfg(feature = "debugger")]
+use crate::debugger::Debugger;
 
 use std::{
     mem,
@@ -202,6 +204,13 @@ pub struct WebRenderOptions {
     /// make the result look quite close to the high-quality zoom, except for glyphs.
     pub low_quality_pinch_zoom: bool,
     pub max_shared_surface_size: i32,
+    /// If true, open a debug socket to listen for remote debugger.
+    /// Relies on `debugger` cargo feature being enabled.
+    pub enable_debugger: bool,
+
+    /// Use a more precise method for sampling gradients.
+    pub precise_radial_gradients: bool,
+    pub precise_conic_gradients: bool,
 }
 
 impl WebRenderOptions {
@@ -274,6 +283,9 @@ impl Default for WebRenderOptions {
             reject_software_rasterizer: false,
             low_quality_pinch_zoom: false,
             max_shared_surface_size: 2048,
+            enable_debugger: true,
+            precise_radial_gradients: false,
+            precise_conic_gradients: false,
         }
     }
 }
@@ -569,6 +581,9 @@ pub fn create_webrender_instance(
         is_software,
         low_quality_pinch_zoom: options.low_quality_pinch_zoom,
         max_shared_surface_size: options.max_shared_surface_size,
+        enable_dithering: options.enable_dithering,
+        precise_radial_gradients: options.precise_radial_gradients,
+        precise_conic_gradients: options.precise_conic_gradients,
     };
     info!("WR {:?}", config);
 
@@ -821,11 +836,15 @@ pub fn create_webrender_instance(
         consecutive_oom_frames: 0,
         target_frame_publish_id: None,
         pending_result_msg: None,
+        layer_compositor_frame_state_in_prev_frame: None,
+        #[cfg(feature = "debugger")]
+        debugger: Debugger::new(),
     };
 
     // We initially set the flags to default and then now call set_debug_flags
     // to ensure any potential transition when enabling a flag is run.
     renderer.set_debug_flags(debug_flags);
+    renderer.profiler.set_ui("Default");
 
     let sender = RenderApiSender::new(
         api_tx,
@@ -834,5 +853,16 @@ pub fn create_webrender_instance(
         blob_image_handler,
         fonts,
     );
+
+    #[cfg(feature = "debugger")]
+    if options.enable_debugger {
+        let api = if namespace_alloc_by_client {
+            sender.create_api_by_client(IdNamespace::DEBUGGER)
+        } else {
+            sender.create_api()
+        };
+        crate::debugger::start(api);
+    }
+
     Ok((renderer, sender))
 }

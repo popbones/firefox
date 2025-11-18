@@ -599,11 +599,15 @@ static bool get_egl_status(EGLNativeDisplayType native_dpy) {
     return false;
   }
 
+  log("GLX_TEST: get_egl_status eglGetDisplay()\n");
+
   dpy = eglGetDisplay(native_dpy);
   if (!dpy) {
     record_warning("libEGL no display");
     return false;
   }
+
+  log("GLX_TEST: get_egl_status eglInitialize()\n");
 
   EGLint major, minor;
   if (!eglInitialize(dpy, &major, &minor)) {
@@ -611,11 +615,14 @@ static bool get_egl_status(EGLNativeDisplayType native_dpy) {
     return false;
   }
 
+  log("GLX_TEST: get_egl_status eglInitialize() OK\n");
+
   typedef const char* (*PFNEGLGETDISPLAYDRIVERNAMEPROC)(EGLDisplay dpy);
   PFNEGLGETDISPLAYDRIVERNAMEPROC eglGetDisplayDriverName =
       cast<PFNEGLGETDISPLAYDRIVERNAMEPROC>(
           eglGetProcAddress("eglGetDisplayDriverName"));
   if (eglGetDisplayDriverName) {
+    log("GLX_TEST: get_egl_status eglGetDisplayDriverName()\n");
     const char* driDriver = eglGetDisplayDriverName(dpy);
     if (driDriver) {
       record_value("DRI_DRIVER\n%s\n", driDriver);
@@ -629,6 +636,22 @@ static bool get_egl_status(EGLNativeDisplayType native_dpy) {
 }
 
 #ifdef MOZ_X11
+// we don't want to take inactive providers into consideration. bug 1984695.
+// consider a provider active if it's connected to an output.
+bool provider_is_active(Display* dpy, XRRScreenResources* res,
+                        XRRProviderInfo* prov) {
+  for (int o = 0; o < prov->noutputs; o++) {
+    XRROutputInfo* oinfo = XRRGetOutputInfo(dpy, res, prov->outputs[o]);
+    // crtc != 0 if connected
+    if (oinfo && oinfo->crtc) {
+      XRRFreeOutputInfo(oinfo);
+      return true;
+    }
+    XRRFreeOutputInfo(oinfo);
+  }
+  return false;
+}
+
 static void get_xrandr_info(Display* dpy) {
   log("GLX_TEST: get_xrandr_info start\n");
 
@@ -656,13 +679,20 @@ static void get_xrandr_info(Display* dpy) {
     return;
   }
   if (pr->nproviders != 0) {
-    record_value("DDX_DRIVER\n");
+    int n_active_providers = 0;
     for (int i = 0; i < pr->nproviders; i++) {
       XRRProviderInfo* info = XRRGetProviderInfo(dpy, res, pr->providers[i]);
-      if (info) {
-        record_value("%s%s", info->name, i == pr->nproviders - 1 ? ";\n" : ";");
+      if (info && provider_is_active(dpy, res, info)) {
+        if (!n_active_providers) {
+          record_value("DDX_DRIVER\n");
+        }
+        n_active_providers++;
+        record_value("%s;", info->name);
         XRRFreeProviderInfo(info);
       }
+    }
+    if (n_active_providers) {
+      record_value("\n");
     }
   }
   XRRFreeScreenResources(res);

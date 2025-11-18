@@ -5,10 +5,29 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "ServiceWorkerRegistrar.h"
-#include "mozilla/dom/DOMException.h"
-#include "mozilla/glean/DomServiceworkersMetrics.h"
-#include "mozilla/StaticPrefs_dom.h"
 
+#include "MainThreadUtils.h"
+#include "ServiceWorkerUtils.h"
+#include "mozilla/ClearOnShutdown.h"
+#include "mozilla/CycleCollectedJSContext.h"
+#include "mozilla/ErrorNames.h"
+#include "mozilla/ModuleUtils.h"
+#include "mozilla/Result.h"
+#include "mozilla/ResultExtensions.h"
+#include "mozilla/Services.h"
+#include "mozilla/StaticPrefs_dom.h"
+#include "mozilla/StaticPtr.h"
+#include "mozilla/dom/CookieStoreSubscriptionService.h"
+#include "mozilla/dom/DOMException.h"
+#include "mozilla/dom/StorageActivityService.h"
+#include "mozilla/glean/DomServiceworkersMetrics.h"
+#include "mozilla/ipc/BackgroundChild.h"
+#include "mozilla/ipc/BackgroundParent.h"
+#include "mozilla/ipc/PBackgroundChild.h"
+#include "nsAppDirectoryServiceDefs.h"
+#include "nsComponentManagerUtils.h"
+#include "nsContentUtils.h"
+#include "nsDirectoryServiceUtils.h"
 #include "nsIEventTarget.h"
 #include "nsIInputStream.h"
 #include "nsILineInputStream.h"
@@ -18,31 +37,11 @@
 #include "nsIServiceWorkerManager.h"
 #include "nsIURI.h"
 #include "nsIWritablePropertyBag2.h"
-
-#include "MainThreadUtils.h"
-#include "mozilla/ClearOnShutdown.h"
-#include "mozilla/CycleCollectedJSContext.h"
-#include "mozilla/dom/StorageActivityService.h"
-#include "mozilla/dom/CookieStoreSubscriptionService.h"
-#include "mozilla/ErrorNames.h"
-#include "mozilla/ipc/BackgroundChild.h"
-#include "mozilla/ipc/BackgroundParent.h"
-#include "mozilla/ipc/PBackgroundChild.h"
-#include "mozilla/ModuleUtils.h"
-#include "mozilla/Result.h"
-#include "mozilla/ResultExtensions.h"
-#include "mozilla/Services.h"
-#include "mozilla/StaticPtr.h"
-#include "nsAppDirectoryServiceDefs.h"
-#include "nsComponentManagerUtils.h"
-#include "nsContentUtils.h"
-#include "nsDirectoryServiceUtils.h"
 #include "nsNetCID.h"
 #include "nsNetUtil.h"
 #include "nsServiceManagerUtils.h"
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
-#include "ServiceWorkerUtils.h"
 
 using namespace mozilla::ipc;
 
@@ -51,7 +50,7 @@ namespace mozilla::dom {
 namespace {
 
 static const uint32_t gSupportedRegistrarVersions[] = {
-    SERVICEWORKERREGISTRAR_VERSION, 8, 7, 6, 5, 4, 3, 2};
+    SERVICEWORKERREGISTRAR_VERSION, 10, 9, 8, 7, 6, 5, 4, 3, 2};
 
 static const uint32_t kInvalidGeneration = static_cast<uint32_t>(-1);
 
@@ -631,8 +630,41 @@ nsresult ServiceWorkerRegistrar::ReadData() {
 
     nsAutoCString line;
     switch (version) {
-      case SERVICEWORKERREGISTRAR_VERSION:
+      // to add new changes to the schema,
+      // we incremented SERVICEWORKERREGISTRAR_VERSION,
+      // added new changes on top of existing schema,
+      // and [[fallthrough]] to the previous one (version 10)
+      case SERVICEWORKERREGISTRAR_VERSION: {
+        nsAutoCString numberOfAttemptedActivationsStr;
+        GET_LINE(numberOfAttemptedActivationsStr);
+        int64_t numberOfAttemptedActivations =
+            numberOfAttemptedActivationsStr.ToInteger64(&rv);
+        if (NS_WARN_IF(NS_FAILED(rv))) {
+          return rv;
+        }
+        entry->mRegistration.numberOfAttemptedActivations() =
+            numberOfAttemptedActivations;
+        nsAutoCString isRegistrationBrokenStr;
+        GET_LINE(isRegistrationBrokenStr);
+        int64_t isBroken = isRegistrationBrokenStr.ToInteger64(&rv);
+        if (NS_WARN_IF(NS_FAILED(rv))) {
+          return rv;
+        }
+        entry->mRegistration.isBroken() = (isBroken != 0);
+        nsAutoCString cacheAPIIdStr;
+        GET_LINE(cacheAPIIdStr);
+        int64_t cacheAPIId = cacheAPIIdStr.ToInteger64(&rv);
+        if (NS_WARN_IF(NS_FAILED(rv))) {
+          return rv;
+        }
+        entry->mRegistration.cacheAPIId() = cacheAPIId;
+
         [[fallthrough]];
+      }
+
+      case 10:
+        [[fallthrough]];
+
       case 9: {
         rv = CreatePrincipalInfo(lineInputStream, entry->mRegistration);
         if (NS_WARN_IF(NS_FAILED(rv))) {
@@ -702,7 +734,11 @@ nsresult ServiceWorkerRegistrar::ReadData() {
 
         GET_LINE(entry->mRegistration.navigationPreloadState().headerValue());
 
-        if (version == SERVICEWORKERREGISTRAR_VERSION) {
+        // expando was introcuded in version 10
+        // but block was placed in version 9, since
+        // the expando is placed at the end of data
+        // and we cannot read it in case 10 block
+        if (version >= 10) {
           nsAutoCString expandoCountStr;
           GET_LINE(expandoCountStr);
           uint32_t expandoCount = expandoCountStr.ToInteger(&rv, 16);
@@ -1410,6 +1446,17 @@ nsresult ServiceWorkerRegistrar::WriteData(
     cInfo.attrs().CreateSuffix(suffix);
 
     buffer.Truncate();
+
+    buffer.AppendInt(static_cast<int32_t>(
+        data.mRegistration.numberOfAttemptedActivations()));
+    buffer.Append('\n');
+
+    buffer.AppendInt(static_cast<int32_t>(data.mRegistration.isBroken()));
+    buffer.Append('\n');
+
+    buffer.AppendInt(static_cast<int32_t>(data.mRegistration.cacheAPIId()));
+    buffer.Append('\n');
+
     buffer.Append(suffix.get());
     buffer.Append('\n');
 

@@ -996,6 +996,7 @@ class MochitestDesktop:
         self.extraEnv = {}
         self.extraTestsDirs = []
         self.conditioned_profile_dir = None
+        self.perfherder_data = []
 
         if logger_options.get("log"):
             self.log = logger_options["log"]
@@ -2473,34 +2474,26 @@ toolbar#nav-bar {
         }
 
         test_timeout = None
-        if options.flavor == "browser" and options.timeout:
-            test_timeout = options.timeout
-
-        # browser-chrome tests use a fairly short default timeout of 45 seconds;
-        # this is sometimes too short on asan and debug, where we expect reduced
-        # performance.
-        if (
-            (mozinfo.info["asan"] or mozinfo.info["debug"])
-            and options.flavor == "browser"
-            and options.timeout is None
-        ):
-            self.log.info("Increasing default timeout to 90 seconds (asan or debug)")
-            test_timeout = 90
-
-        # tsan builds need even more time
-        if (
-            mozinfo.info["tsan"]
-            and options.flavor == "browser"
-            and options.timeout is None
-        ):
-            self.log.info("Increasing default timeout to 120 seconds (tsan)")
-            test_timeout = 120
-
-        if mozinfo.info["os"] == "win" and mozinfo.info["processor"] == "aarch64":
-            test_timeout = self.DEFAULT_TIMEOUT * 4
-            self.log.info(
-                f"Increasing default timeout to {test_timeout} seconds (win aarch64)"
-            )
+        if options.flavor == "browser":
+            if options.timeout:
+                test_timeout = options.timeout
+            else:
+                if mozinfo.info["asan"] or mozinfo.info["debug"]:
+                    # browser-chrome tests use a fairly short default timeout of 45 seconds;
+                    # this is sometimes too short on asan and debug, where we expect reduced
+                    # performance.
+                    self.log.info(
+                        "Increasing default timeout to 90 seconds (asan or debug)"
+                    )
+                    test_timeout = 90
+                elif mozinfo.info["tsan"]:
+                    # tsan builds need even more time
+                    self.log.info("Increasing default timeout to 120 seconds (tsan)")
+                    test_timeout = 120
+                else:
+                    test_timeout = 45
+        elif options.flavor in ("a11y", "chrome"):
+            test_timeout = 45
 
         if "MOZ_CHAOSMODE=0xfb" in options.environment and test_timeout:
             test_timeout *= 2
@@ -2812,6 +2805,11 @@ toolbar#nav-bar {
             # https://bugzilla.mozilla.org/show_bug.cgi?id=916512
             args.append("-foreground")
             self.start_script_kwargs["testUrl"] = testUrl or "about:blank"
+
+            # Log if slow events are used from chrome.
+            env["MOZ_LOG"] = (
+                env["MOZ_LOG"] + "," if env["MOZ_LOG"] else ""
+            ) + "SlowChromeEvent:3"
 
             if detectShutdownLeaks:
                 env["MOZ_LOG"] = (
@@ -3364,7 +3362,6 @@ toolbar#nav-bar {
             options.keep_open = False
             options.runUntilFailure = True
             options.profilePath = None
-            options.comparePrefs = True
             result = self.runTests(options)
             result = result or (-2 if self.countfail > 0 else 0)
             self.message_logger.finish()
@@ -3683,6 +3680,13 @@ toolbar#nav-bar {
             print("4 INFO Mode:    %s" % e10s_mode)
             print("5 INFO SimpleTest FINISHED")
 
+        if os.getenv("MOZ_AUTOMATION") and self.perfherder_data:
+            upload_dir = Path(os.getenv("MOZ_UPLOAD_DIR"))
+            for i, data in enumerate(self.perfherder_data):
+                out_path = upload_dir / f"perfherder-data-mochitest-{i}.json"
+                with out_path.open("w", encoding="utf-8") as f:
+                    f.write(json.dumps(data))
+
         self.handleShutdownProfile(options)
 
         if not result:
@@ -3898,7 +3902,7 @@ toolbar#nav-bar {
                         mozinfo.info.get("socketprocess_e10s", False)
                     )
                 )
-                self.log.info("runtests.py | Running tests: start.\n")
+                self.log.info(f"runtests.py | Running {scheme} tests: start.\n")
                 ret, _ = self.runApp(
                     testURL,
                     self.browserEnv,
@@ -3921,6 +3925,9 @@ toolbar#nav-bar {
                     runFailures=options.runFailures,
                     crashAsPass=options.crashAsPass,
                     currentManifest=manifestToFilter,
+                )
+                self.log.info(
+                    f"runtests.py | Running {scheme} tests: end. status: {ret}"
                 )
                 status = ret or status
         except KeyboardInterrupt:
@@ -3969,8 +3976,6 @@ toolbar#nav-bar {
                 stack_fixer=get_stack_fixer_function(utilityPath, options.symbolsPath),
                 scope=manifestToFilter,
             )
-
-        self.log.info("runtests.py | Running tests: end.")
 
         if self.manifest is not None:
             self.cleanup(options, False)
@@ -4173,6 +4178,7 @@ toolbar#nav-bar {
 
                 # Processing the message by the logger
                 self.harness.message_logger.process_message(msg)
+                self.parse_perfherder_data(msg)
 
         __call__ = processOutputLine
 
@@ -4324,6 +4330,13 @@ toolbar#nav-bar {
             if self.shutdownLeaks:
                 self.shutdownLeaks.log(message)
             return message
+
+        def parse_perfherder_data(self, message):
+            PERFHERDER_MATCHER = re.compile(r"PERFHERDER_DATA:\s*(\{.*\})\s*$")
+            match = PERFHERDER_MATCHER.search(message.get("message", ""))
+            if match:
+                data = json.loads(match.group(1))
+                self.harness.perfherder_data.append(data)
 
 
 def view_gecko_profile_from_mochitest(profile_path, options, profiler_logger):

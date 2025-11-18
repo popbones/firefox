@@ -10,6 +10,7 @@ use crate::{
     SearchUrlParam,
 };
 use serde::Deserialize;
+use std::collections::HashMap;
 
 /// The list of possible submission methods for search engine urls.
 #[derive(Debug, uniffi::Enum, PartialEq, Deserialize, Clone, Default)]
@@ -52,6 +53,30 @@ pub(crate) struct JSONEngineUrl {
     /// appended to the end of the query. This may be skipped if `{searchTerms}`
     /// is included in the base.
     pub search_term_param_name: Option<String>,
+
+    /// A map from locale codes to display names of the URL. This is useful if
+    /// the URL corresponds to a brand name distinct from the engine's brand
+    /// name. Since brand names can be localized, this is a map rather than a
+    /// URL. The client will fall back to the special locale code "default" when
+    /// its locale is not present in the map.
+    pub display_name_map: Option<HashMap<String, String>>,
+
+    /// Indicates the date until which the URL is considered new
+    /// (format: YYYY-MM-DD).
+    pub is_new_until: Option<String>,
+
+    /// Whether the engine's partner code should be excluded from telemetry when
+    /// this URL is visited.
+    #[serde(default)]
+    pub exclude_partner_code_from_telemetry: bool,
+
+    /// If this URL performs searches only for certain MIME types, they should
+    /// be listed here. If this value is `None`, then it's assumed the content
+    /// type is irrelevant. This field is intended to be used for URLs like
+    /// visual search, which might support certain image types and not others.
+    /// Consumers can use it to determine whether search UI corresponding to the
+    /// URL should be shown to the user in a given context.
+    pub accepted_content_types: Option<Vec<String>>,
 }
 
 /// Reflects `types::SearchEngineUrls`, but using `EngineUrl`.
@@ -69,6 +94,9 @@ pub(crate) struct JSONEngineUrls {
 
     /// The URL of the search engine homepage.
     pub search_form: Option<JSONEngineUrl>,
+
+    /// The URL to use for visual searches.
+    pub visual_search: Option<JSONEngineUrl>,
 }
 
 /// Represents the engine base section of the configuration.
@@ -168,6 +196,10 @@ pub(crate) struct JSONVariantEnvironment {
 pub(crate) struct JSONEngineVariant {
     /// Details of the possible user environments that this variant applies to.
     pub environment: JSONVariantEnvironment,
+
+    /// Indicates the date until which the engine variant or subvariant is considered new
+    /// (format: YYYY-MM-DD).
+    pub is_new_until: Option<String>,
 
     /// This search engine is presented as an option that the user may enable.
     /// If not specified, defaults to false.

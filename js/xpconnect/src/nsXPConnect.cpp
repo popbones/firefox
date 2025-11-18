@@ -481,7 +481,9 @@ JSObject* CreateGlobalObject(JSContext* cx, const JSClass* clasp,
 void InitGlobalObjectOptions(JS::RealmOptions& aOptions,
                              bool aIsSystemPrincipal, bool aSecureContext,
                              bool aForceUTC, bool aAlwaysUseFdlibm,
-                             bool aLocaleEnUS) {
+                             bool aLocaleEnUS,
+                             const nsACString& aLanguageOverride,
+                             const nsAString& aTimezoneOverride) {
   if (aIsSystemPrincipal) {
     // Make toSource functions [ChromeOnly]
     aOptions.creationOptions().setToSourceEnabled(true);
@@ -495,11 +497,20 @@ void InitGlobalObjectOptions(JS::RealmOptions& aOptions,
     aOptions.creationOptions().setSecureContext(aSecureContext);
   }
 
-  aOptions.creationOptions().setForceUTC(aForceUTC);
+  if (aForceUTC) {
+    nsCString timeZone = nsRFPService::GetSpoofedJSTimeZone();
+    aOptions.behaviors().setTimeZoneOverride(timeZone.get());
+  } else if (!aTimezoneOverride.IsEmpty()) {
+    aOptions.behaviors().setTimeZoneOverride(
+        NS_ConvertUTF16toUTF8(aTimezoneOverride).get());
+  }
   aOptions.creationOptions().setAlwaysUseFdlibm(aAlwaysUseFdlibm);
   if (aLocaleEnUS) {
     nsCString locale = nsRFPService::GetSpoofedJSLocale();
-    aOptions.creationOptions().setLocaleCopyZ(locale.get());
+    aOptions.behaviors().setLocaleOverride(locale.get());
+  } else if (!aLanguageOverride.IsEmpty()) {
+    aOptions.behaviors().setLocaleOverride(
+        PromiseFlatCString(aLanguageOverride).get());
   }
 }
 
@@ -555,7 +566,9 @@ nsresult InitClassesWithNewWrappedGlobal(JSContext* aJSContext,
   InitGlobalObjectOptions(aOptions, /* aSystemPrincipal */ true,
                           /* aSecureContext */ true,
                           /* aForceUTC */ false, /* aAlwaysUseFdlibm */ false,
-                          /* aLocaleEnUS */ false);
+                          /* aLocaleEnUS */ false,
+                          /* aLanguageOverride */ ""_ns,
+                          /* aTimezoneOverride */ u""_ns);
 
   // Call into XPCWrappedNative to make a new global object, scope, and global
   // prototype.

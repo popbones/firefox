@@ -130,6 +130,8 @@ NS_EVENT_MESSAGE_FIRST_LAST(ePointerEvent, ePointerMove, ePointerLostCapture)
 
 NS_EVENT_MESSAGE(eContextMenu)
 
+NS_EVENT_MESSAGE(eCommand)
+
 NS_EVENT_MESSAGE(eCueChange)
 
 NS_EVENT_MESSAGE(eBeforeToggle)
@@ -188,16 +190,6 @@ NS_EVENT_MESSAGE(eLegacyMousePixelScroll)
 
 NS_EVENT_MESSAGE(eScrollPortUnderflow)
 NS_EVENT_MESSAGE(eScrollPortOverflow)
-
-NS_EVENT_MESSAGE(eLegacySubtreeModified)
-NS_EVENT_MESSAGE(eLegacyNodeInserted)
-NS_EVENT_MESSAGE(eLegacyNodeRemoved)
-NS_EVENT_MESSAGE(eLegacyNodeRemovedFromDocument)
-NS_EVENT_MESSAGE(eLegacyNodeInsertedIntoDocument)
-NS_EVENT_MESSAGE(eLegacyAttrModified)
-NS_EVENT_MESSAGE(eLegacyCharacterDataModified)
-NS_EVENT_MESSAGE_FIRST_LAST(eLegacyMutationEvent, eLegacySubtreeModified,
-                            eLegacyCharacterDataModified)
 
 NS_EVENT_MESSAGE(eUnidentifiedEvent)
 
@@ -262,9 +254,6 @@ NS_EVENT_MESSAGE(eContentVisibilityAutoStateChange)
 // SVG events
 NS_EVENT_MESSAGE(eSVGLoad)
 NS_EVENT_MESSAGE(eSVGScroll)
-
-// XUL command events
-NS_EVENT_MESSAGE(eXULCommand)
 
 // Cut, copy, paste events
 NS_EVENT_MESSAGE(eCopy)

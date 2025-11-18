@@ -17,6 +17,7 @@
  */
 
 interface ContentSecurityPolicy;
+interface PolicyContainer;
 interface Principal;
 interface WindowProxy;
 interface nsISupports;
@@ -557,12 +558,6 @@ partial interface Document {
   Promise<undefined> requestStorageAccessForOrigin(DOMString thirdPartyOrigin, optional boolean requireUserInteraction = true);
 };
 
-// Extension to give chrome JS the ability to determine whether
-// the user has interacted with the document or not.
-partial interface Document {
-  [ChromeOnly] readonly attribute boolean userHasInteracted;
-};
-
 // Extension to give chrome JS the ability to simulate activate the document
 // by user gesture.
 partial interface Document {
@@ -589,11 +584,11 @@ partial interface Document {
   undefined setSuppressedEventListener(EventListener? aListener);
 };
 
-// Allows frontend code to query a CSP which needs to be passed for a
-// new load into docshell. Further, allows to query the CSP in JSON
+// Allows frontend code to query a policyContainer which needs to be passed
+// for a new load into docshell. Further, allows to query the CSP in JSON
 // format for testing purposes.
 partial interface Document {
-  [ChromeOnly] readonly attribute ContentSecurityPolicy? csp;
+  [ChromeOnly] readonly attribute PolicyContainer? policyContainer;
   [ChromeOnly] readonly attribute DOMString cspJSON;
 };
 

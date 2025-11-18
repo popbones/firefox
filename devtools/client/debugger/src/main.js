@@ -16,6 +16,7 @@ import {
   teardownWorkers,
 } from "./utils/bootstrap";
 
+import { initialTabState } from "./reducers/tabs";
 import { initialBreakpointsState } from "./reducers/breakpoints";
 import { initialSourcesState } from "./reducers/sources";
 import { initialSourcesTreeState } from "./reducers/sources-tree";
@@ -72,7 +73,10 @@ async function loadInitialState(commands) {
   const pendingBreakpoints = sanitizeBreakpoints(
     await asyncStore.pendingBreakpoints
   );
-  const tabs = { tabs: await asyncStore.tabs };
+  const tabs = initialTabState({
+    urls: await asyncStore.openedURLs,
+    prettyPrintedURLs: new Set(await asyncStore.prettyPrintedURLs),
+  });
   const xhrBreakpoints = await asyncStore.xhrBreakpoints;
   const blackboxedRanges = await asyncStore.blackboxedRanges;
   const eventListenerBreakpoints = await asyncStore.eventListenerBreakpoints;

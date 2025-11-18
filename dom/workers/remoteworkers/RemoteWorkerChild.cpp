@@ -9,6 +9,39 @@
 #include <utility>
 
 #include "MainThreadUtils.h"
+#include "RemoteWorkerService.h"
+#include "mozilla/ArrayAlgorithm.h"
+#include "mozilla/Assertions.h"
+#include "mozilla/Attributes.h"
+#include "mozilla/BasePrincipal.h"
+#include "mozilla/ErrorResult.h"
+#include "mozilla/PermissionManager.h"
+#include "mozilla/SchedulerGroup.h"
+#include "mozilla/ScopeExit.h"
+#include "mozilla/Services.h"
+#include "mozilla/Unused.h"
+#include "mozilla/dom/FetchEventOpProxyChild.h"
+#include "mozilla/dom/IndexedDatabaseManager.h"
+#include "mozilla/dom/MessagePort.h"
+#include "mozilla/dom/PolicyContainer.h"
+#include "mozilla/dom/RemoteWorkerTypes.h"
+#include "mozilla/dom/ServiceWorkerDescriptor.h"
+#include "mozilla/dom/ServiceWorkerInterceptController.h"
+#include "mozilla/dom/ServiceWorkerOp.h"
+#include "mozilla/dom/ServiceWorkerRegistrationDescriptor.h"
+#include "mozilla/dom/ServiceWorkerShutdownState.h"
+#include "mozilla/dom/ServiceWorkerUtils.h"
+#include "mozilla/dom/SharedWorkerOp.h"
+#include "mozilla/dom/WorkerCSPContext.h"
+#include "mozilla/dom/WorkerError.h"
+#include "mozilla/dom/WorkerPrivate.h"
+#include "mozilla/dom/WorkerRef.h"
+#include "mozilla/dom/WorkerRunnable.h"
+#include "mozilla/dom/WorkerScope.h"
+#include "mozilla/dom/workerinternals/ScriptLoader.h"
+#include "mozilla/ipc/BackgroundUtils.h"
+#include "mozilla/ipc/URIUtils.h"
+#include "mozilla/net/CookieJarSettings.h"
 #include "nsCOMPtr.h"
 #include "nsDebug.h"
 #include "nsError.h"
@@ -18,39 +51,6 @@
 #include "nsNetUtil.h"
 #include "nsThreadUtils.h"
 #include "nsXULAppAPI.h"
-
-#include "RemoteWorkerService.h"
-#include "mozilla/ArrayAlgorithm.h"
-#include "mozilla/Assertions.h"
-#include "mozilla/Attributes.h"
-#include "mozilla/BasePrincipal.h"
-#include "mozilla/ErrorResult.h"
-#include "mozilla/SchedulerGroup.h"
-#include "mozilla/Services.h"
-#include "mozilla/ScopeExit.h"
-#include "mozilla/Unused.h"
-#include "mozilla/dom/FetchEventOpProxyChild.h"
-#include "mozilla/dom/IndexedDatabaseManager.h"
-#include "mozilla/dom/MessagePort.h"
-#include "mozilla/dom/RemoteWorkerTypes.h"
-#include "mozilla/dom/ServiceWorkerDescriptor.h"
-#include "mozilla/dom/ServiceWorkerInterceptController.h"
-#include "mozilla/dom/ServiceWorkerOp.h"
-#include "mozilla/dom/ServiceWorkerRegistrationDescriptor.h"
-#include "mozilla/dom/ServiceWorkerShutdownState.h"
-#include "mozilla/dom/ServiceWorkerUtils.h"
-#include "mozilla/dom/SharedWorkerOp.h"
-#include "mozilla/dom/workerinternals/ScriptLoader.h"
-#include "mozilla/dom/WorkerCSPContext.h"
-#include "mozilla/dom/WorkerError.h"
-#include "mozilla/dom/WorkerPrivate.h"
-#include "mozilla/dom/WorkerRef.h"
-#include "mozilla/dom/WorkerRunnable.h"
-#include "mozilla/dom/WorkerScope.h"
-#include "mozilla/ipc/BackgroundUtils.h"
-#include "mozilla/ipc/URIUtils.h"
-#include "mozilla/net/CookieJarSettings.h"
-#include "mozilla/PermissionManager.h"
 
 mozilla::LazyLogModule gRemoteWorkerChildLog("RemoteWorkerChild");
 
@@ -302,9 +302,10 @@ nsresult RemoteWorkerChild::ExecWorkerOnMainThread(
     info.mSourceInfo = clientInfo;
   } else {
     if (clientInfo.isSome()) {
-      Maybe<mozilla::ipc::CSPInfo> cspInfo = clientInfo.ref().GetCspInfo();
-      if (cspInfo.isSome()) {
-        info.mCSP = CSPInfoToCSP(cspInfo.ref(), nullptr);
+      Maybe<mozilla::ipc::PolicyContainerArgs> policyContainerArgs =
+          clientInfo.ref().GetPolicyContainerArgs();
+      if (policyContainerArgs.isSome() && policyContainerArgs->csp().isSome()) {
+        info.mCSP = CSPInfoToCSP(*policyContainerArgs->csp(), nullptr);
         mozilla::Result<UniquePtr<WorkerCSPContext>, nsresult> ctx =
             WorkerCSPContext::CreateFromCSP(info.mCSP);
         if (ctx.isErr()) {

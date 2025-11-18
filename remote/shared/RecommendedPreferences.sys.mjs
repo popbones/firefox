@@ -100,6 +100,9 @@ const COMMON_PREFERENCES = new Map([
   // (bug 1176798, bug 1177018, bug 1210465)
   ["apz.content_response_timeout", 60000],
 
+  // Disable the profile backup service.
+  ["browser.backup.enabled", false],
+
   // Don't show the content blocking introduction panel.
   // We use a larger number than the default 22 to have some buffer
   // This can be removed once Firefox 69 and 68 ESR and are no longer supported.
@@ -115,6 +118,9 @@ const COMMON_PREFERENCES = new Map([
 
   // Make sure error page is not shown for blank pages with 4xx or 5xx response code
   ["browser.http.blank_page_with_error_response.enabled", true],
+
+  // Disable CFR features for automated tests.
+  ["browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features", false],
 
   // Make sure newtab weather doesn't hit the network to retrieve weather data.
   [
@@ -216,6 +222,8 @@ const COMMON_PREFERENCES = new Map([
   ["datareporting.policy.dataSubmissionEnabled", false],
   ["datareporting.policy.dataSubmissionPolicyAccepted", false],
   ["datareporting.policy.dataSubmissionPolicyBypassNotification", true],
+  ["datareporting.usage.uploadEnabled", false],
+  ["telemetry.fog.test.localhost_port", -1],
 
   // Disable popup-blocker
   ["dom.disable_open_during_load", false],
@@ -337,6 +345,10 @@ const COMMON_PREFERENCES = new Map([
   // Make sure SNTP requests do not hit the network
   ["network.sntp.pools", "%(server)s"],
 
+  // Turn off semantic history search as it triggers network connections to
+  // download ML models.
+  ["places.semanticHistory.featureGate", false],
+
   // Privacy and Tracking Protection
   ["privacy.trackingprotection.enabled", false],
 
@@ -373,6 +385,9 @@ const COMMON_PREFERENCES = new Map([
   // Disable first-run welcome page
   ["startup.homepage_welcome_url", "about:blank"],
   ["startup.homepage_welcome_url.additional", ""],
+
+  // Do not show TOU new user modal which can interfere with tests
+  ["termsofuse.bypassNotification", true],
 
   // Prevent starting into safe mode after application crashes
   ["toolkit.startup.max_resumed_crashes", -1],

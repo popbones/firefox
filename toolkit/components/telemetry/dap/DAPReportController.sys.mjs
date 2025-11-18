@@ -32,11 +32,19 @@ const FREQ_CAP_STORE = "freq_caps";
 const REPORT_STORE = "reports";
 
 export class Task {
-  constructor({ taskId, vdaf, bits, length, defaultMeasurement }) {
+  constructor({
+    taskId,
+    vdaf,
+    bits,
+    length,
+    timePrecision,
+    defaultMeasurement,
+  }) {
     this._taskId = taskId;
     this._vdaf = vdaf;
     this._bits = bits;
     this._length = length;
+    this._timePrecision = timePrecision;
     this._defaultMeasurement = defaultMeasurement;
   }
 }
@@ -58,7 +66,7 @@ export class DAPReportController {
     try {
       return await this.#openDatabase();
     } catch {
-      throw new Error("DAPVisitCounter unable to load database.");
+      throw new Error("DAPReportController unable to load database.");
     }
   }
 
@@ -76,20 +84,19 @@ export class DAPReportController {
   /* Clears a pending report and updates the freq cap data
    */
   async #releasePendingReport(report) {
+    let cap = {
+      taskId: report.taskId,
+      nextReset: this._now() + this._windowDays * DAY_IN_MILLI,
+    };
+
     const tx = (await this.db).transaction(
       [REPORT_STORE, FREQ_CAP_STORE],
       "readwrite"
     );
 
     const reportStore = tx.objectStore(REPORT_STORE);
-    const capStore = tx.objectStore(FREQ_CAP_STORE);
-
     await reportStore.delete(report.taskId);
-
-    let cap = {
-      taskId: report.taskId,
-      nextReset: this._now() + this._windowDays * DAY_IN_MILLI,
-    };
+    const capStore = tx.objectStore(FREQ_CAP_STORE);
     await capStore.put(cap);
     await tx.done;
   }
@@ -117,9 +124,9 @@ export class DAPReportController {
         const tx = (await this.db).transaction(REPORT_STORE, "readwrite");
         await tx.objectStore(REPORT_STORE).put(report);
         await tx.done;
-      } else {
-        lazy.logConsole.debug(`reached cap, nextReset: ${cap.nextReset}`);
+        return true;
       }
+      lazy.logConsole.debug(`reached cap, nextReset: ${cap.nextReset}`);
     } catch (err) {
       if (err.name === "NotFoundError") {
         console.error(
@@ -129,6 +136,7 @@ export class DAPReportController {
         console.error("IndexedDB access error:", err);
       }
     }
+    return false;
   }
 
   /* Deletes any pending report or freq cap data from DB
@@ -140,12 +148,11 @@ export class DAPReportController {
       "readwrite"
     );
     const reportStore = tx.objectStore(REPORT_STORE);
-    const capStore = tx.objectStore(FREQ_CAP_STORE);
-
     for (const taskId of taskIds) {
       reportStore.delete(taskId);
     }
 
+    const capStore = tx.objectStore(FREQ_CAP_STORE);
     for (const taskId of taskIds) {
       capStore.delete(taskId);
     }
@@ -188,12 +195,13 @@ export class DAPReportController {
         vdaf: metadata._vdaf,
         bits: metadata._bits,
         length: metadata._length,
-        time_precision: 60,
+        time_precision: metadata._timePrecision,
       };
       let measurement = metadata._defaultMeasurement;
       let report = await this.getReportToSubmit(taskId);
       if (report) {
         measurement = report.measurement;
+        await this.#releasePendingReport(report);
       }
 
       sendPromises.push(
@@ -202,10 +210,6 @@ export class DAPReportController {
           reason,
         })
       );
-
-      if (report) {
-        this.#releasePendingReport(report);
-      }
     }
     try {
       await Promise.all(sendPromises);

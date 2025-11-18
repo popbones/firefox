@@ -6,19 +6,20 @@
 
 #include "nsProgressFrame.h"
 
+#include <algorithm>
+
 #include "mozilla/PresShell.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/HTMLMeterElement.h"
 #include "mozilla/dom/HTMLProgressElement.h"
-#include "nsIContent.h"
-#include "nsLayoutUtils.h"
-#include "nsPresContext.h"
-#include "nsGkAtoms.h"
-#include "nsNodeInfoManager.h"
 #include "nsContentCreatorFunctions.h"
 #include "nsFontMetrics.h"
-#include <algorithm>
+#include "nsGkAtoms.h"
+#include "nsIContent.h"
+#include "nsLayoutUtils.h"
+#include "nsNodeInfoManager.h"
+#include "nsPresContext.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -205,7 +206,7 @@ void nsProgressFrame::ReflowChildFrame(nsIFrame* aChild,
 
 nsresult nsProgressFrame::AttributeChanged(int32_t aNameSpaceID,
                                            nsAtom* aAttribute,
-                                           int32_t aModType) {
+                                           AttrModType aModType) {
   NS_ASSERTION(mBarDiv, "Progress bar div must exist!");
 
   if (aNameSpaceID == kNameSpaceID_None &&

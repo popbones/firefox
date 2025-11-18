@@ -667,6 +667,21 @@ impl ResourceCache {
 
         let render_task = rg_builder.get_task_mut(task_id);
 
+        // Note: We are defaulting to `ImageRendering::Auto` and only support
+        // this mode here, because the desired rendering mode is known later
+        // when an image display item will read the produced snapshot. In theory,
+        // multiple image items with different rendering modes could refer to
+        // the snapshot's image key, or they could first appear in a later frame
+        // So delaying snapshotting logic until the we know about the rendering
+        // mode would, in addition to adding complexity, only work in certain
+        // cases.
+        // If supporting more rendering modes is important for snapshots, we could
+        // consider specifying it in the stacking context's snapshot params so
+        // that we have the information early enough.
+        // Here and in other parts of the code, this restriction manifests itself
+        // in the expectation that we are dealing with `ImageResult::UntiledAuto`
+        // which implicitly specifies the rendering mode.
+
         // Make sure to update the existing image info and texture cache handle
         // instead of overwriting them if they already exist for this key.
         let image_result = self.cached_images.entry(image_key).or_insert_with(|| {
@@ -678,7 +693,7 @@ impl ResourceCache {
         });
 
         let ImageResult::UntiledAuto(ref mut info) = *image_result else {
-            unreachable!("Expected untiled image for snapshot");
+            unreachable!("Expected untiled image with auto filter for snapshot");
         };
 
         let flags = if is_opaque {
@@ -693,6 +708,14 @@ impl ResourceCache {
             self.texture_cache.shared_color_expected_format(),
             flags,
         );
+
+        // TODO(bug 1975123) We currently do not have a way to ensure that an
+        // atlas texture used as a destination for the snapshot will not be
+        // also used as an input by a primitive of the snapshot.
+        // We can't both read and write the same texture in a draw call
+        // so we work around it by preventing the snapshot from being placed
+        // in a texture atlas.
+        let force_standalone_texture = true;
 
         // Allocate space in the texture cache, but don't supply
         // and CPU-side data to be uploaded.
@@ -709,6 +732,7 @@ impl ResourceCache {
             render_task.uv_rect_kind(),
             Eviction::Manual,
             TargetShader::Default,
+            force_standalone_texture,
         );
 
         // Get the allocation details in the texture cache, and store
@@ -1076,7 +1100,7 @@ impl ResourceCache {
     /// returns the size in device pixel of the image or tile.
     pub fn request_image(
         &mut self,
-        request: ImageRequest,
+        mut request: ImageRequest,
         gpu_cache: &mut GpuCache,
     ) -> DeviceIntSize {
         debug_assert_eq!(self.state, State::AddResources);
@@ -1098,6 +1122,14 @@ impl ResourceCache {
         // Images that don't use the texture cache can early out.
         if !template.data.uses_texture_cache() {
             return size;
+        }
+
+        if template.data.is_snapshot() {
+            // We only Support `Auto` for snapshots. This is because we have
+            // to make the decision about the filtering mode earlier when
+            // producing the snapshot.
+            // See the comment at the top of `render_as_image`.
+            request.rendering = ImageRendering::Auto;
         }
 
         let side_size =
@@ -1504,6 +1536,7 @@ impl ResourceCache {
                             UvRectKind::Rect,
                             Eviction::Auto,
                             TargetShader::Text,
+                            false,
                         );
                         GlyphCacheEntry::Cached(CachedGlyphInfo {
                             texture_cache_handle,
@@ -1547,6 +1580,7 @@ impl ResourceCache {
                 UvRectKind::Rect,
                 Eviction::Manual,
                 TargetShader::Default,
+                false,
             );
         }
 
@@ -1664,6 +1698,7 @@ impl ResourceCache {
                     UvRectKind::Rect,
                     eviction,
                     TargetShader::Default,
+                    false,
                 );
             }
         }
@@ -2268,7 +2303,8 @@ impl ResourceCache {
                     other_paths.insert(key, short_path);
                 }
                 CachedImageData::Snapshot => {
-                    unimplemented!();
+                    let short_path = format!("snapshots/{}", external_images.len() + 1);
+                    other_paths.insert(key, short_path.clone());
                 }
                 CachedImageData::External(ref ext) => {
                     let short_path = format!("externals/{}", external_images.len() + 1);
@@ -2473,25 +2509,34 @@ impl ResourceCache {
         info!("\timage templates...");
         let mut external_images = Vec::new();
         for (key, template) in resources.image_templates {
-            let data = match config.deserialize_for_resource::<PlainExternalImage, _>(&template.data) {
-                Some(plain) => {
-                    let ext_data = plain.external;
-                    external_images.push(plain);
-                    CachedImageData::External(ext_data)
-                }
-                None => {
-                    let arc = match raw_map.entry(template.data) {
-                        Entry::Occupied(e) => {
-                            e.get().clone()
-                        }
-                        Entry::Vacant(e) => {
-                            let buffer = fs::read(root.join(e.key()))
-                                .expect(&format!("Unable to open {}", e.key()));
-                            e.insert(Arc::new(buffer))
-                                .clone()
-                        }
-                    };
-                    CachedImageData::Raw(arc)
+            let data = if template.data.starts_with("snapshots/") {
+                // TODO(nical): If a snapshot was captured in a previous frame,
+                // we have to serialize/deserialize the image itself.
+                CachedImageData::Snapshot
+            } else {
+                match config.deserialize_for_resource::<PlainExternalImage, _>(&template.data) {
+                    Some(plain) => {
+                        let ext_data = plain.external;
+                        external_images.push(plain);
+                        CachedImageData::External(ext_data)
+                    }
+                    None => {
+                        let arc = match raw_map.entry(template.data) {
+                            Entry::Occupied(e) => e.get().clone(),
+                            Entry::Vacant(e) => {
+                                match fs::read(root.join(e.key())) {
+                                    Ok(buffer) => {
+                                        e.insert(Arc::new(buffer)).clone()
+                                    }
+                                    Err(err) => {
+                                        log::warn!("Unable to open {}: {err:?}", e.key());
+                                        continue;
+                                    }
+                                }
+                            }
+                        };
+                        CachedImageData::Raw(arc)
+                    }
                 }
             };
 

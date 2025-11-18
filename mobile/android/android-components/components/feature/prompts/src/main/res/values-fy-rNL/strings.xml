@@ -110,12 +110,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">Wachtwurd brûke</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">No net</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">Wachtwurd bewarre</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">Wachtwurd bywurke</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">Brûkersnamme bywurke</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">Gegevens opnij nei dizze website ferstjoere?</string>
   <string name="mozac_feature_prompt_repost_message">It opnij laden fan dizze side kin resinte aksjes duplisearje, lykas it ferstjoeren fan in betelling of it twa kear pleatsen fan in berjocht.</string>

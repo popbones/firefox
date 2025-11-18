@@ -111,9 +111,6 @@ enum class GCAbortReason {
   _(ArrayBufferContents)                   \
   _(StringContents)                        \
   _(ScriptPrivateData)                     \
-  _(MapObjectData)                         \
-  _(BigIntDigits)                          \
-  _(ScopeData)                             \
   _(WeakMapObject)                         \
   _(ShapeSetForAdd)                        \
   _(PropMapChildren)                       \
@@ -154,6 +151,7 @@ enum class GCAbortReason {
   _(DebuggerOnStepHandler)                 \
   _(DebuggerOnPopHandler)                  \
   _(ICUObject)                             \
+  _(IntlOptions)                           \
   _(FinalizationRegistryRecordVector)      \
   _(FinalizationRegistryRegistrations)     \
   _(FinalizationRecordVector)              \
@@ -162,7 +160,8 @@ enum class GCAbortReason {
   _(XDRBufferElements)                     \
   _(GlobalObjectData)                      \
   _(ProxyExternalValueArray)               \
-  _(WasmTrailerBlock)
+  _(WasmTrailerBlock)                      \
+  _(GraphLoadingStateRecord)
 
 #define JS_FOR_EACH_MEMORY_USE(_)  \
   JS_FOR_EACH_PUBLIC_MEMORY_USE(_) \

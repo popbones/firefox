@@ -4,20 +4,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "GeckoProfiler.h"
+#include "ScriptLoadContext.h"
 
-#include "mozilla/dom/Document.h"
+#include "GeckoProfiler.h"
+#include "ModuleLoadRequest.h"
+#include "js/SourceText.h"
+#include "js/loader/LoadContextBase.h"
+#include "js/loader/ModuleLoadRequest.h"
 #include "mozilla/HoldDropJSObjects.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/Unused.h"
 #include "mozilla/Utf8.h"  // mozilla::Utf8Unit
-
-#include "js/SourceText.h"
-#include "js/loader/LoadContextBase.h"
-#include "js/loader/ModuleLoadRequest.h"
-
-#include "ScriptLoadContext.h"
-#include "ModuleLoadRequest.h"
+#include "mozilla/dom/Document.h"
 #include "nsContentUtils.h"
 #include "nsICacheInfoChannel.h"
 #include "nsIClassOfService.h"
@@ -51,7 +49,8 @@ NS_IMPL_ADDREF_INHERITED(ScriptLoadContext, JS::loader::LoadContextBase)
 NS_IMPL_RELEASE_INHERITED(ScriptLoadContext, JS::loader::LoadContextBase)
 
 ScriptLoadContext::ScriptLoadContext(
-    nsIScriptElement* aScriptElement /* = nullptr */)
+    nsIScriptElement* aScriptElement /* = nullptr */,
+    const nsAString& aSourceText /* = VoidString() */)
     : JS::loader::LoadContextBase(JS::loader::ContextKind::Window),
       mScriptMode(ScriptMode::eBlocking),
       mScriptFromHead(false),
@@ -67,6 +66,7 @@ ScriptLoadContext::ScriptLoadContext(
       mColumnNo(0),
       mIsPreload(false),
       mScriptElement(aScriptElement),
+      mSourceText(aSourceText),
       mUnreportedPreloadError(NS_OK) {}
 
 ScriptLoadContext::~ScriptLoadContext() {
@@ -149,7 +149,11 @@ bool ScriptLoadContext::HasScriptElement() const { return !!mScriptElement; }
 
 void ScriptLoadContext::GetInlineScriptText(nsAString& aText) const {
   MOZ_ASSERT(mIsInline);
-  mScriptElement->GetScriptText(aText);
+  if (mSourceText.IsVoid()) {
+    mScriptElement->GetScriptText(aText);
+  } else {
+    aText.Append(mSourceText);
+  }
 }
 
 void ScriptLoadContext::GetHintCharset(nsAString& aCharset) const {

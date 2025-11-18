@@ -367,11 +367,9 @@ def javadoc(_paths, config, **lintargs):
             issues = json.load(f)
 
             for issue in issues:
-                # We want warnings to be errors for linting purposes.
-                # TODO: Bug 1316188 - resolve missing javadoc comments
-                issue["level"] = (
-                    "error" if issue["message"] != ": no comment" else "warning"
-                )
+                # We want all warnings to be errors for linting purposes.
+                # This ensures javadoc warnings can no longer be ignored.
+                issue["level"] = "error"
                 results.append(result.from_config(config, **issue))
 
     return results
@@ -464,9 +462,9 @@ def read_lint_report(config, subdir, tasks=[], **lintargs):
             rules = data.get("tool", {}).get("driver", {}).get("rules", [])
 
             for issue in issues:
-                dir = os.path.join(topsrcdir, subdir)
-                if subdir != os.path.join("mobile", "android", "android-components"):
-                    dir = os.path.join(topsrcdir, "mobile", "android")
+                dir = os.path.join(topsrcdir)
+                if subdir == os.path.join("mobile", "android", "android-components"):
+                    dir = os.path.join(topsrcdir, subdir)
                 name = os.path.join(
                     dir,
                     issue.get("locations", [{}])[0]

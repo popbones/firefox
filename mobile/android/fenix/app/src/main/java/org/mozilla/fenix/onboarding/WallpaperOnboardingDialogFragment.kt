@@ -14,6 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -34,6 +35,7 @@ import org.mozilla.fenix.settings.wallpaper.getWallpapersForOnboarding
 import org.mozilla.fenix.theme.FirefoxTheme
 import org.mozilla.fenix.wallpapers.Wallpaper
 import org.mozilla.fenix.wallpapers.WallpaperOnboarding
+import com.google.android.material.R as materialR
 
 /**
  * Dialog displaying the wallpapers onboarding.
@@ -50,7 +52,7 @@ class WallpaperOnboardingDialogFragment : BottomSheetDialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog =
         super.onCreateDialog(savedInstanceState).apply {
             setOnShowListener {
-                val bottomSheet = findViewById<View?>(R.id.design_bottom_sheet)
+                val bottomSheet = findViewById<View?>(materialR.id.design_bottom_sheet)
                 BottomSheetBehavior.from(bottomSheet).apply {
                     state = BottomSheetBehavior.STATE_EXPANDED
                 }
@@ -93,6 +95,7 @@ class WallpaperOnboardingDialogFragment : BottomSheetDialogFragment() {
     ): View = ComposeView(requireContext()).apply {
         this@WallpaperOnboardingDialogFragment.dialog?.setCanceledOnTouchOutside(true)
 
+        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         setContent {
             FirefoxTheme {
                 val wallpapers = appStore.observeAsComposableState { state ->

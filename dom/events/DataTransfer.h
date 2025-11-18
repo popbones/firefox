@@ -7,16 +7,6 @@
 #ifndef mozilla_dom_DataTransfer_h
 #define mozilla_dom_DataTransfer_h
 
-#include "nsCycleCollectionParticipant.h"
-#include "nsString.h"
-#include "nsStringStream.h"
-#include "nsTArray.h"
-#include "nsIClipboard.h"
-#include "nsIDragService.h"
-#include "nsIPrincipal.h"
-#include "nsITransferable.h"
-#include "nsIVariant.h"
-
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Attributes.h"
@@ -24,6 +14,15 @@
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/DataTransferItemList.h"
 #include "mozilla/dom/File.h"
+#include "nsCycleCollectionParticipant.h"
+#include "nsIClipboard.h"
+#include "nsIDragService.h"
+#include "nsIPrincipal.h"
+#include "nsITransferable.h"
+#include "nsIVariant.h"
+#include "nsString.h"
+#include "nsStringStream.h"
+#include "nsTArray.h"
 
 class nsIClipboardDataSnapshot;
 class nsINode;
@@ -278,7 +277,7 @@ class DataTransfer final : public nsISupports, public nsWrapperCache {
 
   void GetMozTriggeringPrincipalURISpec(nsAString& aPrincipalURISpec);
 
-  nsIContentSecurityPolicy* GetMozCSP();
+  nsIPolicyContainer* GetPolicyContainer();
 
   mozilla::dom::Element* GetDragTarget() const { return mDragTarget; }
 

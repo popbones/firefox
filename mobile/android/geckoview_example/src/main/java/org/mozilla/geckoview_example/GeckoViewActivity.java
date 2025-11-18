@@ -13,6 +13,7 @@ import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.PictureInPictureParams;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -24,7 +25,9 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -148,7 +151,10 @@ class WebExtensionManager
   @Nullable
   @Override
   public GeckoResult<WebExtension.PermissionPromptResponse> onInstallPromptRequest(
-      @NonNull WebExtension extension, @NonNull String[] permissions, @NonNull String[] origins) {
+      @NonNull WebExtension extension,
+      @NonNull String[] permissions,
+      @NonNull String[] origins,
+      @NonNull final String[] dataCollectionPermissions) {
     return GeckoResult.fromValue(
         new org.mozilla.geckoview.WebExtension.PermissionPromptResponse(
             true, // isPermissionsGranted
@@ -160,17 +166,20 @@ class WebExtensionManager
   @Nullable
   @Override
   public GeckoResult<AllowOrDeny> onUpdatePrompt(
-      @NonNull WebExtension currentlyInstalled,
       @NonNull WebExtension updatedExtension,
       @NonNull String[] newPermissions,
-      @NonNull String[] newOrigins) {
+      @NonNull String[] newOrigins,
+      @NonNull String[] newDataCollectionPermissions) {
     return GeckoResult.allow();
   }
 
   @Nullable
   @Override
   public GeckoResult<AllowOrDeny> onOptionalPrompt(
-      final @NonNull WebExtension extension, final String[] permissions, final String[] origins) {
+      final @NonNull WebExtension extension,
+      final String[] permissions,
+      final String[] origins,
+      final String[] dataCollectionPermissions) {
     return GeckoResult.allow();
   }
 
@@ -328,6 +337,24 @@ class WebExtensionManager
                           resolved.badgeText,
                           resolved.badgeTextColor,
                           resolved.badgeBackgroundColor));
+                })
+            .exceptionally(
+                throwable -> {
+                  Bitmap errorIcon = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888);
+                  Canvas canvas = new Canvas(errorIcon);
+                  Paint paint = new Paint();
+                  paint.setColor(Color.RED);
+                  paint.setStyle(Paint.Style.FILL);
+                  canvas.drawRect(0f, 0f, 64f, 64f, paint);
+
+                  extensionDelegate.onActionButton(
+                      new ActionButton(
+                          errorIcon,
+                          resolved.badgeText,
+                          resolved.badgeTextColor,
+                          resolved.badgeBackgroundColor));
+
+                  return null;
                 });
       }
     } else {
@@ -458,6 +485,8 @@ public class GeckoViewActivity extends AppCompatActivity
   private boolean mFullScreen;
   private boolean mExpectedTranslate = false;
   private boolean mTranslateRestore = false;
+  private boolean mPipFullscreenMedia = false;
+  private boolean mPipIsPlaying = false;
 
   private String mDetectedLanguage = null;
 
@@ -470,6 +499,42 @@ public class GeckoViewActivity extends AppCompatActivity
 
   private int mNextActivityResultCode = 10;
   private HashMap<Integer, GeckoResult<Intent>> mPendingActivityResult = new HashMap<>();
+
+  private boolean supportsPip() {
+    return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+        && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
+  }
+
+  private boolean maybeEnterPip() {
+    if (!supportsPip()) return false;
+    if (!mPipFullscreenMedia || !mPipIsPlaying) return false;
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        enterPictureInPictureMode(new PictureInPictureParams.Builder().build());
+      } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        enterPictureInPictureMode();
+      }
+      return true;
+    } catch (IllegalStateException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public void onUserLeaveHint() {
+    if (!maybeEnterPip()) {
+      super.onUserLeaveHint();
+    }
+  }
+
+  @Override
+  public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode) {
+    super.onPictureInPictureModeChanged(isInPictureInPictureMode);
+    GeckoSession s = (mGeckoView != null) ? mGeckoView.getSession() : null;
+    if (s != null) {
+      s.getCompositorController().onPipModeChanged(isInPictureInPictureMode);
+    }
+  }
 
   private LocationView.CommitListener mCommitListener =
       new LocationView.CommitListener() {
@@ -1287,73 +1352,56 @@ public class GeckoViewActivity extends AppCompatActivity
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
     GeckoSession session = mTabSessionManager.getCurrentSession();
-    switch (item.getItemId()) {
-      case R.id.action_reload:
-        session.reload();
-        break;
-      case R.id.action_forward:
-        session.goForward();
-        break;
-      case R.id.action_tpe:
-        sGeckoRuntime
-            .getStorageController()
-            .setPermission(
-                mTrackingProtectionPermission,
-                mTrackingProtectionPermission.value == ContentPermission.VALUE_ALLOW
-                    ? ContentPermission.VALUE_DENY
-                    : ContentPermission.VALUE_ALLOW);
-        session.reload();
-        break;
-      case R.id.desktop_mode:
-        mDesktopMode = !mDesktopMode;
-        updateDesktopMode(session);
-        session.reload();
-        break;
-      case R.id.action_pb:
-        mUsePrivateBrowsing = !mUsePrivateBrowsing;
-        recreateSession();
-        break;
-      case R.id.collapse:
-        mCollapsed = !mCollapsed;
-        setViewVisibility(mGeckoView, !mCollapsed);
-        break;
-      case R.id.install_addon:
-        installAddon();
-        break;
-      case R.id.update_addon:
-        updateAddon();
-        break;
-      case R.id.settings:
-        openSettingsActivity();
-        break;
-      case R.id.action_new_tab:
-        createNewTab();
-        break;
-      case R.id.action_close_tab:
-        closeTab((TabSession) session);
-        break;
-      case R.id.save_pdf:
-        savePdf(session);
-        break;
-      case R.id.print_page:
-        printPage(session);
-        break;
-      case R.id.translate:
-        translate(session);
-        break;
-      case R.id.translate_restore:
-        translateRestore(session);
-        break;
-      case R.id.translate_manage:
-        translateManage();
-        break;
-      case R.id.webcompat_info:
-        webCompatInfo(session);
-        break;
-      default:
-        return super.onOptionsItemSelected(item);
-    }
+    int id = item.getItemId();
 
+    if (id == R.id.action_reload) {
+      session.reload();
+    } else if (id == R.id.action_forward) {
+      session.goForward();
+    } else if (id == R.id.action_tpe) {
+      sGeckoRuntime
+          .getStorageController()
+          .setPermission(
+              mTrackingProtectionPermission,
+              mTrackingProtectionPermission.value == ContentPermission.VALUE_ALLOW
+                  ? ContentPermission.VALUE_DENY
+                  : ContentPermission.VALUE_ALLOW);
+      session.reload();
+    } else if (id == R.id.desktop_mode) {
+      mDesktopMode = !mDesktopMode;
+      updateDesktopMode(session);
+      session.reload();
+    } else if (id == R.id.action_pb) {
+      mUsePrivateBrowsing = !mUsePrivateBrowsing;
+      recreateSession();
+    } else if (id == R.id.collapse) {
+      mCollapsed = !mCollapsed;
+      setViewVisibility(mGeckoView, !mCollapsed);
+    } else if (id == R.id.install_addon) {
+      installAddon();
+    } else if (id == R.id.update_addon) {
+      updateAddon();
+    } else if (id == R.id.settings) {
+      openSettingsActivity();
+    } else if (id == R.id.action_new_tab) {
+      createNewTab();
+    } else if (id == R.id.action_close_tab) {
+      closeTab((TabSession) session);
+    } else if (id == R.id.save_pdf) {
+      savePdf(session);
+    } else if (id == R.id.print_page) {
+      printPage(session);
+    } else if (id == R.id.translate) {
+      translate(session);
+    } else if (id == R.id.translate_restore) {
+      translateRestore(session);
+    } else if (id == R.id.translate_manage) {
+      translateManage();
+    } else if (id == R.id.webcompat_info) {
+      webCompatInfo(session);
+    } else {
+      return super.onOptionsItemSelected(item);
+    }
     return true;
   }
 
@@ -2881,11 +2929,27 @@ public class GeckoViewActivity extends AppCompatActivity
     }
 
     @Override
+    public void onPlay(@NonNull GeckoSession session, @NonNull MediaSession mediaSession) {
+      mPipIsPlaying = true;
+    }
+
+    @Override
+    public void onPause(@NonNull GeckoSession session, @NonNull MediaSession mediaSession) {
+      mPipIsPlaying = false;
+    }
+
+    @Override
+    public void onStop(@NonNull GeckoSession session, @NonNull MediaSession mediaSession) {
+      mPipIsPlaying = false;
+    }
+
+    @Override
     public void onFullscreen(
         @NonNull final GeckoSession session,
         @NonNull final MediaSession mediaSession,
         final boolean enabled,
         @Nullable final MediaSession.ElementMetadata meta) {
+      mPipFullscreenMedia = enabled;
       Log.d(LOGTAG, "onFullscreen: Metadata=" + (meta != null ? meta.toString() : "null"));
 
       if (!enabled) {

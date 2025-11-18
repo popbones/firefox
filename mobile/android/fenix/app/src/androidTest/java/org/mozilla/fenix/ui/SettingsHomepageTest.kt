@@ -190,10 +190,14 @@ class SettingsHomepageTest : TestSetup() {
             clickOpeningScreenOption("Homepage")
         }.goBackToHomeScreen {}
 
-        with(composeTestRule.activityRule) {
-            finishActivity()
-            mDevice.waitForIdle()
-            openAppFromExternalLink(genericPage.url.toString())
+        composeTestRule.activityRule.applySettingsExceptions {
+            it.isTermsOfServiceAccepted = true
+
+            with(composeTestRule.activityRule) {
+                finishActivity()
+                mDevice.waitForIdle()
+                openAppFromExternalLink(genericPage.url.toString())
+            }
         }
 
         browserScreen {

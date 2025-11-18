@@ -118,6 +118,9 @@ https_first_disabled = true
 ["browser_browsingContext_iframeWebProgress.js"]
 support-files = ["file_browsingContext_iframeWebProgress.html"]
 
+["browser_browsing_context_active_change.js"]
+https_first_disabled = true
+
 ["browser_browsing_context_attached.js"]
 https_first_disabled = true
 
@@ -155,10 +158,7 @@ https_first_disabled = true
 ["browser_bug388121-2.js"]
 
 ["browser_bug420605.js"]
-skip-if = [
-  "os == 'mac' && os_version == '15.30' && arch == 'aarch64' && opt", # Bug 1775923
-  "verify",
-]
+skip-if = ["os == 'mac' && os_version == '15.30' && arch == 'aarch64' && opt"] # Bug 1775923
 
 ["browser_bug422543.js"]
 https_first_disabled = true
@@ -174,7 +174,6 @@ skip-if = [
 ["browser_bug441169.js"]
 
 ["browser_bug503832.js"]
-skip-if = ["verify"]
 
 ["browser_bug554155.js"]
 
@@ -192,7 +191,6 @@ skip-if = ["os == 'linux' && (debug || asan || tsan)"]  # Bug 1717403
 ["browser_bug673467.js"]
 
 ["browser_bug852909.js"]
-skip-if = ["verify && debug && os == 'win'"]
 
 ["browser_bug1206879.js"]
 https_first_disabled = true
@@ -307,6 +305,9 @@ https_first_disabled = true
 https_first_disabled = true
 
 ["browser_loadURI_postdata.js"]
+
+["browser_loadURI_forceMediaDocument.js"]
+support-files = ["file_image_header.sjs"]
 
 ["browser_multiple_pushState.js"]
 https_first_disabled = true

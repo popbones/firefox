@@ -123,11 +123,11 @@ test_description_schema = Schema(
             "variant",
             Any(
                 "default",
+                "large-legacy",
                 "large",
                 "large-noscratch",
                 "xlarge",
                 "xlarge-noscratch",
-                "large-dw",
             ),
         ),
         # type of virtualization or hardware required by test.
@@ -259,6 +259,7 @@ test_description_schema = Schema(
         ),
         Optional("worker-type"): optionally_keyed_by(
             "test-platform",
+            "variant",
             Any(str, None),
         ),
         Optional(
@@ -470,13 +471,11 @@ def make_job_description(config, tasks):
 
         mobile = get_mobile_project(task)
         if mobile and (mobile not in task["test-name"]):
-            label = "{}-{}-{}-{}".format(
-                config.kind, task["test-platform"], mobile, task["test-name"]
+            label = "test-{}-{}-{}".format(
+                task["test-platform"], mobile, task["test-name"]
             )
         else:
-            label = "{}-{}-{}".format(
-                config.kind, task["test-platform"], task["test-name"]
-            )
+            label = "test-{}-{}".format(task["test-platform"], task["test-name"])
 
         try_name = task["try-name"]
         if attributes.get("unittest_variant"):

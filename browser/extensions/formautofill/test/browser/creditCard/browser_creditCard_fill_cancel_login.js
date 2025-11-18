@@ -11,7 +11,10 @@ add_task(async function test_fill_creditCard_but_cancel_login() {
     !OSKeyStore.canReauth() ||
     !OSKeyStoreTestUtils.canTestOSKeyStoreLogin()
   ) {
-    info("Cannot test login cancel.");
+    todo(
+      OSKeyStore.canReauth() && OSKeyStoreTestUtils.canTestOSKeyStoreLogin(),
+      "Cannot test login cancel."
+    );
     return;
   }
 
@@ -48,7 +51,7 @@ add_task(async function test_fill_creditCard_but_cancel_login() {
   await Services.fog.testFlushAllChildren();
   let testEvents = Glean.creditcard.osKeystoreDecrypt.testGetValue();
   is(testEvents.length, 1, "Event was recorded");
-  is(testEvents[0].extra.trigger, "autofill", "Trigger was correct");
+  is(testEvents[0].extra.trigger, "formautofill_cc", "Trigger was correct");
   is(
     testEvents[0].extra.isDecryptSuccess,
     "false",

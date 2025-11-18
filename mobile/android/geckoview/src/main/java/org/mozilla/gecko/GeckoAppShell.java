@@ -6,9 +6,9 @@
 package org.mozilla.gecko;
 
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.app.Service;
+import android.content.ComponentCallbacks;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -16,6 +16,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Configuration;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -46,6 +47,7 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.Vibrator;
 import android.provider.Settings;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.ContextThemeWrapper;
 import android.view.Display;
@@ -55,6 +57,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
 import android.webkit.MimeTypeMap;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.collection.SimpleArrayMap;
 import androidx.core.content.res.ResourcesCompat;
 import java.net.InetSocketAddress;
@@ -66,7 +69,6 @@ import java.util.StringTokenizer;
 import org.jetbrains.annotations.NotNull;
 import org.mozilla.gecko.annotation.RobocopTarget;
 import org.mozilla.gecko.annotation.WrapForJNI;
-import org.mozilla.gecko.util.HardwareCodecCapabilityUtils;
 import org.mozilla.gecko.util.HardwareUtils;
 import org.mozilla.gecko.util.InputDeviceUtils;
 import org.mozilla.gecko.util.ProxySelector;
@@ -196,8 +198,6 @@ public class GeckoAppShell {
    */
   private static final int ADDITIONAL_SEARCH_HEADER_RAM_THRESHOLD_MEGABYTES = 1024;
 
-  private static int sDensityDpi;
-  private static Float sDensity;
   private static int sScreenDepth;
   private static boolean sUseMaxScreenDepth;
   private static Float sScreenRefreshRate;
@@ -246,6 +246,8 @@ public class GeckoAppShell {
   /* package */ static native void reportJavaCrash(Throwable exc, String stackTrace);
 
   private static Rect sScreenSizeOverride;
+  private static int sDensityDpiOverride;
+  private static Float sDensityOverride;
 
   @WrapForJNI(stubName = "NotifyObservers", dispatchTo = "gecko")
   private static native void nativeNotifyObservers(String topic, String data);
@@ -758,16 +760,6 @@ public class GeckoAppShell {
   }
 
   @WrapForJNI(calledFrom = "gecko")
-  private static boolean hasHWVP8Encoder() {
-    return HardwareCodecCapabilityUtils.hasHWVP8(true /* aIsEncoder */);
-  }
-
-  @WrapForJNI(calledFrom = "gecko")
-  private static boolean hasHWVP8Decoder() {
-    return HardwareCodecCapabilityUtils.hasHWVP8(false /* aIsEncoder */);
-  }
-
-  @WrapForJNI(calledFrom = "gecko")
   public static String getExtensionFromMimeType(final String aMimeType) {
     return MimeTypeMap.getSingleton().getExtensionFromMimeType(aMimeType);
   }
@@ -793,15 +785,16 @@ public class GeckoAppShell {
   }
 
   @WrapForJNI(dispatchTo = "gecko")
-  private static native void notifyAlertListener(String name, String topic, String action);
+  private static native void notifyAlertListener(
+      String name, String topic, String action, String origin);
 
   /**
    * Called by the NotificationListener to notify Gecko that a previously shown notification has
    * been closed.
    */
-  public static void onNotificationClose(final String name) {
+  public static void onNotificationClose(@NotNull final String name, @NotNull final String origin) {
     if (GeckoThread.isRunning()) {
-      notifyAlertListener(name, "alertfinished", null);
+      notifyAlertListener(name, "alertfinished", null, origin);
     }
   }
 
@@ -809,9 +802,10 @@ public class GeckoAppShell {
    * Called by the NotificationListener to notify Gecko that a previously shown notification has
    * been clicked on.
    */
-  public static void onNotificationClick(final String name, @Nullable final String action) {
+  public static void onNotificationClick(
+      @NotNull final String name, @Nullable final String action, @NotNull final String origin) {
     if (GeckoThread.isRunning()) {
-      notifyAlertListener(name, "alertclickcallback", action);
+      notifyAlertListener(name, "alertclickcallback", action, origin);
     } else {
       GeckoThread.queueNativeCallUntil(
           GeckoThread.State.PROFILE_READY,
@@ -819,7 +813,9 @@ public class GeckoAppShell {
           "notifyAlertListener",
           name,
           "alertclickcallback",
-          action);
+          String.class,
+          action,
+          origin);
     }
   }
 
@@ -827,39 +823,39 @@ public class GeckoAppShell {
     if (dpi == null) {
       return;
     }
-    if (sDensityDpi != 0) {
+    if (sDensityDpiOverride != 0) {
       Log.e(LOGTAG, "Tried to override screen DPI after it's already been set");
       return;
     }
-    sDensityDpi = dpi;
+    sDensityDpiOverride = dpi;
   }
 
   @WrapForJNI(calledFrom = "gecko")
-  public static synchronized int getDpi() {
-    if (sDensityDpi == 0) {
-      sDensityDpi = getApplicationContext().getResources().getDisplayMetrics().densityDpi;
+  private static synchronized int getDpi() {
+    if (sDensityDpiOverride != 0) {
+      return sDensityDpiOverride;
     }
-    return sDensityDpi;
+    return sScreenCompat.getDensityDpi();
   }
 
   public static synchronized void setDisplayDensityOverride(@Nullable final Float density) {
     if (density == null) {
       return;
     }
-    if (sDensity != null) {
+    if (sDensityOverride != null) {
       Log.e(LOGTAG, "Tried to override screen density after it's already been set");
       return;
     }
-    sDensity = density;
+    sDensityOverride = density;
   }
 
   @WrapForJNI(calledFrom = "gecko")
   private static synchronized float getDensity() {
-    if (sDensity == null) {
-      sDensity = Float.valueOf(getApplicationContext().getResources().getDisplayMetrics().density);
+    if (sDensityOverride != null) {
+      return sDensityOverride;
     }
 
-    return sDensity;
+    return sScreenCompat.getDensity();
   }
 
   private static int sTotalRam;
@@ -1517,9 +1513,21 @@ public class GeckoAppShell {
     Rect getScreenSize();
 
     int getRotation();
+
+    int getDensityDpi();
+
+    float getDensity();
   }
 
   private static class JellyBeanMR1ScreenCompat implements ScreenCompat {
+    private int mDensityDpi = 0;
+    private Float mDensity = null;
+
+    private static DisplayMetrics getDisplayMetrics() {
+      return getApplicationContext().getResources().getDisplayMetrics();
+    }
+
+    @Override
     public Rect getScreenSize() {
       final WindowManager wm =
           (WindowManager) getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
@@ -1529,14 +1537,31 @@ public class GeckoAppShell {
       return new Rect(0, 0, size.x, size.y);
     }
 
+    @Override
     public int getRotation() {
       final WindowManager wm =
           (WindowManager) getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
       return wm.getDefaultDisplay().getRotation();
     }
+
+    @Override
+    public int getDensityDpi() {
+      if (mDensityDpi == 0) {
+        mDensityDpi = getDisplayMetrics().densityDpi;
+      }
+      return mDensityDpi;
+    }
+
+    @Override
+    public float getDensity() {
+      if (mDensity == null) {
+        mDensity = getDisplayMetrics().density;
+      }
+      return mDensity;
+    }
   }
 
-  @TargetApi(Build.VERSION_CODES.S)
+  @RequiresApi(Build.VERSION_CODES.S)
   private static class AndroidSScreenCompat implements ScreenCompat {
     @SuppressLint("StaticFieldLeak")
     private static Context sWindowContext;
@@ -1549,18 +1574,48 @@ public class GeckoAppShell {
         sWindowContext =
             getApplicationContext()
                 .createWindowContext(display, WindowManager.LayoutParams.TYPE_APPLICATION, null);
+        sWindowContext.registerComponentCallbacks(
+            new ComponentCallbacks() {
+              @Override
+              public void onConfigurationChanged(final Configuration newConfig) {
+                if (GeckoScreenOrientation.getInstance().update()) {
+                  // refreshScreenInfo is already called.
+                  return;
+                }
+                ScreenManagerHelper.refreshScreenInfo();
+              }
+
+              @Override
+              public void onLowMemory() {}
+            });
       }
       return sWindowContext;
     }
 
+    private static DisplayMetrics getDisplayMetrics() {
+      return getWindowContext().getResources().getDisplayMetrics();
+    }
+
+    @Override
     public Rect getScreenSize() {
       final WindowManager windowManager = getWindowContext().getSystemService(WindowManager.class);
       return windowManager.getCurrentWindowMetrics().getBounds();
     }
 
+    @Override
     public int getRotation() {
       final WindowManager windowManager = getWindowContext().getSystemService(WindowManager.class);
       return windowManager.getDefaultDisplay().getRotation();
+    }
+
+    @Override
+    public int getDensityDpi() {
+      return getDisplayMetrics().densityDpi;
+    }
+
+    @Override
+    public float getDensity() {
+      return getDisplayMetrics().density;
     }
   }
 
@@ -1587,6 +1642,11 @@ public class GeckoAppShell {
 
   @WrapForJNI(calledFrom = "any")
   public static int getAudioOutputFramesPerBuffer() {
+    if (BuildConfig.DEBUG_BUILD && isIsolatedProcess()) {
+      // AudioManager.getProperty won't return on isolated process
+      throw new UnsupportedOperationException(
+          "getAudioOutputFramesPerBuffer is not supported in isolated processes");
+    }
     final int DEFAULT = 512;
 
     final AudioManager am =
@@ -1603,6 +1663,11 @@ public class GeckoAppShell {
 
   @WrapForJNI(calledFrom = "any")
   public static int getAudioOutputSampleRate() {
+    if (BuildConfig.DEBUG_BUILD && isIsolatedProcess()) {
+      // AudioManager.getProperty won't return on isolated process
+      throw new UnsupportedOperationException(
+          "getAudioOutputSampleRate is not supported in isolated processes");
+    }
     final int DEFAULT = 44100;
 
     final AudioManager am =
@@ -1705,6 +1770,7 @@ public class GeckoAppShell {
   @WrapForJNI
   public static native boolean isInteractiveWidgetDefaultResizesVisual();
 
+  @WrapForJNI
   @SuppressLint("NewApi")
   public static boolean isIsolatedProcess() {
     // This method was added in SDK 16 but remained hidden until SDK 28, meaning we are okay to call

@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 import os
+import pathlib
 import shutil
 from collections import OrderedDict
 
@@ -99,8 +100,12 @@ def _make_artifacts(
         hg = command_context.substs["HG"]
 
     git = None
-    if conditions.is_git(command_context):
+    if conditions.is_git(command_context) or conditions.is_jj(command_context):
         git = command_context.substs["GIT"]
+
+    jj = None
+    if conditions.is_jj(command_context):
+        jj = command_context.substs["JJ"]
 
     # If we're building Thunderbird, we should be checking for comm-central artifacts.
     topsrcdir = command_context.substs.get("commtopsrcdir", command_context.topsrcdir)
@@ -125,6 +130,7 @@ def _make_artifacts(
         skip_cache=skip_cache,
         hg=hg,
         git=git,
+        jj=jj,
         topsrcdir=topsrcdir,
         download_tests=download_tests,
         download_symbols=download_symbols,
@@ -402,10 +408,10 @@ def artifact_toolchain(
         for b in from_build:
             user_value = b
 
-            if not b.startswith("toolchain-"):
-                b = f"toolchain-{b}"
-
             task = tasks.get(b)
+            if not task and not b.startswith("toolchain-"):
+                task = tasks.get(f"toolchain-{b}")
+
             if not task:
                 command_context.log(
                     logging.ERROR,
@@ -428,7 +434,7 @@ def artifact_toolchain(
                 )
                 return 1
 
-            artifact_name = task.attributes.get("toolchain-artifact")
+            artifact_name = task.attributes.get(f"{task.kind}-artifact")
             command_context.log(
                 logging.DEBUG,
                 "artifact",
@@ -629,5 +635,10 @@ def artifact_toolchain(
             {"data": json.dumps(perfherder_data)},
             "PERFHERDER_DATA: {data}",
         )
+        upload_dir = pathlib.Path(os.environ.get("UPLOAD_DIR"))
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        upload_path = upload_dir / "perfherder-data-artifact.json"
+        with upload_path.open("w", encoding="utf-8") as f:
+            json.dump(perfherder_data, f)
 
     return 0

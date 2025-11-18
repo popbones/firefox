@@ -6,10 +6,11 @@
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
-  AmpSuggestions: "resource:///modules/urlbar/private/AmpSuggestions.sys.mjs",
+  AmpSuggestions:
+    "moz-src:///browser/components/urlbar/private/AmpSuggestions.sys.mjs",
   ExperimentAPI: "resource://nimbus/ExperimentAPI.sys.mjs",
   NimbusTestUtils: "resource://testing-common/NimbusTestUtils.sys.mjs",
-  QuickSuggest: "resource:///modules/QuickSuggest.sys.mjs",
+  QuickSuggest: "moz-src:///browser/components/urlbar/QuickSuggest.sys.mjs",
   Region: "resource://gre/modules/Region.sys.mjs",
   RemoteSettingsServer:
     "resource://testing-common/RemoteSettingsServer.sys.mjs",
@@ -19,12 +20,16 @@ ChromeUtils.defineESModuleGetters(lazy, {
   Suggestion:
     "moz-src:///toolkit/components/uniffi-bindgen-gecko-js/components/generated/RustSuggest.sys.mjs",
   TestUtils: "resource://testing-common/TestUtils.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarUtils: "resource:///modules/UrlbarUtils.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
+  UrlbarUtils: "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs",
   YelpSubjectType:
     "moz-src:///toolkit/components/uniffi-bindgen-gecko-js/components/generated/RustSuggest.sys.mjs",
   setTimeout: "resource://gre/modules/Timer.sys.mjs",
 });
+
+/**
+ * @import {Assert} from "resource://testing-common/Assert.sys.mjs"
+ */
 
 let gTestScope;
 
@@ -98,10 +103,24 @@ const TEST_SCOPE_PROPERTIES = [
   "registerCleanupFunction",
 ];
 
+/** @typedef {() => Promise<void>} cleanupFunctionType */
+
 /**
  * Test utils for quick suggest.
  */
 class _QuickSuggestTestUtils {
+  /** @type {Assert} */
+  Assert = undefined;
+
+  /** @type {object} */
+  EventUtils = undefined;
+
+  /** @type {(message:string) => void} */
+  info = undefined;
+
+  /** @type {(cleanupFn: cleanupFunctionType) => void} */
+  registerCleanupFunction = undefined;
+
   /**
    * Initializes the utils.
    *
@@ -158,9 +177,9 @@ class _QuickSuggestTestUtils {
    * Sets up local remote settings and Merino servers, registers test
    * suggestions, and initializes Suggest.
    *
-   * @param {object} options
+   * @param {object} [options]
    *   Options object
-   * @param {Array} options.remoteSettingsRecords
+   * @param {Array} [options.remoteSettingsRecords]
    *   Array of remote settings records. Each item in this array should be a
    *   realistic remote settings record with some exceptions as noted below.
    *   For details see `RemoteSettingsServer.addRecords()`.
@@ -168,17 +187,17 @@ class _QuickSuggestTestUtils {
    *       and not its metadata. It should be a JSONable object.
    *     - `record.collection` - Optional. The name of the RS collection that
    *       the record should be added to. Defaults to "quicksuggest-other".
-   * @param {Array} options.merinoSuggestions
+   * @param {Array} [options.merinoSuggestions]
    *   Array of Merino suggestion objects. If given, this function will start
    *   the mock Merino server and set `quicksuggest.dataCollection.enabled` to
    *   true so that `UrlbarProviderQuickSuggest` will fetch suggestions from it.
    *   Otherwise Merino will not serve suggestions, but you can still set up
    *   Merino without using this function by using `MerinoTestUtils` directly.
-   * @param {object} options.config
+   * @param {object} [options.config]
    *   The Suggest configuration object. This should not be the full remote
    *   settings record; only pass the object that should be set to the nested
    *   `configuration` object inside the record.
-   * @param {Array} options.prefs
+   * @param {Array} [options.prefs]
    *   An array of Suggest-related prefs to set. This is useful because setting
    *   some prefs, like feature gates, can cause Suggest to sync from remote
    *   settings; this function will set them, wait for sync to finish, and clear
@@ -186,7 +205,7 @@ class _QuickSuggestTestUtils {
    *   itself be a two-element array `[prefName, prefValue]` similar to the
    *   `set` array passed to `SpecialPowers.pushPrefEnv()`, except here pref
    *   names are relative to `browser.urlbar`.
-   * @returns {Function}
+   * @returns {Promise<(() => void) | (() => Promise<void>)>}
    *   An async cleanup function. This function is automatically registered as a
    *   cleanup function, so you only need to call it if your test needs to clean
    *   up Suggest before it ends, for example if you have a small number of
@@ -312,9 +331,9 @@ class _QuickSuggestTestUtils {
    *
    * @param {Array} records
    *   Array of remote settings records. See `ensureQuickSuggestInit()`.
-   * @param {object} options
+   * @param {object} [options]
    *   Options object.
-   * @param {boolean} options.forceSync
+   * @param {boolean} [options.forceSync]
    *   Whether to force Suggest to sync after updating the records.
    */
   async setRemoteSettingsRecords(records, { forceSync = true } = {}) {
@@ -442,11 +461,14 @@ class _QuickSuggestTestUtils {
     blockId = 1,
     advertiser = "Amp",
     iabCategory = "22 - Shopping",
+    // Note that many callers use -1 here because they test without
+    // the search suggestion provider.
     suggestedIndex = 0,
     isSuggestedIndexRelativeToGroup = true,
     isBestMatch = false,
     requestId = undefined,
     descriptionL10n = { id: "urlbar-result-action-sponsored" },
+    categories = [],
   } = {}) {
     let result = {
       suggestedIndex,
@@ -492,6 +514,7 @@ class _QuickSuggestTestUtils {
         blockId,
         advertiser,
         iabCategory,
+        categories,
         impressionUrl,
         clickUrl,
         rawClickUrl: clickUrl,
@@ -892,10 +915,10 @@ class _QuickSuggestTestUtils {
     setUtmParams = true,
   }) {
     if (setUtmParams) {
-      url = new URL(url);
-      url.searchParams.set("utm_medium", "firefox-desktop");
-      url.searchParams.set("utm_source", "firefox-suggest");
-      url = url.href;
+      let parsedUrl = new URL(url);
+      parsedUrl.searchParams.set("utm_medium", "firefox-desktop");
+      parsedUrl.searchParams.set("utm_source", "firefox-suggest");
+      url = parsedUrl.href;
     }
 
     let result = {
@@ -998,7 +1021,8 @@ class _QuickSuggestTestUtils {
     provider = "Yelp",
     isTopPick = false,
     // The default Yelp suggestedIndex is 0, unlike most other Suggest
-    // suggestion types, which use -1.
+    // suggestion types, which use -1. Note that many callers still use
+    // -1 here because they test without the search suggestion provider.
     suggestedIndex = 0,
     isSuggestedIndexRelativeToGroup = true,
     originalUrl = undefined,
@@ -1130,7 +1154,7 @@ class _QuickSuggestTestUtils {
   /**
    * Asserts a result is a quick suggest result.
    *
-   * @param {object} [options]
+   * @param {object} options
    *   The options object.
    * @param {string} options.url
    *   The expected URL. At least one of `url` and `originalUrl` must be given.
@@ -1151,7 +1175,7 @@ class _QuickSuggestTestUtils {
    * @param {boolean} [options.hasSponsoredLabel]
    *   Whether the result is expected to show the "Sponsored" label below the
    *   title.
-   * @returns {result}
+   * @returns {Promise<object>}
    *   The quick suggest result.
    */
   async assertIsQuickSuggest({
@@ -1163,7 +1187,7 @@ class _QuickSuggestTestUtils {
     isBestMatch = false,
     isManageable = true,
     hasSponsoredLabel = isSponsored || isBestMatch,
-  } = {}) {
+  }) {
     this.Assert.ok(
       url || originalUrl,
       "At least one of url and originalUrl is specified"
@@ -1251,7 +1275,7 @@ class _QuickSuggestTestUtils {
     }
 
     this.Assert.ok(
-      row._buttons.get("menu"),
+      row._buttons.get("result-menu"),
       "The menu button should be present"
     );
 
@@ -1365,8 +1389,8 @@ class _QuickSuggestTestUtils {
    *   Options for the mock experiment.
    * @param {Function} options.callback
    *   The callback to call while enrolled in the mock experiment.
-   * @param {object} options.options
-   *   See {@link enrollExperiment}.
+   * @param {object} options.valueOverrides
+   *   Values for feature variables.
    */
   async withExperiment({ callback, ...options }) {
     let doExperimentCleanup = await this.enrollExperiment(options);

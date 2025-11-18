@@ -2,13 +2,17 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 import { BackupResource } from "resource:///modules/backup/BackupResource.sys.mjs";
 
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
+  ExperimentAPI: "resource://nimbus/ExperimentAPI.sys.mjs",
   SearchUtils: "moz-src:///toolkit/components/search/SearchUtils.sys.mjs",
 });
+
+const PROFILE_RESTORATION_DATE_PREF = "browser.backup.profile-restoration-date";
 
 /**
  * Class representing files that modify preferences and permissions within a user profile.
@@ -20,6 +24,39 @@ export class PreferencesBackupResource extends BackupResource {
 
   static get requiresEncryption() {
     return false;
+  }
+
+  /**
+   * Adds prefs to the override map that are currently set but should not be
+   * included in the backup.  Override them with null values to prevent
+   * serialization.
+   *
+   * @param {nsIPrefOverrideMap} prefsOverrideMap
+   * @returns {nsIPrefOverrideMap} prefsOverrideMap with ignored prefs added
+   */
+  static addPrefsToIgnoreInBackup(prefsOverrideMap) {
+    // List of prefs we never backup.
+    const kIgnoredPrefs = [
+      "app.normandy.user_id",
+      "toolkit.telemetry.cachedProfileGroupID",
+      PROFILE_RESTORATION_DATE_PREF,
+    ];
+
+    // Prefs with this prefix are always overriden.
+    const kNimbusMetadataPrefPrefix = "nimbus.";
+
+    for (const pref of kIgnoredPrefs) {
+      if (Services.prefs.getPrefType(pref) !== Services.prefs.PREF_INVALID) {
+        prefsOverrideMap.addEntry(pref, null);
+      }
+    }
+
+    const nimbusPrefs = Services.prefs.getChildList(kNimbusMetadataPrefPrefix);
+    for (const pref of nimbusPrefs) {
+      prefsOverrideMap.addEntry(pref, null);
+    }
+
+    return prefsOverrideMap;
   }
 
   async backup(
@@ -52,7 +89,14 @@ export class PreferencesBackupResource extends BackupResource {
     // current prefs state to disk off of the main thread.
     let prefsDestPath = PathUtils.join(stagingPath, "prefs.js");
     let prefsDestFile = await IOUtils.getFile(prefsDestPath);
-    await Services.prefs.backupPrefFile(prefsDestFile);
+    await lazy.ExperimentAPI._rsLoader.withUpdateLock(async () => {
+      await Services.prefs.backupPrefFile(
+        prefsDestFile,
+        PreferencesBackupResource.addPrefsToIgnoreInBackup(
+          lazy.ExperimentAPI.manager.store.getOriginalPrefValuesForAllActiveEnrollments()
+        )
+      );
+    });
 
     // During recovery, we need to recompute verification hashes for any
     // custom engines, but only for engines that were originally passing
@@ -151,6 +195,20 @@ export class PreferencesBackupResource extends BackupResource {
       simpleCopyFiles
     );
 
+    // Append browser.backup.scheduled.last-backup-file to prefs.js with the
+    // current timestamp.
+    const LINEBREAK = AppConstants.platform === "win" ? "\r\n" : "\n";
+    let prefsFile = await IOUtils.getFile(destProfilePath);
+    prefsFile.append("prefs.js");
+    // We should always have recovered a prefs.js but, if we didn't for any
+    // reason, we can still write the timestamp.  Since we are creating the
+    // prefs.js file, we need to add the preamble.
+    const includePreamble = !(await IOUtils.exists(prefsFile.path));
+    let addToPrefsJs = includePreamble ? Services.prefs.prefsJsPreamble : "";
+    addToPrefsJs += `user_pref("${PROFILE_RESTORATION_DATE_PREF}", ${Math.round(Date.now() / 1000)});${LINEBREAK}`;
+    await IOUtils.writeUTF8(prefsFile.path, addToPrefsJs, {
+      mode: "appendOrCreate",
+    });
     return null;
   }
 

@@ -231,7 +231,9 @@ void GfxInfo::GetData() {
   bool error = !ManageChildProcess("glxtest", &sGLXTestPID, &sGLXTestPipe,
                                    GFX_TEST_TIMEOUT, &glxData);
   if (error) {
-    gfxCriticalNote << "glxtest: ManageChildProcess failed\n";
+    gfxCriticalNote
+        << "Failed to get GPU info from glxtest. Fallback to SW rendering! Run "
+           "with MOZ_GFX_DEBUG=1 env variable to get further info.\n";
   }
 
   nsCString glVendor;
@@ -1051,6 +1053,14 @@ const nsTArray<RefPtr<GfxDriverInfo>>& GfxInfo::GetGfxDriverInfo() {
         nsIGfxInfo::FEATURE_DMABUF, nsIGfxInfo::FEATURE_BLOCKED_DEVICE,
         DRIVER_LESS_THAN, V(545, 23, 6, 0), "FEATURE_FAILURE_BUG_1788573", "");
 
+    // Disabled due to high volume crash tracked in bug 1978911, fixed in the
+    // 575 driver.
+    APPEND_TO_DRIVER_BLOCKLIST_EXT(
+        OperatingSystem::Linux, ScreenSizeStatus::All, BatteryStatus::All,
+        WindowProtocol::All, DriverVendor::NonMesaAll, DeviceFamily::NvidiaAll,
+        nsIGfxInfo::FEATURE_DMABUF, nsIGfxInfo::FEATURE_BLOCKED_DEVICE,
+        DRIVER_LESS_THAN, V(575, 64, 5, 0), "FEATURE_FAILURE_BUG_1978911", "");
+
     // Disabled due to high volume crash tracked in bug 1913778. It appears that
     // only this version of the driver is affected.
     APPEND_TO_DRIVER_BLOCKLIST_EXT(
@@ -1077,12 +1087,31 @@ const nsTArray<RefPtr<GfxDriverInfo>>& GfxInfo::GetGfxDriverInfo() {
     // FEATURE_DMABUF_WEBGL
     // Disabled due to DMABuf rendering/correctness with WebGL on Nvidia driver,
     // tracked in bug 1924578.
+#ifdef NIGHTLY_BUILD
+    // Block all but the most recent drivers for NVIDIA legacy devices.
+    APPEND_TO_DRIVER_BLOCKLIST_EXT(
+        OperatingSystem::Linux, ScreenSizeStatus::All, BatteryStatus::All,
+        WindowProtocol::All, DriverVendor::NonMesaAll, DeviceFamily::NvidiaAll,
+        nsIGfxInfo::FEATURE_DMABUF_WEBGL, nsIGfxInfo::FEATURE_BLOCKED_DEVICE,
+        DRIVER_LESS_THAN, V(470, 256, 2, 0), "FEATURE_FAILURE_BUG_1981326",
+        "NVIDIA 470.256.02 / 580.76.05");
+
+    // Block all but the most recent drivers for NVIDIA supported devices.
+    APPEND_TO_DRIVER_BLOCKLIST_RANGE_EXT(
+        OperatingSystem::Linux, ScreenSizeStatus::All, BatteryStatus::All,
+        WindowProtocol::All, DriverVendor::NonMesaAll, DeviceFamily::NvidiaAll,
+        nsIGfxInfo::FEATURE_DMABUF_WEBGL,
+        nsIGfxInfo::FEATURE_BLOCKED_DRIVER_VERSION,
+        DRIVER_BETWEEN_INCLUSIVE_START, V(471, 0, 0, 0), V(580, 76, 5, 0),
+        "FEATURE_FAILURE_BUG_1981326", "NVIDIA 470.256.02 / 580.76.05");
+#else
     APPEND_TO_DRIVER_BLOCKLIST_EXT(
         OperatingSystem::Linux, ScreenSizeStatus::All, BatteryStatus::All,
         WindowProtocol::All, DriverVendor::NonMesaAll, DeviceFamily::NvidiaAll,
         nsIGfxInfo::FEATURE_DMABUF_WEBGL, nsIGfxInfo::FEATURE_BLOCKED_DEVICE,
         DRIVER_COMPARISON_IGNORED, V(0, 0, 0, 0), "FEATURE_FAILURE_BUG_1924578",
         "");
+#endif
 
     ////////////////////////////////////
     // FEATURE_HARDWARE_VIDEO_DECODING
@@ -1159,6 +1188,15 @@ const nsTArray<RefPtr<GfxDriverInfo>>& GfxInfo::GetGfxDriverInfo() {
         nsIGfxInfo::FEATURE_BLOCKED_DRIVER_VERSION, DRIVER_LESS_THAN,
         V(21, 0, 0, 0), "FEATURE_FAILURE_WEBRENDER_PARTIAL_PRESENT_BUG_1677892",
         "Mesa 21.0.0.0");
+
+    ////////////////////////////////////
+    // FEATURE_WEBGPU
+    APPEND_TO_DRIVER_BLOCKLIST_EXT(
+        OperatingSystem::Linux, ScreenSizeStatus::All, BatteryStatus::All,
+        WindowProtocol::All, DriverVendor::MesaAll, DeviceFamily::All,
+        nsIGfxInfo::FEATURE_WEBGPU, nsIGfxInfo::FEATURE_BLOCKED_DRIVER_VERSION,
+        DRIVER_LESS_THAN, V(25, 0, 4, 0),
+        "FEATURE_FAILURE_WEBGPU_MESA_BUG_1979007", "Mesa 25.0.4");
 
     ////////////////////////////////////
 

@@ -560,7 +560,7 @@ void Theme::PaintCircleShadow(WebRenderBackendData& aWrData,
   const LayoutDeviceCoord stdDev = aShadowBlurStdDev * aDpiRatio;
   const LayoutDevicePoint shadowOffset = aShadowOffset * aDpiRatio;
   const IntSize inflation =
-      gfxAlphaBoxBlur::CalculateBlurRadius(gfxPoint(stdDev, stdDev));
+      gfxGaussianBlur::CalculateBlurRadius(gfxPoint(stdDev, stdDev));
   LayoutDeviceRect shadowRect = aBoxRect;
   shadowRect.MoveBy(shadowOffset);
   shadowRect.Inflate(inflation.width, inflation.height);
@@ -592,7 +592,7 @@ void Theme::PaintCircleShadow(DrawTarget& aDrawTarget,
   blurFilter->SetAttribute(ATT_GAUSSIAN_BLUR_STD_DEVIATION, stdDev);
 
   IntSize inflation =
-      gfxAlphaBoxBlur::CalculateBlurRadius(gfxPoint(stdDev, stdDev));
+      gfxGaussianBlur::CalculateBlurRadius(gfxPoint(stdDev, stdDev));
   Rect inflatedRect = aBoxRect.ToUnknownRect();
   inflatedRect.Inflate(inflation.width, inflation.height);
   Rect sourceRectInFilterSpace =
@@ -601,6 +601,9 @@ void Theme::PaintCircleShadow(DrawTarget& aDrawTarget,
 
   IntSize dtSize = RoundedToInt(aBoxRect.Size().ToUnknownSize());
   if (dtSize.IsEmpty()) {
+    return;
+  }
+  if (!aDrawTarget.CanCreateSimilarDrawTarget(dtSize, SurfaceFormat::A8)) {
     return;
   }
   RefPtr<DrawTarget> ellipseDT = aDrawTarget.CreateSimilarDrawTargetForFilter(
@@ -1291,7 +1294,7 @@ void Theme::PaintAutoStyleOutline(nsIFrame* aFrame,
 
   LayoutDeviceRect rect(aRect);
   auto devOffset = LayoutDevicePixel::FromAppUnits(cssOffset, a2d);
-  nscoord cssRadii[8] = {0};
+  nsRectCornerRadii cssRadii;
   if (!aFrame->GetBorderRadii(cssRadii)) {
     // The goal of this code is getting a 0px inner radius, but 2px outer
     // radius.
@@ -1301,9 +1304,7 @@ void Theme::PaintAutoStyleOutline(nsIFrame* aFrame,
     auto twoDevPixels = CSSCoord(2) * aDpiRatio;
     rect.Inflate(devOffset + twoDevPixels);
     devOffset = -twoDevPixels;
-    for (auto& r : cssRadii) {
-      r = radius;
-    }
+    cssRadii = nsRectCornerRadii(radius);
   }
 
   RectCornerRadii innerRadii;
@@ -1344,9 +1345,11 @@ void Theme::PaintAutoStyleOutline(
   auto DrawRect = [&](const sRGBColor& aColor) {
     RectCornerRadii outerRadii;
     if constexpr (std::is_same_v<PaintBackendData, WebRenderBackendData>) {
-      const Float widths[4] = {strokeWidth + aOffset, strokeWidth + aOffset,
-                               strokeWidth + aOffset, strokeWidth + aOffset};
-      nsCSSBorderRenderer::ComputeOuterRadii(aInnerRadii, widths, &outerRadii);
+      const LayoutDeviceMargin widths(
+          strokeWidth + aOffset, strokeWidth + aOffset, strokeWidth + aOffset,
+          strokeWidth + aOffset);
+      nsCSSBorderRenderer::ComputeOuterRadii(
+          aInnerRadii, widths.ToUnknownMargin(), &outerRadii);
       const auto dest = wr::ToLayoutRect(rect);
       const auto side =
           wr::ToBorderSide(ToDeviceColor(aColor), StyleBorderStyle::Solid);
@@ -1359,9 +1362,10 @@ void Theme::PaintAutoStyleOutline(
                                      {sides, 4}, wrRadius);
     } else {
       const LayoutDeviceCoord halfWidth = strokeWidth * 0.5f;
-      const Float widths[4] = {halfWidth + aOffset, halfWidth + aOffset,
-                               halfWidth + aOffset, halfWidth + aOffset};
-      nsCSSBorderRenderer::ComputeOuterRadii(aInnerRadii, widths, &outerRadii);
+      const LayoutDeviceMargin widths(halfWidth + aOffset, halfWidth + aOffset,
+                                      halfWidth + aOffset, halfWidth + aOffset);
+      nsCSSBorderRenderer::ComputeOuterRadii(
+          aInnerRadii, widths.ToUnknownMargin(), &outerRadii);
       LayoutDeviceRect dest(rect);
       dest.Deflate(halfWidth);
       RefPtr<Path> path =

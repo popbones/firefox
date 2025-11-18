@@ -643,6 +643,10 @@ Section "-Application" APP_IDX
     SetShellVarContext current
   ${EndIf}
 
+!ifdef DESKTOP_LAUNCHER_ENABLED
+  ; Entry point for installing launcher when Firefox is being installed
+  Call OnInstallDesktopLauncherHandler
+!else
   ${If} $AddDesktopSC == 1
     ${If} ${FileExists} "$DESKTOP\${BrandFullName}.lnk"
       ShellLink::GetShortCutTarget "$DESKTOP\${BrandFullName}.lnk"
@@ -669,6 +673,7 @@ Section "-Application" APP_IDX
       ${EndIf}
     ${EndIf}
   ${EndIf}
+!endif
 
 !ifdef MOZ_OPTIONAL_EXTENSIONS
   ${If} ${FileExists} "$INSTDIR\distribution\optional-extensions"

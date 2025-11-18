@@ -378,7 +378,7 @@
         );
       }
 
-      let submission = engine.getSubmission(aData, null, "searchbar");
+      let submission = engine.getSubmission(aData, null);
 
       // If we hit here, we come either from a one-off, a plain search or a suggestion.
       const details = {
@@ -577,6 +577,8 @@
           // If the input field is still focused then a different window has
           // received focus, ignore the next focus event.
           this._ignoreFocus = document.activeElement == this._textbox;
+
+          this.textbox.mController.resetSession();
         },
         true
       );
@@ -785,8 +787,7 @@
         let searchIcon = document.querySelector(".searchbar-search-button");
         searchIcon.setAttribute("aria-expanded", popup.popupOpen);
         if (popup.popupOpen) {
-          let suggestionsHidden =
-            popup.richlistbox.getAttribute("collapsed") == "true";
+          let suggestionsHidden = popup.richlistbox.hasAttribute("collapsed");
           let numItems = suggestionsHidden ? 0 : popup.matchCount;
           return popup.oneOffButtons.handleKeyDown(aEvent, numItems, true);
         } else if (aEvent.keyCode == KeyEvent.DOM_VK_ESCAPE) {

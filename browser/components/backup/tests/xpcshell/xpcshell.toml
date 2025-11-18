@@ -1,4 +1,5 @@
 [DEFAULT]
+run-if = ["os != 'android'"]
 head = "head.js"
 firefox-appdir = "browser"
 prefs = [
@@ -33,6 +34,10 @@ support-files = [
 
 ["test_BackupService_finalizeSingleFileArchive.js"]
 
+["test_BackupService_onedrive.js"]
+run-if = ["os == 'win'"]
+run-sequentially = "Mock Windows registry interferes with normal operations"
+
 ["test_BackupService_recoverFromSnapshotFolder.js"]
 
 ["test_BackupService_regeneration.js"]
@@ -42,6 +47,8 @@ support-files = [
 ["test_BackupService_resolveArchiveDestFolderPath.js"]
 
 ["test_BackupService_resolveDownloadLink.js"]
+
+["test_BackupService_retryHeuristic.js"]
 
 ["test_BackupService_scheduler.js"]
 
@@ -63,6 +70,10 @@ support-files = [
 
 ["test_PreferencesBackupResource.js"]
 
+["test_PreferencesBackupResource_Nimbus.js"]
+
 ["test_PreferencesBackupResource_searchEngines.js"]
 
 ["test_SessionStoreBackupResource.js"]
+
+["test_backupService_findBackupsInWellKnownLocations.js"]

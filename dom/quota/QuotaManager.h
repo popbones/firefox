@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <utility>
+
 #include "Client.h"
 #include "ErrorList.h"
 #include "mozilla/AlreadyAddRefed.h"
@@ -34,12 +35,12 @@
 #include "mozilla/dom/quota/PersistenceType.h"
 #include "nsCOMPtr.h"
 #include "nsClassHashtable.h"
-#include "nsTHashMap.h"
 #include "nsDebug.h"
 #include "nsHashKeys.h"
 #include "nsISupports.h"
 #include "nsStringFwd.h"
 #include "nsTArray.h"
+#include "nsTHashMap.h"
 #include "nsTStringRepr.h"
 #include "nscore.h"
 #include "prenv.h"
@@ -302,6 +303,9 @@ class QuotaManager final : public BackgroundThreadObject {
 
   Result<FullOriginMetadata, nsresult> LoadFullOriginMetadataWithRestore(
       nsIFile* aDirectory);
+
+  Result<std::pair<FullOriginMetadata, bool /* restore status */>, nsresult>
+  LoadFullOriginMetadataWithRestoreAndStatus(nsIFile* aDirectory);
 
   Result<OriginMetadata, nsresult> GetOriginMetadata(nsIFile* aDirectory);
 
@@ -856,9 +860,13 @@ class QuotaManager final : public BackgroundThreadObject {
 
   OriginInfosNestedTraversable GetOriginInfosExceedingGlobalLimit() const;
 
+  OriginInfosNestedTraversable GetOriginInfosWithZeroUsage() const;
+
   void ClearOrigins(const OriginInfosNestedTraversable& aDoomedOriginInfos);
 
   void CleanupTemporaryStorage();
+
+  void RecordTemporaryStorageMetrics();
 
   void DeleteOriginDirectory(const OriginMetadata& aOriginMetadata);
 
@@ -1049,8 +1057,21 @@ class QuotaManager final : public BackgroundThreadObject {
    */
   void IncreaseSaveOriginAccessTimeCountInternal();
 
+  // XXX These insertion helpers probably belong to GroupInfoPair
+  template <typename Iterator, typename Pred>
+  static void MaybeInsertOriginInfos(
+      Iterator aDest, const RefPtr<GroupInfo>& aTemporaryGroupInfo,
+      const RefPtr<GroupInfo>& aDefaultGroupInfo,
+      const RefPtr<GroupInfo>& aPrivateGroupInfo, Pred aPred);
+
   template <typename Iterator>
   static void MaybeInsertNonPersistedOriginInfos(
+      Iterator aDest, const RefPtr<GroupInfo>& aTemporaryGroupInfo,
+      const RefPtr<GroupInfo>& aDefaultGroupInfo,
+      const RefPtr<GroupInfo>& aPrivateGroupInfo);
+
+  template <typename Iterator>
+  static void MaybeInsertNonPersistedZeroUsageOriginInfos(
       Iterator aDest, const RefPtr<GroupInfo>& aTemporaryGroupInfo,
       const RefPtr<GroupInfo>& aDefaultGroupInfo,
       const RefPtr<GroupInfo>& aPrivateGroupInfo);

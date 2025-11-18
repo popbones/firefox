@@ -88,10 +88,10 @@ class SettingsHTTPSOnlyModeTest : TestSetup() {
             exitMenu()
         }
         navigationToolbar {
-        }.enterURLAndEnterToBrowser(httpPageUrl.toUri()) {
-            verifyPageContent("Example Domain")
+        }.enterURLAndEnterToBrowser(secondHttpPageUrl.toUri()) {
+            verifyPageContent("permission.site")
         }.openNavigationToolbar {
-            verifyUrl(httpsPageUrl)
+            verifyUrl(secondHttpsPageUrl)
         }.enterURLAndEnterToBrowser(insecureHttpPage.toUri()) {
             verifyPageContent(httpsOnlyErrorTitle)
             verifyPageContent(httpsOnlyErrorMessage)
@@ -103,7 +103,7 @@ class SettingsHTTPSOnlyModeTest : TestSetup() {
             if (itemContainingText(httpsOnlyBackButton).waitForExists(waitingTimeShort)) {
                 clickPageObject(itemContainingText(httpsOnlyBackButton))
             }
-            verifyPageContent("Example Domain")
+            verifyPageContent("permission.site")
         }.openNavigationToolbar {
         }.enterURLAndEnterToBrowser(insecureHttpPage.toUri()) {
             clickPageObject(itemContainingText(httpsOnlyContinueButton))
@@ -197,10 +197,10 @@ class SettingsHTTPSOnlyModeTest : TestSetup() {
             exitMenu()
         }
         navigationToolbar {
-        }.enterURLAndEnterToBrowser(httpPageUrl.toUri()) {
-            verifyPageContent("Example Domain")
+        }.enterURLAndEnterToBrowser(secondHttpPageUrl.toUri()) {
+            verifyPageContent("permission.site")
         }.openNavigationToolbar {
-            verifyUrl(httpsPageUrl)
+            verifyUrl(secondHttpsPageUrl)
         }.enterURLAndEnterToBrowser(insecureHttpPage.toUri()) {
             verifyPageContent(httpsOnlyErrorTitle)
             verifyPageContent(httpsOnlyErrorMessage)
@@ -212,7 +212,7 @@ class SettingsHTTPSOnlyModeTest : TestSetup() {
             if (itemContainingText(httpsOnlyBackButton).waitForExists(waitingTimeShort)) {
                 clickPageObject(itemContainingText(httpsOnlyBackButton))
             }
-            verifyPageContent("Example Domain")
+            verifyPageContent("permission.site")
         }.openNavigationToolbar {
         }.goBackToBrowserScreen {
         }.openThreeDotMenu {

@@ -14,9 +14,12 @@
   <html:h1 data-l10n-id="privacy-header"/>
 </hbox>
 
+
+
 <!-- Tracking / Content Blocking -->
 <groupbox id="trackingGroup" data-category="panePrivacy" hidden="true" aria-describedby="contentBlockingDescription" class="highlighting-group">
   <label id="contentBlockingHeader"><html:h2 data-l10n-id="content-blocking-enhanced-tracking-protection"/></label>
+  <html:setting-group groupid="securityPrivacyStatus"/>
   <vbox data-subcategory="trackingprotection">
     <hbox align="start">
       <image id="trackingProtectionShield"/>
@@ -101,7 +104,7 @@
                   <label class="content-blocking-label" data-l10n-id="content-blocking-all-cross-site-cookies-private-windows"/>
                 </hbox>
                 <hbox class="extra-information-label third-party-tracking-cookies-plus-isolate-option" hidden="true">
-                  <label class="content-blocking-label" data-l10n-id="content-blocking-cross-site-tracking-cookies-plus-isolate"/>
+                  <label class="content-blocking-label" data-l10n-id="content-blocking-isolate-cross-site-cookies"/>
                 </hbox>
                 <hbox class="extra-information-label pb-trackers-option" hidden="true">
                   <label class="content-blocking-label" data-l10n-id="content-blocking-private-windows"/>
@@ -197,7 +200,7 @@
                   <label class="content-blocking-label" data-l10n-id="content-blocking-unvisited-cookies"/>
                 </hbox>
                 <hbox class="extra-information-label third-party-tracking-cookies-plus-isolate-option" hidden="true">
-                  <label class="content-blocking-label" data-l10n-id="content-blocking-cross-site-tracking-cookies-plus-isolate"/>
+                  <label class="content-blocking-label" data-l10n-id="content-blocking-isolate-cross-site-cookies"/>
                 </hbox>
                 <hbox class="extra-information-label cryptominers-option" hidden="true">
                   <label class="content-blocking-label" data-l10n-id="content-blocking-cryptominers"/>
@@ -206,13 +209,31 @@
                   <label class="content-blocking-label" data-l10n-id="content-blocking-known-and-suspected-fingerprinters"/>
                 </hbox>
               </vbox>
+            </vbox>
+          </vbox>
+          <vbox class="privacy-extra-information">
+            <vbox class="content-blocking-exceptions">
+              <html:moz-checkbox id="contentBlockingBaselineExceptionsStrict"
+                                  class="content-blocking-checkbox"
+                                  flex="1"
+                                  data-l10n-id="content-blocking-baseline-exceptions-3"
+                                  preference="privacy.trackingprotection.allow_list.baseline.enabled"
+                                  support-page="manage-enhanced-tracking-protection-exceptions">
+                <html:moz-checkbox id="contentBlockingConvenienceExceptionsStrict"
+                                    slot="nested"
+                                    class="content-blocking-checkbox"
+                                    flex="1"
+                                    data-l10n-id="content-blocking-convenience-exceptions-3"
+                                    preference="privacy.trackingprotection.allow_list.convenience.enabled"/>
+              </html:moz-checkbox>
+            </vbox>
               <html:div class="content-blocking-warning info-box-container reload-tabs" hidden="true">
                 <html:div class="content-blocking-reload-desc-container">
                   <html:div class="info-icon-container">
                     <html:img class="info-icon"/>
                   </html:div>
                   <html:span data-l10n-id="content-blocking-reload-description"
-                             class="content-blocking-reload-description" />
+                              class="content-blocking-reload-description" />
                 </html:div>
                 <button class="accessory-button reload-tabs-button primary"
                         is="highlightable-button"
@@ -221,17 +242,16 @@
               <vbox class="content-blocking-warning info-box-container">
                 <hbox>
                   <image class="content-blocking-warning-image"/>
-                  <label class="content-blocking-warning-title" data-l10n-id="content-blocking-warning-title"/>
+                  <label class="content-blocking-warning-title" data-l10n-id="content-blocking-warning-title-2"/>
                 </hbox>
-                <description class="indent">
-                  <html:span class="content-blocking-warning-description" data-l10n-id="content-blocking-and-isolating-etp-warning-description-2"></html:span>
-                  <html:a is="moz-support-link"
-                          class="learnMore"
-                          data-l10n-id="content-blocking-warning-learn-how"
-                          support-page="turn-off-etp-desktop"
-                  />
-                </description>
-              </vbox>
+              <description>
+                <html:span class="content-blocking-warning-description" data-l10n-id="content-blocking-and-isolating-etp-warning-description-4"></html:span>
+                <html:a is="moz-support-link"
+                        class="learnMore"
+                        data-l10n-id="content-blocking-warning-learn-how"
+                        support-page="turn-off-etp-desktop"
+                />
+              </description>
             </vbox>
           </vbox>
         </vbox>
@@ -262,7 +282,7 @@
                               preference="network.cookie.cookieBehavior">
                       <menupopup>
                         <menuitem id="blockCookiesSocialMedia" data-l10n-id="sitedata-option-block-cross-site-trackers" value="trackers"/>
-                        <menuitem id="isolateCookiesSocialMedia" data-l10n-id="sitedata-option-block-cross-site-cookies" value="trackers-plus-isolate"/>
+                        <menuitem id="isolateCookiesSocialMedia" data-l10n-id="sitedata-option-block-cross-site-cookies2" value="trackers-plus-isolate"/>
                         <menuitem data-l10n-id="sitedata-option-block-unvisited" value="unvisited"/>
                         <menuitem data-l10n-id="sitedata-option-block-all-cross-site-cookies" value="all-third-parties"/>
                         <menuitem data-l10n-id="sitedata-option-block-all" value="always"/>
@@ -320,6 +340,24 @@
                       </menulist>
                     </vbox>
                   </hbox>
+            </vbox>
+          </vbox>
+          <vbox class="privacy-extra-information">
+              <vbox class="content-blocking-exceptions">
+                <html:moz-checkbox id="contentBlockingBaselineExceptionsCustom"
+                                   class="content-blocking-checkbox"
+                                   flex="1"
+                                   data-l10n-id="content-blocking-baseline-exceptions-3"
+                                   preference="privacy.trackingprotection.allow_list.baseline.enabled"
+                                   support-page="manage-enhanced-tracking-protection-exceptions">
+                  <html:moz-checkbox id="contentBlockingConvenienceExceptionsCustom"
+                                     slot="nested"
+                                     class="content-blocking-checkbox"
+                                     flex="1"
+                                     data-l10n-id="content-blocking-convenience-exceptions-3"
+                                     preference="privacy.trackingprotection.allow_list.convenience.enabled"/>
+                </html:moz-checkbox>
+              </vbox>
               <html:div class="content-blocking-warning info-box-container reload-tabs" hidden="true">
                 <html:div class="content-blocking-reload-desc-container">
                   <html:div class="info-icon-container">
@@ -335,10 +373,10 @@
               <vbox class="content-blocking-warning info-box-container">
                 <hbox>
                   <image class="content-blocking-warning-image"/>
-                  <label class="content-blocking-warning-title" data-l10n-id="content-blocking-warning-title"/>
+                  <label class="content-blocking-warning-title" data-l10n-id="content-blocking-warning-title-custom"/>
                 </hbox>
-                <description class="indent">
-                  <html:span class="content-blocking-warning-description" data-l10n-id="content-blocking-and-isolating-etp-warning-description-2"></html:span>
+                <description>
+                  <html:span class="content-blocking-warning-description" data-l10n-id="content-blocking-and-isolating-etp-warning-description-4"></html:span>
                   <html:a is="moz-support-link"
                           class="learnMore"
                           data-l10n-id="content-blocking-warning-learn-how"
@@ -346,7 +384,6 @@
                   />
                 </description>
               </vbox>
-            </vbox>
           </vbox>
         </vbox>
       </radiogroup>
@@ -355,24 +392,7 @@
 </groupbox>
 <groupbox id="nonTechnicalPrivacyGroup" data-category="panePrivacy" hidden="true">
   <label id="nonTechnicalPrivacyHeader"><html:h2 data-l10n-id="non-technical-privacy-header"/></label>
-  <vbox id="nonTechnicalPrivacyBox">
-    <hbox id="globalPrivacyControlBox" flex="1" align="center">
-      <checkbox id="globalPrivacyControlCheckbox"
-              class="tail-with-learn-more"
-              preference="privacy.globalprivacycontrol.enabled"
-              data-l10n-id="global-privacy-control-description"
-              search-l10n-ids="global-privacy-control-search" />
-      <html:a is="moz-support-link"
-          id="globalPrivacyControlLearnMoreLink"
-          support-page="global-privacy-control" />
-    </hbox>
-    <hbox id="doNotTrackBox" flex="1" align="center" hidden="true">
-      <html:a is="moz-support-link"
-          id="doNotTrackRemoval"
-          support-page="how-do-i-turn-do-not-track-feature"
-          data-l10n-id="do-not-track-removal" />
-    </hbox>
-  </vbox>
+  <html:setting-group groupid="nonTechnicalPrivacy"/>
 </groupbox>
 
 <!-- Site Data -->
@@ -590,7 +610,12 @@
      after the form autofill extension has initialized. -->
 <groupbox id="formAutofillGroupBox"
           data-category="panePrivacy"
-          data-subcategory="form-autofill" hidden="true"></groupbox>
+          data-subcategory="form-autofill" hidden="true">
+  <label><html:h2 data-l10n-id="autofill-payment-methods-title"/></label>
+  <html:setting-group data-subcategory="credit-card-autofill" groupid="payments"/>
+  <label><html:h2 data-l10n-id="autofill-addresses-title"/></label>
+  <html:setting-group data-subcategory="address-autofill" groupid="addresses"/>
+</groupbox>
 
 <!-- History -->
 <groupbox id="historyGroup" data-category="panePrivacy" hidden="true">
@@ -741,6 +766,48 @@
       </hbox>
     </hbox>
 
+     <hbox id="localHostSettingsRow" align="center" role="group" aria-labelledby="localHostPermissionsLabel">
+      <hbox flex="1">
+        <image class="localhost-icon permission-icon" />
+        <label id="localHostPermissionsLabel" data-l10n-id="permissions-localhost"/>
+      </hbox>
+      <hbox pack="end">
+        <button id="localHostSettingsButton"
+                is="highlightable-button"
+                class="accessory-button"
+                data-l10n-id="permissions-localhost-settings"
+                search-l10n-ids="
+                  permissions-remove.label,
+                  permissions-remove-all.label,
+                  permissions-site-localhost-window.title,
+                  permissions-site-localhost-desc,
+                  permissions-site-localhost-disable-label,
+                  permissions-site-localhost-disable-desc,
+                " />
+      </hbox>
+    </hbox>
+
+    <hbox id="localNetworkSettingsRow" align="center" role="group" aria-labelledby="localNetworkPermissionsLabel">
+      <hbox flex="1">
+        <image class="local-network-icon permission-icon" />
+        <label id="localNetworkPermissionsLabel" data-l10n-id="permissions-local-network"/>
+      </hbox>
+      <hbox pack="end">
+        <button id="localNetworkSettingsButton"
+                is="highlightable-button"
+                class="accessory-button"
+                data-l10n-id="permissions-local-network-settings"
+                search-l10n-ids="
+                  permissions-remove.label,
+                  permissions-remove-all.label,
+                  permissions-site-local-network-window.title,
+                  permissions-site-local-network-desc,
+                  permissions-site-local-network-disable-label,
+                  permissions-site-local-network-disable-desc,
+                " />
+      </hbox>
+    </hbox>
+
     <hbox id="microphoneSettingsRow" align="center" role="group" aria-labelledby="microphonePermissionsLabel">
       <hbox flex="1">
         <image class="microphone-icon permission-icon" />
@@ -860,7 +927,7 @@
 
   <hbox data-subcategory="permissions-block-popups">
     <checkbox id="popupPolicy" preference="dom.disable_open_during_load"
-              data-l10n-id="permissions-block-popups"
+              data-l10n-id="permissions-block-popups2"
               flex="1" />
     <button id="popupPolicyButton"
             is="highlightable-button"
@@ -869,8 +936,8 @@
             data-l10n-attrs="searchkeywords"
             search-l10n-ids="
               permissions-address,
-              permissions-exceptions-popup-window2.title,
-              permissions-exceptions-popup-desc,
+              permissions-exceptions-popup-window3.title,
+              permissions-exceptions-popup-desc2,
             " />
   </hbox>
 
@@ -1025,29 +1092,6 @@
   </vbox>
 </groupbox>
 
-#ifdef MOZ_DATA_REPORTING
-<!-- Website Advertising Preferences -->
-<hbox id="websiteAdvertisingCategory"
-      class="subcategory"
-      hidden="true"
-      data-category="panePrivacy">
-  <html:h1 data-l10n-id="website-advertising-header"/>
-</hbox>
-
-<groupbox id="websiteAdvertisingGroup" data-category="panePrivacy" hidden="true">
-  <label class="search-header" searchkeywords="ppa" hidden="true"><html:h2 data-l10n-id="website-advertising-header"/></label>
-  <checkbox id="privateAttribution"
-            preference="dom.private-attribution.submission.enabled"
-            data-l10n-id="website-advertising-private-attribution"/>
-  <description class="indent tip-caption">
-    <html:span data-l10n-id="website-advertising-private-attribution-description"/>
-    <html:a is="moz-support-link"
-            class="learnMore"
-            support-page="privacy-preserving-attribution"/>
-  </description>
-</groupbox>
-#endif
-
 <hbox id="securityCategory"
       class="subcategory"
       hidden="true"
@@ -1056,35 +1100,22 @@
 </hbox>
 
 <!-- addons, forgery (phishing) UI Security -->
-<groupbox id="browsingProtectionGroup" data-category="panePrivacy" hidden="true">
+<groupbox data-category="panePrivacy" hidden="true">
   <label><html:h2 data-l10n-id="security-browsing-protection"/></label>
-  <hbox align = "center">
-    <checkbox id="enableSafeBrowsing"
-              data-l10n-id="security-enable-safe-browsing"
-              class="tail-with-learn-more"/>
-    <html:a is="moz-support-link"
-            id="enableSafeBrowsingLearnMore"
-            class="learnMore"
-            data-l10n-id="security-enable-safe-browsing-link"
-            support-page="phishing-malware"
-    />
-  </hbox>
-  <vbox class="indent">
-    <checkbox id="blockDownloads"
-              data-l10n-id="security-block-downloads"/>
-    <checkbox id="blockUncommonUnwanted"
-              data-l10n-id="security-block-uncommon-software"/>
-  </vbox>
+  <html:setting-group groupid="browsingProtection"></html:setting-group>
 </groupbox>
 
 <!-- Certificates -->
 <groupbox id="certSelection" data-category="panePrivacy" hidden="true">
   <label><html:h2 data-l10n-id="certs-header"/></label>
   <hbox align="start">
-    <checkbox id="enableOCSP"
-              data-l10n-id="certs-enable-ocsp"
-              preference="security.OCSP.enabled"
-              flex="1" />
+    <vbox data-subcategory="certs" flex="1">
+      <description id="certsDescription" class="description-deemphasized" data-l10n-id="certs-description"/>
+      <html:a is="moz-support-link"
+              class="learnMore"
+              support-page="secure-website-certificate"
+      />
+    </vbox>
     <vbox align="end">
       <button id="viewCertificatesButton"
               is="highlightable-button"
@@ -1139,41 +1170,10 @@
 </groupbox>
 
 <!-- HTTPS-ONLY Mode -->
-<groupbox id="httpsOnlyBox" data-category="panePrivacy" hidden="true">
+
+<groupbox data-category="panePrivacy" hidden="true">
   <label><html:h2 data-l10n-id="httpsonly-header"/></label>
-  <vbox data-subcategory="httpsonly" flex="1">
-    <description id="httpsOnlyDescription" class="description-deemphasized" data-l10n-id="httpsonly-description3"/>
-    <html:a is="moz-support-link"
-            id="httpsOnlyLearnMore"
-            class="learnMore"
-            data-l10n-id="httpsonly-learn-more2"
-            support-page="https-only-prefs"
-    />
-  </vbox>
-  <hbox>
-    <html:moz-radio-group id="httpsOnlyRadioGroup" data-category="panePrivacy" style="flex: 1;">
-      <html:moz-radio id="httpsOnlyRadioEnabled"
-                      data-l10n-id="httpsonly-radio-enabled"
-                      value="enabled"></html:moz-radio>
-      <html:moz-radio id="httpsOnlyRadioEnabledPBM"
-                      data-l10n-id="httpsonly-radio-enabled-pbm"
-                      value="privateOnly"></html:moz-radio>
-      <html:moz-radio id="httpsOnlyRadioDisabled"
-                      data-l10n-id="httpsonly-radio-disabled3"
-                      value="disabled"
-                      support-page="connection-upgrades"></html:moz-radio>
-    </html:moz-radio-group>
-    <vbox>
-      <button id="httpsOnlyExceptionButton" is="highlightable-button" class="accessory-button" disabled="true"
-        data-l10n-id="sitedata-cookies-exceptions" search-l10n-ids="
-                      permissions-address,
-                      permissions-allow.label,
-                      permissions-remove.label,
-                      permissions-remove-all.label,
-                      permissions-exceptions-https-only-desc2,
-                    " />
-    </vbox>
-  </hbox>
+  <html:setting-group groupid="httpsOnly"/>
 </groupbox>
 
 <!-- DoH -->

@@ -19,7 +19,7 @@
 #include "api/transport/stun.h"
 #include "rtc_base/checks.h"
 
-namespace cricket {
+namespace webrtc {
 
 class DtlsStunPiggybackCallbacks {
  public:
@@ -76,6 +76,14 @@ class DtlsStunPiggybackCallbacks {
       recv_data_;
 };
 
+}  //  namespace webrtc
+
+// Re-export symbols from the webrtc namespace for backwards compatibility.
+// TODO(bugs.webrtc.org/4222596): Remove once all references are updated.
+#ifdef WEBRTC_ALLOW_DEPRECATED_NAMESPACES
+namespace cricket {
+using ::webrtc::DtlsStunPiggybackCallbacks;
 }  // namespace cricket
+#endif  // WEBRTC_ALLOW_DEPRECATED_NAMESPACES
 
 #endif  // P2P_DTLS_DTLS_STUN_PIGGYBACK_CALLBACKS_H_

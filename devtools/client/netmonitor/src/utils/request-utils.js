@@ -112,9 +112,19 @@ function fetchNetworkUpdatePacket(requestData, request, updateTypes) {
   const promises = [];
   if (request) {
     updateTypes.forEach(updateType => {
-      // Only stackTrace will be handled differently
+      // stackTrace needs to be handled specially as the property to lookup
+      // on the request object follows a slightly different convention.
+      // i.e `stacktrace` not `stackTrace`
       if (updateType === "stackTrace") {
         if (request.cause.stacktraceAvailable && !request.stacktrace) {
+          promises.push(requestData(request.id, updateType));
+        }
+        return;
+      }
+      // responseContent only checks the availiability flag as there can
+      // be multiple response content events
+      if (updateType === "responseContent") {
+        if (request.responseContentAvailable) {
           promises.push(requestData(request.id, updateType));
         }
         return;
@@ -351,9 +361,9 @@ function getUrlDetails(url) {
   // IPv6 parsing is a little sloppy; it assumes that the address has
   // been validated before it gets here.
   const isLocal =
-    hostname.match(/(.+\.)?localhost$/) ||
-    hostname.match(/^127\.\d{1,3}\.\d{1,3}\.\d{1,3}/) ||
-    hostname.match(/\[[0:]+1\]/);
+    /^(.+\.)?localhost$/.test(hostname) ||
+    /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+    /^\[[0:]+1\]$/.test(hostname);
 
   return {
     baseNameWithQuery,
@@ -814,6 +824,44 @@ function getRequestHeadersRawText(
   return writeHeaderText(requestHeaders.headers, preHeaderText).trim();
 }
 
+/**
+ * Checks if the "Expiration Calculations" defined in section 13.2.4 of the
+ * "HTTP/1.1: Caching in HTTP" spec holds true for a collection of headers.
+ *
+ * @param object
+ *        An object containing the { responseHeaders, status } properties.
+ * @return boolean
+ *         True if the response is fresh and loaded from cache.
+ */
+function responseIsFresh({ responseHeaders, status }) {
+  // Check for a "304 Not Modified" status and response headers availability.
+  if (status != 304 || !responseHeaders) {
+    return false;
+  }
+
+  const list = responseHeaders.headers;
+  const cacheControl = list.find(e => e.name.toLowerCase() === "cache-control");
+  const expires = list.find(e => e.name.toLowerCase() === "expires");
+
+  // Check the "Cache-Control" header for a maximum age value.
+  if (cacheControl) {
+    const maxAgeMatch =
+      cacheControl.value.match(/s-maxage\s*=\s*(\d+)/) ||
+      cacheControl.value.match(/max-age\s*=\s*(\d+)/);
+
+    if (maxAgeMatch && maxAgeMatch.pop() > 0) {
+      return true;
+    }
+  }
+
+  // Check the "Expires" header for a valid date.
+  if (expires && Date.parse(expires.value)) {
+    return true;
+  }
+
+  return false;
+}
+
 module.exports = {
   decodeUnicodeBase64,
   getFormDataSections,
@@ -846,4 +894,5 @@ module.exports = {
   ipToLong,
   parseJSON,
   getRequestHeadersRawText,
+  responseIsFresh,
 };

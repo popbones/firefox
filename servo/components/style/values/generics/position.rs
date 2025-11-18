@@ -36,6 +36,7 @@ use crate::values::DashedIdent;
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(C)]
 pub struct GenericPosition<H, V> {
@@ -96,6 +97,7 @@ pub trait PositionComponent {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(C, u8)]
 pub enum GenericPositionOrAuto<Pos> {
@@ -138,6 +140,7 @@ impl<Pos> PositionOrAuto<Pos> {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(C, u8)]
 pub enum GenericZIndex<I> {
@@ -217,6 +220,7 @@ pub enum PreferredRatio<N> {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(C)]
 pub struct GenericAspectRatio<N> {
@@ -272,6 +276,7 @@ impl<N> ToAnimatedZero for AspectRatio<N> {
     ToAnimatedZero,
     ToComputedValue,
     ToResolvedValue,
+    ToTyped,
 )]
 #[repr(C)]
 pub enum GenericInset<P, LP> {
@@ -282,19 +287,11 @@ pub enum GenericInset<P, LP> {
     /// Inset defined by the anchor element.
     ///
     /// <https://drafts.csswg.org/css-anchor-position-1/#anchor-pos>
-    AnchorFunction(
-        #[animation(field_bound)]
-        #[distance(field_bound)]
-        Box<GenericAnchorFunction<P, LP>>,
-    ),
+    AnchorFunction(Box<GenericAnchorFunction<P, Self>>),
     /// Inset defined by the size of the anchor element.
     ///
     /// <https://drafts.csswg.org/css-anchor-position-1/#anchor-pos>
-    AnchorSizeFunction(
-        #[animation(field_bound)]
-        #[distance(field_bound)]
-        Box<GenericAnchorSizeFunction<LP>>,
-    ),
+    AnchorSizeFunction(Box<GenericAnchorSizeFunction<Self>>),
     /// A `<length-percentage>` value, guaranteed to contain `calc()`,
     /// which then is guaranteed to contain `anchor()` or `anchor-size()`.
     AnchorContainingCalcFunction(LP),
@@ -351,7 +348,7 @@ pub use self::GenericInset as Inset;
     Deserialize,
 )]
 #[repr(C)]
-pub struct GenericAnchorFunction<Percentage, LengthPercentage> {
+pub struct GenericAnchorFunction<Percentage, Fallback> {
     /// Anchor name of the element to anchor to.
     /// If omitted, selects the implicit anchor element.
     #[animation(constant)]
@@ -360,13 +357,13 @@ pub struct GenericAnchorFunction<Percentage, LengthPercentage> {
     /// the anchored element to.
     pub side: GenericAnchorSide<Percentage>,
     /// Value to use in case the anchor function is invalid.
-    pub fallback: Optional<LengthPercentage>,
+    pub fallback: Optional<Fallback>,
 }
 
-impl<Percentage, LengthPercentage> ToCss for GenericAnchorFunction<Percentage, LengthPercentage>
+impl<Percentage, Fallback> ToCss for GenericAnchorFunction<Percentage, Fallback>
 where
     Percentage: ToCss,
-    LengthPercentage: ToCss,
+    Fallback: ToCss,
 {
     fn to_css<W>(&self, dest: &mut CssWriter<W>) -> std::fmt::Result
     where
@@ -387,13 +384,9 @@ where
     }
 }
 
-impl<Percentage, LengthPercentage> GenericAnchorFunction<Percentage, LengthPercentage> {
+impl<Percentage, Fallback> GenericAnchorFunction<Percentage, Fallback> {
     /// Is the anchor valid for given property?
-    pub fn valid_for(
-        &self,
-        side: PhysicalSide,
-        position_property: PositionProperty,
-    ) -> bool {
+    pub fn valid_for(&self, side: PhysicalSide, position_property: PositionProperty) -> bool {
         position_property.is_absolutely_positioned() && self.side.valid_for(side)
     }
 }
@@ -451,13 +444,13 @@ impl AnchorSideKeyword {
         match self {
             Self::Left | Self::Right => matches!(side, PhysicalSide::Left | PhysicalSide::Right),
             Self::Top | Self::Bottom => matches!(side, PhysicalSide::Top | PhysicalSide::Bottom),
-            Self::Inside |
-            Self::Outside |
-            Self::Start |
-            Self::End |
-            Self::SelfStart |
-            Self::SelfEnd |
-            Self::Center => true,
+            Self::Inside
+            | Self::Outside
+            | Self::Start
+            | Self::End
+            | Self::SelfStart
+            | Self::SelfEnd
+            | Self::Center => true,
         }
     }
 }

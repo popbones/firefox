@@ -302,6 +302,12 @@ class nsWindow final : public nsBaseWidget {
   }
   LayoutDeviceIntRegion GetOpaqueRegion() const;
 
+  // Exports a handle to the window, see `gdk_wayland_window_export_handle`.
+  using ExportHandlePromise =
+      mozilla::MozPromise<nsCString, bool, /*IsExclusive = */ true>;
+  RefPtr<ExportHandlePromise> ExportHandle();
+  void UnexportHandle();
+
   already_AddRefed<mozilla::gfx::DrawTarget> StartRemoteDrawingInRegion(
       const LayoutDeviceIntRegion& aInvalidRegion) override;
   void EndRemoteDrawingInRegion(
@@ -325,7 +331,9 @@ class nsWindow final : public nsBaseWidget {
   //  it should load correct values.
   // Set aRefreshScreen to false if we operate on hidden window
   // or if we're going to repaint.
-  void RefreshScale(bool aRefreshScreen);
+  // aForceRefresh is used when fractional scale is changed but
+  // ceiled scale is kept.
+  void RefreshScale(bool aRefreshScreen, bool aForceRefresh = false);
 
   static guint32 sLastButtonPressTime;
 
@@ -431,6 +439,7 @@ class nsWindow final : public nsBaseWidget {
   LayoutDeviceIntPoint GdkEventCoordsToDevicePixels(gdouble aX, gdouble aY);
   LayoutDeviceIntRect GdkRectToDevicePixels(const GdkRectangle&);
   LayoutDeviceIntMargin GtkBorderToDevicePixels(const GtkBorder&);
+  LayoutDeviceRect GdkRectToFloatDevicePixels(const GdkRectangle&);
 
   bool WidgetTypeSupportsAcceleration() override;
   bool WidgetTypeSupportsNativeCompositing() override;
@@ -615,10 +624,8 @@ class nsWindow final : public nsBaseWidget {
   LayoutDeviceIntSize mLastSizeRequest;
   // Same but for positioning. Used to track move requests.
   LayoutDeviceIntPoint mLastMoveRequest;
-  // Margin from outer bounds to inner bounds _including CSD decorations_.
+  // Margin from mBounds to the client rect (including CSD decorations).
   LayoutDeviceIntMargin mClientMargin;
-  // The part of mClientMargin that comes from our CSD decorations.
-  LayoutDeviceIntMargin mCsdMargin;
 
   // This field omits duplicate scroll events caused by GNOME bug 726878.
   guint32 mLastScrollEventTime = GDK_CURRENT_TIME;
@@ -893,7 +900,7 @@ class nsWindow final : public nsBaseWidget {
   void WaylandPopupMarkAsClosed();
   void WaylandPopupRemoveClosedPopups();
   void WaylandPopupSetDirectPosition();
-  bool WaylandPopupFitsToplevelWindow(bool aMove);
+  bool WaylandPopupFitsToplevelWindow();
   const WaylandPopupMoveToRectParams WaylandPopupGetPositionFromLayout();
   void WaylandPopupPropagateChangesToLayout(bool aMove, bool aResize);
   nsWindow* WaylandPopupFindLast(nsWindow* aPopup);
@@ -1044,6 +1051,7 @@ class nsWindow final : public nsBaseWidget {
   nsCString mWindowActivationTokenFromEnv;
   mozilla::widget::WindowSurfaceProvider mSurfaceProvider;
   GdkDragContext* mSourceDragContext = nullptr;
+  bool mSourceDragContextActive = false;
   mozilla::Sides mResizableEdges{mozilla::SideBits::eAll};
   // Running in kiosk mode and requested to stay on specified monitor.
   // If monitor is removed minimize the window.

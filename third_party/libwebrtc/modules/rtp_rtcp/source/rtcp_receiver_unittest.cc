@@ -55,7 +55,6 @@
 #include "modules/rtp_rtcp/source/rtcp_packet/tmmbr.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/transport_feedback.h"
 #include "modules/rtp_rtcp/source/rtp_rtcp_interface.h"
-#include "rtc_base/arraysize.h"
 #include "rtc_base/buffer.h"
 #include "rtc_base/random.h"
 #include "system_wrappers/include/clock.h"
@@ -68,6 +67,7 @@ namespace webrtc {
 namespace {
 
 using rtcp::ReceiveTimeInfo;
+using test::ExplicitKeyValueConfig;
 using ::testing::_;
 using ::testing::AllOf;
 using ::testing::ElementsAre;
@@ -83,7 +83,6 @@ using ::testing::SizeIs;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::UnorderedElementsAre;
-using ::webrtc::test::ExplicitKeyValueConfig;
 
 class MockRtcpPacketTypeCounterObserver : public RtcpPacketTypeCounterObserver {
  public:
@@ -127,7 +126,7 @@ class MockModuleRtpRtcp : public RTCPReceiver::ModuleRtpRtcp {
   MOCK_METHOD(void, OnReceivedNack, (const std::vector<uint16_t>&), (override));
   MOCK_METHOD(void,
               OnReceivedRtcpReportBlocks,
-              (rtc::ArrayView<const ReportBlockData>),
+              (ArrayView<const ReportBlockData>),
               (override));
 };
 
@@ -896,7 +895,7 @@ TEST(RtcpReceiverTest, InjectExtendedReportsPacketWithUnknownReportBlock) {
   xr.SetRrtr(rrtr);
   xr.AddDlrrItem(ReceiveTimeInfo(kReceiverMainSsrc, 0x12345, 0x67890));
 
-  rtc::Buffer packet = xr.Build();
+  Buffer packet = xr.Build();
   // Modify the DLRR block to have an unsupported block type, from 5 to 6.
   ASSERT_EQ(5, packet.data()[20]);
   packet.data()[20] = 6;
@@ -1852,7 +1851,7 @@ TEST(RtcpReceiverTest, HandlesInvalidCongestionControlFeedback) {
                                          }},
                                          /*report_timestamp_compact_ntp=*/324);
   packet.SetSenderSsrc(kSenderSsrc);
-  rtc::Buffer built_packet = packet.Build();
+  Buffer built_packet = packet.Build();
   // Modify the CongestionControlFeedback packet so that it is invalid.
   const size_t kNumReportsOffset = 14;
   ByteWriter<uint16_t>::WriteBigEndian(&built_packet.data()[kNumReportsOffset],
@@ -1929,7 +1928,7 @@ TEST(RtcpReceiverTest, HandlesInvalidTransportFeedback) {
   rtcp::CompoundPacket compound;
   compound.Append(std::move(packet));
   compound.Append(std::move(remb));
-  rtc::Buffer built_packet = compound.Build();
+  Buffer built_packet = compound.Build();
 
   // Modify the TransportFeedback packet so that it is invalid.
   const size_t kStatusCountOffset = 14;
@@ -1952,7 +1951,7 @@ TEST(RtcpReceiverTest, Nack) {
   const uint16_t kNackList1[] = {1, 2, 3, 5};
   const uint16_t kNackList23[] = {5, 7, 30, 40, 41, 58, 59, 61, 63};
   const size_t kNackListLength2 = 4;
-  const size_t kNackListLength3 = arraysize(kNackList23) - kNackListLength2;
+  const size_t kNackListLength3 = std::size(kNackList23) - kNackListLength2;
   std::set<uint16_t> nack_set;
   nack_set.insert(std::begin(kNackList1), std::end(kNackList1));
   nack_set.insert(std::begin(kNackList23), std::end(kNackList23));
@@ -1960,7 +1959,7 @@ TEST(RtcpReceiverTest, Nack) {
   auto nack1 = std::make_unique<rtcp::Nack>();
   nack1->SetSenderSsrc(kSenderSsrc);
   nack1->SetMediaSsrc(kReceiverMainSsrc);
-  nack1->SetPacketIds(kNackList1, arraysize(kNackList1));
+  nack1->SetPacketIds(kNackList1, std::size(kNackList1));
 
   EXPECT_CALL(mocks.rtp_rtcp_impl,
               OnReceivedNack(ElementsAreArray(kNackList1)));
@@ -1968,9 +1967,9 @@ TEST(RtcpReceiverTest, Nack) {
               RtcpPacketTypesCounterUpdated(
                   kReceiverMainSsrc,
                   AllOf(Field(&RtcpPacketTypeCounter::nack_requests,
-                              arraysize(kNackList1)),
+                              std::size(kNackList1)),
                         Field(&RtcpPacketTypeCounter::unique_nack_requests,
-                              arraysize(kNackList1)))));
+                              std::size(kNackList1)))));
   receiver.IncomingPacket(nack1->Build());
 
   auto nack2 = std::make_unique<rtcp::Nack>();
@@ -1993,7 +1992,7 @@ TEST(RtcpReceiverTest, Nack) {
               RtcpPacketTypesCounterUpdated(
                   kReceiverMainSsrc,
                   AllOf(Field(&RtcpPacketTypeCounter::nack_requests,
-                              arraysize(kNackList1) + arraysize(kNackList23)),
+                              std::size(kNackList1) + std::size(kNackList23)),
                         Field(&RtcpPacketTypeCounter::unique_nack_requests,
                               nack_set.size()))));
   receiver.IncomingPacket(two_nacks.Build());

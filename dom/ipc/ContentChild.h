@@ -8,26 +8,26 @@
 #define mozilla_dom_ContentChild_h
 
 #include "mozilla/Atomics.h"
+#include "mozilla/Hal.h"
+#include "mozilla/StaticPtr.h"
+#include "mozilla/UniquePtr.h"
 #include "mozilla/dom/BlobImpl.h"
 #include "mozilla/dom/GetFilesHelper.h"
-#include "mozilla/dom/UserActivation.h"
 #include "mozilla/dom/PContentChild.h"
 #include "mozilla/dom/ProcessActor.h"
 #include "mozilla/dom/RemoteType.h"
-#include "mozilla/Hal.h"
+#include "mozilla/dom/UserActivation.h"
 #include "mozilla/ipc/InputStreamUtils.h"
 #include "mozilla/ipc/ProtocolUtils.h"
 #include "mozilla/ipc/SharedMemoryHandle.h"
-#include "mozilla/StaticPtr.h"
-#include "mozilla/UniquePtr.h"
 #include "nsClassHashtable.h"
-#include "nscore.h"
 #include "nsHashKeys.h"
 #include "nsIDOMProcessChild.h"
 #include "nsRefPtrHashtable.h"
 #include "nsString.h"
 #include "nsTArrayForwardDeclare.h"
 #include "nsTHashSet.h"
+#include "nscore.h"
 
 #if defined(XP_MACOSX) && defined(MOZ_SANDBOX)
 #  include "nsIFile.h"
@@ -281,7 +281,7 @@ class ContentChild final : public PContentChild,
                                            widget::ThemeChangeKind);
 
   mozilla::ipc::IPCResult RecvPreferenceUpdate(const Pref& aPref);
-  mozilla::ipc::IPCResult RecvVarUpdate(const GfxVarUpdate& pref);
+  mozilla::ipc::IPCResult RecvVarUpdate(const nsTArray<GfxVarUpdate>& var);
 
   mozilla::ipc::IPCResult RecvUpdatePerfStatsCollectionMask(
       const uint64_t& aMask);
@@ -408,8 +408,6 @@ class ContentChild final : public PContentChild,
                                                const uint32_t& aChangeType,
                                                nsIURI* aDomain);
 
-  mozilla::ipc::IPCResult RecvShutdownConfirmedHP();
-
   mozilla::ipc::IPCResult RecvShutdown();
 
   mozilla::ipc::IPCResult RecvPush(const nsCString& aScope,
@@ -500,7 +498,8 @@ class ContentChild final : public PContentChild,
 #endif  // defined(XP_WIN)
 
   mozilla::ipc::IPCResult RecvSetXPCOMProcessAttributes(
-      XPCOMInitData&& aXPCOMInit, const StructuredCloneData& aInitialData,
+      XPCOMInitData&& aXPCOMInit,
+      const UniquePtr<StructuredCloneData>& aInitialData,
       FullLookAndFeel&& aLookAndFeelData, SystemFontList&& aFontList,
       Maybe<mozilla::ipc::ReadOnlySharedMemoryHandle>&& aSharedUASheetHandle,
       const uintptr_t& aSharedUASheetAddress,
@@ -762,8 +761,9 @@ class ContentChild final : public PContentChild,
       const uint32_t aStopFlags);
 
   mozilla::ipc::IPCResult RecvRawMessage(
-      const JSActorMessageMeta& aMeta, const Maybe<ClonedMessageData>& aData,
-      const Maybe<ClonedMessageData>& aStack);
+      const JSActorMessageMeta& aMeta,
+      const UniquePtr<ClonedMessageData>& aData,
+      const UniquePtr<ClonedMessageData>& aStack);
 
   already_AddRefed<JSActor> InitJSActor(JS::Handle<JSObject*> aMaybeActor,
                                         const nsACString& aName,
@@ -786,6 +786,7 @@ class ContentChild final : public PContentChild,
 
   mozilla::ipc::IPCResult RecvDispatchBeforeUnloadToSubtree(
       const MaybeDiscarded<BrowsingContext>& aStartingAt,
+      const mozilla::Maybe<SessionHistoryInfo>& aInfo,
       DispatchBeforeUnloadToSubtreeResolver&& aResolver);
 
   mozilla::ipc::IPCResult RecvInitNextGenLocalStorageEnabled(
@@ -794,6 +795,7 @@ class ContentChild final : public PContentChild,
  public:
   static void DispatchBeforeUnloadToSubtree(
       BrowsingContext* aStartingAt,
+      const mozilla::Maybe<SessionHistoryInfo>& aInfo,
       const DispatchBeforeUnloadToSubtreeResolver& aResolver);
 
   hal::ProcessPriority GetProcessPriority() const { return mProcessPriority; }

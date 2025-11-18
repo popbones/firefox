@@ -105,7 +105,7 @@ domcount:
         symbol: perftest(dom)
     attributes:
         batch: false
-        cron: true
+        cron: false
     run:
         command: >-
             mkdir -p $MOZ_FETCHES_DIR/../artifacts &&
@@ -425,6 +425,8 @@ ml-summarizer-perf:
             - qwen2.5-0.5-instruct
             - distilbart-cnn-12-6
     description: Run ML Models Perf Tests
+    worker:
+        max-run-time: 3000
     treeherder:
         symbol: perftest(ml-sum-perf)
         tier: 2
@@ -448,6 +450,7 @@ ml-llama-summarizer-perf:
         fetch:
             - wllama.wasm
             - smollm2-360-instruct-gguf
+            - Qwen3-0.6B-GGUF
     description: Run ML Summarizer Model Using Wllama
     treeherder:
         symbol: perftest(ml-llama-sum-perf)
@@ -492,28 +495,6 @@ ml-multi-perf:
             --output $MOZ_FETCHES_DIR/../artifacts
             --hooks toolkit/components/ml/tests/tools/hooks_local_hub.py
             toolkit/components/ml/tests/browser/browser_ml_engine_multi_perf.js
-
-ml-perf-semantic-ft:
-    fetches:
-        fetch:
-            - ort.jsep.wasm
-            - xenova-all-minilm-l6-v2
-    description: Run ML Semantic Search Feature
-    treeherder:
-        symbol: perftest(ml-perf-semantic-ft)
-        tier: 2
-    run-on-projects: [autoland, mozilla-central]
-    run:
-        command: >-
-            mkdir -p $MOZ_FETCHES_DIR/../artifacts &&
-            cd $MOZ_FETCHES_DIR &&
-            python3 python/mozperftest/mozperftest/runner.py
-            --mochitest-binary ${MOZ_FETCHES_DIR}/firefox/firefox-bin
-            --flavor mochitest
-            --output $MOZ_FETCHES_DIR/../artifacts
-            --hooks toolkit/components/ml/tests/tools/hooks_local_hub.py
-            --mochitest-name-change
-            toolkit/components/ml/tests/browser/browser_ml_semantic_history_search_perf.js
 
 ml-perf-suggest-ft:
     fetches:
@@ -647,7 +628,7 @@ ml-perf-smart-tab-cluster:
             - mozilla-smart-tab-emb
     description: Run ML Smart Tab Clustering
     worker:
-        max-run-time: 14400
+        max-run-time: 900
     treeherder:
         symbol: perftest(ml-perf-stg-cluster)
         tier: 2
@@ -695,3 +676,38 @@ ml-perf-speecht5-tts:
             --hooks toolkit/components/ml/tests/tools/hooks_local_hub.py
             --mochitest-name-change
             toolkit/components/ml/tests/browser/browser_ml_speecht5_tts.js
+
+# XXX: We can consolidate this once bug 1865852 lands.
+perftest-accessibility:
+    description: Run accessibility performance tests
+    treeherder:
+        symbol: perftest(a11y)
+        tier: 2
+    attributes:
+        batch: false
+        cron: false
+    run-on-projects: [autoland, mozilla-central]
+    run:
+        command: >-
+            mkdir -p $MOZ_FETCHES_DIR/../artifacts &&
+            cd $MOZ_FETCHES_DIR &&
+            python3 python/mozperftest/mozperftest/runner.py
+            --mochitest-binary ${MOZ_FETCHES_DIR}/firefox/firefox-bin
+            --flavor mochitest
+            --output $MOZ_FETCHES_DIR/../artifacts
+            accessible/tests/browser/performance/browser_addManyIds.js
+            && python3 python/mozperftest/mozperftest/runner.py
+            --mochitest-binary ${MOZ_FETCHES_DIR}/firefox/firefox-bin
+            --flavor mochitest
+            --output $MOZ_FETCHES_DIR/../artifacts
+            accessible/tests/browser/performance/browser_addManyNodes.js
+            && python3 python/mozperftest/mozperftest/runner.py
+            --mochitest-binary ${MOZ_FETCHES_DIR}/firefox/firefox-bin
+            --flavor mochitest
+            --output $MOZ_FETCHES_DIR/../artifacts
+            accessible/tests/browser/performance/browser_reflowPseudoelements.js
+            && python3 python/mozperftest/mozperftest/runner.py
+            --mochitest-binary ${MOZ_FETCHES_DIR}/firefox/firefox-bin
+            --flavor mochitest
+            --output $MOZ_FETCHES_DIR/../artifacts
+            accessible/tests/browser/performance/browser_removeManySpellingErrors.js

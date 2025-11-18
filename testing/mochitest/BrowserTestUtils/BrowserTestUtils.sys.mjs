@@ -147,7 +147,7 @@ export var BrowserTestUtils = {
    *
    * @param {tabbrowser} gBrowser
    *        The tabbrowser to open the tab new in.
-   * @param {string} opening (or url)
+   * @param {string|function} opening (or url)
    *        May be either a string URL to load in the tab, or a function that
    *        will be called to open a foreground tab. Defaults to "about:blank".
    * @param {boolean} waitForLoad
@@ -164,7 +164,9 @@ export var BrowserTestUtils = {
    * @resolves The new tab.
    */
   openNewForegroundTab(tabbrowser, ...args) {
-    let startTime = Cu.now();
+    // This newtab train-hop compatibility shim can be removed once Firefox 144
+    // makes it to the release channel.
+    let startTime = ChromeUtils.now?.() || Cu.now();
     let options;
     if (
       tabbrowser.ownerGlobal &&
@@ -225,7 +227,12 @@ export var BrowserTestUtils = {
       ];
 
       if (aWaitForLoad) {
-        promises.push(BrowserTestUtils.browserLoaded(tab.linkedBrowser));
+        // accept any load, including about:blank
+        promises.push(
+          BrowserTestUtils.browserLoaded(tab.linkedBrowser, {
+            wantLoad: () => true,
+          })
+        );
       }
       if (aWaitForStateStop) {
         promises.push(BrowserTestUtils.browserStopped(tab.linkedBrowser));
@@ -355,14 +362,22 @@ export var BrowserTestUtils = {
    * @resolves The tab switched to.
    */
   switchTab(tabbrowser, tab) {
-    let startTime = Cu.now();
+    // This newtab train-hop compatibility shim can be removed once Firefox 144
+    // makes it to the release channel.
+    let startTime = ChromeUtils.now?.() || Cu.now();
     let { innerWindowId } = tabbrowser.ownerGlobal.windowGlobalChild;
+
+    // Some tests depend on the delay and TabSwitched only fires if the browser is visible.
+    // Bug 1977993 tracks always dispatching TabSwitched.
+    let switchEvent =
+      Services.prefs.getBoolPref("test.wait300msAfterTabSwitch", false) ||
+      tabbrowser.ownerDocument.hidden
+        ? "TabSwitchDone"
+        : "TabSwitched";
 
     let promise = new Promise(resolve => {
       tabbrowser.addEventListener(
-        Services.prefs.getBoolPref("test.wait300msAfterTabSwitch", false)
-          ? "TabSwitchDone"
-          : "TabSwitched",
+        switchEvent,
         function () {
           TestUtils.executeSoon(() => {
             ChromeUtils.addProfilerMarker(
@@ -386,13 +401,16 @@ export var BrowserTestUtils = {
   },
 
   /**
-   * Waits for an ongoing page load in a browser window to complete.
+   * Waits for an ongoing page load in a browser window to complete. By default
+   * about:blank loads are ignored.
    *
    * This can be used in conjunction with any synchronous method for starting a
    * load, like the "addTab" method on "tabbrowser", and must be called before
-   * yielding control to the event loop. Note that calling this after multiple
-   * successive load operations can be racy, so ``wantLoad`` should be specified
-   * in these cases.
+   * yielding control to the event loop.
+   *
+   * Note that calling this after multiple successive load operations can be racy,
+   * so ``wantLoad`` should be specified in these cases. The same holds if we're
+   * interested in about:blank to load.
    *
    * This function works by listening for custom load events on ``browser``. These
    * are sent by a BrowserTestUtils window actor in response to "load" and
@@ -400,13 +418,14 @@ export var BrowserTestUtils = {
    *
    * @param {xul:browser} browser
    *        A xul:browser.
-   * @param {Boolean} [includeSubFrames = false]
+   * @param {object} options
+   * @param {Boolean} [options.includeSubFrames = false]
    *        A boolean indicating if loads from subframes should be included.
-   * @param {string|function} [wantLoad = null]
+   * @param {string|function} [options.wantLoad]
    *        If a function, takes a URL and returns true if that's the load we're
    *        interested in. If a string, gives the URL of the load we're interested
-   *        in. If not present, the first load resolves the promise.
-   * @param {boolean} [maybeErrorPage = false]
+   *        in. If not present, the first non-about:blank load resolves the promise.
+   * @param {boolean} [options.maybeErrorPage = false]
    *        If true, this uses DOMContentLoaded event instead of load event.
    *        Also wantLoad will be called with visible URL, instead of
    *        'about:neterror?...' for error page.
@@ -414,13 +433,23 @@ export var BrowserTestUtils = {
    * @return {Promise}
    * @resolves When a load event is triggered for the browser.
    */
-  browserLoaded(
-    browser,
-    includeSubFrames = false,
-    wantLoad = null,
-    maybeErrorPage = false
-  ) {
-    let startTime = Cu.now();
+  browserLoaded(browser, ...args) {
+    const options =
+      args.length && typeof args[0] === "object"
+        ? args[0]
+        : {
+            includeSubFrames: args[0] ?? false,
+            wantLoad: args[1] ?? null,
+            maybeErrorPage: args[2] ?? false,
+          };
+    const {
+      includeSubFrames = false,
+      wantLoad = null,
+      maybeErrorPage = false,
+    } = options;
+    // This newtab train-hop compatibility shim can be removed once Firefox 144
+    // makes it to the release channel.
+    let startTime = ChromeUtils.now?.() || Cu.now();
     let { innerWindowId } = browser.ownerGlobal.windowGlobalChild;
 
     // Passing a url as second argument is a common mistake we should prevent.
@@ -447,7 +476,7 @@ export var BrowserTestUtils = {
 
     function isWanted(url) {
       if (!wantLoad) {
-        return true;
+        return !url.startsWith("about:blank");
       } else if (typeof wantLoad == "function") {
         return wantLoad(url);
       }
@@ -755,12 +784,11 @@ export var BrowserTestUtils = {
           if (waitForLoad) {
             // If waiting for load, resolve with promise for that, which when load
             // completes resolves to the new tab.
-            result = BrowserTestUtils.browserLoaded(
-              newBrowser,
-              false,
-              urlMatches,
-              maybeErrorPage
-            ).then(() => newTab);
+            result = BrowserTestUtils.browserLoaded(newBrowser, {
+              includeSubFrames: false,
+              wantLoad: urlMatches,
+              maybeErrorPage,
+            }).then(() => newTab);
           } else {
             // If not waiting for load, just resolve with the new tab.
             result = newTab;
@@ -888,12 +916,11 @@ export var BrowserTestUtils = {
           );
 
           if (url || waitForAnyURLLoaded) {
-            let loadPromise = this.browserLoaded(
-              win.gBrowser.selectedBrowser,
-              false,
-              waitForAnyURLLoaded ? null : url,
-              maybeErrorPage
-            );
+            let loadPromise = this.browserLoaded(win.gBrowser.selectedBrowser, {
+              includeSubFrames: false,
+              wantLoad: waitForAnyURLLoaded ? null : url,
+              maybeErrorPage,
+            });
             promises.push(loadPromise);
           }
 
@@ -1050,7 +1077,9 @@ export var BrowserTestUtils = {
    *         Resolves with the new window once it is loaded.
    */
   async openNewBrowserWindow(options = {}) {
-    let startTime = Cu.now();
+    // This newtab train-hop compatibility shim can be removed once Firefox 144
+    // makes it to the release channel.
+    let startTime = ChromeUtils.now?.() || Cu.now();
 
     let openerWindow = lazy.BrowserWindowTracker.getTopWindow({
       private: false,
@@ -1251,7 +1280,9 @@ export var BrowserTestUtils = {
    * @resolves The Event object.
    */
   waitForEvent(subject, eventName, capture, checkFn, wantsUntrusted) {
-    let startTime = Cu.now();
+    // This newtab train-hop compatibility shim can be removed once Firefox 144
+    // makes it to the release channel.
+    let startTime = ChromeUtils.now?.() || Cu.now();
     let innerWindowId = subject.ownerGlobal?.windowGlobalChild.innerWindowId;
 
     return new Promise((resolve, reject) => {
@@ -1424,9 +1455,7 @@ export var BrowserTestUtils = {
       let isValidUrl = () => {
         return (
           frame.browsingContext?.currentURI?.spec ==
-            "chrome://global/content/datepicker.xhtml" ||
-          frame.browsingContext?.currentURI?.spec ==
-            "chrome://global/content/timepicker.xhtml"
+          "chrome://global/content/datetimepicker.xhtml"
         );
       };
 
@@ -1917,10 +1946,9 @@ export var BrowserTestUtils = {
    * @resolves When the tab finishes reloading.
    */
   reloadTab(tab, options = {}) {
-    const finished = BrowserTestUtils.browserLoaded(
-      tab.linkedBrowser,
-      !!options.includeSubFrames
-    );
+    const finished = BrowserTestUtils.browserLoaded(tab.linkedBrowser, {
+      includeSubFrames: !!options.includeSubFrames,
+    });
     if (options.bypassCache) {
       tab.linkedBrowser.reloadWithFlags(
         Ci.nsIWebNavigation.LOAD_FLAGS_BYPASS_CACHE
@@ -2815,7 +2843,9 @@ export var BrowserTestUtils = {
    *        Extra information to pass to the actor.
    */
   async sendQuery(aBrowsingContext, aMessageName, aMessageData) {
-    let startTime = Cu.now();
+    // This newtab train-hop compatibility shim can be removed once Firefox 144
+    // makes it to the release channel.
+    let startTime = ChromeUtils.now?.() || Cu.now();
     if (!aBrowsingContext.currentWindowGlobal) {
       await this.waitForCondition(() => aBrowsingContext.currentWindowGlobal);
     }

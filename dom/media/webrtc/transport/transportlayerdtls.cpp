@@ -16,11 +16,11 @@
 #include "dtlsidentity.h"
 #include "keyhi.h"
 #include "logging.h"
-#include "mozilla/glean/DomMediaWebrtcMetrics.h"
 #include "mozilla/StaticPrefs_media.h"
 #include "mozilla/StaticPrefs_security.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Unused.h"
+#include "mozilla/glean/DomMediaWebrtcMetrics.h"
 #include "nsCOMPtr.h"
 #include "nsNetCID.h"
 #include "nsServiceManagerUtils.h"
@@ -872,9 +872,9 @@ void TransportLayerDtls::StateChange(TransportLayer* layer, State state) {
         timer_->SetTarget(target_);
         // Async, since the ICE layer might need to send a STUN response, and we
         // don't want the handshake to start until that is sent.
-        timer_->InitWithNamedFuncCallback(TimerCallback, this, 0,
-                                          nsITimer::TYPE_ONE_SHOT,
-                                          "TransportLayerDtls::TimerCallback");
+        timer_->InitWithNamedFuncCallback(
+            TimerCallback, this, 0, nsITimer::TYPE_ONE_SHOT,
+            "TransportLayerDtls::TimerCallback"_ns);
         TL_SET_STATE(TS_CONNECTING);
       } else {
         // We have already completed DTLS. Can happen if the ICE layer failed
@@ -956,7 +956,7 @@ void TransportLayerDtls::Handshake() {
           timer_->SetTarget(target_);
           timer_->InitWithNamedFuncCallback(
               TimerCallback, this, timeout_ms, nsITimer::TYPE_ONE_SHOT,
-              "TransportLayerDtls::TimerCallback");
+              "TransportLayerDtls::TimerCallback"_ns);
         }
         break;
       default:
@@ -1553,6 +1553,11 @@ void TransportLayerDtls::RecordTlsTelemetry() {
     mozilla::glean::webrtcdtls::cipher.Get(nsCString(oss.str().c_str())).Add(1);
     MOZ_MTLOG(ML_DEBUG, "cipher: " << oss.str());
   }
+
+  // Record Key Exchange Algorithm Type
+  // keyExchange null=0, rsa=1, dh=2, ecdh=4, ecdh_hybrid=8
+  mozilla::glean::webrtcdtls::key_exchange_algorithm.AccumulateSingleSample(
+      info.keaType);
 
   uint16_t cipher;
   nsresult rv = GetSrtpCipher(&cipher);

@@ -11,48 +11,47 @@
 
 #include <utility>
 
-#include "nscore.h"
-#include "nsISupports.h"
-#include "nsCOMPtr.h"
-#include "nsCRT.h"
-#include "nsIContentSerializer.h"
-#include "nsIDocumentEncoder.h"
-#include "nsINode.h"
-#include "nsIContentInlines.h"
-#include "nsComponentManagerUtils.h"
-#include "nsIOutputStream.h"
-#include "nsRange.h"
-#include "nsGkAtoms.h"
-#include "nsHTMLDocument.h"
-#include "nsIContent.h"
-#include "nsIScriptContext.h"
-#include "nsIScriptGlobalObject.h"
-#include "nsITransferable.h"
-#include "mozilla/dom/Selection.h"
-#include "nsContentUtils.h"
-#include "nsElementTable.h"
-#include "nsMimeTypes.h"
-#include "nsUnicharUtils.h"
-#include "nsReadableUtils.h"
-#include "nsTArray.h"
-#include "nsIFrame.h"
-#include "nsLayoutUtils.h"
+#include "mozilla/Encoding.h"
+#include "mozilla/IntegerRange.h"
+#include "mozilla/Maybe.h"
+#include "mozilla/ScopeExit.h"
 #include "mozilla/StringBuffer.h"
+#include "mozilla/UniquePtr.h"
+#include "mozilla/dom/AbstractRange.h"
 #include "mozilla/dom/Comment.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/DocumentType.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/HTMLBRElement.h"
 #include "mozilla/dom/ProcessingInstruction.h"
+#include "mozilla/dom/Selection.h"
 #include "mozilla/dom/ShadowRoot.h"
-#include "mozilla/dom/AbstractRange.h"
 #include "mozilla/dom/Text.h"
-#include "mozilla/dom/AbstractRange.h"
-#include "mozilla/Encoding.h"
-#include "mozilla/IntegerRange.h"
-#include "mozilla/Maybe.h"
-#include "mozilla/ScopeExit.h"
-#include "mozilla/UniquePtr.h"
+#include "nsCOMPtr.h"
+#include "nsCRT.h"
+#include "nsComponentManagerUtils.h"
+#include "nsContentUtils.h"
+#include "nsElementTable.h"
+#include "nsGkAtoms.h"
+#include "nsHTMLDocument.h"
+#include "nsIContent.h"
+#include "nsIContentInlines.h"
+#include "nsIContentSerializer.h"
+#include "nsIDocumentEncoder.h"
+#include "nsIFrame.h"
+#include "nsINode.h"
+#include "nsIOutputStream.h"
+#include "nsIScriptContext.h"
+#include "nsIScriptGlobalObject.h"
+#include "nsISupports.h"
+#include "nsITransferable.h"
+#include "nsLayoutUtils.h"
+#include "nsMimeTypes.h"
+#include "nsRange.h"
+#include "nsReadableUtils.h"
+#include "nsTArray.h"
+#include "nsUnicharUtils.h"
+#include "nscore.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -983,16 +982,37 @@ nsresult nsDocumentEncoder::NodeSerializer::SerializeToStringRecursive(
                       ? maybeFixedNode
                       : aNode;
 
-  for (nsINode* child = node->GetFirstChildOfTemplateOrNode(); child;
-       child = child->GetNextSibling()) {
-    if (shadowRoot &&
-        (!child->IsContent() || !child->AsContent()->GetAssignedSlot())) {
-      // Since this node is a shadow host, we skip the children that are not
-      // slotted because they aren't visible.
-      continue;
+  int32_t counter = -1;
+
+  const bool allowCrossShadowBoundary =
+      GetAllowRangeCrossShadowBoundary(mFlags) ==
+      AllowRangeCrossShadowBoundary::Yes;
+  auto GetNextNode = [&counter, node, allowCrossShadowBoundary](
+                         nsINode* aCurrentNode) -> nsINode* {
+    ++counter;
+    if (allowCrossShadowBoundary) {
+      if (const auto* slot = HTMLSlotElement::FromNode(node)) {
+        auto* next = slot->AssignedNodes().SafeElementAt(counter);
+        return next;
+      }
     }
-    rv = SerializeToStringRecursive(child, SerializeRoot::eYes, aMaxLength);
-    NS_ENSURE_SUCCESS(rv, rv);
+
+    if (counter == 0) {
+      return node->GetFirstChildOfTemplateOrNode();
+    }
+    // counter isn't really used for non-slot cases.
+    return aCurrentNode->GetNextSibling();
+  };
+
+  if (!shadowRoot) {
+    // We only iterate light DOM children of aNode if it isn't a shadow host
+    // since it doesn't make sense to iterate them this way. Slotted contents
+    // has been handled by serializing the <slot> element.
+    for (nsINode* child = GetNextNode(nullptr); child;
+         child = GetNextNode(child)) {
+      rv = SerializeToStringRecursive(child, SerializeRoot::eYes, aMaxLength);
+      NS_ENSURE_SUCCESS(rv, rv);
+    }
   }
 
   if (aSerializeRoot == SerializeRoot::eYes) {
@@ -1178,6 +1198,15 @@ nsDocumentEncoder::RangeSerializer::SerializeNodePartiallyContainedInRange(
     }
     if (endOffset.isNothing()) {
       endOffset = Some(aContent.GetChildCount());
+
+      if (mAllowCrossShadowBoundary == AllowRangeCrossShadowBoundary::Yes) {
+        if (const auto* slot = HTMLSlotElement::FromNode(aContent)) {
+          const auto& assignedNodes = slot->AssignedNodes();
+          if (!assignedNodes.IsEmpty()) {
+            endOffset = Some(assignedNodes.Length());
+          }
+        }
+      }
     } else {
       // if we are at the "tip" of the selection, endOffset is fine.
       // otherwise, we need to add one.  This is because of the semantics
@@ -1214,33 +1243,41 @@ nsresult nsDocumentEncoder::RangeSerializer::SerializeChildrenOfContent(
   ShadowRoot* shadowRoot = ShadowDOMSelectionHelpers::GetShadowRoot(
       &aContent, mAllowCrossShadowBoundary);
   if (shadowRoot) {
-    // Serialize the ShadowRoot first when the entire node needs to be
-    // serialized.
+    // Serialize the ShadowRoot when the entire node needs to be serialized.
+    // Return early to skip light DOM children.
     SerializeRangeNodes(aRange, shadowRoot, aDepth + 1);
+    return NS_OK;
   }
 
   if (!aEndOffset) {
     return NS_OK;
   }
-  // serialize the children of this node that are in the range
-  nsIContent* childAsNode = aContent.GetFirstChild();
-  uint32_t j = 0;
 
-  for (; j < aStartOffset && childAsNode; ++j) {
-    childAsNode = childAsNode->GetNextSibling();
-  }
+  nsINode* childAsNode =
+      mAllowCrossShadowBoundary == AllowRangeCrossShadowBoundary::Yes
+          ? aContent.GetChildAtInFlatTree(aStartOffset)
+          : aContent.GetChildAt_Deprecated(aStartOffset);
 
-  MOZ_ASSERT(j == aStartOffset);
+  MOZ_ASSERT_IF(childAsNode, childAsNode->IsContent());
 
-  for (; childAsNode && j < aEndOffset; ++j) {
-    if (shadowRoot && !childAsNode->GetAssignedSlot()) {
-      childAsNode = childAsNode->GetNextSibling();
-      // Since this node is a shadow host, we skip the children that are not
-      // slotted because they aren't visible.
-      continue;
+  auto GetNextSibling = [this, &aContent](
+                            nsINode* aCurrentNode,
+                            uint32_t aCurrentIndex) -> nsIContent* {
+    if (mAllowCrossShadowBoundary == AllowRangeCrossShadowBoundary::Yes) {
+      if (const auto* slot = HTMLSlotElement::FromNode(&aContent)) {
+        auto* next = slot->AssignedNodes().SafeElementAt(++aCurrentIndex);
+        return nsIContent::FromNodeOrNull(next);
+      }
     }
+
+    return aCurrentNode->GetNextSibling();
+  };
+
+  for (size_t j = aStartOffset; childAsNode && j < aEndOffset; ++j) {
     nsresult rv{NS_OK};
-    if ((j == aStartOffset) || (j == aEndOffset - 1)) {
+    const bool isFirstOrLastNodeToSerialize =
+        j == aStartOffset || j == aEndOffset - 1;
+    if (isFirstOrLastNodeToSerialize) {
       rv = SerializeRangeNodes(aRange, childAsNode, aDepth + 1);
     } else {
       rv = mNodeSerializer.SerializeToStringRecursive(
@@ -1251,7 +1288,7 @@ nsresult nsDocumentEncoder::RangeSerializer::SerializeChildrenOfContent(
       return rv;
     }
 
-    childAsNode = childAsNode->GetNextSibling();
+    childAsNode = GetNextSibling(childAsNode, j);
   }
 
   return NS_OK;
@@ -1374,10 +1411,10 @@ nsresult nsDocumentEncoder::RangeSerializer::SerializeRangeToString(
   nsContentUtils::GetInclusiveAncestors(mClosestCommonInclusiveAncestorOfRange,
                                         mCommonInclusiveAncestors);
   if (mAllowCrossShadowBoundary == AllowRangeCrossShadowBoundary::Yes) {
-    nsContentUtils::GetShadowIncludingAncestorsAndOffsets(
+    nsContentUtils::GetFlattenedTreeAncestorsAndOffsets(
         startContainer, startOffset, inclusiveAncestorsOfStart,
         inclusiveAncestorsOffsetsOfStart);
-    nsContentUtils::GetShadowIncludingAncestorsAndOffsets(
+    nsContentUtils::GetFlattenedTreeAncestorsAndOffsets(
         endContainer, endOffset, inclusiveAncestorsOfEnd,
         inclusiveAncestorsOffsetsOfEnd);
   } else {
@@ -2042,7 +2079,7 @@ nsresult nsHTMLCopyEncoder::GetPromotedPoint(Endpoint aWhere, nsINode* aNode,
       rv = GetNodeLocation(node, address_of(parent), &offset);
       NS_ENSURE_SUCCESS(rv, rv);
       if (offset == -1) return NS_OK;  // we hit generated content; STOP
-      while ((IsLastNode(node)) && (!IsRoot(parent)) && (parent != common)) {
+      while (IsLastNode(node) && !IsRoot(parent) && parent != common) {
         if (bResetPromotion) {
           nsCOMPtr<nsIContent> content = nsIContent::FromNodeOrNull(parent);
           if (content && content->IsHTMLElement()) {
@@ -2116,14 +2153,24 @@ nsresult nsHTMLCopyEncoder::GetNodeLocation(nsINode* inChild,
     }
 
     nsINode* parent = mFlags & nsIDocumentEncoder::AllowCrossShadowBoundary
-                          ? child->GetParentOrShadowHostNode()
+                          ? child->GetFlattenedTreeParentNodeForSelection()
                           : child->GetParent();
     if (!parent) {
       return NS_ERROR_NULL_POINTER;
     }
 
     *outParent = parent;
-    *outOffset = parent->ComputeIndexOf_Deprecated(child);
+
+    Maybe<uint32_t> childIndex =
+        mFlags & nsIDocumentEncoder::AllowCrossShadowBoundary
+            ? parent->ComputeFlatTreeIndexOf(child)
+            : parent->ComputeIndexOf(child);
+    if (!childIndex) {
+      *outOffset = -1;  // legacy behaviour
+    } else {
+      *outOffset = *childIndex;
+    }
+
     return NS_OK;
   }
   return NS_ERROR_NULL_POINTER;
@@ -2139,8 +2186,20 @@ bool nsHTMLCopyEncoder::IsRoot(nsINode* aNode) {
     return content->IsHTMLElement(nsGkAtoms::div);
   }
 
+  // XXX(sefeng): This is some old code from 2006, so I can't
+  // promise my comment is correct. However, I think these elements
+  // are considered to be `Root` because if we keep going up
+  // in nsHTMLCopyEncoder::GetPromotedPoint, we would lose the
+  // correct representation of the point, so we have to stop at
+  // these nodes.
+
+  // nsGkAtoms::slot is here because we'd lose the index
+  // of the slotted element if we keep going up as
+  // `nsHTMLCopyEncoder::GetNodeLocation` would promote the
+  // offset to be index of the <slot> that is relative to
+  // the <slot>'s parent.
   return content->IsAnyOfHTMLElements(nsGkAtoms::body, nsGkAtoms::td,
-                                      nsGkAtoms::th);
+                                      nsGkAtoms::th, nsGkAtoms::slot);
 }
 
 bool nsHTMLCopyEncoder::IsFirstNode(nsINode* aNode) {

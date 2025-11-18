@@ -10,6 +10,10 @@
 
 #include "modules/desktop_capture/full_screen_window_detector.h"
 
+#include <cstdint>
+
+#include "api/function_view.h"
+#include "modules/desktop_capture/desktop_capturer.h"
 #include "modules/desktop_capture/full_screen_application_handler.h"
 #include "rtc_base/time_utils.h"
 
@@ -79,6 +83,9 @@ void FullScreenWindowDetector::CreateApplicationHandlerIfNeeded(
 
   if (app_handler_ == nullptr) {
     no_handler_source_id_ = source_id;
+  } else {
+    app_handler_->SetUseHeuristicFullscreenPowerPointWindows(
+        use_heuristic_fullscreen_powerpoint_windows_);
   }
 }
 

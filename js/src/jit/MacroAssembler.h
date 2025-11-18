@@ -47,6 +47,7 @@
 #include "vm/FunctionFlags.h"
 #include "vm/Opcodes.h"
 #include "vm/RealmFuses.h"
+#include "vm/RuntimeFuses.h"
 #include "wasm/WasmAnyRef.h"
 
 // [SMDOC] MacroAssembler multi-platform overview
@@ -359,7 +360,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
   CompileRuntime* maybeRuntime_ = nullptr;
 
   // Information about the current Realm. This is nullptr for Wasm compilations
-  // and when compiling JitRuntime trampolines.
+  // and when compiling runtime-wide jitcode that will live in the Atom zone:
+  // for example, trampolines, the baseline interpreter, and (if
+  // self_hosted_cache is enabled) self-hosted baseline code.
   CompileRealm* maybeRealm_ = nullptr;
 
   // Labels for handling exceptions and failures.
@@ -384,9 +387,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
   size_t instructionsSize() const { return size(); }
 
   CompileRealm* realm() const {
-    MOZ_ASSERT(maybeRealm_);
-    return maybeRealm_;
+    MOZ_ASSERT(maybeRealm());
+    return maybeRealm();
   }
+  CompileRealm* maybeRealm() const { return maybeRealm_; }
   CompileRuntime* runtime() const {
     MOZ_ASSERT(maybeRuntime_);
     return maybeRuntime_;
@@ -793,6 +797,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // operations should be emitted while setting arguments.
   void passABIArg(const MoveOperand& from, ABIType type);
   inline void passABIArg(Register reg);
+  void passABIArg(Register64 reg);
   inline void passABIArg(FloatRegister reg, ABIType type);
 
   inline void callWithABI(
@@ -1154,7 +1159,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void subPtr(Register src, Register dest) PER_ARCH;
   inline void subPtr(Register src, const Address& dest) PER_ARCH;
   inline void subPtr(Imm32 imm, Register dest) PER_ARCH;
-  inline void subPtr(ImmWord imm, Register dest) DEFINED_ON(x64);
+  inline void subPtr(ImmWord imm, Register dest) DEFINED_ON(x86, x64);
   inline void subPtr(const Address& addr, Register dest) PER_ARCH;
 
   inline void sub64(Register64 src, Register64 dest) PER_ARCH;
@@ -1177,6 +1182,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
                                 Register dest) PER_ARCH;
 
   inline void mulPtr(Register rhs, Register srcDest) PER_ARCH;
+  inline void mulPtr(ImmWord rhs, Register srcDest) DEFINED_ON(x86, x64);
 
   inline void mul64(const Operand& src, const Register64& dest) DEFINED_ON(x64);
   inline void mul64(const Operand& src, const Register64& dest,
@@ -1327,6 +1333,18 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void randomDouble(Register rng, FloatRegister dest, Register64 temp0,
                     Register64 temp1);
 
+  inline void min32(Register lhs, Register rhs, Register result) PER_ARCH;
+  inline void min32(Register lhs, Imm32 rhs, Register result) PER_ARCH;
+
+  inline void max32(Register lhs, Register rhs, Register result) PER_ARCH;
+  inline void max32(Register lhs, Imm32 rhs, Register result) PER_ARCH;
+
+  inline void minPtr(Register lhs, Register rhs, Register result) PER_ARCH;
+  inline void minPtr(Register lhs, ImmWord rhs, Register result) PER_ARCH;
+
+  inline void maxPtr(Register lhs, Register rhs, Register result) PER_ARCH;
+  inline void maxPtr(Register lhs, ImmWord rhs, Register result) PER_ARCH;
+
   // srcDest = {min,max}{Float32,Double}(srcDest, other)
   // For min and max, handle NaN specially if handleNaN is true.
 
@@ -1354,6 +1372,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
              Register temp2, Label* onOver);
   void powPtr(Register base, Register power, Register dest, Register temp1,
               Register temp2, Label* onOver);
+
+  // Inline implementation of Math.round.
+  void roundFloat32(FloatRegister src, FloatRegister dest);
+  void roundDouble(FloatRegister src, FloatRegister dest);
 
   void sameValueDouble(FloatRegister left, FloatRegister right,
                        FloatRegister temp, Register dest);
@@ -1522,20 +1544,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
   inline void branch16(Condition cond, const Address& lhs, Imm32 rhs,
                        Label* label) PER_SHARED_ARCH;
 
-  // On some platforms, it is possible to do a 32-bit comparison against
-  // the low 32 bits of a 64-bit register, ignoring the high bits. On
-  // other architectures (eg RISC-V), this may not be possible. Passing
-  // LhsHighBitsAreClean::No implies that the architecture-specific code
-  // must zero/sign-extend the low bits of the Lhs if it can't ignore
-  // the high bits.
-  enum class LhsHighBitsAreClean { Yes, No };
-
-  inline void branch32(Condition cond, Register lhs, Register rhs, Label* label,
-                       LhsHighBitsAreClean clean = LhsHighBitsAreClean::Yes)
-      PER_SHARED_ARCH;
-  inline void branch32(Condition cond, Register lhs, Imm32 rhs, Label* label,
-                       LhsHighBitsAreClean clean = LhsHighBitsAreClean::Yes)
-      PER_SHARED_ARCH;
+  inline void branch32(Condition cond, Register lhs, Register rhs,
+                       Label* label) PER_SHARED_ARCH;
+  inline void branch32(Condition cond, Register lhs, Imm32 rhs,
+                       Label* label) PER_SHARED_ARCH;
 
   inline void branch32(Condition cond, Register lhs, const Address& rhs,
                        Label* label) DEFINED_ON(arm64);
@@ -3720,16 +3732,18 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // limited to something much larger.
 
   void wasmBoundsCheck32(Condition cond, Register index,
-                         Register boundsCheckLimit, Label* ok) PER_SHARED_ARCH;
+                         Register boundsCheckLimit,
+                         Label* label) PER_SHARED_ARCH;
 
   void wasmBoundsCheck32(Condition cond, Register index,
-                         Address boundsCheckLimit, Label* ok) PER_SHARED_ARCH;
+                         Address boundsCheckLimit,
+                         Label* label) PER_SHARED_ARCH;
 
   void wasmBoundsCheck64(Condition cond, Register64 index,
-                         Register64 boundsCheckLimit, Label* ok) PER_ARCH;
+                         Register64 boundsCheckLimit, Label* label) PER_ARCH;
 
   void wasmBoundsCheck64(Condition cond, Register64 index,
-                         Address boundsCheckLimit, Label* ok) PER_ARCH;
+                         Address boundsCheckLimit, Label* label) PER_ARCH;
 
   // Each wasm load/store instruction appends its own wasm::Trap::OutOfBounds.
   void wasmLoad(const wasm::MemoryAccessDesc& access, Operand srcAddr,
@@ -3905,10 +3919,8 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // null check into the rest of the call instructions.
   void wasmCallIndirect(const wasm::CallSiteDesc& desc,
                         const wasm::CalleeDesc& callee,
-                        Label* boundsCheckFailedLabel,
-                        Label* nullCheckFailedLabel,
-                        mozilla::Maybe<uint32_t> tableSize,
-                        CodeOffset* fastCallOffset, CodeOffset* slowCallOffset);
+                        Label* nullCheckFailedLabel, CodeOffset* fastCallOffset,
+                        CodeOffset* slowCallOffset);
 
   // WasmTableCallIndexReg must contain the index of the indirect call.  This is
   // for wasm calls only.
@@ -3918,9 +3930,7 @@ class MacroAssembler : public MacroAssemblerSpecific {
   // null check into the rest of the call instructions.
   void wasmReturnCallIndirect(const wasm::CallSiteDesc& desc,
                               const wasm::CalleeDesc& callee,
-                              Label* boundsCheckFailedLabel,
                               Label* nullCheckFailedLabel,
-                              mozilla::Maybe<uint32_t> tableSize,
                               const ReturnCallAdjustmentInfo& retCallInfo);
 
   // This function takes care of loading the callee's instance and address from
@@ -5051,6 +5061,10 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   void loadRealmFuse(RealmFuses::FuseIndex index, Register dest);
 
+  void loadRuntimeFuse(RuntimeFuses::FuseIndex index, Register dest);
+
+  void guardRuntimeFuse(RuntimeFuses::FuseIndex index, Label* fail);
+
   void switchToRealm(Register realm);
   void switchToRealm(const void* realm, Register scratch);
   void switchToObjectRealm(Register obj, Register scratch);
@@ -5606,12 +5620,14 @@ class MacroAssembler : public MacroAssemblerSpecific {
   void initGCThing(Register obj, Register temp,
                    const TemplateObject& templateObj, bool initContents = true);
 
-  enum class TypedArrayLength { Fixed, Dynamic };
+  void initTypedArraySlots(Register obj, Register length, Register temp1,
+                           Register temp2, LiveRegisterSet liveRegs,
+                           Label* fail,
+                           const FixedLengthTypedArrayObject* templateObj);
 
-  void initTypedArraySlots(Register obj, Register temp, Register lengthReg,
-                           LiveRegisterSet liveRegs, Label* fail,
-                           FixedLengthTypedArrayObject* templateObj,
-                           TypedArrayLength lengthKind);
+  void initTypedArraySlotsInline(
+      Register obj, Register temp,
+      const FixedLengthTypedArrayObject* templateObj);
 
   void newGCString(Register result, Register temp, gc::Heap initialHeap,
                    Label* fail);
@@ -5620,6 +5636,9 @@ class MacroAssembler : public MacroAssemblerSpecific {
 
   void newGCBigInt(Register result, Register temp, gc::Heap initialHeap,
                    Label* fail);
+
+  void preserveWrapper(Register wrapper, Register temp1, Register temp2,
+                       const LiveRegisterSet& liveRegs);
 
  private:
   void branchIfNotStringCharsEquals(Register stringChars,
@@ -5758,9 +5777,6 @@ class MacroAssembler : public MacroAssemblerSpecific {
     loadResizableArrayBufferViewLengthIntPtr(ResizableArrayBufferView::DataView,
                                              sync, obj, output, scratch);
   }
-
-  void loadResizableTypedArrayByteOffsetMaybeOutOfBoundsIntPtr(
-      Register obj, Register output, Register scratch);
 
   void dateFillLocalTimeSlots(Register obj, Register scratch,
                               const LiveRegisterSet& volatileRegs);

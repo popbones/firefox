@@ -8,6 +8,9 @@
 newtab-page-title = Gnove schede
 newtab-settings-button =
     .title = Personalize la pagjine de tô gnove schede
+newtab-customize-panel-icon-button =
+    .title = Personalize cheste pagjine
+newtab-customize-panel-icon-button-label = Personalize
 newtab-personalize-settings-icon-label =
     .title = Personalize Gnove schede
     .aria-label = Impostazions
@@ -53,6 +56,9 @@ newtab-topsites-add-shortcut-header = Gnove scurte
 newtab-topsites-edit-topsites-header = Modifiche sît principâl
 newtab-topsites-edit-shortcut-header = Modifiche scurte
 newtab-topsites-add-shortcut-label = Zonte scurte
+newtab-topsites-add-shortcut-title =
+    .title = Zonte scurte
+    .aria-label = Zonte scurte
 newtab-topsites-title-label = Titul
 newtab-topsites-title-input =
     .placeholder = Inserìs un titul
@@ -310,9 +316,6 @@ newtab-custom-pocket-sponsored = Storiis sponsorizadis
 newtab-custom-pocket-show-recent-saves = Mostre salvaments resints
 newtab-custom-recent-title = Ativitât resinte
 newtab-custom-recent-subtitle = Une selezion di sîts e contignûts resints
-newtab-custom-recent-toggle =
-    .label = Ativitât resinte
-    .description = Une selezion di sîts e contignûts resints
 newtab-custom-weather-toggle =
     .label = Meteo
     .description = Previsions par vuê cuntune voglade
@@ -436,7 +439,6 @@ newtab-weather-menu-change-location = Cambie localitât
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Cîr localitât
     .aria-label = Cîr localitât
-newtab-weather-change-location-search-input = Cîr localitât
 newtab-weather-menu-weather-display = Visualizazion meteo
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -502,6 +504,9 @@ newtab-topic-selection-button-pick-interests = Sielç i tiei interès
 newtab-section-follow-button = Sta daûr
 newtab-section-following-button = Tu stâs daûr
 newtab-section-unfollow-button = Smet di sta daûr
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = Regole di fin il to feed
+newtab-section-follow-highlight-subtitle = Sta daûr dai argoments che ti interessin par scuvierzi di plui su ce che ti plâs.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -544,6 +549,11 @@ newtab-download-mobile-highlight-body-variant-c = Savevistu che tu puedis simpri
 newtab-download-mobile-highlight-image =
     .aria-label = Codiç QR par discjariâ { -brand-product-name } par dispositîfs mobii
 
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = I tiei preferîts a puartade di man
+newtab-shortcuts-highlight-subtitle = Zonte une scurte par mantignî i tiei sîts preferîts a puartade di clic.
+
 ## Strings for reporting ads and content
 
 newtab-report-content-why-reporting-this =
@@ -569,11 +579,11 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
-# "Trending on Google" refers to the trending topics coming from Google Search, usually seen when a user is focused on the search bar
-newtab-trending-searches-trending-on-google = Di tindince su Google
 newtab-trending-searches-show-trending =
     .title = Mostre ricercjis di tindince
 newtab-trending-searches-hide-trending =
     .title = Plate ricercjis di tindince
 newtab-trending-searches-learn-more = Plui informazions
 newtab-trending-searches-dismiss = Plate ricercjis di tindince
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = Ricercjis di tindince

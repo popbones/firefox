@@ -131,9 +131,12 @@ function getNodeInfo(node, elementStyle) {
       toggleActive: getShapeToggleActive(node),
       point: getShapePoint(node),
     };
-  } else if (declaration && classList.contains("ruleview-unused-warning")) {
+  } else if (
+    declaration &&
+    classList.contains("ruleview-inactive-css-warning")
+  ) {
     type = VIEW_NODE_INACTIVE_CSS;
-    value = declaration.isUsed();
+    value = declaration.getInactiveCssData();
   } else if (node.closest(".container-query-declaration")) {
     type = VIEW_NODE_CSS_QUERY_CONTAINER;
     const containerQueryEl = node.closest(".container-query");
@@ -351,23 +354,9 @@ async function getNodeCompatibilityInfo(node, elementStyle) {
   return issue;
 }
 
-/**
- * Returns true if the given CSS property value contains the given variable name.
- *
- * @param {String} propertyValue
- *        CSS property value (e.g. "var(--color)")
- * @param {String} variableName
- *        CSS variable name (e.g. "--color")
- * @return {Boolean}
- */
-function hasCSSVariable(propertyValue, variableName) {
-  return getCSSVariables(propertyValue).includes(variableName);
-}
-
 module.exports = {
   getCSSVariables,
   getNodeInfo,
   getRuleFromNode,
-  hasCSSVariable,
   getNodeCompatibilityInfo,
 };

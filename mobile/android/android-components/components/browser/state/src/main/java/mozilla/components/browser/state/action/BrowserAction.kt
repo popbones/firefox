@@ -28,6 +28,7 @@ import mozilla.components.browser.state.state.UndoHistoryState
 import mozilla.components.browser.state.state.WebExtensionState
 import mozilla.components.browser.state.state.content.DownloadState
 import mozilla.components.browser.state.state.content.FindResultState
+import mozilla.components.browser.state.state.content.PermissionHighlightsState
 import mozilla.components.browser.state.state.content.ShareResourceState
 import mozilla.components.browser.state.state.extension.WebExtensionPromptRequest
 import mozilla.components.browser.state.state.recover.RecoverableTab
@@ -378,11 +379,6 @@ sealed class UndoAction : BrowserAction() {
      * Restores the tabs in [UndoHistoryState].
      */
     object RestoreRecoverableTabs : UndoAction()
-
-    /**
-     * Updates the [EngineState] for the given tab id in [UndoHistoryState].
-     */
-    data class UpdateEngineStateForRecoverableTab(val id: String, val engineState: EngineSessionState) : UndoAction()
 }
 
 /**
@@ -514,6 +510,28 @@ sealed class ContentAction : BrowserAction() {
          * with the given [tabId].
          */
         data class MediaKeySystemAccesChangedAction(val tabId: String, val value: Boolean) :
+            UpdatePermissionHighlightsStateAction()
+
+        /**
+         * Updates the [PermissionHighlightsState.localDeviceAccessChanged] property with the
+         * given [tabId]
+         *
+         * @property tabId The affected tab id
+         * @property value The value indicating whether or not the local device access permission
+         * has changed
+         */
+        data class LocalDeviceAccessChangedAction(val tabId: String, val value: Boolean) :
+            UpdatePermissionHighlightsStateAction()
+
+        /**
+         * Updates the [PermissionHighlightsState.localNetworkAccessChanged] property with the
+         * given [tabId]
+         *
+         * @property tabId The affected tab id
+         * @property value The value indicating whether or not the local network access permission
+         * has changed
+         */
+        data class LocalNetworkAccessChangedAction(val tabId: String, val value: Boolean) :
             UpdatePermissionHighlightsStateAction()
 
         /**
@@ -1533,6 +1551,13 @@ sealed class EngineAction : BrowserAction() {
      * Purges the back/forward history of all tabs and custom tabs.
      */
     object PurgeHistoryAction : EngineAction()
+
+    /**
+     * Flushes the most recent state of the session with the provided [tabId].
+     */
+    data class FlushEngineSessionStateAction(
+        override val tabId: String,
+    ) : EngineAction(), ActionWithTab
 }
 
 /**

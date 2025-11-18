@@ -451,7 +451,8 @@ static nsTArray<std::pair<nsTArray<dom::AbstractRange*>, nsStaticAtom*>>
 FindDOMTextOffsetAttributes(LocalAccessible* aAcc, int32_t aRenderedStart,
                             int32_t aRenderedEnd, bool aAllowAdjacent = false) {
   nsTArray<std::pair<nsTArray<dom::AbstractRange*>, nsStaticAtom*>> result;
-  if (!aAcc->IsTextLeaf() || !aAcc->HasOwnContent()) {
+  if (!aAcc->IsTextLeaf() || !aAcc->HasOwnContent() ||
+      !aAcc->GetContent()->IsText()) {
     return result;
   }
   nsIFrame* frame = aAcc->GetFrame();
@@ -634,9 +635,37 @@ static bool IsLineBreakContinuation(nsTextFrame* aContinuation) {
   return AreFramesOnDifferentLines(aContinuation, prev);
 }
 
+static bool IsCaretValid(TextLeafPoint aPoint) {
+  Accessible* acc = aPoint.mAcc;
+  if (!acc->IsHyperText()) {
+    acc = acc->Parent();
+  }
+  if (!(acc->State() & states::EDITABLE)) {
+    return true;
+  }
+  // The caret is within editable content.
+  Accessible* focus = FocusMgr() ? FocusMgr()->FocusedAccessible() : nullptr;
+  if (!focus) {
+    return false;
+  }
+  // If the focus isn't an editor, the caret can't be inside an editor. This
+  // can happen, for example, when a text input is the last element in a
+  // container and a user clicks in the empty area at the end of the container.
+  // In this case, the caret is actually at the end of the container outside the
+  // input. This can also happen if there is an empty area in a container before
+  // an input and a user clicks there. TextLeafPoint can't represent either of
+  // these cases and it's generally not useful. We must not normalize this to
+  // the nearest leaf because this would put the caret inside an editor which
+  // isn't focused. Instead, we pretend there is no caret. See bug 1950748 for
+  // more details.
+  return focus->State() & states::EDITABLE;
+}
+
 /*** TextLeafPoint ***/
 
 TextLeafPoint::TextLeafPoint(Accessible* aAcc, int32_t aOffset) {
+  MOZ_ASSERT(aOffset >= 0 ||
+             aOffset == nsIAccessibleText::TEXT_OFFSET_END_OF_TEXT);
   if (!aAcc) {
     // Construct an invalid point.
     mAcc = nullptr;
@@ -646,8 +675,7 @@ TextLeafPoint::TextLeafPoint(Accessible* aAcc, int32_t aOffset) {
 
   // Even though an OuterDoc contains a document, we treat it as a leaf because
   // we don't want to move into another document.
-  if (aOffset != nsIAccessibleText::TEXT_OFFSET_CARET && !aAcc->IsOuterDoc() &&
-      aAcc->HasChildren()) {
+  if (!aAcc->IsOuterDoc() && aAcc->HasChildren()) {
     // Find a leaf. This might not necessarily be a TextLeafAccessible; it
     // could be an empty container.
     auto GetChild = [&aOffset](Accessible* acc) -> Accessible* {
@@ -1076,6 +1104,9 @@ TextLeafPoint TextLeafPoint::GetCaret(Accessible* aAcc) {
           "Got HyperText CaretOffset but ToTextLeafPoint failed");
       return point;
     }
+    if (!IsCaretValid(point)) {
+      return TextLeafPoint();
+    }
     nsIFrame* frame = ht->GetFrame();
     RefPtr<nsFrameSelection> sel = frame ? frame->GetFrameSelection() : nullptr;
     if (sel && sel->GetHint() == CaretAssociationHint::Before) {
@@ -1112,6 +1143,16 @@ TextLeafPoint TextLeafPoint::GetCaret(Accessible* aAcc) {
     return TextLeafPoint();
   }
   TextLeafPoint point = ht->ToTextLeafPoint(htOffset);
+  if (!point) {
+    // The caret offset should usually be in sync with the tree. However, tree
+    // and selection updates happen using separate IPDL calls, so it's possible
+    // for a client caret query to arrive between them. Thus, we can end up
+    // with an invalid caret here.
+    return point;
+  }
+  if (!IsCaretValid(point)) {
+    return TextLeafPoint();
+  }
   point.mIsEndOfLineInsertionPoint = remoteDoc->IsCaretAtEndOfLine();
   return point;
 }
@@ -1787,6 +1828,93 @@ LayoutDeviceIntRect TextLeafPoint::ComputeBoundsFromFrame() const {
       frameScreenRect, presContext->AppUnitsPerDevPixel());
 }
 
+LayoutDeviceIntRect TextLeafPoint::InsertionPointBounds() const {
+  if (TextLeafPoint::GetCaret(mAcc) == *this) {
+    for (Accessible* acc = mAcc; acc; acc = acc->Parent()) {
+      if (HyperTextAccessibleBase* ht = acc->AsHyperTextBase()) {
+        return ht->GetCaretRect().first;
+      }
+    }
+  }
+
+  LayoutDeviceIntRect currentBounds = CharBounds();
+  if (currentBounds.IsEmpty()) {
+    return LayoutDeviceIntRect();
+  }
+
+  // When 'reversed' is true we calculate the writing direction using a
+  // neighboring character that is past the current one (eg. in LTR the
+  // character to the right.)
+  bool reversed = false;
+  // We are conservative here and stay within the bounds of the editable so
+  // we don't get confused with other text-flows outside of this block.
+  TextLeafPoint neighborChar =
+      FindBoundary(nsIAccessibleText::BOUNDARY_CHAR, eDirPrevious,
+                   BoundaryFlags::eStopInEditable);
+  if (*this == neighborChar) {
+    // If the current char is the first, use the next char past the current
+    // to extrapolate the writing direction.
+    neighborChar = FindBoundary(nsIAccessibleText::BOUNDARY_CHAR, eDirNext,
+                                BoundaryFlags::eStopInEditable);
+    reversed = true;
+  } else {
+    if (*this ==
+        FindBoundary(
+            nsIAccessibleText::BOUNDARY_LINE_START, eDirPrevious,
+            BoundaryFlags::eStopInEditable | BoundaryFlags::eIncludeOrigin)) {
+      // If this char is a newline the previous char will be on the previous
+      // line either equal or past the current one (eg. in LTR the previous char
+      // will be to the right of the current instead of the left.)
+      reversed = true;
+    }
+  }
+
+  LayoutDeviceIntRect neighborBounds = neighborChar.CharBounds();
+  if (neighborBounds.IsEmpty()) {
+    // Either the point is invalid or the accessible is not visible.
+    // We tried, didn't we..
+    return LayoutDeviceIntRect();
+  }
+
+  // An axis-agnostic function that determines writing direction and aligns
+  // the caret where insertion point should be.
+  auto alignRectToInsertion = [](int32_t neighborStart, bool reversed,
+                                 int32_t& currentStart,
+                                 int32_t& currentLength) {
+    // The caret is always 1px wide (or tall, in vertical text).
+    const int32_t caretLength = 1;
+    int32_t delta = (neighborStart - currentStart);
+    if (reversed) {
+      delta *= -1;
+    }
+    if (delta > 0) {
+      // Previous character is to the end (eg. right in ltr) of the current one,
+      // or next character is to the start (eg. left in ltr) of the current one.
+      // Align the caret to the end of the current character.
+      currentStart += currentLength - caretLength;
+    }
+    currentLength = caretLength;
+  };
+
+  WritingMode wm = mAcc->GetWritingMode();
+  if (wm == WritingMode() && mAcc->Parent()) {
+    // mAcc is probably a text leaf with no stored writing mode, use its parent.
+    wm = mAcc->Parent()->GetWritingMode();
+  }
+
+  if (!wm.IsVertical()) {
+    // Horizontal text.
+    alignRectToInsertion(neighborBounds.x, reversed, currentBounds.x,
+                         currentBounds.width);
+  } else {
+    // Vertical text
+    alignRectToInsertion(neighborBounds.y, reversed, currentBounds.y,
+                         currentBounds.height);
+  }
+
+  return currentBounds;
+}
+
 /* static */
 nsTArray<TextOffsetAttribute> TextLeafPoint::GetTextOffsetAttributes(
     LocalAccessible* aAcc) {
@@ -1860,6 +1988,13 @@ already_AddRefed<AccAttributes> TextLeafPoint::GetTextAttributesLocalAcc(
   MOZ_ASSERT(acc->IsText());
   // TextAttrsMgr wants a HyperTextAccessible.
   LocalAccessible* parent = acc->LocalParent();
+  if (!parent) {
+    // This should only happen if a client query occurs after a hide event is
+    // queued for acc and after acc is detached from the document, but before
+    // the event is fired and thus before acc is shut down.
+    MOZ_ASSERT(!acc->IsInDocument());
+    return nullptr;
+  }
   HyperTextAccessible* hyperAcc = parent->AsHyperText();
   MOZ_ASSERT(hyperAcc);
   RefPtr<AccAttributes> attributes = new AccAttributes();
@@ -2019,7 +2154,7 @@ TextLeafPoint TextLeafPoint::FindTextAttrsStart(nsDirection aDirection,
       static_cast<int32_t>(nsAccUtils::TextLength(lastPoint.mAcc)));
 }
 
-LayoutDeviceIntRect TextLeafPoint::CharBounds() {
+LayoutDeviceIntRect TextLeafPoint::CharBounds() const {
   if (!mAcc) {
     return LayoutDeviceIntRect();
   }
@@ -2157,7 +2292,7 @@ LayoutDeviceIntRect TextLeafRange::Bounds() const {
   // incorrect width. We should use the length of the longest spanned line for
   // our width. To achieve this, walk all the lines and union them into the
   // result rectangle.
-  LayoutDeviceIntRect result = TextLeafPoint{mStart}.CharBounds();
+  LayoutDeviceIntRect result;
   const bool succeeded = WalkLineRects(
       [&result](TextLeafRange aLine, LayoutDeviceIntRect aLineRect) {
         result.UnionRect(result, aLineRect);
@@ -2406,9 +2541,12 @@ void TextLeafRange::ScrollIntoView(uint32_t aScrollType) const {
 nsTArray<TextLeafRange> TextLeafRange::VisibleLines(
     Accessible* aContainer) const {
   MOZ_ASSERT(aContainer);
+  nsTArray<TextLeafRange> lines;
+  if (mStart == mEnd) {
+    return lines;
+  }
   // We want to restrict our lines to those visible within aContainer.
   LayoutDeviceIntRect containerBounds = aContainer->Bounds();
-  nsTArray<TextLeafRange> lines;
   WalkLineRects([&lines, &containerBounds](TextLeafRange aLine,
                                            LayoutDeviceIntRect aLineRect) {
     // XXX This doesn't correctly handle lines that are scrolled out where the
@@ -2424,8 +2562,13 @@ nsTArray<TextLeafRange> TextLeafRange::VisibleLines(
 }
 
 bool TextLeafRange::WalkLineRects(LineRectCallback aCallback) const {
-  if (mEnd <= mStart) {
+  if (mEnd < mStart) {
     return false;
+  }
+  if (mStart == mEnd) {
+    // Return the insertion point bounds for the offset if range is collapsed.
+    aCallback(*this, mStart.InsertionPointBounds());
+    return true;
   }
 
   bool locatedFinalLine = false;

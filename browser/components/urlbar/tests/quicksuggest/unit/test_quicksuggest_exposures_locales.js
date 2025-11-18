@@ -75,7 +75,7 @@ add_task(async function suggestEnabledLocales() {
         {
           query: "amp",
           expectedResults: [
-            QuickSuggestTestUtils.ampResult(),
+            QuickSuggestTestUtils.ampResult({ suggestedIndex: -1 }),
             makeExpectedExposureResult("test-exposure-bbb"),
             makeExpectedExposureResult("test-exposure-aaa"),
           ],
@@ -265,6 +265,7 @@ function makeExpectedExposureResult(rsSuggestionType) {
       source: "rust",
       dynamicType: "exposure",
       provider: "Dynamic",
+      suggestionType: rsSuggestionType,
       telemetryType: "exposure",
       isSponsored: false,
     },

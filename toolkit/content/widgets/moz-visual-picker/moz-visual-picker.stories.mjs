@@ -81,6 +81,7 @@ const Template = ({
   supportPage,
   type,
   showItemLabels,
+  imageSrc,
 }) => {
   return html`
     <style>
@@ -114,11 +115,15 @@ const Template = ({
         width: 50px;
 
         img {
-          height: var(--icon-size-default);
-          width: var(--icon-size-default);
+          height: var(--icon-size);
+          width: var(--icon-size);
           -moz-context-properties: fill;
           fill: var(--icon-color);
         }
+      }
+
+      moz-visual-picker-item {
+        max-width: 150px;
       }
     </style>
     <moz-visual-picker
@@ -136,6 +141,7 @@ const Template = ({
               ? AVATAR_L10N_IDS[i]
               : nothing}
             label=${showItemLabels ? `Item number ${i + 1}` : nothing}
+            imagesrc=${ifDefined(imageSrc)}
           >
             ${getSlottedContent(slottedItem, i)}
           </moz-visual-picker-item>`
@@ -181,5 +187,18 @@ Listbox.args = {
 export const WithItemLabels = Template.bind({});
 WithItemLabels.args = {
   ...Default.args,
+  showItemLabels: true,
+};
+
+export const WithImage = Template.bind({});
+WithImage.args = {
+  ...Default.args,
+  imageSrc:
+    "https://firefox-settings-attachments.cdn.mozilla.net/main-workspace/newtab-wallpapers-v2/e1108381-5c19-4cb4-a630-69f9e45503fb.avif",
+};
+
+export const WithImageAndLabel = Template.bind({});
+WithImageAndLabel.args = {
+  ...WithImage.args,
   showItemLabels: true,
 };

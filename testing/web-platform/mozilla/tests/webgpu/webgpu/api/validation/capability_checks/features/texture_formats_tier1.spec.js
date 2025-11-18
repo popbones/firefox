@@ -14,8 +14,10 @@ when the feature is not enabled. This includes:
 - STORAGE_BINDING usage for formats gaining this capability.
 `;import { makeTestGroup } from '../../../../../common/framework/test_group.js';
 import {
-  kTextureFormatTier1AllowsRenderAttachmentBlendableMultisampleResolve,
-  kTextureFormatsTier1EnablesStorageReadOnlyWriteOnly } from
+  kTextureFormatTier1AllowsRenderAttachmentBlendableMultisample,
+  kTextureFormatTier1ThrowsWhenNotEnabled,
+  kTextureFormatsTier1EnablesStorageReadOnlyWriteOnly,
+  kTextureFormatTier1AllowsResolve } from
 '../../../../format_info.js';
 import { UniqueFeaturesOrLimitsGPUTest } from '../../../../gpu_test.js';
 import * as vtu from '../../validation_test_utils.js';
@@ -42,7 +44,7 @@ desc(
 ).
 params((u) =>
 u.
-combine('format', kTextureFormatTier1AllowsRenderAttachmentBlendableMultisampleResolve).
+combine('format', kTextureFormatTier1AllowsRenderAttachmentBlendableMultisample).
 combine('enable_feature', [true, false])
 ).
 beforeAllSubcases((t) => {
@@ -54,13 +56,17 @@ beforeAllSubcases((t) => {
 fn((t) => {
   const { format, enable_feature } = t.params;
 
-  t.expectValidationError(() => {
-    t.createTextureTracked({
-      format,
-      size: [1, 1, 1],
-      usage: GPUTextureUsage.RENDER_ATTACHMENT
-    });
-  }, !enable_feature);
+  t.expectValidationErrorOrException(
+    () => {
+      t.createTextureTracked({
+        format,
+        size: [1, 1, 1],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT
+      });
+    },
+    !enable_feature,
+    kTextureFormatTier1ThrowsWhenNotEnabled.includes(format)
+  );
 });
 
 g.test('texture_usage,multisample').
@@ -72,7 +78,7 @@ desc(
 ).
 params((u) =>
 u.
-combine('format', kTextureFormatTier1AllowsRenderAttachmentBlendableMultisampleResolve).
+combine('format', kTextureFormatTier1AllowsRenderAttachmentBlendableMultisample).
 combine('enable_feature', [true, false])
 ).
 beforeAllSubcases((t) => {
@@ -84,14 +90,18 @@ beforeAllSubcases((t) => {
 fn((t) => {
   const { format, enable_feature } = t.params;
 
-  t.expectValidationError(() => {
-    t.createTextureTracked({
-      format,
-      size: [1, 1, 1],
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-      sampleCount: 4
-    });
-  }, !enable_feature);
+  t.expectValidationErrorOrException(
+    () => {
+      t.createTextureTracked({
+        format,
+        size: [1, 1, 1],
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        sampleCount: 4
+      });
+    },
+    !enable_feature,
+    kTextureFormatTier1ThrowsWhenNotEnabled.includes(format)
+  );
 });
 
 g.test('texture_usage,storage_binding').
@@ -115,13 +125,17 @@ beforeAllSubcases((t) => {
 fn((t) => {
   const { format, enable_feature } = t.params;
 
-  t.expectValidationError(() => {
-    t.createTextureTracked({
-      format,
-      size: [1, 1, 1],
-      usage: GPUTextureUsage.STORAGE_BINDING
-    });
-  }, !enable_feature);
+  t.expectValidationErrorOrException(
+    () => {
+      t.createTextureTracked({
+        format,
+        size: [1, 1, 1],
+        usage: GPUTextureUsage.STORAGE_BINDING
+      });
+    },
+    !enable_feature,
+    kTextureFormatTier1ThrowsWhenNotEnabled.includes(format)
+  );
 });
 
 g.test('render_pipeline,color_target').
@@ -140,7 +154,7 @@ u.
 combine('isAsync', [false, true]).
 combine('format', [
 'rgba8unorm',
-...kTextureFormatTier1AllowsRenderAttachmentBlendableMultisampleResolve]
+...kTextureFormatTier1AllowsRenderAttachmentBlendableMultisample]
 ).
 combine('enable_feature', [true, false]).
 combine('check', ['RENDER_ATTACHMENT', 'blendable', 'multisample'])
@@ -196,7 +210,7 @@ fn((t) => {
     isAsync,
     enable_feature || format === 'rgba8unorm',
     pipelineDescriptor,
-    'GPUPipelineError'
+    kTextureFormatTier1ThrowsWhenNotEnabled.includes(format) ? 'TypeError' : 'GPUPipelineError'
   );
 });
 
@@ -204,13 +218,55 @@ g.test('render_pass,resolvable').
 desc(
   `
   Test creating a render pass with resolve with a color target format enabled by
-  'texture-formats-tier1' fails if the feature is not enabled.
+  'texture-formats-tier1' success if the feature is enabled.
 
-  It's not clear this can be tested because you won't be able to create a render pipeline
-  that passes validation which you need before you can create a render pass that resolves.
+  Note: It's not possible to test the failure case (feature disabled).
+  Because you won't be able to create a render pipeline that passes validation which
+  you need before you can create a render pass that resolves.
   `
 ).
-unimplemented();
+params((u) =>
+u.combine('format', kTextureFormatTier1AllowsResolve).combine('enable_feature', [true])
+).
+beforeAllSubcases((t) => {
+  const { enable_feature } = t.params;
+  if (enable_feature) {
+    t.selectDeviceOrSkipTestCase('texture-formats-tier1');
+  }
+}).
+fn((t) => {
+  const { format } = t.params;
+
+  const size = [1, 1, 1];
+  const sampleCount = 4;
+
+  const msaaTexture = t.createTextureTracked({
+    format,
+    size,
+    sampleCount,
+    usage: GPUTextureUsage.RENDER_ATTACHMENT
+  });
+
+  const resolveTexture = t.createTextureTracked({
+    format,
+    size,
+    usage: GPUTextureUsage.RENDER_ATTACHMENT
+  });
+
+  const descriptor = {
+    colorAttachments: [
+    {
+      view: msaaTexture.createView(),
+      resolveTarget: resolveTexture.createView(),
+      loadOp: 'clear',
+      storeOp: 'store'
+    }]
+
+  };
+
+  const encoder = t.device.createCommandEncoder();
+  encoder.beginRenderPass(descriptor);
+});
 
 g.test('bind_group_layout,storage_texture').
 desc(
@@ -234,18 +290,89 @@ beforeAllSubcases((t) => {
 fn((t) => {
   const { format, access, enable_feature } = t.params;
 
-  t.expectValidationError(() => {
-    t.device.createBindGroupLayout({
-      entries: [
-      {
-        binding: 0,
-        visibility: GPUShaderStage.COMPUTE,
-        storageTexture: {
-          format,
-          access
-        }
-      }]
+  t.expectValidationErrorOrException(
+    () => {
+      t.device.createBindGroupLayout({
+        entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.COMPUTE,
+          storageTexture: {
+            format,
+            access
+          }
+        }]
 
-    });
-  }, !enable_feature);
+      });
+    },
+    !enable_feature,
+    kTextureFormatTier1ThrowsWhenNotEnabled.includes(format)
+  );
+});
+
+g.test('pipeline_auto_layout,storage_texture').
+desc(
+  `
+  Test creating a pipeline with auto layout with a storage texture binding format enabled by
+  'texture-formats-tier1' fails if the feature is not enabled.
+  `
+).
+params((u) =>
+u.
+combine('format', kTextureFormatsTier1EnablesStorageReadOnlyWriteOnly).
+combine('access', ['read', 'write']) // Tier1 enables read-only/write-only for these
+.combine('enable_feature', [true, false]).
+beginSubcases().
+combine('isAsync', [false, true]).
+combine('type', ['compute', 'render'])
+).
+beforeAllSubcases((t) => {
+  const { enable_feature } = t.params;
+  if (enable_feature) {
+    t.selectDeviceOrSkipTestCase('texture-formats-tier1');
+  }
+}).
+fn((t) => {
+  const { format, access, enable_feature, isAsync, type } = t.params;
+
+  const code = `
+      @group(0) @binding(0) var tex1d: texture_storage_1d<${format}, ${access}>;
+      @group(0) @binding(1) var tex2d: texture_storage_1d<${format}, ${access}>;
+      @group(0) @binding(2) var tex3d: texture_storage_1d<${format}, ${access}>;
+
+      fn useTextures() {
+        _ = tex1d;
+        _ = tex2d;
+        _ = tex3d;
+      }
+
+      @compute @workgroup_size(1) fn cs() {
+        useTextures();
+      }
+
+      @vertex fn vs() -> @builtin(position) vec4f {
+        return vec4f(0);
+      }
+      @fragment fn fs() -> @location(0) vec4f {
+        useTextures();
+        return vec4f(0);
+      }
+    `;
+
+  const module = t.device.createShaderModule({ code });
+
+  if (type === 'compute') {
+    const descriptor = {
+      layout: 'auto',
+      compute: { module }
+    };
+    vtu.doCreateComputePipelineTest(t, isAsync, enable_feature, descriptor);
+  } else {
+    const descriptor = {
+      layout: 'auto',
+      vertex: { module },
+      fragment: { module, targets: [{ format: 'rgba8unorm' }] }
+    };
+    vtu.doCreateRenderPipelineTest(t, isAsync, enable_feature, descriptor);
+  }
 });

@@ -9,17 +9,17 @@
 
 // Keep others in (case-insensitive) order:
 #include "gfxContext.h"
-#include "nsDisplayList.h"
-#include "nsIInterfaceRequestorUtils.h"
-#include "nsLayoutUtils.h"
-#include "nsObjectLoadingContent.h"
-#include "nsSubDocumentFrame.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/SVGUtils.h"
 #include "mozilla/dom/BrowserChild.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/SVGSVGElement.h"
+#include "nsDisplayList.h"
+#include "nsIInterfaceRequestorUtils.h"
+#include "nsLayoutUtils.h"
+#include "nsObjectLoadingContent.h"
+#include "nsSubDocumentFrame.h"
 
 using namespace mozilla::dom;
 using namespace mozilla::gfx;
@@ -168,7 +168,9 @@ nscoord SVGOuterSVGFrame::IntrinsicISize(const IntrinsicSizeInput& aInput,
     // either the fallback intrinsic size or zero, is made to match blink and
     // webkit's behavior for webcompat.
     if (isize.IsExplicitlySet() ||
-        StylePosition()->ISize(wm, StyleDisplay()->mPosition)->HasPercent() ||
+        StylePosition()
+            ->ISize(wm, AnchorPosResolutionParams::From(this))
+            ->HasPercent() ||
         !GetAspectRatio()) {
       result = wm.IsVertical() ? kFallbackIntrinsicSize.height
                                : kFallbackIntrinsicSize.width;
@@ -499,8 +501,7 @@ void SVGOuterSVGFrame::UnionChildOverflow(OverflowAreas& aOverflowAreas,
 // container methods
 
 nsresult SVGOuterSVGFrame::AttributeChanged(int32_t aNameSpaceID,
-                                            nsAtom* aAttribute,
-                                            int32_t aModType) {
+                                            nsAtom* aAttribute, AttrModType) {
   if (aNameSpaceID == kNameSpaceID_None &&
       !HasAnyStateBits(NS_FRAME_FIRST_REFLOW | NS_FRAME_IS_NONDISPLAY)) {
     if (aAttribute == nsGkAtoms::viewBox ||

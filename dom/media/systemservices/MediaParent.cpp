@@ -6,24 +6,24 @@
 
 #include "MediaParent.h"
 
-#include "mozilla/Base64.h"
 #include <mozilla/StaticMutex.h>
 
-#include "MediaUtils.h"
 #include "MediaEngine.h"
+#include "MediaUtils.h"
 #include "VideoUtils.h"
+#include "mozilla/Base64.h"
+#include "mozilla/Logging.h"
+#include "nsAppDirectoryServiceDefs.h"
 #include "nsClassHashtable.h"
-#include "nsThreadUtils.h"
-#include "nsNetCID.h"
-#include "nsNetUtil.h"
+#include "nsIFile.h"
 #include "nsIInputStream.h"
 #include "nsILineInputStream.h"
 #include "nsIOutputStream.h"
 #include "nsISafeOutputStream.h"
-#include "nsAppDirectoryServiceDefs.h"
-#include "nsIFile.h"
 #include "nsISupportsImpl.h"
-#include "mozilla/Logging.h"
+#include "nsNetCID.h"
+#include "nsNetUtil.h"
+#include "nsThreadUtils.h"
 
 #undef LOG
 mozilla::LazyLogModule gMediaParentLog("MediaParent");
@@ -514,8 +514,6 @@ Parent<Super>::Parent()
 
 template <class Super>
 Parent<Super>::~Parent() {
-  NS_ReleaseOnMainThread("Parent<Super>::mOriginKeyStore",
-                         mOriginKeyStore.forget());
   LOG(("~media::Parent: %p", this));
 }
 

@@ -4,8 +4,6 @@
 
 package org.mozilla.fenix.benchmark
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.benchmark.macro.BaselineProfileMode
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.StartupMode
@@ -19,6 +17,7 @@ import org.mozilla.fenix.benchmark.utils.TARGET_PACKAGE
 import org.mozilla.fenix.benchmark.utils.clearPackageData
 import org.mozilla.fenix.benchmark.utils.completeOnboarding
 import org.mozilla.fenix.benchmark.utils.measureRepeatedDefault
+import org.mozilla.fenix.benchmark.utils.revokeNotificationPermission
 
 /**
  * This test class benchmarks the speed of completing onboarding. Run this benchmark to verify how effective
@@ -46,7 +45,6 @@ import org.mozilla.fenix.benchmark.utils.measureRepeatedDefault
  * and the [instrumentation arguments documentation](https://d.android.com/topic/performance/benchmarking/macrobenchmark-instrumentation-args).
  **/
 @RunWith(AndroidJUnit4::class)
-@RequiresApi(Build.VERSION_CODES.N)
 @BaselineProfileMacrobenchmark
 class BaselineProfilesOnboardingBenchmark {
 
@@ -69,6 +67,7 @@ class BaselineProfilesOnboardingBenchmark {
             setupBlock = {
                 pressHome()
                 device.clearPackageData(packageName = packageName)
+                device.revokeNotificationPermission(packageName = packageName)
                 killProcess()
             },
         ) {

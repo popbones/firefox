@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.requiredSizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,8 +35,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -54,6 +53,7 @@ private val IconSpace = 12.dp
 
 // The default padding from androidx.compose.material.DropdownMenuItemHorizontalPadding
 private val DefaultDropdownMenuItemHorizontalPadding = 16.dp
+private val DropdownMenuMaxHeight = 200.dp
 
 private val ContextMenuWidth =
     2 * HorizontalPadding +
@@ -82,13 +82,7 @@ fun Dropdown(
     dropdownMenuTextWidth: Dp? = null,
     isInLandscapeMode: Boolean = false,
 ) {
-    val dropdownMenuWidth: Dp
-    if (dropdownMenuTextWidth != null) {
-        dropdownMenuWidth = ContextMenuWidth + dropdownMenuTextWidth
-    } else {
-        val longestDropdownItemSize = getLongestItemWidth(dropdownItems, AcornTheme.typography.subtitle1)
-        dropdownMenuWidth = ContextMenuWidth + longestDropdownItemSize
-    }
+    val dropdownMenuWidth = dropdownMenuTextWidth?.let { ContextMenuWidth + it }
 
     val checkedItemText by remember(dropdownItems) {
         derivedStateOf {
@@ -142,6 +136,12 @@ fun Dropdown(
             }
 
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                val widthModifier = if (dropdownMenuWidth == null) {
+                    Modifier
+                } else {
+                    Modifier.width(width = dropdownMenuWidth)
+                }
+
                 DropdownMenu(
                     menuItems = dropdownItems,
                     expanded = expanded,
@@ -151,11 +151,8 @@ fun Dropdown(
                                 coordinates.size.width.toDp()
                             }
                         }
-                        .requiredSizeIn(
-                            maxHeight = 200.dp,
-                            maxWidth = dropdownMenuWidth,
-                            minWidth = dropdownMenuWidth,
-                        ),
+                        .requiredSizeIn(maxHeight = DropdownMenuMaxHeight)
+                        .then(widthModifier),
                     offset = if (isInLandscapeMode) {
                         DpOffset(
                             -measuredDropdownMenuWidthDp,
@@ -172,26 +169,8 @@ fun Dropdown(
             }
         }
 
-        Divider(color = AcornTheme.colors.formDefault)
+        HorizontalDivider(color = AcornTheme.colors.formDefault)
     }
-}
-
-@Composable
-private fun getLongestItemWidth(items: List<MenuItem.CheckableItem>, style: TextStyle): Dp {
-    if (items.isEmpty()) {
-        return 0.dp
-    }
-
-    val textMeasurer = rememberTextMeasurer(cacheSize = items.size)
-    val longestDropdownItemSize = items.maxOf {
-        val width = textMeasurer.measure(
-            text = it.text.value,
-            style = style,
-        ).size.width
-
-        with(LocalDensity.current) { width.toDp() }
-    }
-    return longestDropdownItemSize
 }
 
 @Suppress("MagicNumber")
@@ -218,6 +197,28 @@ private fun getSelectedDropdownItems(): List<MenuItem.CheckableItem> =
         ),
         MenuItem.CheckableItem(
             text = Text.String("Item 3"),
+            isChecked = false,
+            onClick = {},
+        ),
+        MenuItem.CheckableItem(
+            text = Text.String("Super super super long item exceeding width of small width"),
+            isChecked = false,
+            onClick = {},
+        ),
+        MenuItem.CheckableItem(
+            text = Text.String(
+                "Super super super super super super super super super long item " +
+                "exceeding width of medium width",
+            ),
+            isChecked = false,
+            onClick = {},
+        ),
+        MenuItem.CheckableItem(
+            text = Text.String(
+                "Super super super super super super super super super super super " +
+                "super super super super super super super super super super long item exceeding " +
+                "width of large width",
+            ),
             isChecked = false,
             onClick = {},
         ),

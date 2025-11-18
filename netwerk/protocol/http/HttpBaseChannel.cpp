@@ -40,10 +40,12 @@
 #include "mozilla/dom/CanonicalBrowsingContext.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/FetchPriority.h"
+#include "mozilla/dom/LoadURIOptionsBinding.h"
 #include "mozilla/dom/nsHTTPSOnlyUtils.h"
 #include "mozilla/dom/nsMixedContentBlocker.h"
 #include "mozilla/dom/Performance.h"
 #include "mozilla/dom/PerformanceStorage.h"
+#include "mozilla/dom/PolicyContainer.h"
 #include "mozilla/dom/ProcessIsolation.h"
 #include "mozilla/dom/RequestBinding.h"
 #include "mozilla/dom/WindowGlobalParent.h"
@@ -109,6 +111,7 @@
 #include "mozilla/dom/ContentChild.h"
 #include "nsQueryObject.h"
 
+using mozilla::dom::ForceMediaDocument;
 using mozilla::dom::RequestMode;
 
 #define LOGORB(msg, ...)                \
@@ -327,9 +330,7 @@ static bool isSecureOrTrustworthyURL(nsIURI* aURI) {
 nsresult HttpBaseChannel::Init(nsIURI* aURI, uint32_t aCaps,
                                nsProxyInfo* aProxyInfo,
                                uint32_t aProxyResolveFlags, nsIURI* aProxyURI,
-                               uint64_t aChannelId,
-                               ExtContentPolicyType aContentPolicyType,
-                               nsILoadInfo* aLoadInfo) {
+                               uint64_t aChannelId, nsILoadInfo* aLoadInfo) {
   LOG1(("HttpBaseChannel::Init [this=%p]\n", this));
 
   MOZ_ASSERT(aURI, "null uri");
@@ -374,8 +375,26 @@ nsresult HttpBaseChannel::Init(nsIURI* aURI, uint32_t aCaps,
   rv = mRequestHead.SetHeader(nsHttp::Host, hostLine);
   if (NS_FAILED(rv)) return rv;
 
+  // Override the Accept header if a specific MediaDocument kind is forced.
+  ExtContentPolicy contentPolicyType =
+      mLoadInfo->GetExternalContentPolicyType();
+  // TRRLoadInfo doesn't implement GetForceMediaDocument.
+  ForceMediaDocument forceMediaDocument;
+  if (NS_SUCCEEDED(mLoadInfo->GetForceMediaDocument(&forceMediaDocument))) {
+    switch (forceMediaDocument) {
+      case ForceMediaDocument::Image:
+        contentPolicyType = ExtContentPolicy::TYPE_IMAGE;
+        break;
+      case ForceMediaDocument::Video:
+        contentPolicyType = ExtContentPolicy::TYPE_MEDIA;
+        break;
+      case ForceMediaDocument::None:
+        break;
+    }
+  }
+
   rv = gHttpHandler->AddStandardRequestHeaders(
-      &mRequestHead, isHTTPS, aContentPolicyType,
+      &mRequestHead, isHTTPS, contentPolicyType,
       nsContentUtils::ShouldResistFingerprinting(this,
                                                  RFPTarget::HttpUserAgent));
   if (NS_FAILED(rv)) return rv;
@@ -669,6 +688,11 @@ HttpBaseChannel::SetContentCharset(const nsACString& aContentCharset) {
 
 NS_IMETHODIMP
 HttpBaseChannel::GetContentDisposition(uint32_t* aContentDisposition) {
+  if (mLoadInfo->GetForceMediaDocument() != ForceMediaDocument::None) {
+    *aContentDisposition = nsIChannel::DISPOSITION_FORCE_INLINE;
+    return NS_OK;
+  }
+
   // See bug 1658877. If mContentDispositionHint is already
   // DISPOSITION_ATTACHMENT, it means this channel is created from a
   // download attribute. In this case, we should prefer the value from the
@@ -2892,6 +2916,34 @@ nsresult ProcessXCTO(HttpBaseChannel* aChannel, nsIURI* aURI,
   return NS_OK;
 }
 
+nsresult EnsureMIMEOfJSONModule(HttpBaseChannel* aChannel, nsIURI* aURI,
+                                nsHttpResponseHead* aResponseHead,
+                                nsILoadInfo* aLoadInfo) {
+  if (!aURI || !aResponseHead || !aLoadInfo) {
+    // if there is no uri, no response head or no loadInfo, then there is
+    // nothing to do
+    return NS_OK;
+  }
+
+  if (aLoadInfo->GetExternalContentPolicyType() !=
+      ExtContentPolicy::TYPE_JSON) {
+    // if this is not a JSON load, then there is nothing to do
+    return NS_OK;
+  }
+
+  nsAutoCString contentType;
+  aResponseHead->ContentType(contentType);
+  NS_ConvertUTF8toUTF16 typeString(contentType);
+
+  if (nsContentUtils::IsJsonMimeType(typeString)) {
+    return NS_OK;
+  }
+
+  ReportMimeTypeMismatch(aChannel, "BlockJsonModuleWithWrongMimeType", aURI,
+                         contentType, Report::Error);
+  return NS_ERROR_CORRUPTED_CONTENT;
+}
+
 // Ensure that a load of type script has correct MIME type
 nsresult EnsureMIMEOfScript(HttpBaseChannel* aChannel, nsIURI* aURI,
                             nsHttpResponseHead* aResponseHead,
@@ -2914,18 +2966,6 @@ nsresult EnsureMIMEOfScript(HttpBaseChannel* aChannel, nsIURI* aURI,
 
   if (nsContentUtils::IsJavascriptMIMEType(typeString)) {
     // script load has type script
-    glean::http::script_block_incorrect_mime
-        .EnumGet(glean::http::ScriptBlockIncorrectMimeLabel::eJavascript)
-        .Add();
-    return NS_OK;
-  }
-
-  nsContentPolicyType internalType = aLoadInfo->InternalContentPolicyType();
-  bool isModule =
-      internalType == nsIContentPolicy::TYPE_INTERNAL_MODULE ||
-      internalType == nsIContentPolicy::TYPE_INTERNAL_MODULE_PRELOAD;
-
-  if (isModule && nsContentUtils::IsJsonMimeType(typeString)) {
     glean::http::script_block_incorrect_mime
         .EnumGet(glean::http::ScriptBlockIncorrectMimeLabel::eJavascript)
         .Add();
@@ -3090,6 +3130,8 @@ nsresult EnsureMIMEOfScript(HttpBaseChannel* aChannel, nsIURI* aURI,
         .Add();
   }
 
+  nsContentPolicyType internalType = aLoadInfo->InternalContentPolicyType();
+
   // We restrict importScripts() in worker code to JavaScript MIME types.
   if (internalType == nsIContentPolicy::TYPE_INTERNAL_WORKER_IMPORT_SCRIPTS ||
       internalType == nsIContentPolicy::TYPE_INTERNAL_WORKER_STATIC_MODULE) {
@@ -3111,7 +3153,8 @@ nsresult EnsureMIMEOfScript(HttpBaseChannel* aChannel, nsIURI* aURI,
   }
 
   // ES6 modules require a strict MIME type check.
-  if (isModule) {
+  if (internalType == nsIContentPolicy::TYPE_INTERNAL_MODULE ||
+      internalType == nsIContentPolicy::TYPE_INTERNAL_MODULE_PRELOAD) {
     ReportMimeTypeMismatch(aChannel, "BlockModuleWithWrongMimeType", aURI,
                            contentType, Report::Error);
     return NS_ERROR_CORRUPTED_CONTENT;
@@ -3152,20 +3195,17 @@ void WarnWrongMIMEOfScript(HttpBaseChannel* aChannel, nsIURI* aURI,
     return;
   }
 
-  nsContentPolicyType internalType = aLoadInfo->InternalContentPolicyType();
-  bool isModule =
-      internalType == nsIContentPolicy::TYPE_INTERNAL_MODULE ||
-      internalType == nsIContentPolicy::TYPE_INTERNAL_MODULE_PRELOAD;
-  if (isModule && nsContentUtils::IsJsonMimeType(typeString)) {
-    return;
-  }
-
   ReportMimeTypeMismatch(aChannel, "WarnScriptWithWrongMimeType", aURI,
                          contentType, Report::Warning);
 }
 
 nsresult HttpBaseChannel::ValidateMIMEType() {
   nsresult rv = EnsureMIMEOfScript(this, mURI, mResponseHead.get(), mLoadInfo);
+  if (NS_FAILED(rv)) {
+    return rv;
+  }
+
+  rv = EnsureMIMEOfJSONModule(this, mURI, mResponseHead.get(), mLoadInfo);
   if (NS_FAILED(rv)) {
     return rv;
   }
@@ -3576,7 +3616,14 @@ NS_IMETHODIMP
 HttpBaseChannel::SetCookieHeaders(const nsTArray<nsCString>& aCookieHeaders) {
   if (mLoadFlags & LOAD_ANONYMOUS) return NS_OK;
 
-  if (IsBrowsingContextDiscarded()) {
+  // The loadGroup of the channel in the parent process could be null in the
+  // XPCShell content process test, see test_cookiejars_wrap.js. In this case,
+  // we cannot explicitly set the loadGroup for the parent channel because it's
+  // created from the content process. To workaround this, we add a testing pref
+  // to skip this check.
+  if (!StaticPrefs::
+          network_cookie_skip_browsing_context_check_in_parent_for_testing() &&
+      IsBrowsingContextDiscarded()) {
     return NS_OK;
   }
 
@@ -4144,18 +4191,6 @@ HttpBaseChannel::SetFetchCacheMode(uint32_t aFetchCacheMode) {
   return NS_OK;
 }
 
-NS_IMETHODIMP
-HttpBaseChannel::SetIntegrityMetadata(const nsAString& aIntegrityMetadata) {
-  mIntegrityMetadata = aIntegrityMetadata;
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-HttpBaseChannel::GetIntegrityMetadata(nsAString& aIntegrityMetadata) {
-  aIntegrityMetadata = mIntegrityMetadata;
-  return NS_OK;
-}
-
 //-----------------------------------------------------------------------------
 // HttpBaseChannel::nsISupportsPriority
 //-----------------------------------------------------------------------------
@@ -4430,7 +4465,10 @@ already_AddRefed<nsILoadInfo> HttpBaseChannel::CloneLoadInfoForRedirect(
     // since it should only apply to same-origin navigations (redirects).
     // we only do this if the CSP of the triggering element (the cspToInherit)
     // uses 'upgrade-insecure-requests', otherwise UIR does not apply.
-    nsCOMPtr<nsIContentSecurityPolicy> csp = newLoadInfo->GetCspToInherit();
+    nsCOMPtr<nsIPolicyContainer> policyContainer =
+        newLoadInfo->GetPolicyContainerToInherit();
+    nsCOMPtr<nsIContentSecurityPolicy> csp =
+        PolicyContainer::GetCSP(policyContainer);
     if (csp) {
       bool upgradeInsecureRequests = false;
       csp->GetUpgradeInsecureRequests(&upgradeInsecureRequests);
@@ -4919,42 +4957,23 @@ HttpBaseChannel::CloneReplacementChannelConfig(bool aPreserveMethod,
   }
 
   if (config.uploadStream) {
-    nsCOMPtr<nsIUploadChannel> uploadChannel = do_QueryInterface(httpChannel);
     nsCOMPtr<nsIUploadChannel2> uploadChannel2 = do_QueryInterface(httpChannel);
-    if (uploadChannel2 || uploadChannel) {
-      // replicate original call to SetUploadStream...
-      if (uploadChannel2) {
-        const nsACString& ctype =
-            config.contentType ? *config.contentType : VoidCString();
-        // If header is not present mRequestHead.HasHeaderValue will truncated
-        // it.  But we want to end up with a void string, not an empty string,
-        // because ExplicitSetUploadStream treats the former as "no header" and
-        // the latter as "header with empty string value".
-
-        const nsACString& method =
-            config.method ? *config.method : VoidCString();
-
-        uploadChannel2->ExplicitSetUploadStream(
-            config.uploadStream, ctype, config.uploadStreamLength, method,
-            config.uploadStreamHasHeaders);
-      } else {
-        if (config.uploadStreamHasHeaders) {
-          uploadChannel->SetUploadStream(config.uploadStream, ""_ns,
-                                         config.uploadStreamLength);
-        } else {
-          nsAutoCString ctype;
-          if (config.contentType) {
-            ctype = *config.contentType;
-          } else {
-            ctype = "application/octet-stream"_ns;
-          }
-          if (config.contentLength && !config.contentLength->IsEmpty()) {
-            uploadChannel->SetUploadStream(
-                config.uploadStream, ctype,
-                nsCRT::atoll(config.contentLength->get()));
-          }
-        }
-      }
+    // replicate original call to SetUploadStream...
+    if (uploadChannel2) {
+      const nsACString& ctype =
+          config.contentType ? *config.contentType : VoidCString();
+      // If header is not present mRequestHead.HasHeaderValue will truncated
+      // it.  But we want to end up with a void string, not an empty string,
+      // because ExplicitSetUploadStream treats the former as "no header" and
+      // the latter as "header with empty string value".
+      const nsACString& method = config.method ? *config.method : VoidCString();
+      uploadChannel2->ExplicitSetUploadStream(config.uploadStream, ctype,
+                                              config.uploadStreamLength, method,
+                                              config.uploadStreamHasHeaders);
+    } else if (nsCOMPtr<nsIUploadChannel> uploadChannel =
+                   do_QueryInterface(httpChannel)) {
+      MOZ_ASSERT(false,
+                 "Should not QI to nsIUploadChannel but not nsIUploadChannel2");
     }
   }
 
@@ -5207,10 +5226,6 @@ nsresult HttpBaseChannel::SetupReplacementChannel(nsIURI* newURI,
 
     // Preserve Redirect mode flag.
     rv = httpInternal->SetRedirectMode(mRedirectMode);
-    MOZ_ASSERT(NS_SUCCEEDED(rv));
-
-    // Preserve Integrity metadata.
-    rv = httpInternal->SetIntegrityMetadata(mIntegrityMetadata);
     MOZ_ASSERT(NS_SUCCEEDED(rv));
 
     httpInternal->SetAltDataForChild(LoadAltDataForChild());
@@ -6483,10 +6498,13 @@ void HttpBaseChannel::MaybeFlushConsoleReports() {
 void HttpBaseChannel::DoDiagnosticAssertWhenOnStopNotCalledOnDestroy() {}
 
 bool HttpBaseChannel::Http3Allowed() const {
-  bool isDirectOrNoProxy =
-      mProxyInfo ? static_cast<nsProxyInfo*>(mProxyInfo.get())->IsDirect()
+  bool allowedProxyInfo =
+      mProxyInfo ? (static_cast<nsProxyInfo*>(mProxyInfo.get())->IsDirect() ||
+                    static_cast<nsProxyInfo*>(mProxyInfo.get())->IsHttp3Proxy())
                  : true;
-  return !mUpgradeProtocolCallback && isDirectOrNoProxy &&
+  // TODO: When mUpgradeProtocolCallback is not null, we should allow HTTP/3 for
+  // connect-udp.
+  return !mUpgradeProtocolCallback && allowedProxyInfo &&
          !(mCaps & NS_HTTP_BE_CONSERVATIVE) && !LoadBeConservative() &&
          LoadAllowHttp3();
 }

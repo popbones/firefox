@@ -20,6 +20,7 @@
 
 #include "mozilla/Preferences.h"
 #include "mozilla/StaticPrefs_network.h"
+#include "mozilla/glean/NetwerkDnsMetrics.h"
 #include "mozilla/Telemetry.h"
 #include "mozilla/Tokenizer.h"
 #include "mozilla/dom/ContentParent.h"
@@ -614,8 +615,11 @@ TRRService::Observe(nsISupports* aSubject, const char* aTopic,
     }
 
     if (!strcmp(aTopic, NS_NETWORK_LINK_TOPIC)) {
-      if (NS_ConvertUTF16toUTF8(aData).EqualsLiteral(
-              NS_NETWORK_LINK_DATA_DOWN)) {
+      nsAutoCString converted = NS_ConvertUTF16toUTF8(aData);
+      if (converted.EqualsLiteral(NS_NETWORK_LINK_DATA_DOWN)) {
+        MutexAutoLock lock(mLock);
+        mConfirmation.RecordEvent("network-down", lock);
+      } else if (converted.EqualsLiteral(NS_NETWORK_LINK_DATA_CHANGED)) {
         MutexAutoLock lock(mLock);
         mConfirmation.RecordEvent("network-change", lock);
       }
@@ -626,7 +630,7 @@ TRRService::Observe(nsISupports* aSubject, const char* aTopic,
         CheckURIPrefs();
       }
 
-      if (NS_ConvertUTF16toUTF8(aData).EqualsLiteral(NS_NETWORK_LINK_DATA_UP)) {
+      if (converted.EqualsLiteral(NS_NETWORK_LINK_DATA_UP)) {
         mConfirmation.HandleEvent(ConfirmationEvent::NetworkUp);
       }
     }
@@ -1145,13 +1149,12 @@ void TRRService::RecordTRRStatus(TRR* aTrrRequest) {
 
   nsresult channelStatus = aTrrRequest->ChannelStatus();
 
-  Telemetry::AccumulateCategoricalKeyed(
-      ProviderKey(), NS_SUCCEEDED(channelStatus)
-                         ? Telemetry::LABELS_DNS_TRR_SUCCESS3::Fine
-                         : (channelStatus == NS_ERROR_NET_TIMEOUT_EXTERNAL
-                                ? Telemetry::LABELS_DNS_TRR_SUCCESS3::Timeout
-                                : Telemetry::LABELS_DNS_TRR_SUCCESS3::Bad));
-
+  glean::dns::trr_success.Get(
+      ProviderKey(),
+      NS_SUCCEEDED(channelStatus)
+          ? "Fine"_ns
+          : (channelStatus == NS_ERROR_NET_TIMEOUT_EXTERNAL ? "Timeout"_ns
+                                                            : "Bad"_ns));
   mConfirmation.RecordTRRStatus(aTrrRequest);
 }
 
@@ -1318,8 +1321,10 @@ void TRRService::ConfirmationContext::CompleteConfirmation(nsresult aStatus,
     MOZ_ASSERT(State() == CONFIRM_FAILED);
   }
 
-  Telemetry::Accumulate(Telemetry::DNS_TRR_NS_VERFIFIED3,
-                        TRRService::ProviderKey(), (State() == CONFIRM_OK));
+  glean::dns::trr_ns_verfified
+      .Get(TRRService::ProviderKey(),
+           (State() == CONFIRM_OK) ? "true"_ns : "false"_ns)
+      .Add();
 }
 
 AHostResolver::LookupStatus TRRService::CompleteLookup(
@@ -1371,9 +1376,9 @@ NS_IMETHODIMP TRRService::OnProxyConfigChanged() {
   return NS_OK;
 }
 
-void TRRService::InitTRRConnectionInfo() {
+void TRRService::InitTRRConnectionInfo(bool aForceReinit) {
   if (XRE_IsParentProcess()) {
-    TRRServiceBase::InitTRRConnectionInfo();
+    TRRServiceBase::InitTRRConnectionInfo(aForceReinit);
     return;
   }
 
@@ -1383,7 +1388,7 @@ void TRRService::InitTRRConnectionInfo() {
   TRRServiceChild* child = TRRServiceChild::GetSingleton();
   if (child && child->CanSend()) {
     LOG(("TRRService::SendInitTRRConnectionInfo"));
-    Unused << child->SendInitTRRConnectionInfo();
+    Unused << child->SendInitTRRConnectionInfo(aForceReinit);
   }
 }
 

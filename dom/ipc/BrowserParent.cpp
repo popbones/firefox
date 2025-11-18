@@ -4,9 +4,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "base/basictypes.h"
-
 #include "BrowserParent.h"
+
+#include "base/basictypes.h"
 #include "mozilla/AlreadyAddRefed.h"
 #include "mozilla/EventForwards.h"
 
@@ -16,43 +16,14 @@
 #  include "nsAccessibilityService.h"
 #endif
 #include "mozilla/Components.h"
-#include "mozilla/dom/BrowserHost.h"
-#include "mozilla/dom/BrowserSessionStore.h"
-#include "mozilla/dom/BrowsingContextGroup.h"
-#include "mozilla/dom/CancelContentJSOptionsBinding.h"
-#include "mozilla/dom/ChromeMessageSender.h"
-#include "mozilla/dom/ContentParent.h"
-#include "mozilla/dom/ContentProcessManager.h"
-#include "mozilla/dom/DataTransfer.h"
-#include "mozilla/dom/DataTransferItemList.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/dom/Event.h"
-#include "mozilla/dom/indexedDB/ActorsParent.h"
-#include "mozilla/dom/PaymentRequestParent.h"
-#include "mozilla/dom/PContentPermissionRequestParent.h"
-#include "mozilla/dom/PointerEventHandler.h"
-#include "mozilla/dom/BrowserBridgeParent.h"
-#include "mozilla/dom/RemoteDragStartData.h"
-#include "mozilla/dom/RemoteWebProgressRequest.h"
-#include "mozilla/dom/SessionHistoryEntry.h"
-#include "mozilla/dom/SessionStoreParent.h"
-#include "mozilla/dom/UserActivation.h"
 #include "mozilla/EventStateManager.h"
-#include "mozilla/gfx/2D.h"
-#include "mozilla/gfx/DataSurfaceHelpers.h"
-#include "mozilla/gfx/GPUProcessManager.h"
 #include "mozilla/IMEStateManager.h"
-#include "mozilla/ipc/Endpoint.h"
-#include "mozilla/layers/AsyncDragMetrics.h"
-#include "mozilla/layers/InputAPZContext.h"
-#include "mozilla/layout/RemoteLayerTreeOwner.h"
+#include "mozilla/Logging.h"
 #include "mozilla/LookAndFeel.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/MiscEvents.h"
 #include "mozilla/MouseEvents.h"
 #include "mozilla/NativeKeyBindingsType.h"
-#include "mozilla/net/NeckoChild.h"
-#include "mozilla/net/CookieJarSettings.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/ProcessHangMonitor.h"
@@ -64,6 +35,36 @@
 #include "mozilla/TouchEvents.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Unused.h"
+#include "mozilla/dom/BrowserBridgeParent.h"
+#include "mozilla/dom/BrowserHost.h"
+#include "mozilla/dom/BrowserSessionStore.h"
+#include "mozilla/dom/BrowsingContextGroup.h"
+#include "mozilla/dom/CancelContentJSOptionsBinding.h"
+#include "mozilla/dom/ChromeMessageSender.h"
+#include "mozilla/dom/ContentParent.h"
+#include "mozilla/dom/ContentProcessManager.h"
+#include "mozilla/dom/DataTransfer.h"
+#include "mozilla/dom/DataTransferItemList.h"
+#include "mozilla/dom/DocumentInlines.h"
+#include "mozilla/dom/Event.h"
+#include "mozilla/dom/PContentPermissionRequestParent.h"
+#include "mozilla/dom/PaymentRequestParent.h"
+#include "mozilla/dom/PointerEventHandler.h"
+#include "mozilla/dom/RemoteDragStartData.h"
+#include "mozilla/dom/RemoteWebProgressRequest.h"
+#include "mozilla/dom/SessionHistoryEntry.h"
+#include "mozilla/dom/SessionStoreParent.h"
+#include "mozilla/dom/UserActivation.h"
+#include "mozilla/dom/indexedDB/ActorsParent.h"
+#include "mozilla/gfx/2D.h"
+#include "mozilla/gfx/DataSurfaceHelpers.h"
+#include "mozilla/gfx/GPUProcessManager.h"
+#include "mozilla/ipc/Endpoint.h"
+#include "mozilla/layers/AsyncDragMetrics.h"
+#include "mozilla/layers/InputAPZContext.h"
+#include "mozilla/layout/RemoteLayerTreeOwner.h"
+#include "mozilla/net/CookieJarSettings.h"
+#include "mozilla/net/NeckoChild.h"
 #include "nsCOMPtr.h"
 #include "nsContentPermissionHelper.h"
 #include "nsContentUtils.h"
@@ -72,73 +73,74 @@
 #include "nsFrameLoader.h"
 #include "nsFrameLoaderOwner.h"
 #include "nsFrameManager.h"
+#include "nsIAppWindow.h"
 #include "nsIBaseWindow.h"
 #include "nsIBrowser.h"
 #include "nsIBrowserController.h"
 #include "nsIContent.h"
 #include "nsICookieJarSettings.h"
+#include "nsIDOMWindowUtils.h"
 #include "nsIDocShell.h"
 #include "nsIDocShellTreeOwner.h"
-#include "nsIDOMWindowUtils.h"
-#include "nsImportModule.h"
 #include "nsIInterfaceRequestorUtils.h"
 #include "nsILoadInfo.h"
 #include "nsIPromptFactory.h"
 #include "nsIURI.h"
 #include "nsIWebBrowserChrome.h"
 #include "nsIWebProtocolHandlerRegistrar.h"
+#include "nsIWidget.h"
 #include "nsIWindowWatcher.h"
 #include "nsIXPConnect.h"
 #include "nsIXULBrowserWindow.h"
-#include "nsIAppWindow.h"
+#include "nsImportModule.h"
 #include "nsLayoutUtils.h"
+#include "nsNetUtil.h"
 #include "nsQueryActor.h"
 #include "nsSHistory.h"
-#include "nsViewManager.h"
 #include "nsVariant.h"
-#include "nsIWidget.h"
-#include "nsNetUtil.h"
+#include "nsViewManager.h"
 #ifndef XP_WIN
 #  include "nsJARProtocolHandler.h"
 #endif
-#include "nsPIDOMWindow.h"
-#include "nsPrintfCString.h"
-#include "nsQueryObject.h"
-#include "nsServiceManagerUtils.h"
-#include "nsThreadUtils.h"
-#include "PermissionMessageUtils.h"
-#include "StructuredCloneData.h"
+#include <algorithm>
+
+#include "BrowserChild.h"
 #include "ColorPickerParent.h"
 #include "FilePickerParent.h"
-#include "BrowserChild.h"
-#include "nsNetCID.h"
-#include "nsIAuthInformation.h"
-#include "nsIAuthPromptCallback.h"
-#include "nsAuthInformationHolder.h"
-#include "nsICancelable.h"
-#include "gfxUtils.h"
-#include "nsILoginManagerAuthPrompter.h"
-#include "nsPIWindowRoot.h"
-#include "nsReadableUtils.h"
-#include "nsIAuthPrompt2.h"
-#include "gfxDrawable.h"
-#include "ImageOps.h"
-#include "UnitTransforms.h"
-#include <algorithm>
-#include "mozilla/NullPrincipal.h"
-#include "mozilla/WebBrowserPersistDocumentParent.h"
-#include "ProcessPriorityManager.h"
-#include "nsString.h"
 #include "IHistory.h"
-#include "mozilla/dom/WindowGlobalParent.h"
-#include "mozilla/dom/CanonicalBrowsingContext.h"
-#include "mozilla/ProfilerLabels.h"
+#include "ImageOps.h"
 #include "MMPrinter.h"
+#include "PermissionMessageUtils.h"
+#include "ProcessPriorityManager.h"
+#include "StructuredCloneData.h"
+#include "UnitTransforms.h"
+#include "VsyncSource.h"
+#include "gfxDrawable.h"
+#include "gfxUtils.h"
+#include "mozilla/NullPrincipal.h"
+#include "mozilla/ProfilerLabels.h"
+#include "mozilla/WebBrowserPersistDocumentParent.h"
+#include "mozilla/dom/CanonicalBrowsingContext.h"
 #include "mozilla/dom/CrashReport.h"
+#include "mozilla/dom/WindowGlobalParent.h"
+#include "nsAuthInformationHolder.h"
+#include "nsIAuthInformation.h"
+#include "nsIAuthPrompt2.h"
+#include "nsIAuthPromptCallback.h"
+#include "nsICancelable.h"
+#include "nsILoginManagerAuthPrompter.h"
 #include "nsISecureBrowserUI.h"
 #include "nsIXULRuntime.h"
-#include "VsyncSource.h"
+#include "nsNetCID.h"
+#include "nsPIDOMWindow.h"
+#include "nsPIWindowRoot.h"
+#include "nsPrintfCString.h"
+#include "nsQueryObject.h"
+#include "nsReadableUtils.h"
+#include "nsServiceManagerUtils.h"
+#include "nsString.h"
 #include "nsSubDocumentFrame.h"
+#include "nsThreadUtils.h"
 
 #ifdef XP_WIN
 #  include "FxRWindowManager.h"
@@ -168,7 +170,8 @@ using namespace mozilla::gfx;
 
 using mozilla::LazyLogModule;
 
-extern mozilla::LazyLogModule gSHIPBFCacheLog;
+extern LazyLogModule gBCWebProgressLog;
+extern LazyLogModule gSHIPBFCacheLog;
 
 LazyLogModule gBrowserFocusLog("BrowserFocus");
 
@@ -1450,13 +1453,23 @@ void BrowserParent::UpdateVsyncParentVsyncDispatcher() {
 }
 
 void BrowserParent::MouseEnterIntoWidget() {
-  if (nsCOMPtr<nsIWidget> widget = GetWidget()) {
+  if (const nsCOMPtr<nsIWidget> widget = GetWidget()) {
     // When we mouseenter the remote target, the remote target's cursor should
     // become the current cursor.  When we mouseexit, we stop.
     mRemoteTargetSetsCursor = true;
+    MOZ_LOG_DEBUG_ONLY(
+        EventStateManager::MouseCursorUpdateLogRef(), LogLevel::Debug,
+        ("BrowserParent::MouseEnterIntoWidget(): Got the rights to update "
+         "cursor (%p, widget=%p)",
+         this, widget.get()));
     if (!EventStateManager::CursorSettingManagerHasLockedCursor()) {
       widget->SetCursor(mCursor);
       EventStateManager::ClearCursorSettingManager();
+      MOZ_LOG_DEBUG_ONLY(EventStateManager::MouseCursorUpdateLogRef(),
+                         LogLevel::Info,
+                         ("BrowserParent::MouseEnterIntoWidget(): Updated "
+                          "cursor to the pending one (%p, widget=%p)",
+                          this, widget.get()));
     }
   }
 
@@ -1490,17 +1503,44 @@ void BrowserParent::SendRealMouseEvent(WidgetMouseEvent& aEvent) {
 
   aEvent.mRefPoint = TransformParentToChild(aEvent);
 
-  if (nsCOMPtr<nsIWidget> widget = GetWidget()) {
+  if (const nsCOMPtr<nsIWidget> widget = GetWidget()) {
     // When we mouseenter the remote target, the remote target's cursor should
     // become the current cursor.  When we mouseexit, we stop.
+    // XXX We update cursor even for non-mouse pointer moves in
+    // EventStateManager.  Thus, we might not be able to manage it only with
+    // eMouseEnterIntoWidget and eMouseExitFromWidget.
     if (eMouseEnterIntoWidget == aEvent.mMessage) {
       mRemoteTargetSetsCursor = true;
+      MOZ_LOG_DEBUG_ONLY(
+          EventStateManager::MouseCursorUpdateLogRef(), LogLevel::Debug,
+          ("BrowserParent::SendRealMouseEvent(aEvent={pointerId=%u, source=%s, "
+           "message=%s, reason=%s}): Got the rights to update cursor (%p, "
+           "widget=%p)",
+           aEvent.pointerId, InputSourceToString(aEvent.mInputSource).get(),
+           ToChar(aEvent.mMessage), RealOrSynthesized(aEvent.IsReal()), this,
+           widget.get()));
       if (!EventStateManager::CursorSettingManagerHasLockedCursor()) {
         widget->SetCursor(mCursor);
         EventStateManager::ClearCursorSettingManager();
+        MOZ_LOG_DEBUG_ONLY(
+            EventStateManager::MouseCursorUpdateLogRef(), LogLevel::Info,
+            ("BrowserParent::SendRealMouseEvent(aEvent={pointerId=%u, "
+             "source=%s, message=%s, reason=%s): Updated cursor to the pending "
+             "one (%p, widget=%p)",
+             aEvent.pointerId, InputSourceToString(aEvent.mInputSource).get(),
+             ToChar(aEvent.mMessage), RealOrSynthesized(aEvent.IsReal()), this,
+             widget.get()));
       }
     } else if (eMouseExitFromWidget == aEvent.mMessage) {
       mRemoteTargetSetsCursor = false;
+      MOZ_LOG_DEBUG_ONLY(
+          EventStateManager::MouseCursorUpdateLogRef(), LogLevel::Debug,
+          ("BrowserParent::SendRealMouseEvent(aEvent={pointerId=%u, source=%s, "
+           "message=%s, reason=%s}): Lost the rights to update cursor (%p, "
+           "widget=%p)",
+           aEvent.pointerId, InputSourceToString(aEvent.mInputSource).get(),
+           ToChar(aEvent.mMessage), RealOrSynthesized(aEvent.IsReal()), this,
+           widget.get()));
     }
   }
   if (!mIsReadyToHandleInputEvents) {
@@ -1666,7 +1706,7 @@ void BrowserParent::SendRealDragEvent(WidgetDragEvent& aEvent,
                                       uint32_t aDragAction,
                                       uint32_t aDropEffect,
                                       nsIPrincipal* aPrincipal,
-                                      nsIContentSecurityPolicy* aCsp) {
+                                      nsIPolicyContainer* aPolicyContainer) {
   if (mIsDestroyed || !mIsReadyToHandleInputEvents) {
     return;
   }
@@ -1678,7 +1718,7 @@ void BrowserParent::SendRealDragEvent(WidgetDragEvent& aEvent,
     }
   }
   DebugOnly<bool> ret = PBrowserParent::SendRealDragEvent(
-      aEvent, aDragAction, aDropEffect, aPrincipal, aCsp);
+      aEvent, aDragAction, aDropEffect, aPrincipal, aPolicyContainer);
   NS_WARNING_ASSERTION(ret, "PBrowserParent::SendRealDragEvent() failed");
   MOZ_ASSERT(!ret || aEvent.HasBeenPostedToRemoteProcess());
 }
@@ -1755,7 +1795,16 @@ mozilla::ipc::IPCResult BrowserParent::RecvDispatchKeyboardEvent(
 
 mozilla::ipc::IPCResult BrowserParent::RecvDispatchTouchEvent(
     const mozilla::WidgetTouchEvent& aEvent) {
-  NS_ENSURE_TRUE(xpc::IsInAutomation(), IPC_FAIL(this, "Unexpected event"));
+  // This is used by DevTools to emulate touch events from mouse events in the
+  // responsive design mode.  Therefore, we should accept the IPC messages even
+  // if it's not in the automation mode but the browsing context is in RDM pane.
+  // And the IPC message could be just delayed after closing the responsive
+  // design mode.  Therefore, we shouldn't return IPC_FAIL since doing it makes
+  // the tab crash.
+  if (!xpc::IsInAutomation()) {
+    NS_ENSURE_TRUE(mBrowsingContext, IPC_OK());
+    NS_ENSURE_TRUE(mBrowsingContext->Top()->GetInRDMPane(), IPC_OK());
+  }
 
   nsCOMPtr<nsIWidget> widget = GetWidget();
   if (!widget) {
@@ -1948,16 +1997,7 @@ mozilla::ipc::IPCResult BrowserParent::RecvSynthesizeNativeTouchPoint(
     const uint32_t& aPointerId, const TouchPointerState& aPointerState,
     const LayoutDeviceIntPoint& aPoint, const double& aPointerPressure,
     const uint32_t& aPointerOrientation, const Maybe<uint64_t>& aCallbackId) {
-  // This is used by DevTools to emulate touch events from mouse events in the
-  // responsive design mode.  Therefore, we should accept the IPC messages even
-  // if it's not in the automation mode but the browsing context is in RDM pane.
-  // And the IPC message could be just delayed after closing the responsive
-  // design mode.  Therefore, we shouldn't return IPC_FAIL since doing it makes
-  // the tab crash.
-  if (!xpc::IsInAutomation()) {
-    NS_ENSURE_TRUE(mBrowsingContext, IPC_OK());
-    NS_ENSURE_TRUE(mBrowsingContext->Top()->GetInRDMPane(), IPC_OK());
-  }
+  NS_ENSURE_TRUE(xpc::IsInAutomation(), IPC_FAIL(this, "Unexpected event"));
 
   nsCOMPtr<nsISynthesizedEventCallback> callback =
       SynthesizedEventCallback::MaybeCreate(this, aCallbackId);
@@ -2290,12 +2330,12 @@ mozilla::ipc::IPCResult BrowserParent::RecvSynthesizedEventResponse(
 
 mozilla::ipc::IPCResult BrowserParent::RecvSyncMessage(
     const nsString& aMessage, const ClonedMessageData& aData,
-    nsTArray<StructuredCloneData>* aRetVal) {
+    nsTArray<UniquePtr<ipc::StructuredCloneData>>* aRetVal) {
   AUTO_PROFILER_LABEL_DYNAMIC_LOSSY_NSSTRING("BrowserParent::RecvSyncMessage",
                                              OTHER, aMessage);
   MMPrinter::Print("BrowserParent::RecvSyncMessage", aMessage, aData);
 
-  StructuredCloneData data;
+  ipc::StructuredCloneData data;
   ipc::UnpackClonedMessageData(aData, data);
 
   if (!ReceiveMessage(aMessage, true, &data, aRetVal)) {
@@ -2323,7 +2363,7 @@ mozilla::ipc::IPCResult BrowserParent::RecvSetCursor(
     const nsCursor& aCursor, Maybe<IPCImage>&& aCustomCursor,
     const float& aResolutionX, const float& aResolutionY,
     const uint32_t& aHotspotX, const uint32_t& aHotspotY, const bool& aForce) {
-  nsCOMPtr<nsIWidget> widget = GetWidget();
+  const nsCOMPtr<nsIWidget> widget = GetWidget();
   if (!widget) {
     return IPC_OK();
   }
@@ -2351,14 +2391,28 @@ mozilla::ipc::IPCResult BrowserParent::RecvSetCursor(
                               aHotspotY,
                               {aResolutionX, aResolutionY}};
   if (!mRemoteTargetSetsCursor) {
+    MOZ_LOG_DEBUG_ONLY(
+        EventStateManager::MouseCursorUpdateLogRef(), LogLevel::Debug,
+        ("BrowserParent::RecvSetCursor(): Stopped updating the cursor "
+         "due to no rights (%p, widget=%p)",
+         this, widget.get()));
     return IPC_OK();
   }
 
   if (EventStateManager::CursorSettingManagerHasLockedCursor()) {
+    MOZ_LOG_DEBUG_ONLY(
+        EventStateManager::MouseCursorUpdateLogRef(), LogLevel::Debug,
+        ("BrowserParent::RecvSetCursor(): Stopped updating the cursor "
+         "due to during a lock (%p, widget=%p)",
+         this, widget.get()));
     return IPC_OK();
   }
 
   widget->SetCursor(mCursor);
+  MOZ_LOG_DEBUG_ONLY(
+      EventStateManager::MouseCursorUpdateLogRef(), LogLevel::Info,
+      ("BrowserParent::RecvSetCursor(): Updated the cursor (%p, widget=%p)",
+       this, widget.get()));
   return IPC_OK();
 }
 
@@ -3000,7 +3054,8 @@ mozilla::ipc::IPCResult BrowserParent::RecvOnLocationChange(
           aLocationChangeData->documentURI(), aLocationChangeData->title(),
           aLocationChangeData->contentPrincipal(),
           aLocationChangeData->contentPartitionedPrincipal(),
-          aLocationChangeData->csp(), aLocationChangeData->referrerInfo(),
+          aLocationChangeData->policyContainer(),
+          aLocationChangeData->referrerInfo(),
           aLocationChangeData->isSyntheticDocument(),
           aLocationChangeData->requestContextID().isSome(),
           aLocationChangeData->requestContextID().valueOr(0),
@@ -3117,7 +3172,8 @@ bool BrowserParent::ReceiveProgressListenerData(
 
   // Look up the BrowsingContext which this notification was fired for.
   if (aWebProgressData.browsingContext().IsNullOrDiscarded()) {
-    NS_WARNING("WebProgress Ignored: BrowsingContext is null or discarded");
+    MOZ_LOG(gBCWebProgressLog, LogLevel::Warning,
+            ("WebProgress Ignored: BrowsingContext is null or discarded"));
     return false;
   }
   RefPtr<CanonicalBrowsingContext> browsingContext =
@@ -3130,7 +3186,8 @@ bool BrowserParent::ReceiveProgressListenerData(
   if (browsingContext != mBrowsingContext) {
     WindowGlobalParent* embedder = browsingContext->GetParentWindowContext();
     if (!embedder || embedder->GetBrowserParent() != this) {
-      NS_WARNING("WebProgress Ignored: wrong embedder process");
+      MOZ_LOG(gBCWebProgressLog, LogLevel::Warning,
+              ("WebProgress Ignored: wrong embedder process"));
       return false;
     }
   }
@@ -3141,7 +3198,8 @@ bool BrowserParent::ReceiveProgressListenerData(
   if (RefPtr<WindowGlobalParent> current =
           browsingContext->GetCurrentWindowGlobal();
       current && current->GetBrowserParent() != this) {
-    NS_WARNING("WebProgress Ignored: no longer current window global");
+    MOZ_LOG(gBCWebProgressLog, LogLevel::Warning,
+            ("WebProgress Ignored: no longer current window global"));
     return false;
   }
 
@@ -3445,9 +3503,9 @@ mozilla::ipc::IPCResult BrowserParent::RecvSetInputContext(
   return IPC_OK();
 }
 
-bool BrowserParent::ReceiveMessage(const nsString& aMessage, bool aSync,
-                                   StructuredCloneData* aData,
-                                   nsTArray<StructuredCloneData>* aRetVal) {
+bool BrowserParent::ReceiveMessage(
+    const nsString& aMessage, bool aSync, ipc::StructuredCloneData* aData,
+    nsTArray<UniquePtr<ipc::StructuredCloneData>>* aRetVal) {
   // If we're for an oop iframe, don't deliver messages to the wrong place.
   if (mBrowserBridgeParent) {
     return true;
@@ -3881,7 +3939,7 @@ mozilla::ipc::IPCResult BrowserParent::RecvInvokeDragSession(
     nsTArray<IPCTransferableData>&& aTransferables, const uint32_t& aAction,
     Maybe<BigBuffer>&& aVisualDnDData, const uint32_t& aStride,
     const gfx::SurfaceFormat& aFormat, const LayoutDeviceIntRect& aDragRect,
-    nsIPrincipal* aPrincipal, nsIContentSecurityPolicy* aCsp,
+    nsIPrincipal* aPrincipal, nsIPolicyContainer* aPolicyContainer,
     const CookieJarSettingsArgs& aCookieJarSettingsArgs,
     const MaybeDiscarded<WindowContext>& aSourceWindowContext,
     const MaybeDiscarded<WindowContext>& aSourceTopWindowContext) {
@@ -3900,7 +3958,7 @@ mozilla::ipc::IPCResult BrowserParent::RecvInvokeDragSession(
                                       getter_AddRefs(cookieJarSettings));
 
   RefPtr<RemoteDragStartData> dragStartData = new RemoteDragStartData(
-      this, std::move(aTransferables), aDragRect, aPrincipal, aCsp,
+      this, std::move(aTransferables), aDragRect, aPrincipal, aPolicyContainer,
       cookieJarSettings, aSourceWindowContext.GetMaybeDiscarded(),
       aSourceTopWindowContext.GetMaybeDiscarded());
 

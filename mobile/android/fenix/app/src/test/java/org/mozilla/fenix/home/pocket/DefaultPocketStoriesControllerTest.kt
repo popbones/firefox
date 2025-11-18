@@ -5,6 +5,8 @@
 package org.mozilla.fenix.home.pocket
 
 import androidx.navigation.NavController
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -35,13 +37,15 @@ import org.mozilla.fenix.components.appstate.AppAction.ContentRecommendationsAct
 import org.mozilla.fenix.components.appstate.AppState
 import org.mozilla.fenix.components.appstate.recommendations.ContentRecommendationsState
 import org.mozilla.fenix.components.usecases.FenixBrowserUseCases
+import org.mozilla.fenix.ext.nav
 import org.mozilla.fenix.helpers.FenixGleanTestRule
+import org.mozilla.fenix.home.HomeFragmentDirections
 import org.mozilla.fenix.home.mars.MARSUseCases
 import org.mozilla.fenix.home.pocket.controller.DefaultPocketStoriesController
 import org.mozilla.fenix.utils.Settings
-import org.robolectric.RobolectricTestRunner
+import java.lang.ref.WeakReference
 
-@RunWith(RobolectricTestRunner::class) // For gleanTestRule
+@RunWith(AndroidJUnit4::class)
 class DefaultPocketStoriesControllerTest {
 
     @get:Rule
@@ -217,13 +221,14 @@ class DefaultPocketStoriesControllerTest {
             // Simulate that the story was already shown 3 times.
             every { storyShown.getCurrentFlightImpressions() } returns listOf(2L, 3L, 7L)
             // Test that the spoc ping is immediately sent with the needed data.
-            Pings.spoc.testBeforeNextSubmit { reason ->
+            val job = Pings.spoc.testBeforeNextSubmit { reason ->
                 assertEquals(storyShown.shim.impression, Pocket.spocShim.testGetValue())
                 assertEquals(Pings.spocReasonCodes.impression.name, reason?.name)
                 wasPingSent = true
             }
 
             controller.handleStoryShown(storyShown, storyPosition = Triple(1, 2, 3))
+            job.join()
 
             verify {
                 store.dispatch(
@@ -409,13 +414,14 @@ class DefaultPocketStoriesControllerTest {
             // Simulate that the story was already shown 2 times.
             every { storyClicked.getCurrentFlightImpressions() } returns listOf(2L, 3L)
             // Test that the spoc ping is immediately sent with the needed data.
-            Pings.spoc.testBeforeNextSubmit { reason ->
+            val job = Pings.spoc.testBeforeNextSubmit { reason ->
                 assertEquals(storyClicked.shim.click, Pocket.spocShim.testGetValue())
                 assertEquals(Pings.spocReasonCodes.click.name, reason?.name)
                 wasPingSent = true
             }
 
             controller.handleStoryClicked(storyClicked, storyPosition = Triple(2, 3, 4))
+            job.join()
 
             verify {
                 navController.navigate(R.id.browserFragment)
@@ -460,13 +466,14 @@ class DefaultPocketStoriesControllerTest {
             // Simulate that the story was already shown 2 times.
             every { storyClicked.getCurrentFlightImpressions() } returns listOf(2L, 3L)
             // Test that the spoc ping is immediately sent with the needed data.
-            Pings.spoc.testBeforeNextSubmit { reason ->
+            val job = Pings.spoc.testBeforeNextSubmit { reason ->
                 assertEquals(storyClicked.shim.click, Pocket.spocShim.testGetValue())
                 assertEquals(Pings.spocReasonCodes.click.name, reason?.name)
                 wasPingSent = true
             }
 
             controller.handleStoryClicked(storyClicked, storyPosition = Triple(2, 3, 4))
+            job.join()
 
             verify {
                 navController.navigate(R.id.browserFragment)
@@ -519,7 +526,7 @@ class DefaultPocketStoriesControllerTest {
             assertEquals("2x3", data?.entries?.first { it.key == "position" }?.value)
             assertEquals("3", data?.entries?.first { it.key == "times_shown" }?.value)
 
-            verify {
+            coVerify {
                 navController.navigate(R.id.browserFragment)
                 fenixBrowserUseCases.loadUrlOrSearch(
                     searchTermOrURL = sponsoredContent.url,
@@ -567,10 +574,24 @@ class DefaultPocketStoriesControllerTest {
         }
     }
 
+    @Test
+    fun `WHEN the discover more button is clicked THEN navigate to the discover more stories screen`() {
+        val controller = createController()
+
+        controller.handleDiscoverMoreClicked()
+
+        verify {
+            navController.nav(
+                R.id.homeFragment,
+                HomeFragmentDirections.actionHomeFragmentToStoriesFragment(),
+            )
+        }
+    }
+
     private fun createController(
         appStore: AppStore = AppStore(),
     ) = DefaultPocketStoriesController(
-        navController = navController,
+        navControllerRef = WeakReference(navController),
         appStore = appStore,
         settings = settings,
         fenixBrowserUseCases = fenixBrowserUseCases,

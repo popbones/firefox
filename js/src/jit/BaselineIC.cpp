@@ -115,7 +115,7 @@ AllocatableGeneralRegisterSet BaselineICAvailableGeneralRegs(size_t numInputs) {
   regs.take(BaselineSecondScratchReg);
 #elif defined(JS_CODEGEN_MIPS64)
   MOZ_ASSERT(!regs.has(ICTailCallReg));
-  MOZ_ASSERT(!regs.has(BaselineSecondScratchReg));
+  MOZ_ASSERT(!regs.has(CallReg));
 #elif defined(JS_CODEGEN_ARM64)
   MOZ_ASSERT(!regs.has(PseudoStackPointer));
   MOZ_ASSERT(!regs.has(RealStackPointer));
@@ -167,11 +167,11 @@ void FallbackICSpew(JSContext* cx, ICFallbackStub* stub, const char* fmt, ...) {
 }
 #endif  // JS_JITSPEW
 
-void ICEntry::trace(JSTracer* trc) {
+void ICEntry::trace(JSTracer* trc, ICFallbackStub* fallbackStub) {
   ICStub* stub = firstStub();
 
   // Trace CacheIR stubs.
-  while (!stub->isFallback()) {
+  while (stub != fallbackStub) {
     stub->toCacheIRStub()->trace(trc);
     stub = stub->toCacheIRStub()->next();
   }
@@ -180,24 +180,14 @@ void ICEntry::trace(JSTracer* trc) {
   MOZ_ASSERT(stub->usesTrampolineCode());
 }
 
-inline ICFallbackStub* GetFallbackStub(ICEntry* entry) {
-  ICStub* stub = entry->firstStub();
-  while (!stub->isFallback()) {
-    stub = stub->toCacheIRStub()->next();
-  }
-  return stub->toFallbackStub();
-}
-
-bool ICEntry::traceWeak(JSTracer* trc) {
+bool ICEntry::traceWeak(JSTracer* trc, ICFallbackStub* fallbackStub) {
   // Trace CacheIR stubs and remove those containing weak pointers to dead GC
   // things.  Prebarriers are not necessary because this happens as part of GC.
-
-  ICFallbackStub* fallbackStub = GetFallbackStub(this);
 
   ICStub* stub = firstStub();
   ICCacheIRStub* prev = nullptr;
   bool allSurvived = true;
-  while (!stub->isFallback()) {
+  while (stub != fallbackStub) {
     ICCacheIRStub* cacheIRStub = stub->toCacheIRStub();
     if (!cacheIRStub->traceWeak(trc)) {
       fallbackStub->unlinkStubUnbarriered(this, prev, cacheIRStub);

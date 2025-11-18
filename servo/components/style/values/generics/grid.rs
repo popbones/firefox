@@ -34,6 +34,7 @@ pub const MAX_GRID_LINE: i32 = 10000;
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(C)]
 pub struct GenericGridLine<Integer> {
@@ -384,6 +385,7 @@ impl<L: ToCss> ToCss for TrackSize<L> {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(transparent)]
 pub struct GenericImplicitGridTracks<T>(
@@ -651,9 +653,9 @@ impl<L: ToCss, I: ToCss> ToCss for TrackList<L, I> {
                 None => break,
             }
 
-            if values_iter.peek().is_some() ||
-                line_names_iter.peek().map_or(false, |v| !v.is_empty()) ||
-                (idx + 1 == self.auto_repeat_index)
+            if values_iter.peek().is_some()
+                || line_names_iter.peek().map_or(false, |v| !v.is_empty())
+                || (idx + 1 == self.auto_repeat_index)
             {
                 dest.write_char(' ')?;
             }
@@ -826,6 +828,7 @@ impl<I: ToCss> ToCss for LineNameList<I> {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[value_info(other_values = "subgrid")]
 #[repr(C, u8)]

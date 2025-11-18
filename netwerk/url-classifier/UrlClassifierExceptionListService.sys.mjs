@@ -168,15 +168,57 @@ UrlClassifierExceptionListService.prototype = {
   classID: Components.ID("{b9f4fd03-9d87-4bfd-9958-85a821750ddc}"),
   QueryInterface: ChromeUtils.generateQI([
     "nsIUrlClassifierExceptionListService",
+    "nsIObserver",
   ]),
 
   features: {},
   _initialized: false,
 
+  ETP_PREFERENCES: [
+    "privacy.trackingprotection.allow_list.baseline.enabled",
+    "privacy.trackingprotection.allow_list.convenience.enabled",
+    "browser.contentblocking.category",
+  ],
+  PREF_ALLOW_LIST_USER_INTERACTED:
+    "privacy.trackingprotection.allow_list.hasUserInteractedWithETPSettings",
+
+  observe(subject, topic, data) {
+    if (topic === "idle-daily") {
+      const baseline = Services.prefs.getBoolPref(
+        "privacy.trackingprotection.allow_list.baseline.enabled"
+      );
+      const convenience = Services.prefs.getBoolPref(
+        "privacy.trackingprotection.allow_list.convenience.enabled"
+      );
+      Glean.contentblocking.tpAllowlistBaselineEnabled.set(baseline);
+      // If baseline is false, having convenience as true has no effect, so we treat it as false.
+      Glean.contentblocking.tpAllowlistConvenienceEnabled.set(
+        baseline ? convenience : false
+      );
+    }
+    if (topic === "nsPref:changed") {
+      // If the user changes the baseline, convenience, or category preference, we set
+      // hasUserInteractedWithETP to true to indicate interaction with ETP settings.
+      // This lets us skip the infobar prompting users to enable allowlists if they’ve
+      // already made a choice.
+      if (this.ETP_PREFERENCES.includes(data)) {
+        Services.prefs.setBoolPref(this.PREF_ALLOW_LIST_USER_INTERACTED, true);
+      }
+    }
+  },
+
   async lazyInit() {
     if (this._initialized) {
       return;
     }
+
+    this.maybeMigrateCategoryPrefs();
+
+    // Add ETP preference observers AFTER migration to avoid false positives. The migration function
+    // above may programmatically change ETP preferences, which would incorrectly trigger our user
+    // interaction tracking if observers were already installed. By adding observers after
+    // migration, we ensure we only detect user changes to ETP settings.
+    this.addETPUserInteractionPrefObservers();
 
     let rs = lazy.RemoteSettings(COLLECTION_NAME);
     rs.on("sync", event => {
@@ -207,6 +249,47 @@ UrlClassifierExceptionListService.prototype = {
     }
 
     this.onUpdateEntries(this.entries);
+  },
+
+  /**
+   * Runs migration code for the allow-list category prefs.
+   * Users who have ETP "strict" or "custom" enabled should not automatically
+   * get enrolled into the new allow-list categories. Instead they should have
+   * the opportunity to opt in/out via the preferences UI.
+   */
+  maybeMigrateCategoryPrefs() {
+    const ALLOW_LIST_CATEGORY_MIGRATION_PREF =
+      "privacy.trackingprotection.allow_list.hasMigratedCategoryPrefs";
+
+    if (Services.prefs.getBoolPref(ALLOW_LIST_CATEGORY_MIGRATION_PREF, false)) {
+      // Already migrated.
+      return;
+    }
+
+    // Set the migration pref to true so we only run the migration once.
+    Services.prefs.setBoolPref(ALLOW_LIST_CATEGORY_MIGRATION_PREF, true);
+
+    // This pref is set on both Desktop and Fenix (Bug 1956620).
+    let cbCategory = Services.prefs.getStringPref(
+      "browser.contentblocking.category",
+      "standard"
+    );
+    // Don't migrate if the user is using the default category. The default
+    // category pref states are already correct.
+    if (cbCategory == "standard") {
+      return;
+    }
+
+    // cbCategory is either "strict" or "custom". Disable both allow list
+    // categories.
+    Services.prefs.setBoolPref(
+      "privacy.trackingprotection.allow_list.baseline.enabled",
+      false
+    );
+    Services.prefs.setBoolPref(
+      "privacy.trackingprotection.allow_list.convenience.enabled",
+      false
+    );
   },
 
   onUpdateEntries(entries) {
@@ -246,9 +329,27 @@ UrlClassifierExceptionListService.prototype = {
     this.features[feature].removeObserver(observer);
   },
 
+  /**
+   * Adds preference observers to track user interactions with ETP settings.
+   * These observers monitor changes to the baseline allow list, convenience allow list, and
+   * content blocking category preferences to detect when users modify ETP-related settings.
+   */
+  addETPUserInteractionPrefObservers() {
+    this.ETP_PREFERENCES.forEach(pref => {
+      Services.prefs.addObserver(pref, this.observe.bind(this));
+    });
+  },
+
+  removeETPUserInteractionPrefObservers() {
+    this.ETP_PREFERENCES.forEach(pref => {
+      Services.prefs.removeObserver(pref, this.observe.bind(this));
+    });
+  },
+
   clear() {
     this.features = {};
     this._initialized = false;
     this.entries = null;
+    this.removeETPUserInteractionPrefObservers();
   },
 };

@@ -18,15 +18,18 @@
 #include "builtin/AtomicsObject.h"
 #include "ds/TraceableFifo.h"
 #include "frontend/NameCollections.h"
+#include "gc/Allocator.h"
 #include "gc/GCEnum.h"
 #include "gc/Memory.h"
 #include "irregexp/RegExpTypes.h"
 #include "js/ContextOptions.h"  // JS::ContextOptions
+#include "js/Debug.h"           // JS::CustomObjectSummaryCallback
 #include "js/Exception.h"
 #include "js/GCVector.h"
 #include "js/Interrupt.h"
 #include "js/Promise.h"
 #include "js/Result.h"
+#include "js/RootingAPI.h"
 #include "js/Stack.h"  // JS::NativeStackBase, JS::NativeStackLimit
 #include "js/Utility.h"
 #include "js/Vector.h"
@@ -956,6 +959,8 @@ struct JS_PUBLIC_API JSContext : public JS::RootingContext,
 
 #ifdef MOZ_EXECUTION_TRACING
  private:
+  CustomObjectSummaryCallback customObjectSummaryCallback_ = nullptr;
+
   // This holds onto the JS execution tracer, a system which when turned on
   // records function calls and other information about the JS which has been
   // run under this context.
@@ -972,6 +977,15 @@ struct JS_PUBLIC_API JSContext : public JS::RootingContext,
   js::ExecutionTracer& getExecutionTracer() {
     MOZ_ASSERT(hasExecutionTracer());
     return *executionTracer_;
+  }
+
+  CustomObjectSummaryCallback getCustomObjectSummaryCallback() {
+    MOZ_ASSERT(hasExecutionTracer());
+    return customObjectSummaryCallback_;
+  }
+
+  void setCustomObjectSummaryCallback(CustomObjectSummaryCallback cb) {
+    customObjectSummaryCallback_ = cb;
   }
 
   // See the latter clause of the comment over executionTracer_
@@ -1162,6 +1176,10 @@ class MOZ_RAII AutoUnsafeCallWithABI {
       UnsafeABIStrictness unused_ = UnsafeABIStrictness::NoExceptions) {}
 #endif
 };
+
+template <typename T>
+inline BufferHolder<T>::BufferHolder(JSContext* cx, T* buffer)
+    : BufferHolder(cx->zone(), buffer) {}
 
 } /* namespace js */
 

@@ -151,7 +151,7 @@ RegI32 BaseCompiler::popConstMemoryAccess<RegI32>(MemoryAccessDesc* access,
                 UINT64_MAX - HugeOffsetGuardLimit);
 #endif
   uint64_t ea = uint64_t(addr) + uint64_t(access->offset32());
-  uint64_t limit = codeMeta_.memories[access->memoryIndex()].initialLength32() +
+  uint64_t limit = codeMeta_.memories[access->memoryIndex()].initialLength() +
                    offsetGuardLimit;
 
   check->omitBoundsCheck = ea < limit;
@@ -184,7 +184,7 @@ RegI64 BaseCompiler::popConstMemoryAccess<RegI64>(MemoryAccessDesc* access,
   mozilla::CheckedUint64 ea(addr);
   ea += access->offset64();
   mozilla::CheckedUint64 limit(
-      codeMeta_.memories[access->memoryIndex()].initialLength64());
+      codeMeta_.memories[access->memoryIndex()].initialLength());
   limit += offsetGuardLimit;
 
   if (ea.isValid() && limit.isValid()) {
@@ -1274,6 +1274,10 @@ static void PopAndAllocate(BaseCompiler* bc, ValType type,
                            Scalar::Type viewType, AtomicOp op, RegI32* rd,
                            RegI32* rv, Temps* temps) {
   *rv = type == ValType::I64 ? bc->popI64ToI32() : bc->popI32();
+  if (type == ValType::I64) {
+    // Architecture-specific i64-to-i32.
+    bc->masm.move64To32(Register64(*rv), *rv);
+  }
   if (Scalar::byteSize(viewType) < 4) {
     temps->t0 = bc->needI32();
     temps->t1 = bc->needI32();
@@ -1653,6 +1657,10 @@ static void PopAndAllocate(BaseCompiler* bc, ValType type,
                            Scalar::Type viewType, RegI32* rd, RegI32* rv,
                            Temps* temps) {
   *rv = (type == ValType::I64) ? bc->popI64ToI32() : bc->popI32();
+  if (type == ValType::I64) {
+    // Architecture-specific i64-to-i32.
+    bc->masm.move64To32(Register64(*rv), *rv);
+  }
   if (Scalar::byteSize(viewType) < 4) {
     temps->t0 = bc->needI32();
     temps->t1 = bc->needI32();
@@ -1990,6 +1998,8 @@ static void PopAndAllocate(BaseCompiler* bc, ValType type,
   if (type == ValType::I64) {
     *rnew = bc->popI64ToI32();
     *rexpect = bc->popI64ToI32();
+    // Architecture-specific i64-to-i32.
+    bc->masm.move64To32(Register64(*rexpect), *rexpect);
   } else {
     *rnew = bc->popI32();
     *rexpect = bc->popI32();

@@ -1183,7 +1183,13 @@ static MOZ_ALWAYS_INLINE bool CallAddPropertyHook(JSContext* cx,
     }
   }
   if (MOZ_UNLIKELY(obj->hasUnpreservedWrapper())) {
-    MaybePreserveDOMWrapper(cx, obj);
+    JS::Value objectWrapperSlot =
+        JS::GetReservedSlot(obj, JS_OBJECT_WRAPPER_SLOT);
+    if (objectWrapperSlot.isUndefined() || !objectWrapperSlot.toPrivate()) {
+      return true;
+    }
+
+    MOZ_ALWAYS_TRUE(MaybePreserveDOMWrapper(cx, obj));
     return JSObject::setFlag(cx, obj, ObjectFlag::HasPreservedWrapper);
   }
   return true;
@@ -1212,7 +1218,17 @@ static MOZ_ALWAYS_INLINE bool CallAddPropertyHookDense(
   }
 
   if (MOZ_UNLIKELY(obj->hasUnpreservedWrapper())) {
-    MaybePreserveDOMWrapper(cx, obj);
+    JS::Value objectWrapperSlot =
+        JS::GetReservedSlot(obj, JS_OBJECT_WRAPPER_SLOT);
+    if (objectWrapperSlot.isUndefined() || !objectWrapperSlot.toPrivate()) {
+      return true;
+    }
+
+    if (objectWrapperSlot.isUndefined() || !objectWrapperSlot.toPrivate()) {
+      return true;
+    }
+
+    MOZ_ALWAYS_TRUE(MaybePreserveDOMWrapper(cx, obj));
     return JSObject::setFlag(cx, obj, ObjectFlag::HasPreservedWrapper);
   }
   return true;
@@ -1259,7 +1275,7 @@ static bool ChangeProperty(JSContext* cx, Handle<NativeObject*> obj,
   }
 
   if (!gs) {
-    gs = GetterSetter::create(cx, getter, setter);
+    gs = GetterSetter::create(cx, obj, getter, setter);
     if (!gs) {
       return false;
     }
@@ -1350,7 +1366,7 @@ static MOZ_ALWAYS_INLINE bool AddOrChangeProperty(
   if constexpr (AddOrChange == IsAddOrChange::Add) {
     if (desc.isAccessorDescriptor()) {
       Rooted<GetterSetter*> gs(
-          cx, GetterSetter::create(cx, desc.getter(), desc.setter()));
+          cx, GetterSetter::create(cx, obj, desc.getter(), desc.setter()));
       if (!gs) {
         return false;
       }

@@ -6,7 +6,6 @@ package org.mozilla.fenix.ui
 
 import androidx.core.net.toUri
 import androidx.core.os.LocaleListCompat
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mozilla.fenix.FenixApplication
@@ -19,6 +18,7 @@ import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
 import org.mozilla.fenix.helpers.RecyclerViewIdlingResource
 import org.mozilla.fenix.helpers.TestAssetHelper.getLoremIpsumAsset
 import org.mozilla.fenix.helpers.TestHelper.mDevice
+import org.mozilla.fenix.helpers.TestHelper.waitForAppWindowToBeUpdated
 import org.mozilla.fenix.helpers.TestSetup
 import org.mozilla.fenix.helpers.perf.DetectMemoryLeaksRule
 import org.mozilla.fenix.ui.robots.checkTextSizeOnWebsite
@@ -130,6 +130,12 @@ class SettingsGeneralTest : TestSetup() {
         homeScreen {
         }.openThreeDotMenu {
         }.openSettings {
+            waitForAppWindowToBeUpdated()
+            registerAndCleanupIdlingResources(
+                RecyclerViewIdlingResource(activityIntentTestRule.activity.findViewById(R.id.recycler_view), 1),
+            ) {
+                verifyLanguageButton()
+            }
         }.openLanguageSubMenu {
             verifyLanguageListIsDisplayed()
             openSearchBar()
@@ -142,7 +148,6 @@ class SettingsGeneralTest : TestSetup() {
     }
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/516078
-    @Ignore("Failing, see https://bugzilla.mozilla.org/show_bug.cgi?id=1972940")
     @Test
     fun verifyFollowDeviceLanguageTest() {
         val frenchLocale = LocaleListCompat.forLanguageTags("fr")
@@ -152,6 +157,12 @@ class SettingsGeneralTest : TestSetup() {
             }.enterURLAndEnterToBrowser("test".toUri()) {
             }.openThreeDotMenu {
             }.openSettings(localizedText = FR_SETTINGS) {
+                waitForAppWindowToBeUpdated()
+                registerAndCleanupIdlingResources(
+                    RecyclerViewIdlingResource(activityIntentTestRule.activity.findViewById(R.id.recycler_view), 1),
+                ) {
+                    verifyLanguageButton(localizedText = FRENCH_LANGUAGE_HEADER)
+                }
             }.openLanguageSubMenu(localizedText = FRENCH_LANGUAGE_HEADER) {
                 verifyLanguageHeaderIsTranslated(FRENCH_LANGUAGE_HEADER)
                 verifySelectedLanguage(FRENCH_SYSTEM_LOCALE_OPTION)

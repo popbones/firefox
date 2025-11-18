@@ -17,6 +17,7 @@ UNIFIED_SOURCES += [
     "testArrayBufferOrViewAPI.cpp",
     "testArrayBufferView.cpp",
     "testArrayBufferWithUserOwnedContents.cpp",
+    "testAssemblerCodeGen.cpp",
     "testAtomicOperations.cpp",
     "testAtomizeUtf8NonAsciiLatin1CodePoint.cpp",
     "testAtomizeWithoutActiveZone.cpp",
@@ -206,6 +207,9 @@ LOCAL_INCLUDES += [
 USE_LIBS += [
     "static:js",
 ]
+
+if CONFIG["MOZ_LTO_FAT"]:
+    LDFLAGS += ["-fno-lto"]
 
 DEFINES["topsrcdir"] = "%s/js/src" % TOPSRCDIR
 OBJDIR_PP_FILES.js.src["jsapi-tests"] += ["jsapi-tests-gdb.py.in"]

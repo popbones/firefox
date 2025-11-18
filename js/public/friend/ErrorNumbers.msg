@@ -391,7 +391,6 @@ MSG_DEF(JSMSG_BAD_LINE_NUMBER,         0, JSEXN_RANGEERR, "line number out of ra
 MSG_DEF(JSMSG_BAD_NEWTARGET,           0, JSEXN_SYNTAXERR, "new.target only allowed within functions")
 MSG_DEF(JSMSG_BAD_NEW_OPTIONAL,        0, JSEXN_SYNTAXERR, "new keyword cannot be used with an optional chain")
 MSG_DEF(JSMSG_BAD_OPTIONAL_TEMPLATE,   0, JSEXN_SYNTAXERR, "tagged template cannot be used with optional chain")
-MSG_DEF(JSMSG_IMPORT_ATTRIBUTES_NOT_SUPPORTED, 0, JSEXN_SYNTAXERR, "import attributes are not currently supported")
 MSG_DEF(JSMSG_ILLEGAL_PRIVATE_FIELD,   0, JSEXN_SYNTAXERR, "private fields aren't valid in this context")
 MSG_DEF(JSMSG_ILLEGAL_PRIVATE_NAME,    0, JSEXN_SYNTAXERR, "private names aren't valid in this context")
 MSG_DEF(JSMSG_INVALID_PRIVATE_NAME_PRECEDENCE,    0, JSEXN_SYNTAXERR, "invalid use of private name due to operator precedence")
@@ -399,11 +398,11 @@ MSG_DEF(JSMSG_INVALID_PRIVATE_NAME_IN_UNARY_EXPR,    0, JSEXN_SYNTAXERR, "invali
 MSG_DEF(JSMSG_ILLEGAL_PRIVATE_EXOTIC,  0, JSEXN_TYPEERR, "private fields or private methods aren't allowed on this exotic object")
 MSG_DEF(JSMSG_PRIVATE_FIELD_DOUBLE,    0, JSEXN_TYPEERR, "Initializing an object twice is an error with private fields")
 MSG_DEF(JSMSG_PRIVATE_BRAND_DOUBLE,    0, JSEXN_TYPEERR, "Initializing an object twice is an error with private methods")
-MSG_DEF(JSMSG_CURLY_AFTER_ASSERT,      0, JSEXN_SYNTAXERR, "missing '{' after assert")
-MSG_DEF(JSMSG_DUPLICATE_ASSERT_KEY,    1, JSEXN_SYNTAXERR, "duplicate assert key '{0}'")
-MSG_DEF(JSMSG_COLON_AFTER_ASSERT_KEY,  0, JSEXN_SYNTAXERR, "missing : after assert key")
-MSG_DEF(JSMSG_ASSERT_STRING_LITERAL,   0, JSEXN_SYNTAXERR, "expected string literal")
-MSG_DEF(JSMSG_ASSERT_KEY_EXPECTED,     0, JSEXN_SYNTAXERR, "expected assertion key")
+MSG_DEF(JSMSG_CURLY_AFTER_WITH,             0, JSEXN_SYNTAXERR, "missing '{' after with")
+MSG_DEF(JSMSG_DUPLICATE_ATTRIBUTE_KEY,      1, JSEXN_SYNTAXERR, "duplicate attribute key '{0}'")
+MSG_DEF(JSMSG_COLON_AFTER_ATTRIBUTE_KEY,    0, JSEXN_SYNTAXERR, "missing : after attribute key")
+MSG_DEF(JSMSG_WITH_CLAUSE_STRING_LITERAL,   0, JSEXN_SYNTAXERR, "expected string literal")
+MSG_DEF(JSMSG_ATTRIBUTE_KEY_EXPECTED,       0, JSEXN_SYNTAXERR, "expected attribute key")
 MSG_DEF(JSMSG_DECORATOR_NAME_EXPECTED, 0, JSEXN_SYNTAXERR, "expected property name in decorator expression")
 MSG_DEF(JSMSG_CLASS_EXPECTED,          0, JSEXN_SYNTAXERR, "expected class")
 MSG_DEF(JSMSG_NO_IN_WITH_USING,        0, JSEXN_SYNTAXERR, "'using' is not allowed in a for-in loop")
@@ -489,6 +488,7 @@ MSG_DEF(JSMSG_WASM_BAD_EXN_ARG,        0, JSEXN_TYPEERR,     "first argument mus
 MSG_DEF(JSMSG_WASM_BAD_EXN_PAYLOAD,    0, JSEXN_TYPEERR,     "second argument must be an object")
 MSG_DEF(JSMSG_WASM_BAD_EXN_PAYLOAD_LEN, 2, JSEXN_TYPEERR,    "expected {0} values but got {1}")
 MSG_DEF(JSMSG_WASM_BAD_EXN_TAG,        0, JSEXN_TYPEERR,     "exception's tag did not match the provided exception tag")
+MSG_DEF(JSMSG_WASM_BAD_EXN_TAG_PARAMS, 0, JSEXN_TYPEERR,     "too many tag parameters")
 MSG_DEF(JSMSG_WASM_BAD_EXN_OPTIONS,    0, JSEXN_TYPEERR,     "argument cannot be converted to an ExceptionOptions")
 MSG_DEF(JSMSG_WASM_BAD_FUNCTION_TYPE,  1, JSEXN_TYPEERR,     "too many function {0}")
 MSG_DEF(JSMSG_WASM_BAD_FUNCTION_VALUE, 0, JSEXN_TYPEERR,     "second argument must be a function")
@@ -636,7 +636,6 @@ MSG_DEF(JSMSG_INVALID_LANGUAGE_TAG,    1, JSEXN_RANGEERR, "invalid language tag:
 MSG_DEF(JSMSG_INVALID_LOCALES_ELEMENT, 0, JSEXN_TYPEERR, "invalid element in locales argument")
 MSG_DEF(JSMSG_INVALID_LOCALE_MATCHER,  1, JSEXN_RANGEERR, "invalid locale matcher in supportedLocalesOf(): {0}")
 MSG_DEF(JSMSG_INVALID_OPTION_VALUE,    2, JSEXN_RANGEERR, "invalid value {1} for option {0}")
-MSG_DEF(JSMSG_INVALID_TIME_ZONE,       1, JSEXN_RANGEERR, "invalid time zone in DateTimeFormat(): {0}")
 MSG_DEF(JSMSG_INVALID_DATETIME_OPTION, 2, JSEXN_TYPEERR, "can't set option {0} when {1} is used")
 MSG_DEF(JSMSG_INVALID_DATETIME_STYLE,  2, JSEXN_TYPEERR, "can't set option {0} for {1} formats")
 MSG_DEF(JSMSG_UNDEFINED_CURRENCY,      0, JSEXN_TYPEERR, "undefined currency in NumberFormat() with currency style")
@@ -651,11 +650,6 @@ MSG_DEF(JSMSG_INTL_DURATION_INVALID_NON_NUMERIC_OPTION, 2, JSEXN_RANGEERR, "inva
 MSG_DEF(JSMSG_INTL_DURATION_INVALID_DISPLAY_OPTION, 1, JSEXN_RANGEERR, "{0} can't use \"numeric\" style with \"always\" display")
 MSG_DEF(JSMSG_INTL_DURATION_INVALID_DISPLAY_OPTION_DEFAULT_STYLE, 1, JSEXN_RANGEERR, "{0} can't use \"always\" display when style defaults to \"numeric\"")
 MSG_DEF(JSMSG_INTL_DURATION_INVALID_DISPLAY_OPTION_DEFAULT_DISPLAY, 1, JSEXN_RANGEERR, "{0} can't use \"numeric\" style when display defaults to \"always\"")
-MSG_DEF(JSMSG_INTL_DURATION_NOT_INTEGER, 1, JSEXN_RANGEERR, "{0} isn't a valid duration value because it isn't an integer")
-MSG_DEF(JSMSG_INTL_DURATION_INVALID_SIGN, 0, JSEXN_RANGEERR, "duration elements must have the same sign")
-MSG_DEF(JSMSG_INTL_DURATION_INVALID_LIMIT, 0, JSEXN_RANGEERR, "duration elements must be below valid limits")
-MSG_DEF(JSMSG_INTL_DURATION_MISSING_UNIT, 0, JSEXN_TYPEERR, "Duration-like objects must have at least one duration unit")
-MSG_DEF(JSMSG_INTL_DURATION_UNEXPECTED_STRING, 0, JSEXN_RANGEERR, "duration can't be a string")
 MSG_DEF(JSMSG_INVALID_FORMAT_OPTIONS,  1, JSEXN_TYPEERR, "can't format {0} using the requested options")
 
 // RegExp
@@ -830,6 +824,7 @@ MSG_DEF(JSMSG_BIGINT_NOT_SERIALIZABLE, 0, JSEXN_TYPEERR, "BigInt value can't be 
 
 // FinalizationRegistry
 MSG_DEF(JSMSG_NOT_A_FINALIZATION_REGISTRY,               1, JSEXN_TYPEERR, "{0} is not a FinalizationRegistry")
+MSG_DEF(JSMSG_BAD_FINALIZATION_REGISTRY_TARGET,          0, JSEXN_TYPEERR, "The target registered with a finalization registry must be either an object or a symbol")
 MSG_DEF(JSMSG_BAD_HELD_VALUE,                            0, JSEXN_TYPEERR, "The heldValue parameter passed to FinalizationRegistry.register must not be the same as the target parameter")
 MSG_DEF(JSMSG_BAD_UNREGISTER_TOKEN,                      1, JSEXN_TYPEERR, "Invalid unregister token passed to {0}")
 MSG_DEF(JSMSG_BAD_FINALIZATION_REGISTRY_OBJECT,          0, JSEXN_TYPEERR, "cannot register the given object with a FinalizationRegistry")
@@ -840,6 +835,9 @@ MSG_DEF(JSMSG_BAD_WEAKREF_TARGET,                        0, JSEXN_TYPEERR, "cann
 
 // Iterator Helpers
 MSG_DEF(JSMSG_NEGATIVE_LIMIT,                            0, JSEXN_RANGEERR, "Iterator limits cannot be negative")
+MSG_DEF(JSMSG_ITERATOR_ZIP_INVALID_OPTION_TYPE,          2, JSEXN_TYPEERR, "invalid type for \"{0}\" option: {1}")
+MSG_DEF(JSMSG_ITERATOR_ZIP_INVALID_OPTION_VALUE,         2, JSEXN_TYPEERR, "invalid value for \"{0}\" option: {1}")
+MSG_DEF(JSMSG_ITERATOR_ZIP_STRICT_OPEN_ITERATOR,         0, JSEXN_TYPEERR, "too few iterator results for \"strict\" mode")
 
 // Set
 MSG_DEF(JSMSG_SET_NEGATIVE_SIZE,                         0, JSEXN_RANGEERR, "Set size must be non-negative")

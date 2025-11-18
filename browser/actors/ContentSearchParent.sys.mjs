@@ -12,7 +12,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
   PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
   SearchSuggestionController:
     "moz-src:///toolkit/components/search/SearchSuggestionController.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
 });
 
 const MAX_LOCAL_SUGGESTIONS = 3;
@@ -204,14 +204,9 @@ export let ContentSearch = {
       "engineName",
       "searchString",
       "healthReportKey",
-      "searchPurpose",
     ]);
     let engine = Services.search.getEngineByName(data.engineName);
-    let submission = engine.getSubmission(
-      data.searchString,
-      "",
-      data.searchPurpose
-    );
+    let submission = engine.getSubmission(data.searchString, "");
     let win = browser.ownerGlobal;
     if (!win) {
       // The browser may have been closed between the time its content sent the
@@ -268,11 +263,14 @@ export let ContentSearch = {
     let ok = lazy.SearchSuggestionController.engineOffersSuggestions(engine);
     controller.maxLocalResults = ok ? MAX_LOCAL_SUGGESTIONS : MAX_SUGGESTIONS;
     controller.maxRemoteResults = ok ? MAX_SUGGESTIONS : 0;
-    let priv = lazy.PrivateBrowsingUtils.isBrowserPrivate(browser);
     // fetch() rejects its promise if there's a pending request, but since we
     // process our event queue serially, there's never a pending request.
     this._currentSuggestion = { controller, browser };
-    let suggestions = await controller.fetch(searchString, priv, engine);
+    let suggestions = await controller.fetch({
+      searchString,
+      inPrivateBrowsing: lazy.PrivateBrowsingUtils.isBrowserPrivate(browser),
+      engine,
+    });
 
     // Simplify results since we do not support rich results in this component.
     suggestions.local = suggestions.local.map(e => e.value);
@@ -350,7 +348,7 @@ export let ContentSearch = {
         name: engine.name,
         iconData: await this._getEngineIconURL(engine),
         hidden: engine.hideOneOffButton,
-        isAppProvided: engine.isAppProvided,
+        isConfigEngine: engine.isConfigEngine,
       });
     }
 
@@ -546,7 +544,7 @@ export let ContentSearch = {
     let obj = {
       name: engine.name,
       iconData: await this._getEngineIconURL(engine),
-      isAppProvided: engine.isAppProvided,
+      isConfigEngine: engine.isConfigEngine,
     };
     return obj;
   },

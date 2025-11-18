@@ -17,8 +17,8 @@ class ContentParent;
 class ThreadsafeContentParentHandle;
 
 struct ContentParentKeepAliveDeleter {
-  void operator()(ContentParent* aProcess);
-  void operator()(ThreadsafeContentParentHandle* aHandle);
+  void operator()(ContentParent* const& aProcess);
+  void operator()(ThreadsafeContentParentHandle* const& aHandle);
   uint64_t mBrowserId = 0;
 };
 
@@ -34,15 +34,15 @@ using UniqueThreadsafeContentParentKeepAlive =
     UniquePtr<ThreadsafeContentParentHandle, ContentParentKeepAliveDeleter>;
 
 UniqueContentParentKeepAlive UniqueContentParentKeepAliveFromThreadsafe(
-    UniqueThreadsafeContentParentKeepAlive aKeepAlive);
+    UniqueThreadsafeContentParentKeepAlive&& aKeepAlive);
 UniqueThreadsafeContentParentKeepAlive UniqueContentParentKeepAliveToThreadsafe(
-    UniqueContentParentKeepAlive aKeepAlive);
+    UniqueContentParentKeepAlive&& aKeepAlive);
 
 // Wrap a UniqueContentParentKeepAlive to make it usable from JS.
 //
 // Should not be called on a KeepAlive for a still-launching ContentParent.
 already_AddRefed<nsIContentParentKeepAlive> WrapContentParentKeepAliveForJS(
-    UniqueContentParentKeepAlive aKeepAlive);
+    UniqueContentParentKeepAlive&& aKeepAlive);
 
 }  // namespace mozilla::dom
 

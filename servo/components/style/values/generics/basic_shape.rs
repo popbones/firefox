@@ -60,8 +60,8 @@ impl Default for ShapeGeometryBox {
 fn is_default_box_for_clip_path(b: &ShapeGeometryBox) -> bool {
     // Note: for clip-path, ElementDependent is always border-box, so we have to check both of them
     // for serialization.
-    matches!(b, ShapeGeometryBox::ElementDependent) ||
-        matches!(b, ShapeGeometryBox::ShapeBox(ShapeBox::BorderBox))
+    matches!(b, ShapeGeometryBox::ElementDependent)
+        || matches!(b, ShapeGeometryBox::ShapeBox(ShapeBox::BorderBox))
 }
 
 /// https://drafts.csswg.org/css-shapes-1/#typedef-shape-box
@@ -113,6 +113,7 @@ impl Default for ShapeBox {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[animation(no_bound(U))]
 #[repr(u8)]
@@ -146,6 +147,7 @@ pub use self::GenericClipPath as ClipPath;
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[animation(no_bound(I))]
 #[repr(u8)]
@@ -420,6 +422,7 @@ pub enum GenericPathOrShapeFunction<Angle, LengthPercentage> {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum FillRule {

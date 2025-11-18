@@ -271,7 +271,6 @@
 #  include "DBusService.h"
 #endif
 
-extern uint32_t gRestartMode;
 extern void InstallSignalHandlers(const char* ProgramName);
 
 #define FILE_COMPATIBILITY_INFO "compatibility.ini"_ns
@@ -5840,10 +5839,7 @@ nsresult XREMain::XRE_mainRun() {
     // If we're on Linux, we now have information about the OS capabilities
     // available to us.
     SandboxInfo sandboxInfo = SandboxInfo::Get();
-    glean::sandbox::has_user_namespaces
-        .EnumGet(static_cast<glean::sandbox::HasUserNamespacesLabel>(
-            sandboxInfo.Test(SandboxInfo::kHasUserNamespaces)))
-        .Add();
+    // If we need telemetry probes for sandboxInfo bits, they can go here.
 
     CrashReporter::RecordAnnotationU32(
         CrashReporter::Annotation::ContentSandboxCapabilities,
@@ -6020,6 +6016,17 @@ int XREMain::XRE_main(int argc, char* argv[], const BootstrapConfig& aConfig) {
     greDir->GetParent(getter_AddRefs(parent));
     greDir = parent.forget();
     greDir->AppendNative("Resources"_ns);
+#elif defined(XP_IOS)
+    // FIXME: Consider looking up the GeckoView.framework bundle directly,
+    // rather than deriving it from XRE_GetBinaryPath on iOS. This may be more
+    // resilient especially once we properly bundle XUL into a separate
+    // framework or support multiple embedders.
+    rv = greDir->AppendNative("Frameworks"_ns);
+    NS_ENSURE_SUCCESS(rv, 2);
+    rv = greDir->AppendNative("GeckoView.framework"_ns);
+    NS_ENSURE_SUCCESS(rv, 2);
+    rv = greDir->AppendNative("Frameworks"_ns);
+    NS_ENSURE_SUCCESS(rv, 2);
 #endif
 
     mAppData->xreDirectory = greDir;
@@ -6312,7 +6319,7 @@ bool XRE_UseNativeEventProcessing() {
 #endif
 
   switch (XRE_GetProcessType()) {
-#if defined(XP_MACOSX) || defined(XP_WIN)
+#if defined(XP_DARWIN) || defined(XP_WIN)
     case GeckoProcessType_RDD:
     case GeckoProcessType_Socket:
       return false;
@@ -6330,7 +6337,7 @@ bool XRE_UseNativeEventProcessing() {
       return false;
 #  endif  // defined(XP_WIN)
     }
-#endif  // defined(XP_MACOSX) || defined(XP_WIN)
+#endif  // defined(XP_DARWIN) || defined(XP_WIN)
     case GeckoProcessType_GMPlugin:
       return mozilla::gmp::GMPProcessChild::UseNativeEventProcessing();
     case GeckoProcessType_Content:
@@ -6371,9 +6378,7 @@ void SetupErrorHandling(const char* progname) {
   SetProcessDEPPolicyFunc _SetProcessDEPPolicy =
       (SetProcessDEPPolicyFunc)GetProcAddress(kernel32, "SetProcessDEPPolicy");
   if (_SetProcessDEPPolicy) _SetProcessDEPPolicy(PROCESS_DEP_ENABLE);
-#endif
 
-#ifdef XP_WIN
   // Suppress the "DLL Foo could not be found" dialog, such that if dependent
   // libraries (such as GDI+) are not preset, we gracefully fail to load those
   // XPCOM components, instead of being ungraceful.

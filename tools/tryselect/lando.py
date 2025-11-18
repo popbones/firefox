@@ -20,7 +20,7 @@ from dataclasses import (
     field,
 )
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 import requests
 from mach.util import get_state_dir
@@ -49,7 +49,7 @@ def convert_bytes_patch_to_base64(patch_bytes: bytes) -> str:
     return base64.b64encode(patch_bytes).decode("ascii")
 
 
-def load_token_from_disk() -> Optional[dict]:
+def load_token_from_disk() -> dict | None:
     """Load and validate an existing Auth0 token from disk.
 
     Return the token as a `dict` if it can be validated, or return `None`
@@ -69,7 +69,7 @@ def load_token_from_disk() -> Optional[dict]:
 
 
 def get_stack_info(
-    vcs: SupportedVcsRepository, head: Optional[str]
+    vcs: SupportedVcsRepository, head: str | None
 ) -> tuple[str, str, list[str]]:
     """Retrieve information about the current stack for submission via Lando.
 
@@ -168,7 +168,7 @@ class Auth0Config:
 
         return response.json()
 
-    def validate_token(self, user_token: dict) -> Optional[dict]:
+    def validate_token(self, user_token: dict) -> dict | None:
         """Verify the given user token is valid.
 
         Validate the ID token, and validate the access token's expiration claim.
@@ -311,7 +311,7 @@ class Auth0Config:
 class LandoAPIException(Exception):
     """Raised when Lando throws an exception."""
 
-    def __init__(self, detail: Optional[str] = None):
+    def __init__(self, detail: str | None = None):
         super().__init__(detail or "")
 
 
@@ -321,6 +321,7 @@ class LandoAPI:
 
     access_token: str
     api_url: str
+    verify_tls: bool = True
 
     @property
     def lando_try_api_url(self) -> str:
@@ -365,11 +366,14 @@ class LandoAPI:
         return LandoAPI(
             api_url=parser.get(section, "api_domain"),
             access_token=token["access_token"],
+            verify_tls=parser.getboolean(section, "verify_tls", fallback=True),
         )
 
     def post(self, url: str, body: dict) -> dict:
         """Make a POST request to Lando."""
-        response = requests.post(url, headers=self.api_headers, json=body)
+        response = requests.post(
+            url, headers=self.api_headers, json=body, verify=self.verify_tls
+        )
 
         try:
             response_json = response.json()
@@ -429,10 +433,9 @@ def push_to_lando_try(
         # Other VCS types (namely `src`) are unsupported.
         raise ValueError(f"Try push via Lando is not supported for `{vcs.name}`.")
 
-    # Use Lando Prod unless the `LANDO_TRY_USE_DEV` environment variable is defined.
-    lando_config_section = (
-        "lando-prod" if not os.getenv("LANDO_TRY_USE_DEV") else "lando-dev"
-    )
+    # Use LANDO_TRY_CONFIG so select which configuration section from .lando.ini to use.
+    # Default to using `lando-prod`.
+    lando_config_section = os.getenv("LANDO_TRY_CONFIG", "lando-prod")
 
     # Load Auth0 config from `.lando.ini`.
     lando_ini_path = Path(vcs.path) / ".lando.ini"
@@ -466,10 +469,7 @@ def push_to_lando_try(
     duration = time.perf_counter() - push_start_time
 
     job_id = response_json["id"]
-    success_msg = (
-        f"Lando try submission success, took {duration:.1f} seconds. "
-        f"Landing job id: {job_id}."
-    )
+    success_msg = f"Lando try submission success, took {duration:.1f} seconds. Landing job id: {job_id}."
     print(success_msg)
 
     lando_api_status_url = lando_api.lando_try_status_api_url(job_id)

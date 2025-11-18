@@ -7,37 +7,37 @@
 #ifndef mozilla_dom_BrowserChild_h
 #define mozilla_dom_BrowserChild_h
 
-#include "mozilla/dom/ContentFrameMessageManager.h"
-#include "mozilla/dom/PBrowserChild.h"
-#include "nsIWebNavigation.h"
-#include "nsCOMPtr.h"
-#include "nsIWebBrowserChrome.h"
-#include "nsIInterfaceRequestor.h"
-#include "nsIWindowProvider.h"
-#include "nsIDocShell.h"
-#include "nsIInterfaceRequestorUtils.h"
-#include "nsWeakReference.h"
-#include "nsIBrowserChild.h"
-#include "nsITooltipListener.h"
-#include "nsIWebProgressListener.h"
+#include "PuppetWidget.h"
 #include "mozilla/Attributes.h"
-#include "mozilla/dom/TabContext.h"
-#include "mozilla/dom/CoalescedMouseData.h"
-#include "mozilla/dom/CoalescedTouchData.h"
-#include "mozilla/dom/CoalescedWheelData.h"
-#include "mozilla/dom/MessageManagerCallback.h"
-#include "mozilla/dom/VsyncMainChild.h"
 #include "mozilla/DOMEventTargetHelper.h"
 #include "mozilla/EventDispatcher.h"
 #include "mozilla/EventForwards.h"
+#include "mozilla/dom/CoalescedMouseData.h"
+#include "mozilla/dom/CoalescedTouchData.h"
+#include "mozilla/dom/CoalescedWheelData.h"
+#include "mozilla/dom/ContentFrameMessageManager.h"
+#include "mozilla/dom/MessageManagerCallback.h"
+#include "mozilla/dom/PBrowserChild.h"
+#include "mozilla/dom/TabContext.h"
+#include "mozilla/dom/VsyncMainChild.h"
+#include "mozilla/dom/ipc/IdType.h"
 #include "mozilla/layers/APZCCallbackHelper.h"
 #include "mozilla/layers/CompositorOptions.h"
 #include "mozilla/layers/CompositorTypes.h"
 #include "mozilla/layers/GeckoContentControllerTypes.h"
-#include "mozilla/dom/ipc/IdType.h"
-#include "PuppetWidget.h"
+#include "nsCOMPtr.h"
 #include "nsDeque.h"
+#include "nsIBrowserChild.h"
+#include "nsIDocShell.h"
+#include "nsIInterfaceRequestor.h"
+#include "nsIInterfaceRequestorUtils.h"
 #include "nsIRemoteTab.h"
+#include "nsITooltipListener.h"
+#include "nsIWebBrowserChrome.h"
+#include "nsIWebNavigation.h"
+#include "nsIWebProgressListener.h"
+#include "nsIWindowProvider.h"
+#include "nsWeakReference.h"
 
 class nsBrowserStatusFilter;
 class nsIDOMWindow;
@@ -223,11 +223,11 @@ class BrowserChild final : public nsMessageManagerScriptExecutor,
    * MessageManagerCallback methods that we override.
    */
   virtual bool DoSendBlockingMessage(
-      const nsAString& aMessage, StructuredCloneData& aData,
-      nsTArray<StructuredCloneData>* aRetVal) override;
+      const nsAString& aMessage, ipc::StructuredCloneData& aData,
+      nsTArray<UniquePtr<ipc::StructuredCloneData>>* aRetVal) override;
 
   virtual nsresult DoSendAsyncMessage(const nsAString& aMessage,
-                                      StructuredCloneData& aData) override;
+                                      ipc::StructuredCloneData& aData) override;
 
   bool DoUpdateZoomConstraints(const uint32_t& aPresShellId,
                                const ViewID& aViewId,
@@ -330,11 +330,10 @@ class BrowserChild final : public nsMessageManagerScriptExecutor,
       const uint64_t& aInputBlockId);
 
   MOZ_CAN_RUN_SCRIPT_BOUNDARY
-  mozilla::ipc::IPCResult RecvRealDragEvent(const WidgetDragEvent& aEvent,
-                                            const uint32_t& aDragAction,
-                                            const uint32_t& aDropEffect,
-                                            nsIPrincipal* aPrincipal,
-                                            nsIContentSecurityPolicy* aCsp);
+  mozilla::ipc::IPCResult RecvRealDragEvent(
+      const WidgetDragEvent& aEvent, const uint32_t& aDragAction,
+      const uint32_t& aDropEffect, nsIPrincipal* aPrincipal,
+      nsIPolicyContainer* aPolicyContainer);
 
   mozilla::ipc::IPCResult RecvRealKeyEvent(
       const mozilla::WidgetKeyboardEvent& aEvent, const nsID& aUUID);
@@ -727,7 +726,7 @@ class BrowserChild final : public nsMessageManagerScriptExecutor,
   mozilla::ipc::IPCResult RecvStoreDropTargetAndDelayEndDragSession(
       const LayoutDeviceIntPoint& aPt, uint32_t aDropEffect,
       uint32_t aDragAction, nsIPrincipal* aPrincipal,
-      nsIContentSecurityPolicy* aCsp);
+      nsIPolicyContainer* aPolicyContainer);
 
   MOZ_CAN_RUN_SCRIPT_BOUNDARY
   mozilla::ipc::IPCResult RecvDispatchToDropTargetAndResumeEndDragSession(

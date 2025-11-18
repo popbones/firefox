@@ -35,6 +35,7 @@ using class mozilla::TimeStamp from "mozilla/TimeStamp.h";
 [RefCounted] using class nsDocShellLoadState from "nsDocShellLoadState.h";
 using nsContentPolicyType from "nsIContentPolicy.h";
 using mozilla::net::PreferredAlternativeDataDeliveryTypeIPC from "nsICacheInfoChannel.h";
+using mozilla::dom::ForceMediaDocument from "mozilla/dom/LoadURIOptionsBinding.h";
 using nsILoadInfo::CrossOriginEmbedderPolicy from "nsILoadInfo.h";
 using nsILoadInfo::StoragePermissionState from "nsILoadInfo.h";
 using nsILoadInfo::IPAddressSpace from "nsILoadInfo.h";
@@ -73,6 +74,17 @@ struct CookieJarSettingsArgs
   bool hasFingerprintingRandomizationKey;
   uint8_t[] fingerprintingRandomizationKey;
   uint64_t topLevelWindowContextId;
+};
+
+//-----------------------------------------------------------------------------
+// CookieChange
+//-----------------------------------------------------------------------------
+
+struct CookieChange
+{
+  bool added;
+  CookieStruct cookie;
+  OriginAttributes originAttributes;
 };
 
 //-----------------------------------------------------------------------------
@@ -130,6 +142,7 @@ struct LoadInfoArgs
   bool                        browserWouldUpgradeInsecureRequests;
   bool                        forceAllowDataURI;
   bool                        allowInsecureRedirectToDataURI;
+  ForceMediaDocument          forceMediaDocument;
   bool                        skipContentPolicyCheckForWebRequest;
   bool                        originalFrameSrcLoad;
   bool                        forceInheritPrincipalDropped;
@@ -198,7 +211,7 @@ struct LoadInfoArgs
   bool                        isFromObjectOrEmbed;
   CookieJarSettingsArgs       cookieJarSettings;
   uint32_t                    requestBlockingReason;
-  CSPInfo?                    cspToInheritInfo;
+  PolicyContainerArgs?        policyContainerToInherit;
   StoragePermissionState      storagePermission;
   IPAddressSpace              parentIPAddressSpace;
   IPAddressSpace              ipAddressSpace;
@@ -376,7 +389,6 @@ struct HttpChannelOpenArgs
   nsCString                   appCacheClientID;
   CorsPreflightArgs?          preflightArgs;
   nsCString                   contentTypeHint;
-  nsString                    integrityMetadata;
   IPCStream?                  uploadStream;
   LoadInfoArgs                loadInfo;
   uint32_t                    loadFlags;
@@ -423,6 +435,8 @@ struct ProxyInfoCloneArgs
   nsCString type;
   nsCString host;
   int32_t port;
+  nsCString pathTemplate;
+  nsCString alpn;
   nsCString username;
   nsCString password;
   uint32_t flags;
@@ -557,6 +571,7 @@ struct RedirectToRealChannelArgs {
   nsCString? originalUriString;
   EarlyHintConnectArgs[] earlyHints;
   uint32_t earlyHintLinkType;
+  nullable nsIReferrerInfo referrerInfo;
 };
 
 struct TimingStructArgs {
@@ -672,6 +687,28 @@ struct FileChannelInfo
   LoadInfoArgs           loadInfo;
   nsCString              contentType;
   uint64_t               channelId;
+};
+
+//-----------------------------------------------------------------------------
+// GeckoView's Android Content IPDL structs
+//-----------------------------------------------------------------------------
+
+struct GeckoViewContentChannelOpenArgs
+{
+  URIParams uri;
+  LoadInfoArgs loadInfo;
+  uint32_t loadFlags;
+};
+
+struct GeckoViewContentChannelConnectArgs
+{
+  uint32_t channelId;
+};
+
+union GeckoViewContentChannelArgs
+{
+  GeckoViewContentChannelOpenArgs;
+  GeckoViewContentChannelConnectArgs;
 };
 
 struct RemoteStreamInfo {

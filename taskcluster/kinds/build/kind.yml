@@ -14,8 +14,6 @@ transforms:
     - gecko_taskgraph.transforms.build_attrs:transforms
     - gecko_taskgraph.transforms.build_schedules:transforms
     - gecko_taskgraph.transforms.build_lints:transforms
-    - gecko_taskgraph.transforms.release_notifications:transforms
-    - gecko_taskgraph.transforms.release:run_on_releases
     - gecko_taskgraph.transforms.job:transforms
     - gecko_taskgraph.transforms.artifact:transforms
     - gecko_taskgraph.transforms.task:transforms
@@ -59,6 +57,7 @@ task-defaults:
                 nightly-larch: nightly-larch
                 nightly-oak: nightly-oak
                 nightly-pine: nightly-pine
+                nightly-cypress: nightly-cypress
                 beta:
                     by-shipping-product:
                         devedition: aurora

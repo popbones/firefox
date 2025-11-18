@@ -254,15 +254,25 @@ ENameValueFlag RemoteAccessible::Name(nsString& aName) const {
   return nameFlag;
 }
 
-void RemoteAccessible::Description(nsString& aDescription) const {
+EDescriptionValueFlag RemoteAccessible::Description(
+    nsString& aDescription) const {
   if (RequestDomainsIfInactive(CacheDomain::NameAndDescription)) {
-    return;
+    return eDescriptionOK;
   }
 
+  EDescriptionValueFlag descFlag = eDescriptionOK;
+
   if (mCachedFields) {
+    auto cachedDescriptionFlag =
+        mCachedFields->GetAttribute<int32_t>(CacheKey::DescriptionValueFlag);
+    if (cachedDescriptionFlag) {
+      descFlag = static_cast<EDescriptionValueFlag>(*cachedDescriptionFlag);
+    }
     mCachedFields->GetAttribute(CacheKey::Description, aDescription);
     VERIFY_CACHE(CacheDomain::NameAndDescription);
   }
+
+  return descFlag;
 }
 
 void RemoteAccessible::Value(nsString& aValue) const {
@@ -1490,6 +1500,13 @@ void RemoteAccessible::ScrollToPoint(uint32_t aScrollType, int32_t aX,
   Unused << mDoc->SendScrollToPoint(mID, aScrollType, aX, aY);
 }
 
+bool RemoteAccessible::IsScrollable() const {
+  if (RequestDomainsIfInactive(CacheDomain::ScrollPosition)) {
+    return false;
+  }
+  return mCachedFields && mCachedFields->HasAttribute(CacheKey::ScrollPosition);
+}
+
 #if !defined(XP_WIN)
 void RemoteAccessible::Announce(const nsString& aAnnouncement,
                                 uint16_t aPriority) {
@@ -1530,6 +1547,16 @@ RefPtr<const AccAttributes> RemoteAccessible::GetCachedTextAttributes() {
     return attrs;
   }
   return nullptr;
+}
+
+std::pair<LayoutDeviceIntRect, nsIWidget*> RemoteAccessible::GetCaretRect() {
+  nsIWidget* widget = nullptr;
+  LocalAccessible* outerDoc = OuterDocOfRemoteBrowser();
+  if (outerDoc) {
+    widget = nsContentUtils::WidgetForContent(outerDoc->GetContent());
+  }
+
+  return {mDoc->GetCachedCaretRect(), widget};
 }
 
 already_AddRefed<AccAttributes> RemoteAccessible::DefaultTextAttributes() {
@@ -1826,6 +1853,21 @@ float RemoteAccessible::Opacity() const {
   }
 
   return 1.0f;
+}
+
+WritingMode RemoteAccessible::GetWritingMode() const {
+  if (RequestDomainsIfInactive(CacheDomain::Style)) {
+    return WritingMode();
+  }
+
+  if (mCachedFields) {
+    if (auto wm =
+            mCachedFields->GetAttribute<WritingMode>(CacheKey::WritingMode)) {
+      return *wm;
+    }
+  }
+
+  return WritingMode();
 }
 
 void RemoteAccessible::LiveRegionAttributes(nsAString* aLive,

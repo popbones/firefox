@@ -658,6 +658,11 @@
                 },
                 "optional": true,
                 "default": []
+              },
+              "has_previous_consent": {
+                "type": "boolean",
+                "optional": true,
+                "default": false
               }
             }
           }
@@ -782,6 +787,11 @@
             "optional": true,
             "description": "The list of CSS files to inject",
             "items": { "$ref": "ExtensionURL" }
+          },
+          "css_origin": {
+            "$ref": "extensionTypes.CSSOrigin",
+            "default": "author",
+            "optional": true
           },
           "js": {
             "type": "array",

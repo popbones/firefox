@@ -43,10 +43,7 @@ fn gradient_color_interpolation_method_enabled() -> bool {
 pub type Image = generic::Image<Gradient, SpecifiedUrl, Color, Percentage, Resolution>;
 
 // Images should remain small, see https://github.com/servo/servo/pull/18430
-#[cfg(feature = "gecko")]
 size_of_test!(Image, 16);
-#[cfg(feature = "servo")]
-size_of_test!(Image, 40);
 
 /// Specified values for a CSS gradient.
 /// <https://drafts.csswg.org/css-images/#gradients>
@@ -215,8 +212,8 @@ impl Image {
         cors_mode: CorsMode,
         flags: ParseImageFlags,
     ) -> Result<Image, ParseError<'i>> {
-        if !flags.contains(ParseImageFlags::FORBID_NONE) &&
-            input.try_parse(|i| i.expect_ident_matching("none")).is_ok()
+        if !flags.contains(ParseImageFlags::FORBID_NONE)
+            && input.try_parse(|i| i.expect_ident_matching("none")).is_ok()
         {
             return Ok(generic::Image::None);
         }
@@ -246,13 +243,14 @@ impl Image {
         let function = input.expect_function()?.clone();
         input.parse_nested_block(|input| Ok(match_ignore_ascii_case! { &function,
             #[cfg(feature = "servo")]
-            "paint" => Self::PaintWorklet(PaintWorklet::parse_args(context, input)?),
+            "paint" => Self::PaintWorklet(Box::new(<PaintWorklet>::parse_args(context, input)?)),
             "cross-fade" if cross_fade_enabled() => Self::CrossFade(Box::new(CrossFade::parse_args(context, input, cors_mode, flags)?)),
             "light-dark" if image_light_dark_enabled(context) => Self::LightDark(Box::new(GenericLightDark::parse_args_with(input, |input| {
                 Self::parse_with_cors_mode(context, input, cors_mode, flags)
             })?)),
             #[cfg(feature = "gecko")]
             "-moz-element" => Self::Element(Self::parse_element(input)?),
+            #[cfg(feature = "gecko")]
             "-moz-symbolic-icon" if context.chrome_rules_enabled() => Self::MozSymbolicIcon(input.expect_ident()?.as_ref().into()),
             _ => return Err(input.new_custom_error(StyleParseErrorKind::UnexpectedFunction(function))),
         }))
@@ -1282,14 +1280,19 @@ impl<T> generic::ColorStop<Color, T> {
 
 impl PaintWorklet {
     #[cfg(feature = "servo")]
-    fn parse_args<'i>(context: &ParserContext, input: &mut Parser<'i, '_>) -> Result<Self, ParseError<'i>> {
-        use servo_arc::Arc;
+    fn parse_args<'i>(
+        context: &ParserContext,
+        input: &mut Parser<'i, '_>,
+    ) -> Result<Self, ParseError<'i>> {
         use crate::custom_properties::SpecifiedValue;
+        use servo_arc::Arc;
         let name = Atom::from(&**input.expect_ident()?);
         let arguments = input
             .try_parse(|input| {
                 input.expect_comma()?;
-                input.parse_comma_separated(|input| SpecifiedValue::parse(input, &context.url_data).map(Arc::new))
+                input.parse_comma_separated(|input| {
+                    SpecifiedValue::parse(input, &context.url_data).map(Arc::new)
+                })
             })
             .unwrap_or_default();
         Ok(Self { name, arguments })
@@ -1312,6 +1315,7 @@ impl PaintWorklet {
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum ImageRendering {

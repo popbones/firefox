@@ -35,7 +35,7 @@ ChromeUtils.importESModule(
   }
 );
 
-window.MozXULElement.insertFTLIfNeeded("preview/linkPreview.ftl");
+window.MozXULElement.insertFTLIfNeeded("browser/genai.ftl");
 
 /**
  * Class representing a link preview element.
@@ -237,7 +237,7 @@ class LinkPreviewCard extends MozLitElement {
           aria-expanded=${!this.collapsed}
         >
           <div class="chevron-icon"></div>
-          Key points
+          <span data-l10n-id="link-preview-key-points-header"></span>
           <img
             class="icon"
             xmlns="http://www.w3.org/1999/xhtml"
@@ -276,7 +276,7 @@ class LinkPreviewCard extends MozLitElement {
   renderNormalGenerationCard(pageUrl) {
     // Extract the links section into its own variable
     const linksSection = html`
-      <p>Key points are AI-generated and may have mistakes.</p>
+      <p data-l10n-id="link-preview-key-points-disclaimer"></p>
     `;
 
     return html`
@@ -289,7 +289,7 @@ class LinkPreviewCard extends MozLitElement {
           aria-expanded=${!this.collapsed}
         >
           <div class="chevron-icon"></div>
-          Key points
+          <span data-l10n-id="link-preview-key-points-header"></span>
           <img
             class="icon"
             xmlns="http://www.w3.org/1999/xhtml"
@@ -335,7 +335,7 @@ class LinkPreviewCard extends MozLitElement {
                     href=${pageUrl}
                     class="visit-link"
                   >
-                    Visit page
+                    <span data-l10n-id="link-preview-visit-link"></span>
                     <img
                       class="icon"
                       xmlns="http://www.w3.org/1999/xhtml"
@@ -348,8 +348,13 @@ class LinkPreviewCard extends MozLitElement {
             : ""}
           ${this.progress >= 0
             ? html`
-                <p>First-time setup • <strong>${this.progress}%</strong></p>
-                <p>You'll see key points more quickly next time.</p>
+                <p
+                  data-l10n-id="link-preview-setup"
+                  data-l10n-args=${JSON.stringify({
+                    progress: this.progress,
+                  })}
+                ></p>
+                <p data-l10n-id="link-preview-setup-faster-next-time"></p>
               `
             : ""}
           ${!this.generating
@@ -416,6 +421,13 @@ class LinkPreviewCard extends MozLitElement {
    */
   renderKeyPointsSection(pageUrl) {
     if (!this.regionSupported) {
+      return "";
+    }
+
+    if (
+      !this.optin &&
+      Services.prefs.prefIsLocked("browser.ml.linkPreview.optin")
+    ) {
       return "";
     }
 
@@ -509,9 +521,9 @@ class LinkPreviewCard extends MozLitElement {
           ${description
             ? html`<p class="og-card-description">${description}</p>`
             : ""}
-          ${readingTimeMinsFast && readingTimeMinsSlow
-            ? html`
-                <div class="reading-time-settings-container">
+          <div class="reading-time-settings-container">
+            ${readingTimeMinsFast && readingTimeMinsSlow
+              ? html`
                   <div
                     class="og-card-reading-time"
                     data-l10n-id="link-preview-reading-time"
@@ -529,17 +541,17 @@ class LinkPreviewCard extends MozLitElement {
                             ),
                     })}
                   ></div>
-                  <moz-button
-                    type="icon ghost"
-                    iconSrc="chrome://global/skin/icons/settings.svg"
-                    data-l10n-id="link-preview-settings-button"
-                    data-l10n-attrs="title"
-                    @click=${this.handleSettingsClick}
-                  >
-                  </moz-button>
-                </div>
-              `
-            : ""}
+                `
+              : html`<div></div>`}
+            <moz-button
+              type="icon ghost"
+              iconSrc="chrome://global/skin/icons/settings.svg"
+              data-l10n-id="link-preview-settings-button"
+              data-l10n-attrs="title"
+              @click=${this.handleSettingsClick}
+            >
+            </moz-button>
+          </div>
         </div>
         ${this.renderKeyPointsSection(pageUrl)}
       </div>

@@ -167,6 +167,7 @@ EVENT(contentvisibilityautostatechange, eContentVisibilityAutoStateChange,
       EventNameType_All, eBasicEventClass)
 EVENT(contextmenu, eContextMenu,
       EventNameType_HTMLXUL | EventNameType_SVGGraphic, ePointerEventClass)
+EVENT(command, eCommand, EventNameType_HTMLXUL, eBasicEventClass)
 NON_IDL_EVENT(mouselongtap, eMouseLongTap, EventNameType_HTMLXUL,
               eMouseEventClass)
 EVENT(cuechange, eCueChange, EventNameType_All, eBasicEventClass)
@@ -373,21 +374,6 @@ NON_IDL_EVENT(MozMouseHittest, eMouseHitTest, EventNameType_None,
 NON_IDL_EVENT(MozMouseExploreByTouch, eMouseExploreByTouch, EventNameType_None,
               eMouseEventClass)
 
-NON_IDL_EVENT(DOMAttrModified, eLegacyAttrModified, EventNameType_HTMLXUL,
-              eMutationEventClass)
-NON_IDL_EVENT(DOMCharacterDataModified, eLegacyCharacterDataModified,
-              EventNameType_HTMLXUL, eMutationEventClass)
-NON_IDL_EVENT(DOMNodeInserted, eLegacyNodeInserted, EventNameType_HTMLXUL,
-              eMutationEventClass)
-NON_IDL_EVENT(DOMNodeRemoved, eLegacyNodeRemoved, EventNameType_HTMLXUL,
-              eMutationEventClass)
-NON_IDL_EVENT(DOMNodeInsertedIntoDocument, eLegacyNodeInsertedIntoDocument,
-              EventNameType_HTMLXUL, eMutationEventClass)
-NON_IDL_EVENT(DOMNodeRemovedFromDocument, eLegacyNodeRemovedFromDocument,
-              EventNameType_HTMLXUL, eMutationEventClass)
-NON_IDL_EVENT(DOMSubtreeModified, eLegacySubtreeModified, EventNameType_HTMLXUL,
-              eMutationEventClass)
-
 NON_IDL_EVENT(DOMActivate, eLegacyDOMActivate, EventNameType_HTMLXUL,
               eUIEventClass)
 NON_IDL_EVENT(DOMFocusIn, eLegacyDOMFocusIn, EventNameType_HTMLXUL,
@@ -423,7 +409,6 @@ NON_IDL_EVENT(compositionupdate, eCompositionUpdate, EventNameType_XUL,
               eCompositionEventClass)
 NON_IDL_EVENT(compositionend, eCompositionEnd, EventNameType_XUL,
               eCompositionEventClass)
-NON_IDL_EVENT(command, eXULCommand, EventNameType_XUL, eInputEventClass)
 NON_IDL_EVENT(popupshowing, eXULPopupShowing, EventNameType_XUL,
               eBasicEventClass)
 NON_IDL_EVENT(popupshown, eXULPopupShown, EventNameType_XUL, eBasicEventClass)

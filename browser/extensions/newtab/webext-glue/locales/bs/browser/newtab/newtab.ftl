@@ -8,6 +8,9 @@
 newtab-page-title = Novi tab
 newtab-settings-button =
     .title = Prilagodite svoju početnu stranicu novog taba
+newtab-customize-panel-icon-button =
+    .title = Prilagodi ovu stranicu
+newtab-customize-panel-icon-button-label = Prilagodi
 newtab-personalize-settings-icon-label =
     .title = Personalizujte novi tab
     .aria-label = Postavke
@@ -53,6 +56,9 @@ newtab-topsites-add-shortcut-header = Nova prečica
 newtab-topsites-edit-topsites-header = Uredi najbolju stranicu
 newtab-topsites-edit-shortcut-header = Uredi prečicu
 newtab-topsites-add-shortcut-label = Dodaj prečicu
+newtab-topsites-add-shortcut-title =
+    .title = Dodaj prečicu
+    .aria-label = Dodaj prečicu
 newtab-topsites-title-label = Naslov
 newtab-topsites-title-input =
     .placeholder = Unesi naslov
@@ -310,12 +316,12 @@ newtab-custom-pocket-sponsored = Sponzorisane priče
 newtab-custom-pocket-show-recent-saves = Prikaži nedavno sačuvane
 newtab-custom-recent-title = Nedavne aktivnosti
 newtab-custom-recent-subtitle = Izbor najnovijih stranica i sadržaja
-newtab-custom-recent-toggle =
-    .label = Nedavne aktivnosti
-    .description = Izbor najnovijih stranica i sadržaja
 newtab-custom-weather-toggle =
     .label = Vrijeme
     .description = Ukratko o današnjoj prognozi
+newtab-custom-trending-search-toggle =
+    .label = Popularne pretrage
+    .description = Popularne i često tražene teme
 newtab-custom-close-button = Zatvori
 newtab-custom-settings = Upravljajte više postavki
 
@@ -433,7 +439,6 @@ newtab-weather-menu-change-location = Promijeni lokaciju
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Traži lokaciju
     .aria-label = Traži lokaciju
-newtab-weather-change-location-search-input = Traži lokaciju
 newtab-weather-menu-weather-display = Prikaz vremena
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -499,6 +504,9 @@ newtab-topic-selection-button-pick-interests = Odaberite svoja interesovanja
 newtab-section-follow-button = Prati
 newtab-section-following-button = Pratite
 newtab-section-unfollow-button = Prestani pratiti
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = Precizno podesite svoj feed
+newtab-section-follow-highlight-subtitle = Pratite svoja interesovanja da biste vidjeli više onoga što vam se sviđa.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -541,6 +549,11 @@ newtab-download-mobile-highlight-body-variant-c = Jeste li znali da { -brand-pro
 newtab-download-mobile-highlight-image =
     .aria-label = QR kod za preuzimanje { -brand-product-name } za mobilne uređaje
 
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = Vaši favoriti na dohvat ruke
+newtab-shortcuts-highlight-subtitle = Dodajte prečicu da biste svoje omiljene stranice imali pri ruci na jedan klik.
+
 ## Strings for reporting ads and content
 
 newtab-report-content-why-reporting-this =
@@ -566,3 +579,11 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
+newtab-trending-searches-show-trending =
+    .title = Prikaži popularne pretrage
+newtab-trending-searches-hide-trending =
+    .title = Sakrij popularne pretrage
+newtab-trending-searches-learn-more = Saznajte više
+newtab-trending-searches-dismiss = Sakrij popularne pretrage
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = Popularne pretrage

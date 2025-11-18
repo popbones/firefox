@@ -43,12 +43,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import mozilla.components.compose.base.annotation.FlexibleWindowLightDarkPreview
-import mozilla.components.compose.base.button.PrimaryButton
+import mozilla.components.compose.base.button.FilledButton
 import mozilla.components.lib.state.ext.observeAsState
 import mozilla.components.ui.colors.PhotonColors
 import org.mozilla.fenix.R
 import org.mozilla.fenix.onboarding.store.OnboardingStore
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * The default ratio of the image height to the parent height.
@@ -159,7 +160,7 @@ fun ToolbarOnboardingPage(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                PrimaryButton(
+                FilledButton(
                     text = primaryButton.text,
                     modifier = Modifier
                         .width(width = FirefoxTheme.layout.size.maxWidth.small)
@@ -267,7 +268,7 @@ private fun SelectableImageItem(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.mozac_ic_checkmark_24),
+                    painter = painterResource(id = iconsR.drawable.mozac_ic_checkmark_24),
                     contentDescription = null, // decorative only.
                     modifier = Modifier.size(12.dp),
                     tint = PhotonColors.White,

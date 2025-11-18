@@ -3,16 +3,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#define ENABLE_SET_CUBEB_BACKEND 1
 #include "CubebDeviceEnumerator.h"
+#include "MockCubeb.h"
 #include "gtest/gtest-printers.h"
 #include "gtest/gtest.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/media/MediaUtils.h"
 #include "nsTArray.h"
-
-#include "MockCubeb.h"
 
 using namespace mozilla;
 using AudioDeviceSet = CubebDeviceEnumerator::AudioDeviceSet;

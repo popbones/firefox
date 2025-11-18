@@ -163,10 +163,6 @@ async function getExpectedWebCompatInfo(tab, snapshot, fullAppData = false) {
         "privacy.globalprivacycontrol.enabled",
         false
       ),
-      h1InSectionUseragentStylesEnabled: Services.prefs.getBoolPref(
-        "layout.css.h1-in-section-ua-styles.enabled",
-        false
-      ),
       installtriggerEnabled: Services.prefs.getBoolPref(
         "extensions.InstallTrigger.enabled",
         false
@@ -211,6 +207,7 @@ async function getExpectedWebCompatInfo(tab, snapshot, fullAppData = false) {
         devicePixelRatio: `${content.devicePixelRatio}`,
         antitracking: {
           blockList: "basic",
+          blockedOrigins: [],
           isPrivateBrowsing: false,
           hasTrackingContentBlocked: false,
           hasMixedActiveContentBlocked: false,
@@ -311,6 +308,10 @@ async function testSend(tab, menu, expectedOverrides = {}) {
       ok(
         ["basic", "strict"].includes(tabInfo.antitracking.blockList),
         "Got a blockList"
+      );
+      ok(
+        Array.isArray(tabInfo.antitracking.blockedOrigins),
+        "Got an array for blockedOrigins"
       );
       ok(tabInfo.useragentString?.length, "Got a final UA string");
       ok(

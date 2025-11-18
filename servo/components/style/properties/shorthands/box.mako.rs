@@ -28,7 +28,6 @@ ${helpers.two_properties_shorthand(
     "overscroll-behavior-x",
     "overscroll-behavior-y",
     engines="gecko",
-    gecko_pref="layout.css.overscroll-behavior.enabled",
     spec="https://wicg.github.io/overscroll-behavior/#overscroll-behavior-properties",
 )}
 
@@ -48,9 +47,9 @@ ${helpers.two_properties_shorthand(
         // match the spec.
         let container_name = ContainerName::parse(context, input)?;
         let container_type = if input.try_parse(|input| input.expect_delim('/')).is_ok() {
-            ContainerType::parse(input)?
+            ContainerType::parse(context, input)?
         } else {
-            ContainerType::Normal
+            ContainerType::NORMAL
         };
         Ok(expanded! {
             container_name: container_name,

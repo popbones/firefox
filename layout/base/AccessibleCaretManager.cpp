@@ -14,11 +14,6 @@
 #include "mozilla/AsyncEventDispatcher.h"
 #include "mozilla/AutoRestore.h"
 #include "mozilla/CaretAssociationHint.h"
-#include "mozilla/dom/Element.h"
-#include "mozilla/dom/MouseEventBinding.h"
-#include "mozilla/dom/NodeFilterBinding.h"
-#include "mozilla/dom/Selection.h"
-#include "mozilla/dom/TreeWalker.h"
 #include "mozilla/FocusModel.h"
 #include "mozilla/IMEStateManager.h"
 #include "mozilla/IntegerPrintfMacros.h"
@@ -27,14 +22,19 @@
 #include "mozilla/SelectionMovementUtils.h"
 #include "mozilla/StaticAnalysisFunctions.h"
 #include "mozilla/StaticPrefs_layout.h"
+#include "mozilla/dom/Element.h"
+#include "mozilla/dom/MouseEventBinding.h"
+#include "mozilla/dom/NodeFilterBinding.h"
+#include "mozilla/dom/Selection.h"
+#include "mozilla/dom/TreeWalker.h"
 #include "nsCaret.h"
 #include "nsContainerFrame.h"
 #include "nsContentUtils.h"
 #include "nsDebug.h"
 #include "nsFocusManager.h"
-#include "nsIFrame.h"
 #include "nsFrameSelection.h"
 #include "nsGenericHTMLElement.h"
+#include "nsIFrame.h"
 #include "nsIHapticFeedback.h"
 #include "nsLayoutUtils.h"
 #include "nsServiceManagerUtils.h"
@@ -305,14 +305,16 @@ void AccessibleCaretManager::UpdateCaretsForSelectionMode(
   AC_LOG("%s: selection: %p", __FUNCTION__, GetSelection());
 
   int32_t startOffset = 0;
-  nsIFrame* startFrame =
-      GetFrameForFirstRangeStartOrLastRangeEnd(eDirNext, &startOffset);
+  nsCOMPtr<nsIContent> startContent;
+  nsIFrame* startFrame = GetFrameForFirstRangeStartOrLastRangeEnd(
+      eDirNext, &startOffset, getter_AddRefs(startContent));
 
   int32_t endOffset = 0;
-  nsIFrame* endFrame =
-      GetFrameForFirstRangeStartOrLastRangeEnd(eDirPrevious, &endOffset);
+  nsCOMPtr<nsIContent> endContent;
+  nsIFrame* endFrame = GetFrameForFirstRangeStartOrLastRangeEnd(
+      eDirPrevious, &endOffset, getter_AddRefs(endContent));
 
-  if (!CompareTreePosition(startFrame, endFrame)) {
+  if (!CompareTreePosition(startFrame, endFrame, startContent, endContent)) {
     // XXX: Do we really have to hide carets if this condition isn't satisfied?
     HideCaretsAndDispatchCaretStateChangedEvent();
     return;
@@ -911,9 +913,8 @@ nsresult AccessibleCaretManager::SelectWord(nsIFrame* aFrame,
   AC_LOGV("%s", __FUNCTION__);
 
   SetSelectionDragState(true);
-  const RefPtr<nsPresContext> pinnedPresContext{mPresShell->GetPresContext()};
-  nsresult rs = aFrame->SelectByTypeAtPoint(pinnedPresContext, aPoint,
-                                            eSelectWord, eSelectWord, 0);
+  nsresult rs =
+      aFrame->SelectByTypeAtPoint(aPoint, eSelectWord, eSelectWord, 0);
 
   SetSelectionDragState(false);
   ClearMaintainedSelection();
@@ -1216,10 +1217,13 @@ bool AccessibleCaretManager::RestrictCaretDraggingOffsets(
   return true;
 }
 
-bool AccessibleCaretManager::CompareTreePosition(nsIFrame* aStartFrame,
-                                                 nsIFrame* aEndFrame) const {
-  return (aStartFrame && aEndFrame &&
-          nsLayoutUtils::CompareTreePosition(aStartFrame, aEndFrame) <= 0);
+bool AccessibleCaretManager::CompareTreePosition(
+    const nsIFrame* aStartFrame, const nsIFrame* aEndFrame,
+    const nsIContent* aStartContent, const nsIContent* aEndContent) const {
+  // nsContentUtils::CompareTreePosition expects non-null content pointers.
+  return aStartFrame && aEndFrame && aStartContent && aEndContent &&
+         nsContentUtils::CompareTreePosition<TreeKind::DOM>(
+             aStartContent, aEndContent, nullptr) <= 0;
 }
 
 nsresult AccessibleCaretManager::DragCaretInternal(const nsPoint& aPoint) {

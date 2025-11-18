@@ -100,20 +100,20 @@ private fun Title(
 @Composable
 private fun BulletTextWithOptionalLink(
     text: String,
-    learnMoreUrl: String? = null,
     onLearnMoreClicked: (String) -> Unit,
-    modifier: Modifier = Modifier
-        .padding(
-            start = 72.dp,
-            top = 6.dp,
-            end = 16.dp,
-            bottom = 6.dp,
-        ),
+    modifier: Modifier = Modifier,
+    learnMoreUrl: String? = null,
     color: Color = FirefoxTheme.colors.textPrimary,
     style: TextStyle = FirefoxTheme.typography.subtitle1,
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier
+            .padding(
+                start = 72.dp,
+                top = 6.dp,
+                end = 16.dp,
+                bottom = 6.dp,
+            ),
     ) {
         Text(
             text = "•",
@@ -161,7 +161,7 @@ private fun InfoScreenPreview() {
  * that you want to use as placeholders.
  */
 internal data class BulletPoint(
-    @StringRes val textRes: Int,
+    @param:StringRes val textRes: Int,
     val placeholders: List<Int> = emptyList(),
 )
 
@@ -172,7 +172,7 @@ internal data class BulletPoint(
  * This enum is used to categorize the level or mode of an info screen.
  */
 internal enum class InfoScreenTopic(
-    @StringRes val titleId: Int,
+    @param:StringRes val titleId: Int,
     val bulletPoints: List<Pair<BulletPoint, SupportUtils.SumoTopic?>>,
 ) {
     DEFAULT(

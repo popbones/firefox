@@ -22,7 +22,7 @@ const HEADER = `/**
 
 const IGNORE = [/\.git/, /\.hg/, /node_modules/, /^obj.*/, /test262/];
 const IMPORT =
-  /(\bimport |import\(|require\(|\.importESModule\(|\.(defineESModuleGetters?|declareLazy|defineLazy)\()[^;]+/gm;
+  /(\bimport |import\(|require\(|\.(importESModule|defineESModuleGetters?|declareLazy|defineLazy)\()[^;]+/gm;
 const URI = /("|')((resource|chrome|moz-src):\/\/[\w\d\/_.-]+\.m?js)\1/gm;
 
 function ignore(filePath) {
@@ -83,7 +83,7 @@ function emitPaths(files, uris, modules, relativeBasePath) {
 // Emit type mapping for all modules imported via lazy getters.
 function emitLazy(modules) {
   let lines = [HEADER];
-  lines.push("export interface LazyModules {");
+  lines.push("export interface Modules {");
   for (let uri of [...modules].sort()) {
     lines.push(`  "${uri}": typeof import("${uri}"),`);
   }
@@ -106,7 +106,7 @@ function main(root_dir, paths_json, lib_lazy) {
         if (proto !== "moz-src") {
           uris.add(uri);
         }
-        if (method?.match(/ModuleGetter|Lazy/)) {
+        if (method?.match(/importESModule|ModuleGetter|Lazy/)) {
           modules.add(uri);
         }
       }

@@ -18,9 +18,12 @@ class BackupTest(MarionetteTestCase):
     def setUp(self):
         MarionetteTestCase.setUp(self)
 
-        # We need to force the "browser.backup.log" pref already set to true
-        # before Firefox starts in order for it to be displayed.
-        self.marionette.enforce_gecko_prefs({"browser.backup.log": True})
+        # We need to force the service to be enabled because it's disabled
+        # by default for Marionette. Also "browser.backup.log" has to be set
+        # to true before Firefox starts in order for it to be displayed.
+        self.marionette.enforce_gecko_prefs(
+            {"browser.backup.enabled": True, "browser.backup.log": True}
+        )
 
         self.marionette.set_context("chrome")
 
@@ -201,10 +204,10 @@ class BackupTest(MarionetteTestCase):
             script_args=[archivePath, recoveryCode, recoveryPath],
         )
 
-        print("Recovery name: %s" % newProfileName)
-        print("Recovery path: %s" % newProfilePath)
-        print("Expected clientID: %s" % expectedClientID)
-        print("Persisting fake OSKeyStore label: %s" % osKeyStoreLabel)
+        print(f"Recovery name: {newProfileName}")
+        print(f"Recovery path: {newProfilePath}")
+        print(f"Expected clientID: {expectedClientID}")
+        print(f"Persisting fake OSKeyStore label: {osKeyStoreLabel}")
 
         self.marionette.quit()
         originalProfile = self.marionette.instance.profile
@@ -333,7 +336,8 @@ class BackupTest(MarionetteTestCase):
           })().then(outerResolve);
         """
         )
-        self.assertEqual(cookiesLength, 1)
+        # Expect cookies to be removed from the backup.
+        self.assertEqual(cookiesLength, 0)
 
     def add_test_login(self):
         self.marionette.execute_async_script(

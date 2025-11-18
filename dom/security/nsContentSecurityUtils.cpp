@@ -9,26 +9,29 @@
 #include "nsContentSecurityUtils.h"
 
 #include "mozilla/Components.h"
-#include "mozilla/dom/nsMixedContentBlocker.h"
+#include "mozilla/dom/PolicyContainer.h"
 #include "mozilla/dom/ScriptSettings.h"
 #include "mozilla/dom/WorkerCommon.h"
 #include "mozilla/dom/WorkerPrivate.h"
+#include "mozilla/dom/nsMixedContentBlocker.h"
 #include "nsComponentManagerUtils.h"
-#include "nsIContentSecurityPolicy.h"
 #include "nsIChannel.h"
+#include "nsIContentSecurityPolicy.h"
 #include "nsIHttpChannel.h"
 #include "nsIMultiPartChannel.h"
-#include "nsIURI.h"
 #include "nsITransfer.h"
+#include "nsIURI.h"
 #include "nsNetUtil.h"
 #include "nsSandboxFlags.h"
 #if defined(XP_WIN)
-#  include "mozilla/WinHeaderOnlyUtils.h"
-#  include "WinUtils.h"
 #  include <wininet.h>
+
+#  include "WinUtils.h"
+#  include "mozilla/WinHeaderOnlyUtils.h"
 #endif
 
 #include "FramingChecker.h"
+#include "LoadInfo.h"
 #include "js/Array.h"  // JS::GetArrayLength
 #include "js/ContextOptions.h"
 #include "js/PropertyAndElement.h"  // JS_GetElement
@@ -38,13 +41,12 @@
 #include "mozilla/ExtensionPolicyService.h"
 #include "mozilla/Logging.h"
 #include "mozilla/Preferences.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/nsCSPContext.h"
-#include "mozilla/glean/DomSecurityMetrics.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/StaticPrefs_extensions.h"
 #include "mozilla/StaticPrefs_security.h"
-#include "LoadInfo.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/nsCSPContext.h"
+#include "mozilla/glean/DomSecurityMetrics.h"
 #include "nsIConsoleService.h"
 #include "nsIStringBundle.h"
 
@@ -114,6 +116,12 @@ bool nsContentSecurityUtils::IsConsideredSameOriginForUIR(
       MakeHTTPPrincipalHTTPS(aResultPrincipal);
 
   return compareTriggeringPrincipal->Equals(compareResultPrincipal);
+}
+
+/* static */
+bool nsContentSecurityUtils::IsTrustedScheme(nsIURI* aURI) {
+  return aURI->SchemeIs("resource") || aURI->SchemeIs("chrome") ||
+         aURI->SchemeIs("moz-src");
 }
 
 /*
@@ -742,12 +750,7 @@ bool nsContentSecurityUtils::IsEvalAllowed(JSContext* cx,
   MOZ_CRASH_UNSAFE_PRINTF("%s", crashString.get());
 #endif
 
-#ifdef MOZ_WIDGET_ANDROID
-  // TODO(bug 1895823)
-  return true;
-#else
   return false;
-#endif
 }
 
 /* static */
@@ -1753,7 +1756,8 @@ void nsContentSecurityUtils::AssertAboutPageHasCSP(Document* aDocument) {
     return;
   }
 
-  nsCSPContext* csp = static_cast<nsCSPContext*>(aDocument->GetCsp());
+  nsCSPContext* csp = nsCSPContext::Cast(
+      PolicyContainer::GetCSP(aDocument->GetPolicyContainer()));
   bool foundDefaultSrc = false;
   uint32_t policyCount = 0;
   if (csp) {
@@ -1908,7 +1912,8 @@ void nsContentSecurityUtils::AssertChromePageHasCSP(Document* aDocument) {
   nsAutoCString spec;
   documentURI->GetSpec(spec);
 
-  nsCOMPtr<nsIContentSecurityPolicy> csp = aDocument->GetCsp();
+  nsCOMPtr<nsIContentSecurityPolicy> csp =
+      PolicyContainer::GetCSP(aDocument->GetPolicyContainer());
   uint32_t count = 0;
   if (csp) {
     static_cast<nsCSPContext*>(csp.get())->GetPolicyCount(&count);
@@ -1971,12 +1976,6 @@ void nsContentSecurityUtils::AssertChromePageHasCSP(Document* aDocument) {
     return;
   }
 
-  // TODO These are injecting scripts so it cannot be blocked without
-  // further coordination.
-  if (StringBeginsWith(spec, "chrome://remote/content/marionette/"_ns)) {
-    return;
-  }
-
   if (xpc::IsInAutomation()) {
     // Test files
     static nsLiteralCString sAllowedTestPathsWithNoCSP[] = {
@@ -2006,6 +2005,21 @@ void nsContentSecurityUtils::AssertChromePageHasCSP(Document* aDocument) {
 
 #endif
 
+// Add a lock for the gVeryFirstUnexpectedJavascriptLoadFilename variable
+static StaticMutex gVeryFirstUnexpectedJavascriptLoadFilenameMutex;
+static StaticAutoPtr<nsCString> gVeryFirstUnexpectedJavascriptLoadFilename
+    MOZ_GUARDED_BY(gVeryFirstUnexpectedJavascriptLoadFilenameMutex);
+
+/* static */
+nsresult nsContentSecurityUtils::GetVeryFirstUnexpectedScriptFilename(
+    nsACString& aFilename) {
+  StaticMutexAutoLock lock(gVeryFirstUnexpectedJavascriptLoadFilenameMutex);
+  if (gVeryFirstUnexpectedJavascriptLoadFilename) {
+    aFilename = *gVeryFirstUnexpectedJavascriptLoadFilename;
+  }
+  return NS_OK;
+}
+
 /* static */
 bool nsContentSecurityUtils::ValidateScriptFilename(JSContext* cx,
                                                     const char* aFilename) {
@@ -2031,7 +2045,8 @@ bool nsContentSecurityUtils::ValidateScriptFilename(JSContext* cx,
 
   DetectJsHacks();
 
-  if (MOZ_UNLIKELY(!sJSHacksChecked)) {
+  if (!StaticPrefs::security_parent_unrestricted_js_loads_skip_jshacks() &&
+      MOZ_UNLIKELY(!sJSHacksChecked)) {
     MOZ_LOG(
         sCSMLog, LogLevel::Debug,
         ("Allowing a javascript load of %s because "
@@ -2040,7 +2055,8 @@ bool nsContentSecurityUtils::ValidateScriptFilename(JSContext* cx,
     return true;
   }
 
-  if (MOZ_UNLIKELY(sJSHacksPresent)) {
+  if (!StaticPrefs::security_parent_unrestricted_js_loads_skip_jshacks() &&
+      MOZ_UNLIKELY(sJSHacksPresent)) {
     MOZ_LOG(sCSMLog, LogLevel::Debug,
             ("Allowing a javascript load of %s because "
              "some JS hacks may be present",
@@ -2127,17 +2143,25 @@ bool nsContentSecurityUtils::ValidateScriptFilename(JSContext* cx,
     }
   }
 
-  // Log to MOZ_LOG
+  FilenameTypeAndDetails fileNameTypeAndDetails =
+      FilenameToFilenameType(filename, true);
+  glean::security::JavascriptLoadParentProcessExtra extra = {
+      .fileinfo = fileNameTypeAndDetails.second,
+      .value = Some(fileNameTypeAndDetails.first)};
+
+  if (StaticPrefs::security_block_parent_unrestricted_js_loads_temporary()) {
+    // Log to MOZ_LOG
+    MOZ_LOG(sCSMLog, LogLevel::Error,
+            ("ValidateScriptFilename Failed, But Blocking: %s\n", aFilename));
+
+    extra.blocked = Some(true);
+    glean::security::javascript_load_parent_process.Record(Some(extra));
+
+    return false;
+  }
   MOZ_LOG(sCSMLog, LogLevel::Error,
           ("ValidateScriptFilename Failed: %s\n", aFilename));
 
-  FilenameTypeAndDetails fileNameTypeAndDetails =
-      FilenameToFilenameType(filename, true);
-
-  glean::security::JavascriptLoadParentProcessExtra extra = {
-      .fileinfo = fileNameTypeAndDetails.second,
-      .value = Some(fileNameTypeAndDetails.first),
-  };
   glean::security::javascript_load_parent_process.Record(Some(extra));
 
 #if defined(DEBUG) || defined(FUZZING)
@@ -2160,6 +2184,33 @@ bool nsContentSecurityUtils::ValidateScriptFilename(JSContext* cx,
     PossiblyCrash("js_load_1", aFilename, "(None)"_ns);
   }
 #endif
+
+  {
+    StaticMutexAutoLock lock(gVeryFirstUnexpectedJavascriptLoadFilenameMutex);
+    if (gVeryFirstUnexpectedJavascriptLoadFilename == nullptr) {
+      gVeryFirstUnexpectedJavascriptLoadFilename = new nsCString(aFilename);
+    }
+  }
+
+  if (NS_IsMainThread()) {
+    nsCOMPtr<nsIObserverService> observerService =
+        mozilla::services::GetObserverService();
+    if (observerService) {
+      observerService->NotifyObservers(nullptr, "UnexpectedJavaScriptLoad-Live",
+                                       NS_ConvertUTF8toUTF16(filename).get());
+    }
+  } else {
+    NS_DispatchToMainThread(
+        NS_NewRunnableFunction("NotifyObserversRunnable", [filename]() {
+          nsCOMPtr<nsIObserverService> observerService =
+              mozilla::services::GetObserverService();
+          if (observerService) {
+            observerService->NotifyObservers(
+                nullptr, "UnexpectedJavaScriptLoad-Live",
+                NS_ConvertUTF8toUTF16(filename).get());
+          }
+        }));
+  }
 
   // Presently we are only enforcing restrictions for the script filename
   // on Nightly.  On all channels we are reporting Telemetry. In the future we

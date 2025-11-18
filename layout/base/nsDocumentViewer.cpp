@@ -11,102 +11,95 @@
 #include "mozilla/RestyleManager.h"
 #include "mozilla/ServoStyleSet.h"
 #include "mozilla/StaticPrefs_print.h"
-#include "nsThreadUtils.h"
-#include "nscore.h"
+#include "mozilla/dom/AutoSuppressEventHandlingAndSuspend.h"
+#include "mozilla/dom/BeforeUnloadEvent.h"
+#include "mozilla/dom/BrowsingContext.h"
+#include "mozilla/dom/ContentChild.h"
+#include "mozilla/dom/DocGroup.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
+#include "mozilla/dom/FragmentDirective.h"
+#include "mozilla/dom/PopupBlocker.h"
+#include "mozilla/dom/Selection.h"
+#include "mozilla/widget/Screen.h"
 #include "nsCOMPtr.h"
 #include "nsCRT.h"
+#include "nsContentUtils.h"
 #include "nsFrameSelection.h"
-#include "nsString.h"
-#include "nsReadableUtils.h"
+#include "nsGenericHTMLElement.h"
 #include "nsIContent.h"
 #include "nsIDocumentViewer.h"
 #include "nsIDocumentViewerPrint.h"
-#include "nsIScreen.h"
-#include "mozilla/dom/AutoSuppressEventHandlingAndSuspend.h"
-#include "mozilla/dom/BrowsingContext.h"
-#include "mozilla/dom/BeforeUnloadEvent.h"
-#include "mozilla/dom/ContentChild.h"
-#include "mozilla/dom/PopupBlocker.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/dom/DocGroup.h"
-#include "mozilla/dom/FragmentDirective.h"
-#include "mozilla/widget/Screen.h"
-#include "nsPresContext.h"
 #include "nsIFrame.h"
-#include "nsIWritablePropertyBag2.h"
-#include "nsSubDocumentFrame.h"
-#include "nsGenericHTMLElement.h"
-#include "nsStubMutationObserver.h"
-
+#include "nsIScreen.h"
 #include "nsISelectionListener.h"
-#include "mozilla/dom/Selection.h"
-#include "nsContentUtils.h"
+#include "nsIWritablePropertyBag2.h"
+#include "nsPresContext.h"
+#include "nsReadableUtils.h"
+#include "nsString.h"
+#include "nsStubMutationObserver.h"
+#include "nsSubDocumentFrame.h"
+#include "nsThreadUtils.h"
+#include "nscore.h"
 #ifdef ACCESSIBILITY
 #  include "mozilla/a11y/DocAccessible.h"
 #endif
+#include "imgIContainer.h"  // image animation mode constants
 #include "mozilla/BasicEvents.h"
 #include "mozilla/Encoding.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/Preferences.h"
+#include "mozilla/ReflowInput.h"
 #include "mozilla/ScrollContainerFrame.h"
 #include "mozilla/SpinEventLoopUntil.h"
-#include "mozilla/WeakPtr.h"
 #include "mozilla/StaticPrefs_dom.h"
-#include "mozilla/StaticPrefs_javascript.h"
 #include "mozilla/StaticPrefs_fission.h"
+#include "mozilla/StaticPrefs_javascript.h"
 #include "mozilla/StaticPrefs_print.h"
 #include "mozilla/StyleSheet.h"
 #include "mozilla/StyleSheetInlines.h"
+#include "mozilla/ThrottledEventQueue.h"
 #include "mozilla/Try.h"
-
-#include "nsViewManager.h"
-#include "nsView.h"
-
-#include "nsPageSequenceFrame.h"
-#include "nsNetUtil.h"
-#include "nsIDocumentViewerEdit.h"
+#include "mozilla/WeakPtr.h"
 #include "mozilla/css/Loader.h"
-#include "nsIInterfaceRequestor.h"
-#include "nsIInterfaceRequestorUtils.h"
-#include "nsDocShell.h"
-#include "nsIBaseWindow.h"
-#include "nsILayoutHistoryState.h"
 #include "nsCharsetSource.h"
-#include "mozilla/ReflowInput.h"
-#include "nsIImageLoadingContent.h"
 #include "nsCopySupport.h"
-#include "nsXULPopupManager.h"
-
-#include "nsIClipboard.h"
-#include "nsIClipboardHelper.h"
-
-#include "nsPIDOMWindow.h"
+#include "nsDOMNavigationTiming.h"
+#include "nsDocShell.h"
+#include "nsFocusManager.h"
 #include "nsGlobalWindowInner.h"
 #include "nsGlobalWindowOuter.h"
-#include "nsDOMNavigationTiming.h"
-#include "nsPIWindowRoot.h"
-#include "nsJSEnvironment.h"
-#include "nsFocusManager.h"
-
-#include "nsStyleSheetService.h"
+#include "nsIBaseWindow.h"
+#include "nsIClipboard.h"
+#include "nsIClipboardHelper.h"
+#include "nsIDocumentViewerEdit.h"
+#include "nsIImageLoadingContent.h"
+#include "nsIInterfaceRequestor.h"
+#include "nsIInterfaceRequestorUtils.h"
+#include "nsILayoutHistoryState.h"
 #include "nsILoadContext.h"
-#include "mozilla/ThrottledEventQueue.h"
 #include "nsIPromptCollection.h"
 #include "nsIPromptService.h"
-#include "imgIContainer.h"  // image animation mode constants
 #include "nsIXULRuntime.h"
+#include "nsJSEnvironment.h"
+#include "nsNetUtil.h"
+#include "nsPIDOMWindow.h"
+#include "nsPIWindowRoot.h"
+#include "nsPageSequenceFrame.h"
 #include "nsSandboxFlags.h"
+#include "nsStyleSheetService.h"
+#include "nsView.h"
+#include "nsViewManager.h"
+#include "nsXULPopupManager.h"
 
 //--------------------------
 // Printing Include
 //---------------------------
 #ifdef NS_PRINTING
 
-#  include "nsIWebBrowserPrint.h"
-
-#  include "nsPrintJob.h"
 #  include "nsDeviceContextSpecProxy.h"
+#  include "nsIWebBrowserPrint.h"
+#  include "nsPrintJob.h"
 
 // Print Options
 #  include "nsIPrintSettings.h"
@@ -116,17 +109,17 @@
 #endif  // NS_PRINTING
 
 // focus
-#include "nsIDOMEventListener.h"
-#include "nsISelectionController.h"
-
 #include "mozilla/EventDispatcher.h"
+#include "mozilla/dom/XMLHttpRequestMainThread.h"
+#include "nsIDOMEventListener.h"
 #include "nsISHEntry.h"
 #include "nsISHistory.h"
+#include "nsISelectionController.h"
 #include "nsIWebNavigation.h"
-#include "mozilla/dom/XMLHttpRequestMainThread.h"
 
 // paint forcing
 #include <stdio.h>
+
 #include "mozilla/BasePrincipal.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/Event.h"
@@ -247,7 +240,7 @@ void BFCachePreventionObserver::CharacterDataChanged(
 void BFCachePreventionObserver::AttributeChanged(Element* aElement,
                                                  int32_t aNameSpaceID,
                                                  nsAtom* aAttribute,
-                                                 int32_t aModType,
+                                                 AttrModType,
                                                  const nsAttrValue* aOldValue) {
   if (aElement->IsInNativeAnonymousSubtree()) {
     return;
@@ -1181,12 +1174,12 @@ nsDocumentViewer::PermitUnload(PermitUnloadAction aAction,
   bc->PreOrderWalk([&](BrowsingContext* aBC) {
     if (!aBC->IsInProcess()) {
       WindowContext* wc = aBC->GetCurrentWindowContext();
-      if (wc && wc->HasBeforeUnload()) {
+      if (wc && wc->NeedsBeforeUnload()) {
         foundOOPListener = true;
       }
     } else if (aBC->GetDocShell()) {
       nsCOMPtr<nsIDocumentViewer> viewer(aBC->GetDocShell()->GetDocViewer());
-      if (viewer && viewer->DispatchBeforeUnload() == eRequestBlockNavigation) {
+      if (viewer && viewer->DispatchBeforeUnload() != eContinue) {
         foundBlocker = true;
       }
     }
@@ -1247,7 +1240,7 @@ nsDocumentViewer::DispatchBeforeUnload() {
   AutoDontWarnAboutSyncXHR disableSyncXHRWarning;
 
   if (!mDocument || mInPermitUnload || mInPermitUnloadPrompt || !mContainer) {
-    return eAllowNavigation;
+    return eContinue;
   }
 
   // First, get the script global object from the document...
@@ -1256,7 +1249,7 @@ nsDocumentViewer::DispatchBeforeUnload() {
   if (!window) {
     // This is odd, but not fatal
     NS_WARNING("window not set for document!");
-    return eAllowNavigation;
+    return eContinue;
   }
 
   NS_ASSERTION(nsContentUtils::IsSafeToRunScript(), "This is unsafe");
@@ -1312,9 +1305,9 @@ nsDocumentViewer::DispatchBeforeUnload() {
       (!StaticPrefs::dom_require_user_interaction_for_beforeunload() ||
        mDocument->ChromeRulesEnabled() || mDocument->UserHasInteracted()) &&
       (event->WidgetEventPtr()->DefaultPrevented() || !text.IsEmpty())) {
-    return eRequestBlockNavigation;
+    return eCanceledByBeforeUnload;
   }
-  return eAllowNavigation;
+  return eContinue;
 }
 
 NS_IMETHODIMP
@@ -2503,9 +2496,7 @@ NS_IMETHODIMP nsDocumentViewer::GetContents(const char* mimeType,
 
 NS_IMETHODIMP nsDocumentViewer::GetCanGetContents(bool* aCanGetContents) {
   NS_ENSURE_ARG_POINTER(aCanGetContents);
-  *aCanGetContents = false;
-  NS_ENSURE_STATE(mDocument);
-  *aCanGetContents = nsCopySupport::CanCopy(mDocument);
+  *aCanGetContents = mDocument && nsCopySupport::CanCopy(mDocument);
   return NS_OK;
 }
 
@@ -2760,40 +2751,19 @@ already_AddRefed<nsIImageLoadingContent> nsDocumentViewer::GetPopupImageNode() {
  */
 
 NS_IMETHODIMP nsDocumentViewer::GetInLink(bool* aInLink) {
-#ifdef DEBUG_dr
-  printf("dr :: nsDocumentViewer::GetInLink\n");
-#endif
-
   NS_ENSURE_ARG_POINTER(aInLink);
-
-  // we're not in a link unless i say so
-  *aInLink = false;
-
-  // get the popup link
   nsCOMPtr<nsINode> node = GetPopupLinkNode();
-  if (!node) {
-    return NS_ERROR_FAILURE;
-  }
-
-  // if we made it here, we're in a link
-  *aInLink = true;
+  *aInLink = !!node;
   return NS_OK;
 }
 
 NS_IMETHODIMP nsDocumentViewer::GetInImage(bool* aInImage) {
-#ifdef DEBUG_dr
-  printf("dr :: nsDocumentViewer::GetInImage\n");
-#endif
-
   NS_ENSURE_ARG_POINTER(aInImage);
-
-  // we're not in an image unless i say so
   *aInImage = false;
-
   // get the popup image
   nsCOMPtr<nsIImageLoadingContent> node = GetPopupImageNode();
   if (!node) {
-    return NS_ERROR_FAILURE;
+    return NS_OK;
   }
 
   // Make sure there is a URI assigned. This allows <input type="image"> to
@@ -2805,7 +2775,6 @@ NS_IMETHODIMP nsDocumentViewer::GetInImage(bool* aInImage) {
     // if we made it here, we're in an image
     *aInImage = true;
   }
-
   return NS_OK;
 }
 

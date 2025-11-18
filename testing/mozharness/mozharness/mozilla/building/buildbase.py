@@ -10,6 +10,7 @@ provides a base class for fx desktop builds
 import copy
 import json
 import os
+import pathlib
 import re
 import sys
 import time
@@ -934,8 +935,7 @@ items from that key's value."
 
         try:
             thread = profile.get("threads", [])[0]
-            times = thread.get("samples", {}).get("time", [])
-            duration = times[-1] / 1000
+            duration = profile["meta"]["profilingEndTime"] / 1000
             markers = thread["markers"]
             phases = {}
             for n, marker in enumerate(markers["data"]):
@@ -1327,6 +1327,12 @@ items from that key's value."
 
         if perfherder_data["suites"]:
             self.info("PERFHERDER_DATA: %s" % json.dumps(perfherder_data))
+            if "MOZ_AUTOMATION" in os.environ:
+                upload_dir = pathlib.Path(os.environ.get("UPLOAD_DIR"))
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                upload_path = upload_dir / "perfherder-data-building.json"
+                with upload_path.open("w", encoding="utf-8") as f:
+                    json.dump(perfherder_data, f)
 
     def valgrind_test(self):
         """Execute mach's valgrind-test for memory leaks"""

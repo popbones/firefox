@@ -32,10 +32,10 @@
     'hmacct.c',
     'jpake.c',
     'kyber.c',
-    'kyber-pqcrystals-ref.c',
     'ldvector.c',
     'md2.c',
     'md5.c',
+    'ml_dsa.c',
     'mpi/mp_gf2m.c',
     'mpi/mpcpucache.c',
     'mpi/mpi.c',
@@ -185,6 +185,11 @@
     [ 'disable_deprecated_rc2==0', {
       'sources': [
         'deprecated/alg2268.c',
+      ],
+    }],
+    [ 'disable_kyber==0', {
+      'sources': [
+        'kyber-pqcrystals-ref.c',
       ],
     }],
     [ 'fuzz==1', {

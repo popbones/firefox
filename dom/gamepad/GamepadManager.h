@@ -10,9 +10,10 @@
 #include "nsIObserver.h"
 #include "nsRefPtrHashtable.h"
 // Needed for GamepadMappingType
+#include <utility>
+
 #include "mozilla/dom/GamepadBinding.h"
 #include "mozilla/dom/GamepadHandle.h"
-#include <utility>
 
 class nsGlobalWindowInner;
 class nsIGlobalObject;
@@ -49,9 +50,8 @@ class GamepadManager final : public nsIObserver {
   // Add a gamepad to the list of known gamepads.
   void AddGamepad(GamepadHandle aHandle, const nsAString& aID,
                   GamepadMappingType aMapping, GamepadHand aHand,
-                  uint32_t aDisplayID, uint32_t aNumButtons, uint32_t aNumAxes,
-                  uint32_t aNumHaptics, uint32_t aNumLightIndicator,
-                  uint32_t aNumTouchEvents);
+                  uint32_t aNumButtons, uint32_t aNumAxes, uint32_t aNumHaptics,
+                  uint32_t aNumLightIndicator, uint32_t aNumTouchEvents);
 
   // Remove the gamepad at |aIndex| from the list of known gamepads.
   void RemoveGamepad(GamepadHandle aHandle);

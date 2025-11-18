@@ -34,8 +34,8 @@
 .icon {
   -moz-context-properties: fill;
   fill: currentColor;
-  width: var(--icon-size-default);
-  height: var(--icon-size-default);
+  width: var(--icon-size);
+  height: var(--icon-size);
 }
 
 .extensions {
@@ -87,10 +87,6 @@ moz-checkbox {
 
   > moz-checkbox:last-of-type {
     padding-block: 0;
-  }
-
-  &[disabled]::part(label) {
-    opacity: 0.5;
   }
 }
 

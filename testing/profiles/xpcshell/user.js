@@ -61,5 +61,6 @@ user_pref("nimbus.profilesdatastoreservice.enabled", false);
 // TODO(bug 1972426): Make this the default and remove this.
 user_pref("nimbus.profilesdatastoreservice.read.enabled", false);
 
-// Enable Nimbus debug logging.
-user_pref("messaging-system.log", "all");
+// Turn off semantic history search as it triggers network connections to
+// download ML models.
+user_pref("places.semanticHistory.featureGate", false);

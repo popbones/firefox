@@ -165,6 +165,7 @@ JS::Zone::Zone(JSRuntime* rt, Kind kind)
       allocNurseryObjects_(true),
       allocNurseryStrings_(true),
       allocNurseryBigInts_(true),
+      allocNurseryGetterSetters_(true),
       pretenuring(this),
       crossZoneStringWrappers_(this),
       shapeZone_(this),
@@ -174,7 +175,8 @@ JS::Zone::Zone(JSRuntime* rt, Kind kind)
       keepPropMapTables_(false),
       wasCollected_(false),
       listNext_(NotOnList),
-      keptObjects(this) {
+      keptAliveSet(this),
+      objectFuses(rt) {
   /* Ensure that there are no vtables to mess us up here. */
   MOZ_ASSERT(reinterpret_cast<JS::shadow::Zone*>(this) ==
              static_cast<JS::shadow::Zone*>(this));
@@ -202,6 +204,11 @@ Zone::~Zone() {
   }
 
   js_delete(jitZone_.ref());
+
+  if (preservedWrappers_) {
+    MOZ_RELEASE_ASSERT(preservedWrappersCount_ == 0);
+    js_free(preservedWrappers_);
+  }
 }
 
 bool Zone::init() {
@@ -607,15 +614,11 @@ void Zone::prepareForMovingGC() {
 
   MOZ_ASSERT(!isPreservingCode());
   forceDiscardJitCode(gcx);
-
-  // We must always call fixupAfterMovingGC after this point.
-  bufferAllocator.prepareForMovingGC();
 }
 
 void Zone::fixupAfterMovingGC() {
   ZoneAllocator::fixupAfterMovingGC();
   shapeZone().fixupPropMapShapeTableAfterMovingGC();
-  bufferAllocator.fixupAfterMovingGC();
 }
 
 void Zone::purgeAtomCache() {
@@ -631,8 +634,8 @@ void Zone::purgeAtomCache() {
 void Zone::addSizeOfIncludingThis(
     mozilla::MallocSizeOf mallocSizeOf, size_t* zoneObject, JS::CodeSizes* code,
     size_t* regexpZone, size_t* jitZone, size_t* cacheIRStubs,
-    size_t* uniqueIdMap, size_t* initialPropMapTable, size_t* shapeTables,
-    size_t* atomsMarkBitmaps, size_t* compartmentObjects,
+    size_t* objectFusesArg, size_t* uniqueIdMap, size_t* initialPropMapTable,
+    size_t* shapeTables, size_t* atomsMarkBitmaps, size_t* compartmentObjects,
     size_t* crossCompartmentWrappersTables, size_t* compartmentsPrivateData,
     size_t* scriptCountsMapArg) {
   *zoneObject += mallocSizeOf(this);
@@ -640,6 +643,7 @@ void Zone::addSizeOfIncludingThis(
   if (jitZone_) {
     jitZone_->addSizeOfIncludingThis(mallocSizeOf, code, jitZone, cacheIRStubs);
   }
+  *objectFusesArg += objectFuses.sizeOfExcludingThis(mallocSizeOf);
   *uniqueIdMap += uniqueIds().shallowSizeOfExcludingThis(mallocSizeOf);
   shapeZone().addSizeOfExcludingThis(mallocSizeOf, initialPropMapTable,
                                      shapeTables);
@@ -795,10 +799,6 @@ void Zone::traceRootsInMajorGC(JSTracer* trc) {
   // Trace zone script-table roots. See comment below for justification re:
   // calling this only during major (non-nursery) collections.
   traceScriptTableRoots(trc);
-
-  if (FinalizationObservers* observers = finalizationObservers()) {
-    observers->traceRoots(trc);
-  }
 }
 
 void Zone::traceScriptTableRoots(JSTracer* trc) {
@@ -963,13 +963,17 @@ void Zone::finishRoots() {
   }
 }
 
-void Zone::traceKeptObjects(JSTracer* trc) { keptObjects.ref().trace(trc); }
+void Zone::traceKeptObjects(JSTracer* trc) { keptAliveSet.ref().trace(trc); }
 
-bool Zone::addToKeptObjects(HandleObject target) {
-  return keptObjects.ref().put(target);
+bool Zone::addToKeptObjects(HandleValue target) {
+  MOZ_ASSERT(CanBeHeldWeakly(target));
+  MOZ_ASSERT_IF(target.isSymbol(),
+                !target.toSymbol()->isPermanentAndMayBeShared());
+
+  return keptAliveSet.ref().put(target);
 }
 
-void Zone::clearKeptObjects() { keptObjects.ref().clear(); }
+void Zone::clearKeptObjects() { keptAliveSet.ref().clear(); }
 
 bool Zone::ensureFinalizationObservers() {
   if (finalizationObservers_.ref()) {

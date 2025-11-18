@@ -1145,9 +1145,7 @@ def build_balrog_payload(config, task, task_def):
                     "archive_domain": worker["archive-domain"],
                     "channel_names": worker["channel-names"],
                     "download_domain": worker["download-domain"],
-                    "partial_versions": ",".join(
-                        release_config.get("partial_versions", [])
-                    ),
+                    "partial_versions": release_config.get("partial_versions", ""),
                     "platforms": worker["platforms"],
                     "rules_to_update": worker["rules-to-update"],
                     "require_mirrors": worker["require-mirrors"],
@@ -2101,16 +2099,15 @@ def try_task_config_env(config, tasks):
 
 
 @transforms.add
-def try_task_config_chemspill_prio(config, tasks):
-    """Increase the priority from lowest and very-low -> low, but leave others unchanged."""
-    chemspill_prio = config.params["try_task_config"].get("chemspill-prio")
-    if not chemspill_prio:
+def try_task_config_priority(config, tasks):
+    """Change priority based on the try_task_config."""
+    priority = config.params["try_task_config"].get("priority")
+    if not priority:
         yield from tasks
         return
 
     for task in tasks:
-        if task["priority"] in ("lowest", "very-low"):
-            task["priority"] = "low"
+        task["priority"] = priority
         yield task
 
 
@@ -2464,6 +2461,19 @@ def check_task_dependencies(config, tasks):
                     MAX_DEPENDENCIES,
                 )
             )
+        yield task
+
+
+@transforms.add
+def check_perf_task_fission_filtering(config, tasks):
+    for task in tasks:
+        if (
+            ("chrome-m" in task["label"] or "cstm-car-m" in task["label"])
+            and "nofis" not in task["label"]
+            and "android" in task["label"]
+            and "startup" not in task["label"]
+        ):
+            continue
         yield task
 
 

@@ -416,6 +416,7 @@ extern "C" {
         renderer: *mut c_void,
         external_image_id: ExternalImageId,
         channel_index: u8,
+        is_composited: bool,
     ) -> WrExternalImage;
     fn wr_renderer_unlock_external_image(renderer: *mut c_void, external_image_id: ExternalImageId, channel_index: u8);
 }
@@ -427,8 +428,8 @@ pub struct WrExternalImageHandler {
 }
 
 impl ExternalImageHandler for WrExternalImageHandler {
-    fn lock(&mut self, id: ExternalImageId, channel_index: u8) -> ExternalImage {
-        let image = unsafe { wr_renderer_lock_external_image(self.external_image_obj, id, channel_index) };
+    fn lock(&mut self, id: ExternalImageId, channel_index: u8, is_composited: bool) -> ExternalImage {
+        let image = unsafe { wr_renderer_lock_external_image(self.external_image_obj, id, channel_index, is_composited) };
         ExternalImage {
             uv: TexelRect::new(image.u0, image.v0, image.u1, image.v1),
             source: match image.image_type {
@@ -2149,6 +2150,18 @@ pub extern "C" fn wr_window_new(
         false
     };
 
+    let precise_radial_gradients = if software {
+        static_prefs::pref!("gfx.webrender.precise-radial-gradients-swgl")
+    } else {
+        static_prefs::pref!("gfx.webrender.precise-radial-gradients")
+    };
+
+    let precise_conic_gradients = if software {
+        static_prefs::pref!("gfx.webrender.precise-conic-gradients-swgl")
+    } else {
+        static_prefs::pref!("gfx.webrender.precise-conic-gradients")
+    };
+
     let opts = WebRenderOptions {
         enable_aa: true,
         enable_subpixel_aa,
@@ -2204,6 +2217,8 @@ pub extern "C" fn wr_window_new(
         low_quality_pinch_zoom,
         max_shared_surface_size,
         enable_dithering,
+        precise_radial_gradients,
+        precise_conic_gradients,
         ..Default::default()
     };
 

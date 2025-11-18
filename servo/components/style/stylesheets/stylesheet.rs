@@ -16,7 +16,7 @@ use crate::stylesheets::{CssRule, CssRules, Origin, UrlExtraData};
 use crate::use_counters::UseCounters;
 use crate::{Namespace, Prefix};
 use cssparser::{Parser, ParserInput, StyleSheetParser};
-use fxhash::FxHashMap;
+use rustc_hash::FxHashMap;
 #[cfg(feature = "gecko")]
 use malloc_size_of::{MallocSizeOfOps, MallocUnconditionalShallowSizeOf};
 use parking_lot::RwLock;
@@ -65,6 +65,8 @@ pub struct StylesheetContents {
     pub source_map_url: RwLock<Option<String>>,
     /// This stylesheet's source URL.
     pub source_url: RwLock<Option<String>>,
+    /// The use counters of the original stylesheet.
+    pub use_counters: UseCounters,
 
     /// We don't want to allow construction outside of this file, to guarantee
     /// that all contents are created with Arc<>.
@@ -82,10 +84,10 @@ impl StylesheetContents {
         stylesheet_loader: Option<&dyn StylesheetLoader>,
         error_reporter: Option<&dyn ParseErrorReporter>,
         quirks_mode: QuirksMode,
-        use_counters: Option<&UseCounters>,
         allow_import_rules: AllowImportRules,
         sanitization_data: Option<&mut SanitizationData>,
     ) -> Arc<Self> {
+        let use_counters = UseCounters::default();
         let (namespaces, rules, source_map_url, source_url) = Stylesheet::parse_rules(
             css,
             &url_data,
@@ -94,7 +96,7 @@ impl StylesheetContents {
             stylesheet_loader,
             error_reporter,
             quirks_mode,
-            use_counters,
+            Some(&use_counters),
             allow_import_rules,
             sanitization_data,
         );
@@ -107,6 +109,7 @@ impl StylesheetContents {
             quirks_mode,
             source_map_url: RwLock::new(source_map_url),
             source_url: RwLock::new(source_url),
+            use_counters,
             _forbid_construction: (),
         })
     }
@@ -137,6 +140,7 @@ impl StylesheetContents {
             quirks_mode,
             source_map_url: RwLock::new(None),
             source_url: RwLock::new(None),
+            use_counters: UseCounters::default(),
             _forbid_construction: (),
         })
     }
@@ -154,17 +158,13 @@ impl StylesheetContents {
             return 0;
         }
         // Measurement of other fields may be added later.
-        self.rules.unconditional_shallow_size_of(ops) +
-            self.rules.read_with(guard).size_of(guard, ops)
+        self.rules.unconditional_shallow_size_of(ops)
+            + self.rules.read_with(guard).size_of(guard, ops)
     }
 }
 
 impl DeepCloneWithLock for StylesheetContents {
-    fn deep_clone_with_lock(
-        &self,
-        lock: &SharedRwLock,
-        guard: &SharedRwLockReadGuard,
-    ) -> Self {
+    fn deep_clone_with_lock(&self, lock: &SharedRwLock, guard: &SharedRwLockReadGuard) -> Self {
         // Make a deep clone of the rules, using the new lock.
         let rules = self
             .rules
@@ -179,6 +179,7 @@ impl DeepCloneWithLock for StylesheetContents {
             namespaces: RwLock::new((*self.namespaces.read()).clone()),
             source_map_url: RwLock::new((*self.source_map_url.read()).clone()),
             source_url: RwLock::new((*self.source_url.read()).clone()),
+            use_counters: self.use_counters.clone(),
             _forbid_construction: (),
         }
     }
@@ -405,7 +406,7 @@ impl Stylesheet {
         error_reporter: Option<&dyn ParseErrorReporter>,
         allow_import_rules: AllowImportRules,
     ) {
-        // FIXME: Consider adding use counters to Servo?
+        let use_counters = UseCounters::default();
         let (namespaces, rules, source_map_url, source_url) = Self::parse_rules(
             css,
             &url_data,
@@ -414,7 +415,7 @@ impl Stylesheet {
             stylesheet_loader,
             error_reporter,
             existing.contents.quirks_mode,
-            /* use_counters = */ None,
+            Some(&use_counters),
             allow_import_rules,
             /* sanitization_data = */ None,
         );
@@ -427,6 +428,7 @@ impl Stylesheet {
         *existing.contents.rules.write_with(&mut guard) = CssRules(rules);
         *existing.contents.source_map_url.write() = source_map_url;
         *existing.contents.source_url.write() = source_url;
+        existing.contents.use_counters.merge(&use_counters);
     }
 
     fn parse_rules(
@@ -531,7 +533,6 @@ impl Stylesheet {
             stylesheet_loader,
             error_reporter,
             quirks_mode,
-            /* use_counters = */ None,
             allow_import_rules,
             /* sanitized_output = */ None,
         );

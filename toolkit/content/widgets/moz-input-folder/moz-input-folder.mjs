@@ -116,7 +116,7 @@ export default class MozInputFolder extends MozInputText {
     folderPicker.init(window.browsingContext, this.dialogTitle, mode);
     folderPicker.appendFilters(Ci.nsIFilePicker.filterAll);
 
-    if (this.#folder) {
+    if (this.#folder && (await IOUtils.exists(this.#folder.path))) {
       folderPicker.displayDirectory = this.#folder;
     }
 
@@ -165,6 +165,7 @@ export default class MozInputFolder extends MozInputText {
         <moz-button
           id="choose-folder-button"
           data-l10n-id="choose-folder-button"
+          data-l10n-attrs="accesskey"
           ?disabled=${this.disabled || this.parentDisabled}
           @click=${this.openFolderPicker}
         ></moz-button>

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,7 +34,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import mozilla.components.compose.base.Divider
 import mozilla.components.compose.base.Dropdown
 import mozilla.components.compose.base.annotation.FlexibleWindowLightDarkPreview
 import mozilla.components.compose.base.button.TextButton
@@ -50,6 +50,7 @@ import org.mozilla.fenix.settings.doh.DohSettingsState
 import org.mozilla.fenix.settings.doh.ProtectionLevel
 import org.mozilla.fenix.settings.doh.Provider
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * Composable function that displays the root screen of DoH settings.
@@ -99,7 +100,7 @@ internal fun DohSettingsScreen(
             onMaxInfoClicked = onMaxInfoClicked,
         )
 
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
@@ -202,7 +203,7 @@ private fun DohProtectionLevel(
 
         if (showInfoIcon) {
             Icon(
-                painter = painterResource(R.drawable.mozac_ic_information_24),
+                painter = painterResource(iconsR.drawable.mozac_ic_information_24),
                 contentDescription = stringResource(R.string.preference_doh_info_description),
                 tint = FirefoxTheme.colors.iconPrimary,
                 modifier = Modifier
@@ -481,14 +482,12 @@ private fun AlertDialogAddCustomProvider(
             TextButton(
                 text = stringResource(R.string.preference_doh_provider_custom_dialog_add),
                 onClick = { onCustomAddClicked(customProviderInput) },
-                upperCaseText = false,
             )
         },
         dismissButton = {
             TextButton(
                 text = stringResource(R.string.preference_doh_provider_custom_dialog_cancel),
                 onClick = onCustomCancelClicked,
-                upperCaseText = false,
             )
         },
     )
@@ -496,9 +495,9 @@ private fun AlertDialogAddCustomProvider(
 
 @Composable
 private fun TextWithUnderline(
-    showCustomProviderDialog: () -> Unit = {},
     text: String,
     modifier: Modifier = Modifier,
+    showCustomProviderDialog: () -> Unit = {},
     textColor: Color = FirefoxTheme.colors.textPrimary,
     underlineColor: Color = FirefoxTheme.colors.formDefault,
 ) {
@@ -518,7 +517,7 @@ private fun TextWithUnderline(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp),

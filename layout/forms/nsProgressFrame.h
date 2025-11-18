@@ -8,9 +8,9 @@
 #define nsProgressFrame_h___
 
 #include "mozilla/Attributes.h"
+#include "nsCOMPtr.h"
 #include "nsContainerFrame.h"
 #include "nsIAnonymousContentCreator.h"
-#include "nsCOMPtr.h"
 
 namespace mozilla {
 enum class PseudoStyleType : uint8_t;
@@ -48,7 +48,7 @@ class nsProgressFrame final : public nsContainerFrame,
                                 uint32_t aFilter) override;
 
   nsresult AttributeChanged(int32_t aNameSpaceID, nsAtom* aAttribute,
-                            int32_t aModType) override;
+                            AttrModType aModType) override;
 
   nscoord IntrinsicISize(const mozilla::IntrinsicSizeInput& aInput,
                          mozilla::IntrinsicISizeType aType) override;

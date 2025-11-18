@@ -4,7 +4,6 @@
 
 package org.mozilla.fenix.home.ui
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,13 +15,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
@@ -34,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import mozilla.components.feature.top.sites.TopSite
 import mozilla.telemetry.glean.private.NoExtras
 import org.mozilla.fenix.GleanMetrics.History
 import org.mozilla.fenix.GleanMetrics.HomeBookmarks
@@ -69,29 +65,27 @@ import org.mozilla.fenix.home.store.HomepageState
 import org.mozilla.fenix.home.store.NimbusMessageState
 import org.mozilla.fenix.home.topsites.TopSiteColors
 import org.mozilla.fenix.home.topsites.TopSites
+import org.mozilla.fenix.home.topsites.interactor.TopSiteInteractor
 import org.mozilla.fenix.home.ui.HomepageTestTag.HOMEPAGE
 import org.mozilla.fenix.theme.FirefoxTheme
 import org.mozilla.fenix.theme.Theme
 import org.mozilla.fenix.utils.isLargeScreenSize
 import org.mozilla.fenix.wallpapers.WallpaperState
 
-private const val MIDDLE_SEARCH_SCROLL_THRESHOLD_PX = 10
+private const val BOTTOM_PADDING = 47
 
 /**
  * Top level composable for the homepage.
  *
  * @param state State representing the homepage.
- * @param interactor for interactions with the homepage UI.
- * @param onMiddleSearchBarVisibilityChanged Invoked when the middle search is shown/hidden.
+ * @param interactor [HomepageInteractor] for interactions with the homepage UI.
  * @param onTopSitesItemBound Invoked during the composition of a top site item.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Suppress("LongMethod", "CyclomaticComplexMethod")
 @Composable
 internal fun Homepage(
     state: HomepageState,
     interactor: HomepageInteractor,
-    onMiddleSearchBarVisibilityChanged: (isVisible: Boolean) -> Unit,
     onTopSitesItemBound: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
@@ -111,11 +105,14 @@ internal fun Homepage(
             }
             .verticalScroll(scrollState),
     ) {
-        HomepageHeader(
-            showPrivateBrowsingButton = state.showPrivateBrowsingButton,
-            browsingMode = state.browsingMode,
-            browsingModeChanged = interactor::onPrivateModeButtonClicked,
-        )
+        if (state.showHeader) {
+            HomepageHeader(
+                browsingMode = state.browsingMode,
+                browsingModeChanged = interactor::onPrivateModeButtonClicked,
+            )
+        } else {
+            Spacer(modifier = Modifier.height(40.dp))
+        }
 
         if (state.firstFrameDrawn) {
             with(state) {
@@ -137,34 +134,11 @@ internal fun Homepage(
                         }
 
                         if (showTopSites) {
-                            TopSites(
+                            TopSitesSection(
                                 topSites = topSites,
                                 topSiteColors = topSiteColors,
                                 interactor = interactor,
                                 onTopSitesItemBound = onTopSitesItemBound,
-                            )
-                        }
-
-                        if (searchBarEnabled) {
-                            val atTopOfList by remember {
-                                derivedStateOf {
-                                    scrollState.value < MIDDLE_SEARCH_SCROLL_THRESHOLD_PX
-                                }
-                            }
-
-                            LaunchedEffect(atTopOfList) {
-                                onMiddleSearchBarVisibilityChanged(atTopOfList)
-                            }
-
-                            val alpha by animateFloatAsState(
-                                targetValue = if (showSearchBar && atTopOfList) 1f else 0f,
-                            )
-
-                            Spacer(modifier = Modifier.height(32.dp))
-
-                            SearchBar(
-                                modifier = Modifier.graphicsLayer { this.alpha = alpha },
-                                onClick = interactor::onNavigateSearch,
                             )
                         }
 
@@ -188,7 +162,11 @@ internal fun Homepage(
                                     RecentSyncedTab(
                                         tab = syncedTab,
                                         backgroundColor = cardBackgroundColor,
-                                        buttonBackgroundColor = buttonBackgroundColor,
+                                        buttonBackgroundColor = if (syncedTab != null) {
+                                            buttonBackgroundColor
+                                        } else {
+                                            FirefoxTheme.colors.layer3
+                                        },
                                         buttonTextColor = buttonTextColor,
                                         onRecentSyncedTabClick = interactor::onRecentSyncedTabClicked,
                                         onSeeAllSyncedTabsButtonClick = interactor::onSyncedTabShowAllClicked,
@@ -214,24 +192,28 @@ internal fun Homepage(
                             )
                         }
 
-                        CollectionsSection(
-                            collectionsState = collectionsState,
-                            interactor = interactor,
-                        )
+                        if (showCollections) {
+                            CollectionsSection(
+                                collectionsState = collectionsState,
+                                interactor = interactor,
+                            )
+                        }
 
                         if (showPocketStories) {
+                            Spacer(Modifier.padding(top = 72.dp))
+
                             PocketSection(
                                 state = pocketState,
                                 cardBackgroundColor = cardBackgroundColor,
                                 interactor = interactor,
                             )
                         }
-
-                        Spacer(Modifier.height(bottomSpacerHeight))
                     }
                 }
             }
         }
+
+        Spacer(Modifier.height(BOTTOM_PADDING.dp))
     }
 }
 
@@ -262,6 +244,30 @@ private fun NimbusMessageCardSection(
             onCloseButtonClick = { interactor.onMessageClosedClicked(message) },
         )
     }
+}
+
+@Composable
+internal fun TopSitesSection(
+    topSites: List<TopSite>,
+    topSiteColors: TopSiteColors = TopSiteColors.colors(),
+    interactor: TopSiteInteractor,
+    onTopSitesItemBound: () -> Unit,
+) {
+    HomeSectionHeader(
+        headerText = stringResource(R.string.homepage_shortcuts_title),
+        modifier = Modifier.padding(horizontal = horizontalMargin),
+        description = stringResource(R.string.homepage_shortcuts_show_all_content_description),
+        onShowAllClick = interactor::onShowAllTopSitesClicked,
+    )
+
+    Spacer(Modifier.height(16.dp))
+
+    TopSites(
+        topSites = topSites,
+        topSiteColors = topSiteColors,
+        interactor = interactor,
+        onTopSitesItemBound = onTopSitesItemBound,
+    )
 }
 
 @Composable
@@ -455,21 +461,20 @@ private fun HomepagePreview() {
                     showBookmarks = true,
                     showRecentlyVisited = true,
                     showPocketStories = true,
-                    showPrivateBrowsingButton = true,
+                    showCollections = true,
+                    showHeader = false,
+                    searchBarVisible = true,
                     searchBarEnabled = false,
                     firstFrameDrawn = true,
-                    showSearchBar = true,
                     setupChecklistState = null,
                     topSiteColors = TopSiteColors.colors(),
                     cardBackgroundColor = WallpaperState.default.cardBackgroundColor,
                     buttonTextColor = WallpaperState.default.buttonTextColor,
                     buttonBackgroundColor = WallpaperState.default.buttonBackgroundColor,
-                    bottomSpacerHeight = 188.dp,
                     isSearchInProgress = false,
                 ),
                 interactor = FakeHomepagePreview.homepageInteractor,
                 onTopSitesItemBound = {},
-                onMiddleSearchBarVisibilityChanged = {},
             )
         }
     }
@@ -495,8 +500,9 @@ private fun HomepagePreviewCollections() {
                 showBookmarks = false,
                 showRecentlyVisited = true,
                 showPocketStories = true,
-                showPrivateBrowsingButton = true,
-                showSearchBar = true,
+                showCollections = true,
+                showHeader = false,
+                searchBarVisible = true,
                 searchBarEnabled = false,
                 firstFrameDrawn = true,
                 setupChecklistState = null,
@@ -504,12 +510,10 @@ private fun HomepagePreviewCollections() {
                 cardBackgroundColor = WallpaperState.default.cardBackgroundColor,
                 buttonTextColor = WallpaperState.default.buttonTextColor,
                 buttonBackgroundColor = WallpaperState.default.buttonBackgroundColor,
-                bottomSpacerHeight = 188.dp,
                 isSearchInProgress = false,
             ),
             interactor = FakeHomepagePreview.homepageInteractor,
             onTopSitesItemBound = {},
-            onMiddleSearchBarVisibilityChanged = {},
         )
     }
 }
@@ -525,21 +529,23 @@ private fun PrivateHomepagePreview() {
         ) {
             Homepage(
                 HomepageState.Private(
-                    showPrivateBrowsingButton = true,
+                    showHeader = false,
                     firstFrameDrawn = true,
                     isSearchInProgress = false,
-                    bottomSpacerHeight = 188.dp,
                 ),
                 interactor = FakeHomepagePreview.homepageInteractor,
                 onTopSitesItemBound = {},
-                onMiddleSearchBarVisibilityChanged = {},
             )
         }
     }
 }
 
-private val horizontalMargin: Dp
-    @Composable get() = dimensionResource(R.dimen.home_item_horizontal_margin)
+internal val horizontalMargin: Dp
+    @Composable
+    @ReadOnlyComposable
+    get() = dimensionResource(R.dimen.home_item_horizontal_margin)
 
 private val verticalMargin: Dp
-    @Composable get() = dimensionResource(R.dimen.home_item_vertical_margin)
+    @Composable
+    @ReadOnlyComposable
+    get() = dimensionResource(R.dimen.home_item_vertical_margin)

@@ -62,6 +62,17 @@ loader.lazyRequireGetter(
   "clipboardHelper",
   "resource://devtools/shared/platform/clipboard.js"
 );
+loader.lazyRequireGetter(
+  this,
+  "openContentLink",
+  "resource://devtools/client/shared/link.js",
+  true
+);
+
+const lazy = {};
+ChromeUtils.defineESModuleGetters(lazy, {
+  AppConstants: "resource://gre/modules/AppConstants.sys.mjs",
+});
 
 const HTML_NS = "http://www.w3.org/1999/xhtml";
 const PREF_UA_STYLES = "devtools.inspector.showUserAgentStyles";
@@ -70,8 +81,9 @@ const PREF_DRAGGABLE = "devtools.inspector.draggable_properties";
 const PREF_INPLACE_EDITOR_FOCUS_NEXT_ON_ENTER =
   "devtools.inspector.rule-view.focusNextOnEnter";
 const FILTER_CHANGED_TIMEOUT = 150;
-// Removes the flash-out class from an element after 1 second.
-const PROPERTY_FLASHING_DURATION = 1000;
+// Removes the flash-out class from an element after 1 second (100ms in tests so they
+// don't take too long to run).
+const PROPERTY_FLASHING_DURATION = flags.testing ? 100 : 1000;
 
 // This is used to parse user input when filtering.
 const FILTER_PROP_RE = /\s*([^:\s]*)\s*:\s*(.*?)\s*;?$/;
@@ -163,7 +175,6 @@ function CssRuleView(inspector, document, store) {
   this._onToggleDarkColorSchemeSimulation =
     this._onToggleDarkColorSchemeSimulation.bind(this);
   this._onTogglePrintSimulation = this._onTogglePrintSimulation.bind(this);
-  this.highlightElementRule = this.highlightElementRule.bind(this);
   this.highlightProperty = this.highlightProperty.bind(this);
   this.refreshPanel = this.refreshPanel.bind(this);
 
@@ -269,6 +280,7 @@ function CssRuleView(inspector, document, store) {
   this.tooltips = new TooltipsOverlay(this);
 
   this.cssRegisteredPropertiesByTarget = new Map();
+  this._elementsWithPendingClicks = new this.styleWindow.WeakSet();
 }
 
 CssRuleView.prototype = {
@@ -389,7 +401,7 @@ CssRuleView.prototype = {
       this.inspector.sidebar &&
       this.inspector.toolbox.currentToolId === "inspector" &&
       (this.inspector.sidebar.getCurrentTabID() == "ruleview" ||
-        this.inspector.is3PaneModeEnabled)
+        this.inspector.isThreePaneModeEnabled)
     );
   },
 
@@ -495,6 +507,33 @@ CssRuleView.prototype = {
         this.inspector.selection.nodeFront,
         "rule"
       );
+    }
+
+    const valueSpan = target.closest(".ruleview-propertyvalue");
+    if (valueSpan) {
+      if (this._elementsWithPendingClicks.has(valueSpan)) {
+        // When we start handling a drag in the TextPropertyEditor valueSpan,
+        // we make the valueSpan capture the pointer. Then, `click` event target is always
+        // the valueSpan with the latest spec of Pointer Events.
+        // Therefore, we should stop immediate propagation of the `click` event
+        // if we've handled a drag to prevent moving focus to the inplace editor.
+        event.stopImmediatePropagation();
+        return;
+      }
+
+      // Handle link click in RuleEditor property value
+      if (target.nodeName === "a") {
+        event.stopPropagation();
+        event.preventDefault();
+        openContentLink(target.href, {
+          relatedToCurrent: true,
+          inBackground:
+            event.button === 1 ||
+            (lazy.AppConstants.platform === "macosx"
+              ? event.metaKey
+              : event.ctrlKey),
+        });
+      }
     }
   },
 
@@ -1047,6 +1086,9 @@ CssRuleView.prototype = {
       return Promise.resolve(undefined);
     }
 
+    const isProfilerActive = Services.profiler?.IsActive();
+    const startTime = isProfilerActive ? ChromeUtils.now() : null;
+
     this.pageStyle = element.inspectorFront.pageStyle;
     this.pageStyle.on("stylesheet-updated", this.refreshPanel);
 
@@ -1092,6 +1134,17 @@ CssRuleView.prototype = {
           this._elementStyle.onChanged = () => {
             this._changed();
           };
+        }
+        if (isProfilerActive && this._elementStyle.rules) {
+          let declarations = 0;
+          for (const rule of this._elementStyle.rules) {
+            declarations += rule.textProps.length;
+          }
+          ChromeUtils.addProfilerMarker(
+            "DevTools:CssRuleView.selectElement",
+            startTime,
+            `${declarations} CSS declarations in ${this._elementStyle.rules.length} rules`
+          );
         }
       })
       .catch(e => {
@@ -1429,7 +1482,9 @@ CssRuleView.prototype = {
 
       // Initialize rule editor
       if (!rule.editor) {
-        rule.editor = new RuleEditor(this, rule);
+        rule.editor = new RuleEditor(this, rule, {
+          elementsWithPendingClicks: this._elementsWithPendingClicks,
+        });
         editorReadyPromises.push(rule.editor.once("source-link-updated"));
       }
 
@@ -1761,7 +1816,7 @@ CssRuleView.prototype = {
     let isComputedHighlighted = false;
 
     // Highlight search matches in the computed list of properties
-    editor._populateComputed();
+    editor.populateComputed();
     for (const computed of editor.prop.computed) {
       if (computed.element) {
         // Get the actual property value displayed in the computed list
@@ -2010,25 +2065,28 @@ CssRuleView.prototype = {
    *
    * @param  {Element} element
    *         The element.
+   * @returns {Promise} Promise that resolves after the element was flashed-out
    */
   _flashElement(element) {
     flashElementOn(element, {
       backgroundClass: "theme-bg-contrast",
     });
 
-    if (this._flashMutationTimer) {
-      clearTimeout(this._removeFlashOutTimer);
-      this._flashMutationTimer = null;
+    if (this._flashMutationCallback) {
+      this._flashMutationCallback();
     }
 
-    this._flashMutationTimer = setTimeout(() => {
-      flashElementOff(element, {
-        backgroundClass: "theme-bg-contrast",
-      });
+    return new Promise(resolve => {
+      this._flashMutationCallback = () => {
+        flashElementOff(element, {
+          backgroundClass: "theme-bg-contrast",
+        });
+        this._flashMutationCallback = null;
+        resolve();
+      };
 
-      // Emit "scrolled-to-property" for use by tests.
-      this.emit("scrolled-to-element");
-    }, PROPERTY_FLASHING_DURATION);
+      setTimeout(this._flashMutationCallback, PROPERTY_FLASHING_DURATION);
+    });
   },
 
   /**
@@ -2079,65 +2137,37 @@ CssRuleView.prototype = {
   },
 
   /**
-   * Finds the rule with the matching actorID and highlights it.
-   *
-   * @param  {String} ruleId
-   *         The actorID of the rule.
-   */
-  highlightElementRule(ruleId) {
-    let scrollBehavior = "smooth";
-
-    const rule = this.rules.find(r => r.domRule.actorID === ruleId);
-
-    if (!rule) {
-      return;
-    }
-
-    if (rule.domRule.actorID === ruleId) {
-      // If using 2-Pane mode, then switch to the Rules tab first.
-      if (!this.inspector.is3PaneModeEnabled) {
-        this.inspector.sidebar.select("ruleview");
-      }
-
-      if (rule.pseudoElement.length && !this.showPseudoElements) {
-        scrollBehavior = "auto";
-        this._togglePseudoElementRuleContainer();
-      }
-
-      const {
-        editor: { element },
-      } = rule;
-
-      // Scroll to the top of the rule and highlight it.
-      this._scrollToElement(element, null, scrollBehavior);
-      this._flashElement(element);
-    }
-  },
-
-  /**
    * Finds the specified TextProperty name in the rule view. If found, scroll to and
    * flash the TextProperty.
    *
    * @param  {String} name
    *         The property name to scroll to and highlight.
+   * @param  {Object} options
+   * @param  {Function|undefined} options.ruleValidator
+   *         An optional function that can be used to filter out rules we shouldn't look
+   *         into to find the property name. The function is called with a Rule object,
+   *         and the rule will be skipped if the function returns a falsy value.
    * @return {Boolean} true if the TextProperty name is found, and false otherwise.
    */
-  highlightProperty(name) {
+  highlightProperty(name, { ruleValidator } = {}) {
+    // First, let's clear any search we might have, as the property could be hidden
+    this._onClearSearch();
+
+    let scrollBehavior = "auto";
+    const hasRuleValidator = typeof ruleValidator === "function";
     for (const rule of this.rules) {
+      if (hasRuleValidator && !ruleValidator(rule)) {
+        continue;
+      }
       for (const textProp of rule.textProps) {
         if (textProp.overridden || textProp.invisible || !textProp.enabled) {
           continue;
         }
 
-        const {
-          editor: { selectorText },
-        } = rule;
-        let scrollBehavior = "smooth";
-
         // First, search for a matching authored property.
         if (textProp.name === name) {
           // If using 2-Pane mode, then switch to the Rules tab first.
-          if (!this.inspector.is3PaneModeEnabled) {
+          if (!this.inspector.isThreePaneModeEnabled) {
             this.inspector.sidebar.select("ruleview");
           }
 
@@ -2150,15 +2180,11 @@ CssRuleView.prototype = {
             this._togglePseudoElementRuleContainer();
           }
 
-          // Scroll to the top of the property's rule so that both the property and its
-          // rule are visible.
-          this._scrollToElement(
-            selectorText,
+          this._highlightElementInRule(
+            rule,
             textProp.editor.element,
             scrollBehavior
           );
-          this._flashElement(textProp.editor.element);
-
           return true;
         }
 
@@ -2169,7 +2195,7 @@ CssRuleView.prototype = {
           }
 
           if (computed.name === name) {
-            if (!this.inspector.is3PaneModeEnabled) {
+            if (!this.inspector.isThreePaneModeEnabled) {
               this.inspector.sidebar.select("ruleview");
             }
 
@@ -2184,20 +2210,61 @@ CssRuleView.prototype = {
             // Expand the computed list.
             textProp.editor.expandForFilter();
 
-            this._scrollToElement(
-              selectorText,
+            this._highlightElementInRule(
+              rule,
               computed.element,
               scrollBehavior
             );
-            this._flashElement(computed.element);
 
             return true;
           }
         }
       }
     }
+    // If the property is a CSS variable and we didn't find its declaration, it might
+    // be a registered property
+    if (name.startsWith("--")) {
+      // Get a potential @property section
+      const propertyContainer = this.styleDocument.getElementById(
+        REGISTERED_PROPERTIES_CONTAINER_ID
+      );
+      if (propertyContainer) {
+        const propertyEl = propertyContainer.querySelector(
+          `[data-name="${name}"]`
+        );
+        if (propertyEl) {
+          const toggle = this.styleDocument.querySelector(
+            `[aria-controls="${REGISTERED_PROPERTIES_CONTAINER_ID}"]`
+          );
+          if (toggle.ariaExpanded === "false") {
+            this._toggleContainerVisibility(toggle, propertyContainer);
+          }
+
+          this._highlightElementInRule(null, propertyEl, scrollBehavior);
+        }
+        return true;
+      }
+    }
 
     return false;
+  },
+
+  /**
+   * Highlight a given element in a rule editor
+   *
+   * @param {Rule} rule
+   * @param {Element} element
+   * @param {String} scrollBehavior
+   */
+  _highlightElementInRule(rule, element, scrollBehavior) {
+    if (rule) {
+      this._scrollToElement(rule.editor.selectorText, element, scrollBehavior);
+    } else {
+      this._scrollToElement(element, null, scrollBehavior);
+    }
+    this._flashElement(element).then(() =>
+      this.emitForTests("element-highlighted", element)
+    );
   },
 
   /**

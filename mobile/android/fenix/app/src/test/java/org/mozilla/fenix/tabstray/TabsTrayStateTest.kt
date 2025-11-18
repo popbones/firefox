@@ -15,6 +15,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mozilla.fenix.R
+import org.mozilla.fenix.tabstray.ext.generateMultiSelectBannerMenuItems
 import org.mozilla.fenix.tabstray.ext.getMenuItems
 import org.mozilla.fenix.tabstray.ext.isSelect
 
@@ -175,6 +176,44 @@ class TabsTrayStateTest {
         assertEquals(
             (menuItems[1] as MenuItem.TextItem).text,
             Text.Resource(R.string.tab_tray_menu_recently_closed),
+        )
+    }
+
+    @Test
+    fun `GIVEN the Tabs Tray is in multiselection mode AND on the normal tabs page AND the inactive menu item needs to be shown AND on the normal tabs page WHEN the user clicks on the three-dot button THEN the bookmark, close, and make inactive menu items are returned`() {
+        val menuItems = generateMultiSelectBannerMenuItems(
+            shouldShowInactiveButton = true,
+            onBookmarkSelectedTabsClick = {},
+            onCloseSelectedTabsClick = {},
+            onMakeSelectedTabsInactive = {},
+        )
+        assertEquals(3, menuItems.size)
+        assertEquals(
+            listOf(
+                Text.Resource(R.string.tab_tray_multiselect_menu_item_bookmark),
+                Text.Resource(R.string.tab_tray_multiselect_menu_item_close),
+                Text.Resource(R.string.inactive_tabs_menu_item),
+            ),
+            menuItems.map { (it as MenuItem.TextItem).text },
+        )
+    }
+
+    @Test
+    fun `GIVEN the Tabs Tray is in multiselection mode AND on the normal tabs page AND the inactive menu item should not be shown WHEN the user clicks on the three-dot button THEN the bookmark and close menu items are returned`() {
+        val menuItems = generateMultiSelectBannerMenuItems(
+            shouldShowInactiveButton = false,
+            onBookmarkSelectedTabsClick = {},
+            onCloseSelectedTabsClick = {},
+            onMakeSelectedTabsInactive = {},
+        )
+        assertEquals(2, menuItems.size)
+        assertEquals(
+            (menuItems[0] as MenuItem.TextItem).text,
+            Text.Resource(R.string.tab_tray_multiselect_menu_item_bookmark),
+        )
+        assertEquals(
+            (menuItems[1] as MenuItem.TextItem).text,
+            Text.Resource(R.string.tab_tray_multiselect_menu_item_close),
         )
     }
 

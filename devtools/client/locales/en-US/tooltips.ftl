@@ -49,6 +49,10 @@ inactive-css-only-non-grid-or-flex-item = <strong>{ $property }</strong> has no 
 
 inactive-css-not-block = <strong>{ $property }</strong> has no effect on this element because it only applies to block-level elements.
 
+inactive-css-not-block-container = <strong>{ $property }</strong> has no effect on this element because it only applies to block container elements.
+
+inactive-css-not-block-flex-grid-container = <strong>{ $property }</strong> has no effect on this element because it only applies to block, flex, and grid container elements.
+
 inactive-css-not-floated = <strong>{ $property }</strong> has no effect because it only applies to floated elements.
 
 inactive-css-property-is-impossible-to-override-in-visited = It’s impossible to override <strong>{ $property }</strong> due to <strong>:visited</strong> restriction.
@@ -95,6 +99,8 @@ inactive-css-text-wrap-balance-fragmented = <strong>{ $property }</strong> has n
 
 inactive-css-no-width-height = <strong>{ $property }</strong> has no effect on this element since its width and height cannot be set.
 
+inactive-css-no-principal-box = <strong>{ $property }</strong> has no effect on this element since it does not create a principal box.
+
 ## In the Rule View when a CSS property cannot be successfully applied we display
 ## an icon. When this icon is hovered this message is displayed to explain how
 ## the problem can be solved. CSS properties and values in <strong> tags should
@@ -132,6 +138,10 @@ inactive-css-only-non-grid-or-flex-item-fix = Try changing the value of <strong>
 
 inactive-css-not-block-fix = Try adding properties like <strong>display:block</strong> or <strong>float:left</strong>. { learn-more }
 
+inactive-css-not-block-container-fix = Try adding <strong>display:block</strong>, <strong>display:inline-block</strong> or <strong>display:flow-root</strong>. { learn-more }
+
+inactive-css-not-block-flex-grid-container-fix = Try adding <strong>display:block</strong>, <strong>display:inline-block</strong>, <strong>display:flex</strong>, <strong>display:inline-flex</strong>, <strong>display:grid</strong>, <strong>display:inline-grid</strong> or <strong>display:flow-root</strong>. { learn-more }
+
 inactive-css-not-floated-fix = Try adding the <strong>float</strong> property with a value other than <strong>none</strong>. { learn-more }
 
 inactive-css-position-property-on-unpositioned-box-fix = Try setting its <strong>position</strong> property to something other than <strong>static</strong>. { learn-more }
@@ -163,6 +173,8 @@ inactive-css-ruby-element-fix = Try changing the <strong>font-size</strong> of t
 inactive-css-text-wrap-balance-lines-exceeded-fix = Try to reduce the number of lines. { learn-more }
 
 inactive-css-text-wrap-balance-fragmented-fix = Avoid splitting the element’s content e.g. by removing the columns or by using <strong>page-break-inside:avoid</strong>. { learn-more }
+
+inactive-css-no-principal-box-fix = Try adding a <strong>display</strong> value that creates a principal box, such as <strong>block</strong>, <strong>inline-block</strong>, <strong>flex</strong>, or <strong>grid</strong>. { learn-more }
 
 ## In the Rule View when a CSS property may have compatibility issues with other browsers
 ## we display an icon. When this icon is hovered this message is displayed to explain why

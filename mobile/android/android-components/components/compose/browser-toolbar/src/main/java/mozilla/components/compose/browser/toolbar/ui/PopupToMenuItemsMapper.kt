@@ -6,6 +6,7 @@ package mozilla.components.compose.browser.toolbar.ui
 
 import android.view.SoundEffectConstants
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -36,7 +38,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import mozilla.components.compose.base.Divider
 import mozilla.components.compose.base.modifier.thenConditional
 import mozilla.components.compose.base.theme.AcornTheme
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarInteraction
@@ -75,6 +76,7 @@ internal fun menuItemComposable(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
+                        .background(AcornTheme.colors.layer1)
                         .thenConditional(
                             Modifier.clickable(
                                 role = Role.Button,
@@ -139,7 +141,7 @@ internal fun menuItemComposable(
 
         is BrowserToolbarMenuDivider -> {
             @Composable {
-                Divider(
+                HorizontalDivider(
                     color = AcornTheme.colors.borderSecondary,
                 )
             }

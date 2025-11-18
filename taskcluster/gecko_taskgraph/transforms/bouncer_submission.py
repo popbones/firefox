@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 FTP_PLATFORMS_PER_BOUNCER_PLATFORM = {
-    "linux": "linux-i686",
     "linux64": "linux-x86_64",
     "linux64-aarch64": "linux-aarch64",
     "osx": "mac",
@@ -55,7 +54,6 @@ CONFIG_PER_BOUNCER_PRODUCT = {
     "installer": {
         "path_template": RELEASES_PATH_TEMPLATE,
         "file_names": {
-            "linux": "{product}-{version}.tar.xz",
             "linux64": "{product}-{version}.tar.xz",
             "linux64-aarch64": "{product}-{version}.tar.xz",
             "osx": "{pretty_product}%20{version}.dmg",
@@ -185,8 +183,10 @@ def craft_bouncer_entries(config, job):
     current_build_number = release_config["build_number"]
 
     bouncer_products = job["bouncer-products"]
-    previous_versions = release_config.get("partial_versions", [])
-    if not previous_versions:
+    previous_versions_string = release_config.get("partial_versions", None)
+    if previous_versions_string:
+        previous_versions = previous_versions_string.split(", ")
+    else:
         logger.warning(
             'No partials defined! Bouncer submission task won\'t send any \
 partial-related entry for "{}"'.format(

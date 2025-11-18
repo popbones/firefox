@@ -8,6 +8,7 @@
 #  include "WMF.h"
 #  include "WMFDecoderModule.h"
 #endif
+#include "FFVPXRuntimeLinker.h"
 #include "GLContextProvider.h"
 #include "GPUParent.h"
 #include "GPUProcessHost.h"
@@ -66,6 +67,9 @@
 #include "nscore.h"
 #include "prenv.h"
 #include "skia/include/core/SkGraphics.h"
+#if defined(XP_MACOSX) && defined(MOZ_SANDBOX)
+#  include "mozilla/SandboxSettings.h"
+#endif
 #if defined(XP_WIN)
 #  include <dwrite.h>
 #  include <process.h>
@@ -103,25 +107,6 @@ namespace mozilla::gfx {
 
 using namespace ipc;
 using namespace layers;
-
-static media::MediaCodecsSupported GetFullMediaCodecSupport(
-    bool aForceRefresh = false) {
-#if defined(XP_WIN)
-  // Re-initializing WMFPDM if forcing a refresh is required or hardware
-  // decoding is supported in order to get HEVC result properly. We will disable
-  // it later if the pref is OFF.
-  if (aForceRefresh || (gfx::gfxVars::IsInitialized() &&
-                        gfx::gfxVars::CanUseHardwareVideoDecoding())) {
-    WMFDecoderModule::Init(WMFDecoderModule::Config::ForceEnableHEVC);
-  }
-  auto disableHEVCIfNeeded = MakeScopeExit([]() {
-    if (!StaticPrefs::media_hevc_enabled()) {
-      WMFDecoderModule::DisableForceEnableHEVC();
-    }
-  });
-#endif
-  return media::MCSInfo::GetSupportFromFactory(aForceRefresh);
-}
 
 static GPUParent* sGPUParent;
 
@@ -229,7 +214,21 @@ bool GPUParent::Init(mozilla::ipc::UntypedEndpoint&& aEndpoint,
   apz::InitializeGlobalState();
   LayerTreeOwnerTracker::Initialize();
   CompositorBridgeParent::InitializeStatics();
+
+#if defined(XP_MACOSX) && defined(MOZ_SANDBOX)
+  // On macOS, we pass the empty string for the process name because
+  // the bundle name (CFBundleName) is the complete name already.
+  // If the sandbox is enabled, setting the executable name will fail
+  // so don't attempt it. The executable name will be shown in
+  // Activity Monitor as the process name.
+  if (!IsGPUSandboxEnabled()) {
+    mozilla::ipc::SetThisProcessName("");
+  }
+#elif defined(XP_MACOSX)
+  mozilla::ipc::SetThisProcessName("");
+#else
   mozilla::ipc::SetThisProcessName("GPU Process");
+#endif  // XP_MACOSX && MOZ_SANDBOX
 
   return true;
 }
@@ -297,9 +296,7 @@ mozilla::ipc::IPCResult GPUParent::RecvInit(
     nsTArray<GfxVarUpdate>&& vars, const DevicePrefs& devicePrefs,
     nsTArray<LayerTreeIdMapping>&& aMappings,
     nsTArray<GfxInfoFeatureStatus>&& aFeatures, uint32_t aWrNamespace) {
-  for (const auto& var : vars) {
-    gfxVars::ApplyUpdate(var);
-  }
+  gfxVars::ApplyUpdate(vars);
 
   // Inherit device preferences.
   gfxConfig::Inherit(Feature::HW_COMPOSITING, devicePrefs.hwCompositing());
@@ -431,7 +428,7 @@ mozilla::ipc::IPCResult GPUParent::RecvInit(
           []() {
             NS_DispatchToMainThread(NS_NewRunnableFunction(
                 "GPUParent::UpdateMediaCodecsSupported",
-                [supported = GetFullMediaCodecSupport()]() {
+                [supported = media::MCSInfo::GetSupportFromFactory()]() {
                   Unused << GPUParent::GetSingleton()
                                 ->SendUpdateMediaCodecsSupported(supported);
                 }));
@@ -516,29 +513,29 @@ mozilla::ipc::IPCResult GPUParent::RecvInitProfiler(
   return IPC_OK();
 }
 
-mozilla::ipc::IPCResult GPUParent::RecvUpdateVar(const GfxVarUpdate& aUpdate) {
-#if defined(XP_WIN)
-  auto scopeExit = MakeScopeExit(
-      [couldUseHWDecoder = gfx::gfxVars::CanUseHardwareVideoDecoding()] {
-        if (couldUseHWDecoder != gfx::gfxVars::CanUseHardwareVideoDecoding()) {
-          MOZ_ALWAYS_SUCCEEDS(NS_DispatchBackgroundTask(
-              NS_NewRunnableFunction(
-                  "GPUParent::RecvUpdateVar",
-                  []() {
-                    NS_DispatchToMainThread(NS_NewRunnableFunction(
-                        "GPUParent::UpdateMediaCodecsSupported",
-                        [supported = GetFullMediaCodecSupport(
-                             true /* force refresh */)]() {
-                          Unused << GPUParent::GetSingleton()
-                                        ->SendUpdateMediaCodecsSupported(
-                                            supported);
-                        }));
-                  }),
-              nsIEventTarget::DISPATCH_NORMAL));
-        }
-      });
-#endif
+mozilla::ipc::IPCResult GPUParent::RecvUpdateVar(
+    const nsTArray<GfxVarUpdate>& aUpdate) {
   gfxVars::ApplyUpdate(aUpdate);
+  MOZ_ALWAYS_SUCCEEDS(NS_DispatchBackgroundTask(
+      NS_NewRunnableFunction(
+          "GPUParent::RecvUpdateVar",
+          []() {
+#ifdef XP_WIN
+            WMFDecoderModule::Init();
+#endif
+            if (StaticPrefs::media_ffvpx_hw_enabled()) {
+              FFVPXRuntimeLinker::Init();
+            }
+            NS_DispatchToMainThread(NS_NewRunnableFunction(
+                "GPUParent::UpdateMediaCodecsSupported",
+                [supported = media::MCSInfo::GetSupportFromFactory(
+                     true /* force refresh */)]() {
+                  if (auto* gpu = GPUParent::GetSingleton()) {
+                    Unused << gpu->SendUpdateMediaCodecsSupported(supported);
+                  }
+                }));
+          }),
+      nsIEventTarget::DISPATCH_NORMAL));
   return IPC_OK();
 }
 

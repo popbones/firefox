@@ -6,7 +6,6 @@ package org.mozilla.fenix.settings.logins.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.os.Build
 import android.os.PersistableBundle
 import androidx.navigation.NavController
 import kotlinx.coroutines.CoroutineDispatcher
@@ -32,8 +31,7 @@ import org.mozilla.fenix.settings.SupportUtils
  * @param openTab Invoked when opening a tab when a login url is clicked.
  * @param ioDispatcher Coroutine dispatcher for IO operations.
  * @param clipboardManager For copying logins URLs.
- * @param showUsernameCopiedSnackbar Invoked when a login username is copied.
- * @param showPasswordCopiedSnackbar Invoked when a login password is copied.
+ * @param refreshLoginsList Invoked to refresh the logins list.
  */
 @Suppress("LongParameterList")
 internal class LoginsMiddleware(
@@ -44,8 +42,7 @@ internal class LoginsMiddleware(
     private val openTab: (url: String, openInNewTab: Boolean) -> Unit,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val clipboardManager: ClipboardManager?,
-    private val showUsernameCopiedSnackbar: () -> Unit,
-    private val showPasswordCopiedSnackbar: () -> Unit,
+    private val refreshLoginsList: Store<LoginsState, LoginsAction>.() -> Unit = { dispatch(Init) },
 ) : Middleware<LoginsState, LoginsAction> {
 
     private val scope = CoroutineScope(ioDispatcher)
@@ -56,29 +53,12 @@ internal class LoginsMiddleware(
         next: (LoginsAction) -> Unit,
         action: LoginsAction,
     ) {
+        val preReductionState = context.state
         next(action)
 
         when (action) {
             Init -> {
                 context.store.loadLoginsList()
-            }
-            is InitEdit -> {
-                scope.launch {
-                    Result.runCatching {
-                        val login = loginsStorage.get(action.guid)
-                        val loginItem = login?.let {
-                            LoginItem(
-                                guid = it.guid,
-                                url = it.formActionOrigin ?: "",
-                                username = it.username,
-                                password = it.password,
-                            )
-                        }
-                        InitEditLoaded(login = loginItem!!)
-                    }.getOrNull()?.also {
-                        context.store.dispatch(it)
-                    }
-                }
             }
             is SearchLogins -> {
                 context.store.loadLoginsList()
@@ -92,12 +72,17 @@ internal class LoginsMiddleware(
             is DetailLoginMenuAction.EditLoginMenuItemClicked -> {
                 getNavController().navigate(LoginsDestinations.EDIT_LOGIN)
             }
-            is DetailLoginMenuAction.DeleteLoginMenuItemClicked -> {
+            is LoginDeletionDialogAction.DeleteTapped -> {
                 scope.launch {
-                    loginsStorage.delete(action.item.guid)
-
-                    withContext(Dispatchers.Main) {
-                        getNavController().navigate(LoginsDestinations.LIST)
+                    preReductionState.loginsLoginDetailState?.login?.guid?.let {
+                        loginsStorage.delete(
+                            it,
+                        )
+                    }
+                    if (preReductionState.loginsLoginDetailState != null) {
+                        withContext(Dispatchers.Main) {
+                            getNavController().popBackStack()
+                        }
                     }
                 }
             }
@@ -131,19 +116,26 @@ internal class LoginsMiddleware(
             is AddLoginAction.AddLoginSaveClicked -> {
                 context.store.handleAddLogin()
             }
-            is InitEditLoaded,
-            is EditLoginAction.UsernameChanged,
-            is EditLoginAction.BackEditClicked,
+            is EditLoginBackClicked -> {
+                getNavController().navigate(LoginsDestinations.LOGIN_DETAILS)
+            }
+            is EditLoginAction.SaveEditClicked -> {
+                context.store.handleEditLogin(loginItem = action.login)
+            }
+            is BiometricAuthenticationAction.AuthenticationSucceeded,
+            is BiometricAuthenticationAction.AuthenticationInProgress,
+            is BiometricAuthenticationAction.AuthenticationFailed,
+            is PinVerificationAction,
             is LoginsLoaded,
+            is EditLoginAction.UsernameChanged,
             is EditLoginAction.PasswordChanged,
-            is EditLoginAction.PasswordClearClicked,
-            is EditLoginAction.PasswordVisible,
-            is DetailLoginAction.PasswordVisibleClicked,
-            is EditLoginAction.SaveEditClicked,
-            is EditLoginAction.UsernameClearClicked,
+            is EditLoginAction.PasswordVisibilityChanged,
             is AddLoginAction.HostChanged,
             is AddLoginAction.UsernameChanged,
             is AddLoginAction.PasswordChanged,
+            is BiometricAuthenticationDialogAction,
+            is DetailLoginMenuAction.DeleteLoginMenuItemClicked,
+            is LoginDeletionDialogAction.CancelTapped,
             is ViewDisposed,
             -> Unit
         }
@@ -170,35 +162,23 @@ internal class LoginsMiddleware(
     private fun handleUsernameClicked(username: String) {
         val usernameClipData = ClipData.newPlainText(username, username)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            usernameClipData.apply {
-                description.extras = PersistableBundle().apply {
-                    putBoolean("android.content.extra.IS_SENSITIVE", false)
-                }
+        usernameClipData.apply {
+            description.extras = PersistableBundle().apply {
+                putBoolean("android.content.extra.IS_SENSITIVE", false)
             }
         }
         clipboardManager?.setPrimaryClip(usernameClipData)
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            showUsernameCopiedSnackbar()
-        }
     }
 
     private fun handlePasswordClicked(password: String) {
         val passwordClipData = ClipData.newPlainText(password, password)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            passwordClipData.apply {
-                description.extras = PersistableBundle().apply {
-                    putBoolean("android.content.extra.IS_SENSITIVE", true)
-                }
+        passwordClipData.apply {
+            description.extras = PersistableBundle().apply {
+                putBoolean("android.content.extra.IS_SENSITIVE", true)
             }
         }
         clipboardManager?.setPrimaryClip(passwordClipData)
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            showPasswordCopiedSnackbar()
-        }
     }
 
     private fun Store<LoginsState, LoginsAction>.handleAddLogin() =
@@ -230,12 +210,37 @@ internal class LoginsMiddleware(
         }
 
     private fun Store<LoginsState, LoginsAction>.handleLoginsDetailsBackPressed() = scope.launch {
-        dispatch(
-            Init,
-        )
+        refreshLoginsList()
 
         withContext(Dispatchers.Main) {
             getNavController().navigate(LoginsDestinations.LIST)
         }
     }
+
+    private fun Store<LoginsState, LoginsAction>.handleEditLogin(loginItem: LoginItem) =
+        scope.launch {
+            val updatedLogin = LoginEntry(
+                origin = loginItem.url,
+                formActionOrigin = loginItem.url,
+                httpRealm = loginItem.url,
+                username = state.loginsEditLoginState?.newUsername ?: loginItem.username,
+                password = state.loginsEditLoginState?.newPassword ?: loginItem.password,
+            )
+
+            try {
+                val loginEdited = loginsStorage.update(loginItem.guid, updatedLogin)
+                dispatch(
+                    LoginClicked(
+                        LoginItem(
+                            guid = loginEdited.guid,
+                            url = loginEdited.origin,
+                            username = loginEdited.username,
+                            password = loginEdited.password,
+                        ),
+                    ),
+                )
+            } catch (exception: LoginsApiException) {
+                exception.printStackTrace()
+            }
+        }
 }

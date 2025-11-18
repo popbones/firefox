@@ -100,7 +100,6 @@ void PuppetWidget::InfallibleCreate(nsIWidget* aParent,
 
   mBounds = aRect;
   mEnabled = true;
-  mVisible = true;
 
   mNeedIMEStateInit = MightNeedIMEFocus(aInitData);
 
@@ -175,7 +174,7 @@ void PuppetWidget::Resize(double aWidth, double aHeight, bool aRepaint) {
   // invalidate the expanded area
   if (oldBounds.Size() < mBounds.Size() && aRepaint) {
     LayoutDeviceIntRegion dirty(mBounds);
-    dirty.Sub(dirty, oldBounds);
+    dirty.SubOut(oldBounds);
     InvalidateRegion(this, dirty);
   }
 
@@ -213,11 +212,10 @@ void PuppetWidget::Invalidate(const LayoutDeviceIntRect& aRect) {
 
 mozilla::LayoutDeviceToLayoutDeviceMatrix4x4
 PuppetWidget::WidgetToTopLevelWidgetTransform() {
-  if (!GetOwningBrowserChild()) {
-    NS_WARNING("PuppetWidget without Tab does not have transform information.");
-    return mozilla::LayoutDeviceToLayoutDeviceMatrix4x4();
+  if (auto* bc = GetOwningBrowserChild()) {
+    return bc->GetChildToParentConversionMatrix();
   }
-  return GetOwningBrowserChild()->GetChildToParentConversionMatrix();
+  return mozilla::LayoutDeviceToLayoutDeviceMatrix4x4();
 }
 
 void PuppetWidget::InitEvent(WidgetGUIEvent& aEvent,

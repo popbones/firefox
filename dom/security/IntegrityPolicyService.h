@@ -7,6 +7,7 @@
 #ifndef IntegrityPolicyService_h___
 #define IntegrityPolicyService_h___
 
+#include "mozilla/dom/IntegrityPolicy.h"
 #include "nsIContentPolicy.h"
 
 #define NS_INTEGRITYPOLICYSERVICE_CONTRACTID \
@@ -26,7 +27,8 @@ class IntegrityPolicyService : public nsIContentPolicy {
   bool ShouldRequestBeBlocked(nsIURI* aContentLocation, nsILoadInfo* aLoadInfo);
 
   void MaybeReport(nsIURI* aContentLocation, nsILoadInfo* aLoadInfo,
-                   bool aEnforce, bool aReportOnly);
+                   IntegrityPolicy::DestinationType aDestination, bool aEnforce,
+                   bool aReportOnly);
 
  protected:
   virtual ~IntegrityPolicyService();

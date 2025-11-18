@@ -29,15 +29,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -46,36 +48,38 @@ import mozilla.components.compose.base.menu.MenuItem.CheckableItem
 import mozilla.components.compose.base.text.Text
 import mozilla.components.compose.base.text.value
 import org.mozilla.fenix.R
+import org.mozilla.fenix.components.menu.compose.MenuBadgeItem
 import org.mozilla.fenix.components.menu.compose.MenuGroup
 import org.mozilla.fenix.components.menu.compose.MenuItem
+import org.mozilla.fenix.components.menu.compose.MenuItemState
 import org.mozilla.fenix.components.menu.compose.MenuScaffold
-import org.mozilla.fenix.components.menu.compose.MenuTextItem
 import org.mozilla.fenix.compose.LinkText
 import org.mozilla.fenix.compose.LinkTextState
-import org.mozilla.fenix.compose.SwitchWithLabel
 import org.mozilla.fenix.settings.PhoneFeature
 import org.mozilla.fenix.settings.trustpanel.store.AutoplayValue
 import org.mozilla.fenix.settings.trustpanel.store.WebsiteInfoState
 import org.mozilla.fenix.settings.trustpanel.store.WebsitePermission
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
-private val ROUNDED_CORNER_SHAPE = RoundedCornerShape(4.dp)
 private val BANNER_ROUNDED_CORNER_SHAPE = RoundedCornerShape(
     topStart = 28.dp, topEnd = 28.dp, bottomStart = 4.dp, bottomEnd = 4.dp,
 )
+
+private const val DROPDOWN_TEXT_WIDTH_FRACTION = 0.5f
 
 @Suppress("LongParameterList", "LongMethod")
 @Composable
 internal fun ProtectionPanel(
     icon: Bitmap?,
     isTrackingProtectionEnabled: Boolean,
+    isLocalPdf: Boolean,
     numberOfTrackersBlocked: Int,
     websiteInfoState: WebsiteInfoState,
     websitePermissions: List<WebsitePermission>,
     onTrackerBlockedMenuClick: () -> Unit,
     onTrackingProtectionToggleClick: () -> Unit,
     onClearSiteDataMenuClick: () -> Unit,
-    onConnectionSecurityClick: () -> Unit,
     onPrivacySecuritySettingsClick: () -> Unit,
     onAutoplayValueClick: (AutoplayValue) -> Unit,
     onToggleablePermissionClick: (WebsitePermission.Toggleable) -> Unit,
@@ -85,49 +89,89 @@ internal fun ProtectionPanel(
             ProtectionPanelHeader(
                 icon = icon,
                 websiteInfoState = websiteInfoState,
-                onConnectionSecurityClick = onConnectionSecurityClick,
             )
         },
     ) {
         MenuGroup {
             ProtectionPanelBanner(
-                isSecured = websiteInfoState.isSecured,
-                isTrackingProtectionEnabled = isTrackingProtectionEnabled,
+                isSecured = websiteInfoState.isSecured || isLocalPdf,
+                isTrackingProtectionEnabled = isTrackingProtectionEnabled || isLocalPdf,
             )
 
-            if (numberOfTrackersBlocked == 0) {
+            if (!isLocalPdf) {
+                MenuBadgeItem(
+                    label = stringResource(id = R.string.protection_panel_etp_toggle_label),
+                    checked = isTrackingProtectionEnabled,
+                    description = if (isTrackingProtectionEnabled) {
+                        stringResource(id = R.string.protection_panel_etp_toggle_enabled_description_2)
+                    } else {
+                        stringResource(id = R.string.protection_panel_etp_toggle_disabled_description_2)
+                    },
+                    badgeText = if (isTrackingProtectionEnabled) {
+                        stringResource(id = R.string.protection_panel_etp_toggle_on)
+                    } else {
+                        stringResource(id = R.string.protection_panel_etp_toggle_off)
+                    },
+                    onClick = onTrackingProtectionToggleClick,
+                )
+
+                if (!isTrackingProtectionEnabled) {
+                    MenuItem(
+                        label = stringResource(id = R.string.protection_panel_etp_disabled_no_trackers_blocked),
+                        beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_shield_slash_critical_24),
+                        state = MenuItemState.CRITICAL,
+                    )
+                } else if (numberOfTrackersBlocked == 0) {
+                    MenuItem(
+                        label = stringResource(id = R.string.protection_panel_no_trackers_blocked),
+                        beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_shield_checkmark_24),
+                    )
+                } else {
+                    MenuItem(
+                        label = stringResource(
+                            id = R.string.protection_panel_num_trackers_blocked,
+                            numberOfTrackersBlocked,
+                        ),
+                        beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_shield_checkmark_24),
+                        onClick = onTrackerBlockedMenuClick,
+                        afterIconPainter = painterResource(id = iconsR.drawable.mozac_ic_chevron_right_24),
+                    )
+                }
+            }
+        }
+
+        MenuGroup {
+            if (isLocalPdf) {
                 MenuItem(
-                    label = stringResource(id = R.string.protection_panel_no_trackers_blocked),
-                    beforeIconPainter = painterResource(id = R.drawable.mozac_ic_shield_24),
+                    label = stringResource(id = R.string.connection_security_panel_local_pdf),
+                    beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_save_file_24),
+                )
+            } else if (websiteInfoState.isSecured) {
+                MenuItem(
+                    label = stringResource(id = R.string.connection_security_panel_secure),
+                    beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_lock_24),
+                    description = stringResource(
+                        id = R.string.connection_security_panel_verified_by,
+                        websiteInfoState.certificateName,
+                    ),
                 )
             } else {
                 MenuItem(
-                    label = stringResource(
-                        id = R.string.protection_panel_num_trackers_blocked,
-                        numberOfTrackersBlocked,
-                    ),
-                    beforeIconPainter = painterResource(id = R.drawable.mozac_ic_shield_24),
-                    onClick = onTrackerBlockedMenuClick,
-                    afterIconPainter = painterResource(id = R.drawable.mozac_ic_chevron_right_24),
+                    label = stringResource(id = R.string.connection_security_panel_not_secure),
+                    beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_lock_slash_critical_24),
+                    state = MenuItemState.CRITICAL,
                 )
             }
+        }
 
-            SwitchWithLabel(
-                label = stringResource(id = R.string.protection_panel_etp_toggle_label),
-                checked = isTrackingProtectionEnabled,
-                modifier = Modifier
-                    .clip(shape = ROUNDED_CORNER_SHAPE)
-                    .background(
-                        color = FirefoxTheme.colors.layer3,
-                    )
-                    .padding(start = 16.dp, top = 6.dp, end = 9.dp, bottom = 14.dp),
-                description = if (isTrackingProtectionEnabled) {
-                    stringResource(id = R.string.protection_panel_etp_toggle_enabled_description)
-                } else {
-                    stringResource(id = R.string.protection_panel_etp_toggle_disabled_description)
-                },
-                onCheckedChange = { onTrackingProtectionToggleClick() },
-            )
+        if (!isLocalPdf) {
+            MenuGroup {
+                MenuItem(
+                    label = stringResource(id = R.string.clear_site_data),
+                    onClick = onClearSiteDataMenuClick,
+                    beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_delete_24),
+                )
+            }
         }
 
         if (websitePermissions.isNotEmpty()) {
@@ -138,18 +182,11 @@ internal fun ProtectionPanel(
             )
         }
 
-        MenuGroup {
-            MenuTextItem(
-                label = stringResource(id = R.string.clear_site_data),
-                onClick = onClearSiteDataMenuClick,
-            )
-        }
-
         LinkText(
-            text = stringResource(id = R.string.protection_panel_privacy_and_security_settings),
+            text = stringResource(id = R.string.protection_panel_privacy_and_security_settings_2),
             linkTextStates = listOf(
                 LinkTextState(
-                    text = stringResource(id = R.string.protection_panel_privacy_and_security_settings),
+                    text = stringResource(id = R.string.protection_panel_privacy_and_security_settings_2),
                     url = "",
                     onClick = { onPrivacySecuritySettingsClick() },
                 ),
@@ -165,18 +202,17 @@ private fun ProtectionPanelBanner(
     isSecured: Boolean,
     isTrackingProtectionEnabled: Boolean,
 ) {
-    val backgroundColor: Color
+    var backgroundColor: Color = FirefoxTheme.colors.layer3
     val imageId: Int
     val title: String
     val description: String
 
     if (!isSecured) {
-        backgroundColor = FirefoxTheme.colors.layerCritical
         imageId = R.drawable.protection_panel_not_secure
         title = stringResource(id = R.string.protection_panel_banner_not_secure_title)
         description = stringResource(id = R.string.protection_panel_banner_not_secure_description)
     } else if (!isTrackingProtectionEnabled) {
-        backgroundColor = FirefoxTheme.colors.layer3
+        backgroundColor = FirefoxTheme.colors.layerSearch
         imageId = R.drawable.protection_panel_not_protected
         title = stringResource(id = R.string.protection_panel_banner_not_protected_title)
         description = stringResource(
@@ -184,7 +220,6 @@ private fun ProtectionPanelBanner(
             stringResource(id = R.string.app_name),
         )
     } else {
-        backgroundColor = FirefoxTheme.colors.layerAccentNonOpaque
         imageId = R.drawable.protection_panel_protected
         title = stringResource(
             id = R.string.protection_panel_banner_protected_title,
@@ -193,43 +228,40 @@ private fun ProtectionPanelBanner(
         description = stringResource(id = R.string.protection_panel_banner_protected_description)
     }
 
-    Column(
+    Card(
         modifier = Modifier
-            .clip(shape = ROUNDED_CORNER_SHAPE)
-            .background(color = FirefoxTheme.colors.layer3),
+            .clearAndSetSemantics {
+                contentDescription = "$title. $description"
+            }
+            .fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        shape = BANNER_ROUNDED_CORNER_SHAPE,
     ) {
-        Card(
-            modifier = Modifier
-                .padding(start = 8.dp, top = 8.dp, end = 8.dp)
-                .fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = backgroundColor),
-            shape = BANNER_ROUNDED_CORNER_SHAPE,
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.padding(start = 12.dp, top = 16.dp, end = 16.dp, bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            Image(
+                modifier = Modifier.size(90.dp),
+                painter = painterResource(id = imageId),
+                contentDescription = null,
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Image(
-                    modifier = Modifier.size(90.dp),
-                    painter = painterResource(id = imageId),
-                    contentDescription = null,
+                Text(
+                    text = title,
+                    color = FirefoxTheme.colors.textPrimary,
+                    style = FirefoxTheme.typography.headline7,
                 )
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = title,
-                        color = FirefoxTheme.colors.textPrimary,
-                        style = FirefoxTheme.typography.headline7,
-                    )
-
-                    Text(
-                        text = description,
-                        color = FirefoxTheme.colors.textPrimary,
-                        style = FirefoxTheme.typography.body2,
-                    )
-                }
+                Text(
+                    text = description,
+                    color = FirefoxTheme.colors.textPrimary,
+                    style = FirefoxTheme.typography.body2,
+                )
             }
         }
     }
@@ -241,15 +273,11 @@ private fun WebsitePermissionsMenuGroup(
     onAutoplayValueClick: (AutoplayValue) -> Unit,
     onToggleablePermissionClick: (WebsitePermission.Toggleable) -> Unit,
 ) {
-    MenuGroup {
+    Column {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    color = FirefoxTheme.colors.layer3,
-                )
+            modifier = Modifier.fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
+        ) {
             Text(
                 text = stringResource(id = R.string.protection_panel_permissions_title),
                 color = FirefoxTheme.colors.textAccent,
@@ -257,19 +285,49 @@ private fun WebsitePermissionsMenuGroup(
             )
         }
 
-        websitePermissions.forEachIndexed { index, websitePermission ->
-            MenuItem(
-                label = stringResource(id = websitePermission.deviceFeature.getLabelId()),
-                beforeIconPainter = painterResource(id = websitePermission.deviceFeature.getIconId()),
-                afterContent = when (websitePermission) {
+        MenuGroup {
+            websitePermissions.forEachIndexed { index, websitePermission ->
+                val stateDescription: String = when (websitePermission) {
                     is WebsitePermission.Autoplay -> {
-                        { AutoplayDropdownMenu(websitePermission, onAutoplayValueClick) }
+                        AutoplayValue.entries.find { it == websitePermission.autoplayValue }?.title?.let {
+                            stringResource(
+                                it,
+                            )
+                        } ?: ""
                     }
+
                     is WebsitePermission.Toggleable -> {
-                        { WebsitePermissionToggle(websitePermission, onToggleablePermissionClick) }
+                         if (websitePermission.isBlockedByAndroid) {
+                            stringResource(id = R.string.phone_feature_blocked_by_android)
+                        } else if (websitePermission.isEnabled) {
+                            stringResource(id = R.string.preference_option_phone_feature_allowed)
+                        } else {
+                            stringResource(id = R.string.preference_option_phone_feature_blocked)
+                        }
                     }
-                },
-            )
+                }
+
+                MenuItem(
+                    label = stringResource(id = websitePermission.deviceFeature.getLabelId()),
+                    beforeIconPainter = painterResource(id = websitePermission.deviceFeature.getIconId()),
+                    stateDescription = stateDescription,
+                    afterContent = when (websitePermission) {
+                        is WebsitePermission.Autoplay -> {
+                            { AutoplayDropdownMenu(websitePermission, onAutoplayValueClick) }
+                        }
+
+                        is WebsitePermission.Toggleable -> {
+                            {
+                                WebsitePermissionToggle(
+                                    websitePermission,
+                                    stateDescription,
+                                    onToggleablePermissionClick,
+                                )
+                            }
+                        }
+                    },
+                )
+            }
         }
     }
 }
@@ -277,16 +335,9 @@ private fun WebsitePermissionsMenuGroup(
 @Composable
 private fun WebsitePermissionToggle(
     websitePermission: WebsitePermission.Toggleable,
+    toggleLabel: String,
     onToggleablePermissionClick: (WebsitePermission.Toggleable) -> Unit,
 ) {
-    val toggleLabel = if (websitePermission.isBlockedByAndroid) {
-        stringResource(id = R.string.phone_feature_blocked_by_android)
-    } else if (websitePermission.isEnabled) {
-        stringResource(id = R.string.preference_option_phone_feature_allowed)
-    } else {
-        stringResource(id = R.string.preference_option_phone_feature_blocked)
-    }
-
     Column(
         modifier = Modifier
             .clickable { onToggleablePermissionClick(websitePermission) }
@@ -294,7 +345,10 @@ private fun WebsitePermissionToggle(
     ) {
         Text(
             text = toggleLabel,
+            modifier = Modifier.fillMaxWidth(DROPDOWN_TEXT_WIDTH_FRACTION),
             color = FirefoxTheme.colors.textAccent,
+            textAlign = TextAlign.End,
+            maxLines = 2,
             style = FirefoxTheme.typography.body1,
         )
     }
@@ -329,7 +383,10 @@ private fun AutoplayDropdownMenu(
         ) {
             Text(
                 text = placeholderText,
+                modifier = Modifier.fillMaxWidth(DROPDOWN_TEXT_WIDTH_FRACTION),
                 color = FirefoxTheme.colors.textAccent,
+                textAlign = TextAlign.End,
+                maxLines = 2,
                 style = FirefoxTheme.typography.body1,
             )
 
@@ -337,7 +394,7 @@ private fun AutoplayDropdownMenu(
 
             Box {
                 Icon(
-                    painter = painterResource(id = R.drawable.mozac_ic_dropdown_arrow),
+                    painter = painterResource(id = iconsR.drawable.mozac_ic_dropdown_arrow),
                     contentDescription = null,
                     tint = FirefoxTheme.colors.iconAccentViolet,
                 )
@@ -377,6 +434,7 @@ private fun ProtectionPanelPreview() {
                     certificateName = "",
                 ),
                 isTrackingProtectionEnabled = true,
+                isLocalPdf = false,
                 numberOfTrackersBlocked = 5,
                 websitePermissions = listOf(
                     WebsitePermission.Autoplay(
@@ -388,7 +446,6 @@ private fun ProtectionPanelPreview() {
                 onTrackerBlockedMenuClick = {},
                 onTrackingProtectionToggleClick = {},
                 onClearSiteDataMenuClick = {},
-                onConnectionSecurityClick = {},
                 onPrivacySecuritySettingsClick = {},
                 onAutoplayValueClick = {},
                 onToggleablePermissionClick = {},

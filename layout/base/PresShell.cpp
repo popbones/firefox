@@ -13,12 +13,21 @@
 #include "AnchorPositioningUtils.h"
 #include "AutoProfilerStyleMarker.h"
 #include "ChildIterator.h"
+#include "MobileViewportManager.h"
+#include "OverflowChangedTracker.h"
+#include "PLDHashTable.h"
+#include "PositionedEventTargeting.h"
+#include "ScrollSnap.h"
+#include "StickyScrollContainer.h"
+#include "Units.h"
+#include "VisualViewport.h"
+#include "XULTreeElement.h"
+#include "ZoomConstraintsClient.h"
 #include "gfxContext.h"
 #include "gfxPlatform.h"
 #include "gfxUserFontSet.h"
 #include "gfxUtils.h"
 #include "js/GCAPI.h"
-#include "MobileViewportManager.h"
 #include "mozilla/AccessibleCaretEventHub.h"
 #include "mozilla/AnimationEventDispatcher.h"
 #include "mozilla/ArrayUtils.h"
@@ -27,59 +36,17 @@
 #include "mozilla/CaretAssociationHint.h"
 #include "mozilla/ConnectedAncestorTracker.h"
 #include "mozilla/ContentIterator.h"
-#include "mozilla/css/ImageLoader.h"
 #include "mozilla/DisplayPortUtils.h"
-#include "mozilla/dom/AncestorIterator.h"
-#include "mozilla/dom/BrowserBridgeChild.h"
-#include "mozilla/dom/BrowserChild.h"
-#include "mozilla/dom/BrowsingContext.h"
-#include "mozilla/dom/CanonicalBrowsingContext.h"
-#include "mozilla/dom/ContentChild.h"
-#include "mozilla/dom/ContentParent.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/dom/DocumentTimeline.h"
-#include "mozilla/dom/DOMIntersectionObserver.h"
-#include "mozilla/dom/Element.h"
-#include "mozilla/dom/ElementBinding.h"
-#include "mozilla/dom/ElementInlines.h"
-#include "mozilla/dom/FontFaceSet.h"
-#include "mozilla/dom/FragmentDirective.h"
-#include "mozilla/dom/HTMLAreaElement.h"
-#include "mozilla/dom/LargestContentfulPaint.h"
-#include "mozilla/dom/MouseEventBinding.h"
-#include "mozilla/dom/Performance.h"
-#include "mozilla/dom/PerformanceMainThread.h"
-#include "mozilla/dom/PointerEventBinding.h"
-#include "mozilla/dom/PointerEventHandler.h"
-#include "mozilla/dom/PopupBlocker.h"
-#include "mozilla/dom/ScriptSettings.h"
-#include "mozilla/dom/Selection.h"
-#include "mozilla/dom/ShadowIncludingTreeIterator.h"
-#include "mozilla/dom/SVGAnimationElement.h"
-#include "mozilla/dom/Touch.h"
-#include "mozilla/dom/TouchEvent.h"
-#include "mozilla/dom/UserActivation.h"
 #include "mozilla/EditorBase.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/EventDispatcher.h"
 #include "mozilla/EventForwards.h"
 #include "mozilla/EventStateManager.h"
 #include "mozilla/GeckoMVMContext.h"
-#include "mozilla/gfx/2D.h"
-#include "mozilla/gfx/Types.h"
 #include "mozilla/GlobalStyleSheetCache.h"
 #include "mozilla/IMEStateManager.h"
 #include "mozilla/InputTaskManager.h"
 #include "mozilla/IntegerRange.h"
-#include "mozilla/layers/APZPublicUtils.h"
-#include "mozilla/layers/CompositorBridgeChild.h"
-#include "mozilla/layers/FocusTarget.h"
-#include "mozilla/layers/InputAPZContext.h"
-#include "mozilla/layers/ScrollingInteractionContext.h"
-#include "mozilla/layers/WebRenderLayerManager.h"
-#include "mozilla/layers/WebRenderUserData.h"
-#include "mozilla/layout/ScrollAnchorContainer.h"
 #include "mozilla/Likely.h"
 #include "mozilla/Logging.h"
 #include "mozilla/MemoryReporting.h"
@@ -93,13 +60,15 @@
 #include "mozilla/RangeUtils.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/RestyleManager.h"
+#include "mozilla/SMILAnimationController.h"
+#include "mozilla/SVGFragmentIdentifier.h"
+#include "mozilla/SVGObserverUtils.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/ScrollContainerFrame.h"
 #include "mozilla/ScrollTimelineAnimationTracker.h"
 #include "mozilla/ScrollTypes.h"
 #include "mozilla/ServoBindings.h"
 #include "mozilla/ServoStyleSet.h"
-#include "mozilla/SMILAnimationController.h"
 #include "mozilla/Sprintf.h"
 #include "mozilla/StaticAnalysisFunctions.h"
 #include "mozilla/StaticPrefs_apz.h"
@@ -111,10 +80,6 @@
 #include "mozilla/StaticPrefs_toolkit.h"
 #include "mozilla/StyleSheet.h"
 #include "mozilla/StyleSheetInlines.h"
-#include "mozilla/SVGFragmentIdentifier.h"
-#include "mozilla/SVGObserverUtils.h"
-#include "mozilla/glean/GfxMetrics.h"
-#include "mozilla/glean/LayoutMetrics.h"
 #include "mozilla/Telemetry.h"
 #include "mozilla/TextComposition.h"
 #include "mozilla/TextEvents.h"
@@ -125,21 +90,65 @@
 #include "mozilla/Unused.h"
 #include "mozilla/ViewportFrame.h"
 #include "mozilla/ViewportUtils.h"
+#include "mozilla/css/ImageLoader.h"
+#include "mozilla/dom/AncestorIterator.h"
+#include "mozilla/dom/BrowserBridgeChild.h"
+#include "mozilla/dom/BrowserChild.h"
+#include "mozilla/dom/BrowsingContext.h"
+#include "mozilla/dom/CanonicalBrowsingContext.h"
+#include "mozilla/dom/ContentChild.h"
+#include "mozilla/dom/ContentParent.h"
+#include "mozilla/dom/DOMIntersectionObserver.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
+#include "mozilla/dom/DocumentTimeline.h"
+#include "mozilla/dom/Element.h"
+#include "mozilla/dom/ElementBinding.h"
+#include "mozilla/dom/ElementInlines.h"
+#include "mozilla/dom/FontFaceSet.h"
+#include "mozilla/dom/FragmentDirective.h"
+#include "mozilla/dom/HTMLAreaElement.h"
+#include "mozilla/dom/LargestContentfulPaint.h"
+#include "mozilla/dom/MouseEventBinding.h"
+#include "mozilla/dom/Performance.h"
+#include "mozilla/dom/PerformanceMainThread.h"
+#include "mozilla/dom/PointerEventBinding.h"
+#include "mozilla/dom/PointerEventHandler.h"
+#include "mozilla/dom/PopupBlocker.h"
+#include "mozilla/dom/SVGAnimationElement.h"
+#include "mozilla/dom/ScriptSettings.h"
+#include "mozilla/dom/Selection.h"
+#include "mozilla/dom/ShadowIncludingTreeIterator.h"
+#include "mozilla/dom/Touch.h"
+#include "mozilla/dom/TouchEvent.h"
+#include "mozilla/dom/UserActivation.h"
+#include "mozilla/gfx/2D.h"
+#include "mozilla/gfx/Types.h"
+#include "mozilla/glean/GfxMetrics.h"
+#include "mozilla/glean/LayoutMetrics.h"
+#include "mozilla/layers/APZPublicUtils.h"
+#include "mozilla/layers/CompositorBridgeChild.h"
+#include "mozilla/layers/FocusTarget.h"
+#include "mozilla/layers/InputAPZContext.h"
+#include "mozilla/layers/ScrollingInteractionContext.h"
+#include "mozilla/layers/WebRenderLayerManager.h"
+#include "mozilla/layers/WebRenderUserData.h"
+#include "mozilla/layout/ScrollAnchorContainer.h"
 #include "nsAnimationManager.h"
 #include "nsAutoLayoutPhase.h"
-#include "nsCanvasFrame.h"
-#include "nsCaret.h"
-#include "nsClassHashtable.h"
 #include "nsCOMArray.h"
 #include "nsCOMPtr.h"
-#include "nsContainerFrame.h"
-#include "nsContentList.h"
 #include "nsCRTGlue.h"
 #include "nsCSSFrameConstructor.h"
 #include "nsCSSRendering.h"
+#include "nsCanvasFrame.h"
+#include "nsCaret.h"
+#include "nsClassHashtable.h"
+#include "nsContainerFrame.h"
+#include "nsContentList.h"
+#include "nsDOMNavigationTiming.h"
 #include "nsDisplayList.h"
 #include "nsDocShell.h"  // for reflow observation
-#include "nsDOMNavigationTiming.h"
 #include "nsError.h"
 #include "nsFlexContainerFrame.h"
 #include "nsFocusManager.h"
@@ -149,30 +158,30 @@
 #include "nsHashKeys.h"
 #include "nsIBaseWindow.h"
 #include "nsIContent.h"
-#include "nsIDocShellTreeItem.h"
-#include "nsIDocShellTreeOwner.h"
 #include "nsIDOMXULMenuListElement.h"
 #include "nsIDOMXULMultSelectCntrlEl.h"
 #include "nsIDOMXULSelectCntrlItemEl.h"
+#include "nsIDocShellTreeItem.h"
+#include "nsIDocShellTreeOwner.h"
 #include "nsIDragSession.h"
 #include "nsIFrame.h"
 #include "nsIFrameInlines.h"
 #include "nsILayoutHistoryState.h"
 #include "nsILineIterator.h"  // for ScrollContentIntoView
-#include "nsImageFrame.h"
+#include "nsIMutationObserver.h"
 #include "nsIObserverService.h"
 #include "nsIReflowCallback.h"
 #include "nsIScreen.h"
 #include "nsIScreenManager.h"
 #include "nsITimer.h"
 #include "nsIURI.h"
+#include "nsImageFrame.h"
 #include "nsLayoutUtils.h"
 #include "nsMenuPopupFrame.h"
 #include "nsNameSpaceManager.h"  // for Pref-related rule management (bugs 22963,20760,31816)
 #include "nsNetUtil.h"
-#include "nsNetUtil.h"
-#include "nsPageSequenceFrame.h"
 #include "nsPIDOMWindow.h"
+#include "nsPageSequenceFrame.h"
 #include "nsPlaceholderFrame.h"
 #include "nsPresContext.h"
 #include "nsQueryObject.h"
@@ -194,17 +203,8 @@
 #include "nsWindowSizes.h"
 #include "nsXPCOM.h"
 #include "nsXULElement.h"
-#include "OverflowChangedTracker.h"
-#include "PLDHashTable.h"
-#include "PositionedEventTargeting.h"
 #include "prenv.h"
 #include "prinrval.h"
-#include "ScrollSnap.h"
-#include "StickyScrollContainer.h"
-#include "Units.h"
-#include "VisualViewport.h"
-#include "XULTreeElement.h"
-#include "ZoomConstraintsClient.h"
 
 #ifdef XP_WIN
 #  include "winuser.h"
@@ -1156,7 +1156,7 @@ void PresShell::Destroy() {
   NS_ASSERTION(!nsContentUtils::IsSafeToRunScript(),
                "destroy called on presshell while scripts not blocked");
 
-  [[maybe_unused]] nsIURI* uri = mDocument->GetDocumentURI();
+  nsIURI* uri = mDocument->GetDocumentURI();
   AUTO_PROFILER_LABEL_DYNAMIC_NSCSTRING_RELEVANT_FOR_JS(
       "Layout tree destruction", LAYOUT_Destroy,
       uri ? uri->GetSpecOrDefault() : "N/A"_ns);
@@ -1727,7 +1727,7 @@ void PresShell::InitPaintSuppressionTimer() {
         self->UnsuppressPainting();
       },
       this, delay, nsITimer::TYPE_ONE_SHOT,
-      "PresShell::sPaintSuppressionCallback");
+      "PresShell::sPaintSuppressionCallback"_ns);
 }
 
 nsresult PresShell::Initialize() {
@@ -3231,12 +3231,9 @@ nsresult PresShell::GoToAnchor(const nsAString& aAnchorName,
   }
 
   if (target) {
-    // 3.4 Run the ancestor details revealing algorithm on target.
-    target->RevealAncestorClosedDetails();
-    // 3.5 Run the ancestor hidden-until-found revealing algorithm on target.
-    // https://html.spec.whatwg.org/#ancestor-hidden-until-found-revealing-algorithm
+    // 3.4 Run the ancestor revealing algorithm on target.
     ErrorResult rv;
-    target->RevealAncestorHiddenUntilFoundAndFireBeforematchEvent(rv);
+    target->AncestorRevealingAlgorithm(rv);
     if (MOZ_UNLIKELY(rv.Failed())) {
       return rv.StealNSResult();
     }
@@ -4753,7 +4750,7 @@ void PresShell::DocumentStatesChanged(DocumentState aStateMask) {
 
 MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::AttributeWillChange(
     Element* aElement, int32_t aNameSpaceID, nsAtom* aAttribute,
-    int32_t aModType) {
+    AttrModType aModType) {
   MOZ_ASSERT(!nsContentUtils::IsSafeToRunScript());
   MOZ_ASSERT(!mIsDocumentGone, "Unexpected AttributeWillChange");
   MOZ_ASSERT(aElement->OwnerDoc() == mDocument, "Unexpected document");
@@ -4770,7 +4767,7 @@ MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::AttributeWillChange(
 
 MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::AttributeChanged(
     Element* aElement, int32_t aNameSpaceID, nsAtom* aAttribute,
-    int32_t aModType, const nsAttrValue* aOldValue) {
+    AttrModType aModType, const nsAttrValue* aOldValue) {
   MOZ_ASSERT(!nsContentUtils::IsSafeToRunScript());
   MOZ_ASSERT(!mIsDocumentGone, "Unexpected AttributeChanged");
   MOZ_ASSERT(aElement->OwnerDoc() == mDocument, "Unexpected document");
@@ -4785,8 +4782,28 @@ MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::AttributeChanged(
   }
 }
 
+static void MaybeDestroyFramesAndStyles(nsIContent* aContent,
+                                        nsPresContext& aPresContext) {
+  if (!aContent->IsElement()) {
+    return;
+  }
+
+  Element* element = aContent->AsElement();
+  if (!element->HasServoData()) {
+    return;
+  }
+
+  Element* parent =
+      Element::FromNodeOrNull(element->GetFlattenedTreeParentNode());
+  if (!parent || !parent->HasServoData() ||
+      Servo_Element_IsDisplayNone(parent)) {
+    DestroyFramesAndStyleDataFor(element, aPresContext,
+                                 RestyleManager::IncludeRoot::Yes);
+  }
+}
+
 MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::ContentAppended(
-    nsIContent* aFirstNewContent, const ContentAppendInfo&) {
+    nsIContent* aFirstNewContent, const ContentAppendInfo& aInfo) {
   MOZ_ASSERT(!nsContentUtils::IsSafeToRunScript());
   MOZ_ASSERT(!mIsDocumentGone, "Unexpected ContentAppended");
   MOZ_ASSERT(aFirstNewContent->OwnerDoc() == mDocument, "Unexpected document");
@@ -4801,6 +4818,12 @@ MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::ContentAppended(
     return;
   }
 
+  mPresContext->EventStateManager()->ContentAppended(aFirstNewContent, aInfo);
+
+  if (aInfo.mOldParent) {
+    MaybeDestroyFramesAndStyles(aFirstNewContent, *mPresContext);
+  }
+
   nsAutoCauseReflowNotifier crNotifier(this);
 
   // Call this here so it only happens for real content mutations and
@@ -4813,13 +4836,19 @@ MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::ContentAppended(
 }
 
 MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::ContentInserted(
-    nsIContent* aChild, const ContentInsertInfo&) {
+    nsIContent* aChild, const ContentInsertInfo& aInfo) {
   MOZ_ASSERT(!nsContentUtils::IsSafeToRunScript());
   MOZ_ASSERT(!mIsDocumentGone, "Unexpected ContentInserted");
   MOZ_ASSERT(aChild->OwnerDoc() == mDocument, "Unexpected document");
 
   if (!mDidInitialize) {
     return;
+  }
+
+  mPresContext->EventStateManager()->ContentInserted(aChild, aInfo);
+
+  if (aInfo.mOldParent) {
+    MaybeDestroyFramesAndStyles(aChild, *mPresContext);
   }
 
   nsAutoCauseReflowNotifier crNotifier(this);
@@ -4834,14 +4863,14 @@ MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::ContentInserted(
 }
 
 MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::ContentWillBeRemoved(
-    nsIContent* aChild, const ContentRemoveInfo&) {
+    nsIContent* aChild, const ContentRemoveInfo& aInfo) {
   MOZ_ASSERT(!nsContentUtils::IsSafeToRunScript());
   MOZ_ASSERT(!mIsDocumentGone, "Unexpected ContentRemoved");
   MOZ_ASSERT(aChild->OwnerDoc() == mDocument, "Unexpected document");
   // Notify the ESM that the content has been removed, so that
   // it can clean up any state related to the content.
 
-  mPresContext->EventStateManager()->ContentRemoved(mDocument, aChild);
+  mPresContext->EventStateManager()->ContentRemoved(mDocument, aChild, aInfo);
 
   nsAutoCauseReflowNotifier crNotifier(this);
 
@@ -4849,6 +4878,15 @@ MOZ_CAN_RUN_SCRIPT_BOUNDARY void PresShell::ContentWillBeRemoved(
        tracker; tracker = tracker->mPreviousTracker) {
     if (tracker->ConnectedNode().IsInclusiveFlatTreeDescendantOf(aChild)) {
       tracker->mConnectedAncestor = aChild->GetFlattenedTreeParentElement();
+    }
+  }
+
+  if (aInfo.mNewParent && aChild->IsElement()) {
+    if (aInfo.mNewParent->IsElement() &&
+        aInfo.mNewParent->AsElement()->HasServoData() &&
+        !Servo_Element_IsDisplayNone(aInfo.mNewParent->AsElement())) {
+      DestroyFramesForAndRestyle(aChild->AsElement());
+      return;
     }
   }
 
@@ -5254,9 +5292,9 @@ UniquePtr<RangePaintInfo> PresShell::CreateRangePaintInfo(
         rootScrollContainerFrame->GetContent());
 
     nsDisplayList wrapped(&info->mBuilder);
-    wrapped.AppendNewToTop<nsDisplayAsyncZoom>(&info->mBuilder,
-                                               rootScrollContainerFrame,
-                                               &info->mList, nullptr, zoomedId);
+    wrapped.AppendNewToTop<nsDisplayAsyncZoom>(
+        &info->mBuilder, rootScrollContainerFrame, &info->mList, nullptr,
+        nsDisplayItem::ContainerASRType::Constant, zoomedId);
     info->mList.AppendToTop(&wrapped);
   }
 
@@ -5882,7 +5920,7 @@ void PresShell::SynthesizeMouseMove(bool aFromScroll) {
     return;
   }
 
-  if (mLastMousePointerId.isNothing() && !mPointerIds.IsEmpty()) {
+  if (mLastMousePointerId.isNothing() && mPointerIds.IsEmpty()) {
     return;
   }
 
@@ -6094,11 +6132,15 @@ void PresShell::ProcessSynthMouseOrPointerMoveEvent(
   NS_ASSERTION(IsRoot(), "Only a root pres shell should be here");
 
 #ifdef DEBUG
-  if (aMoveMessage == eMouseMove) {
-    MOZ_LOG(PointerEventHandler::MouseLocationLogRef(), LogLevel::Info,
-            ("[ps=%p]synthesizing %s to (%d,%d)\n", this, ToChar(aMoveMessage),
-             aPointerInfo.mLastRefPointInRootDoc.x,
-             aPointerInfo.mLastRefPointInRootDoc.y));
+  if (aMoveMessage == eMouseMove || aMoveMessage == ePointerMove) {
+    MOZ_LOG(aMoveMessage == eMouseMove
+                ? PointerEventHandler::MouseLocationLogRef()
+                : PointerEventHandler::PointerLocationLogRef(),
+            LogLevel::Info,
+            ("[ps=%p]synthesizing %s to (%d,%d) (pointerId=%u, source=%s)\n",
+             this, ToChar(aMoveMessage), aPointerInfo.mLastRefPointInRootDoc.x,
+             aPointerInfo.mLastRefPointInRootDoc.y, aPointerId,
+             InputSourceToString(aPointerInfo.mInputSource).get()));
   }
 #endif
 
@@ -6173,12 +6215,14 @@ void PresShell::ProcessSynthMouseOrPointerMoveEvent(
   if (aMoveMessage == eMouseMove) {
     mouseMoveEvent.emplace(true, eMouseMove, view->GetWidget(),
                            WidgetMouseEvent::eSynthesized);
+    mouseMoveEvent->mButton = MouseButton::ePrimary;
     // We don't want to dispatch preceding pointer event since the caller
     // should've already been dispatched it.  However, if the target is an OOP
     // iframe, we'll set this to true again below.
     mouseMoveEvent->convertToPointer = false;
   } else {
     pointerMoveEvent.emplace(true, ePointerMove, view->GetWidget());
+    pointerMoveEvent->mButton = MouseButton::eNotPressed;
     pointerMoveEvent->mReason = WidgetMouseEvent::eSynthesized;
   }
   WidgetMouseEvent& event =
@@ -6309,8 +6353,24 @@ void PresShell::ClearApproximatelyVisibleFramesList(
   mApproximatelyVisibleFrames.Clear();
 }
 
+// aRect is relative to aFrame
+// aPreserve3DRect is set upon entering a preserve3d context and it doesn't
+// change, it stays relative to the root frame in the preserve3d context. Any
+// frame that is in a preserve3d context ignores aRect but takes aPreserve3DRect
+// and transforms it from the root of the preserve3d context to itself
+// (nsDisplayTransform::UntransformRect does this by default), and passes the
+// result down as aRect (leaving aPreserve3DRect untouched). Additionally, we
+// descend into every frame inside the preserve3d context (we skip the rect
+// intersection test). Any frame that is not in a preserve3d context just uses
+// aRect and doesn't need to know about any of this, even if it's parent frame
+// is in the preserve3d context. Any frame that is extend3d (ie has preserve3d
+// transform style) but not combines3d (ie its either transformed or backface
+// visibility hidden and its parent has preserve3d style) forms the root of a
+// preserve3d context. And any frame that is combines3d is in a preserve3d
+// context.
 void PresShell::MarkFramesInSubtreeApproximatelyVisible(
-    nsIFrame* aFrame, const nsRect& aRect, bool aRemoveOnly /* = false */) {
+    nsIFrame* aFrame, const nsRect& aRect, const nsRect& aPreserve3DRect,
+    bool aRemoveOnly /* = false */) {
   MOZ_DIAGNOSTIC_ASSERT(aFrame, "aFrame arg should be a valid frame pointer");
   MOZ_ASSERT(aFrame->PresShell() == this, "wrong presshell");
 
@@ -6384,8 +6444,6 @@ void PresShell::MarkFramesInSubtreeApproximatelyVisible(
     rect = scrollFrame->ExpandRectToNearlyVisible(rect);
   }
 
-  bool preserves3DChildren = aFrame->Extend3DContext();
-
   for (const auto& [list, listID] : aFrame->ChildLists()) {
     for (nsIFrame* child : list) {
       // Note: This assert should be trivially satisfied, just by virtue of how
@@ -6393,25 +6451,38 @@ void PresShell::MarkFramesInSubtreeApproximatelyVisible(
       // sentinel which should terminate the loop).  But we do somehow get
       // crash reports inside this loop that suggest `child` is null...
       MOZ_DIAGNOSTIC_ASSERT(child, "shouldn't have null values in child lists");
+
+      const bool extend3DContext = child->Extend3DContext();
+      const bool combines3DTransformWithAncestors =
+          (extend3DContext || child->IsTransformed()) &&
+          child->Combines3DTransformWithAncestors();
+
       nsRect r = rect - child->GetPosition();
-      if (!r.IntersectRect(r, child->InkOverflowRect())) {
-        continue;
-      }
-      if (child->IsTransformed()) {
-        // for children of a preserve3d element we just pass down the same dirty
-        // rect
-        if (!preserves3DChildren ||
-            !child->Combines3DTransformWithAncestors()) {
-          const nsRect overflow = child->InkOverflowRectRelativeToSelf();
-          nsRect out;
-          if (nsDisplayTransform::UntransformRect(r, overflow, child, &out)) {
-            r = out;
-          } else {
-            r.SetEmpty();
-          }
+      if (!combines3DTransformWithAncestors) {
+        if (!r.IntersectRect(r, child->InkOverflowRect())) {
+          continue;
         }
       }
-      MarkFramesInSubtreeApproximatelyVisible(child, r, aRemoveOnly);
+
+      nsRect newPreserve3DRect = aPreserve3DRect;
+      if (extend3DContext && !combines3DTransformWithAncestors) {
+        newPreserve3DRect = r;
+      }
+
+      if (child->IsTransformed()) {
+        if (combines3DTransformWithAncestors) {
+          r = newPreserve3DRect;
+        }
+        const nsRect overflow = child->InkOverflowRectRelativeToSelf();
+        nsRect out;
+        if (nsDisplayTransform::UntransformRect(r, overflow, child, &out)) {
+          r = out;
+        } else {
+          r.SetEmpty();
+        }
+      }
+      MarkFramesInSubtreeApproximatelyVisible(child, r, newPreserve3DRect,
+                                              aRemoveOnly);
     }
   }
 }
@@ -6452,7 +6523,7 @@ void PresShell::RebuildApproximateFrameVisibility(
     vis = vis.Intersect(visibleRect.valueOr(nsRect()));
   }
 
-  MarkFramesInSubtreeApproximatelyVisible(rootFrame, vis, aRemoveOnly);
+  MarkFramesInSubtreeApproximatelyVisible(rootFrame, vis, vis, aRemoveOnly);
 
   DecApproximateVisibleCount(oldApproximatelyVisibleFrames);
 }
@@ -7619,6 +7690,15 @@ nsresult PresShell::EnsurePrecedingPointerRawUpdate(
     WidgetMouseEvent mouseRawUpdateEvent(*mouseEvent);
     mouseRawUpdateEvent.mMessage = eMouseRawUpdate;
     mouseRawUpdateEvent.mCoalescedWidgetEvents = nullptr;
+    // PointerEvent.button of `pointerrawupdate` should always be -1 if the
+    // source event is not eMouseDown nor eMouseUp.  PointerEventHandler cannot
+    // distinguish whether eMouseRawUpdate is caused by eMouseDown/eMouseUp or
+    // not.  Therefore, we need to set the proper value in the latter case here
+    // (In the former case, the copy constructor did it already).
+    if (mouseEvent->mMessage != eMouseDown &&
+        mouseEvent->mMessage != eMouseUp) {
+      mouseRawUpdateEvent.mButton = MouseButton::eNotPressed;
+    }
     nsEventStatus rawUpdateStatus = nsEventStatus_eIgnore;
     EventHandler eventHandler(*this);
     return eventHandler.HandleEvent(aWeakFrameForPresShell,
@@ -10701,7 +10781,7 @@ DOMHighResTimeStamp PresShell::GetPerformanceNowUnclamped() {
 
 bool PresShell::DoReflow(nsIFrame* target, bool aInterruptible,
                          OverflowChangedTracker* aOverflowTracker) {
-  [[maybe_unused]] nsIURI* uri = mDocument->GetDocumentURI();
+  nsIURI* uri = mDocument->GetDocumentURI();
   AUTO_PROFILER_LABEL_DYNAMIC_NSCSTRING_RELEVANT_FOR_JS(
       "Reflow", LAYOUT_Reflow, uri ? uri->GetSpecOrDefault() : "N/A"_ns);
 
@@ -11982,15 +12062,17 @@ nsIFrame* PresShell::GetAbsoluteContainingBlock(nsIFrame* aFrame) {
 nsIFrame* PresShell::GetAnchorPosAnchor(
     const nsAtom* aName, const nsIFrame* aPositionedFrame) const {
   MOZ_ASSERT(aName);
+  MOZ_ASSERT(mLazyAnchorPosAnchorChanges.IsEmpty());
   if (const auto& entry = mAnchorPosAnchors.Lookup(aName)) {
-    return AnchorPositioningUtils::FindFirstAcceptableAnchor(aPositionedFrame,
-                                                             entry.Data());
+    return AnchorPositioningUtils::FindFirstAcceptableAnchor(
+        aName, aPositionedFrame, entry.Data());
   }
 
   return nullptr;
 }
 
-void PresShell::AddAnchorPosAnchor(const nsAtom* aName, nsIFrame* aFrame) {
+template <bool AreWeMerging>
+void PresShell::AddAnchorPosAnchorImpl(const nsAtom* aName, nsIFrame* aFrame) {
   MOZ_ASSERT(aName);
 
   auto& entry = mAnchorPosAnchors.LookupOrInsertWith(
@@ -12005,7 +12087,7 @@ void PresShell::AddAnchorPosAnchor(const nsAtom* aName, nsIFrame* aFrame) {
     nsIFrame* mFrame;
 
     int32_t operator()(nsIFrame* aOther) const {
-      return nsLayoutUtils::CompareTreePosition(aOther, mFrame, nullptr);
+      return nsLayoutUtils::CompareTreePosition(mFrame, aOther, nullptr);
     }
   };
 
@@ -12015,15 +12097,49 @@ void PresShell::AddAnchorPosAnchor(const nsAtom* aName, nsIFrame* aFrame) {
   // If the same element is already in the array,
   // someone forgot to call RemoveAnchorPosAnchor.
   if (BinarySearchIf(entry, 0, entry.Length(), cmp, &matchOrInsertionIdx)) {
-    MOZ_ASSERT_UNREACHABLE("Anchor added already");
+    if (entry.ElementAt(matchOrInsertionIdx) == aFrame) {
+      // nsLayoutUtils::CompareTreePosition() returns 0 when the frames are
+      // in different documents or child lists. This indicates that
+      // the tree is being restructured and we can defer anchor insertion
+      // to a MergeAnchorPosAnchors call after the restructuring is complete.
+      MOZ_ASSERT_UNREACHABLE("Attempt to insert a frame twice was made");
+      return;
+    }
+    MOZ_ASSERT(!entry.Contains(aFrame));
+
+    if constexpr (AreWeMerging) {
+      MOZ_ASSERT_UNREACHABLE(
+          "A frame may not be in a different child list at merge time");
+    } else {
+      // nsLayoutUtils::CompareTreePosition() returns 0 when the frames are
+      // in different documents or child lists. This indicates that
+      // the tree is being restructured and we can defer anchor insertion
+      // to a MergeAnchorPosAnchors call after the restructuring is complete.
+      mLazyAnchorPosAnchorChanges.AppendElement(
+          AnchorPosAnchorChange{RefPtr<const nsAtom>(aName), aFrame});
+    }
+
     return;
   }
 
+  MOZ_ASSERT(!entry.Contains(aFrame));
   *entry.InsertElementAt(matchOrInsertionIdx) = aFrame;
+}
+
+void PresShell::AddAnchorPosAnchor(const nsAtom* aName, nsIFrame* aFrame) {
+  AddAnchorPosAnchorImpl</* AreWeMerging */ false>(aName, aFrame);
 }
 
 void PresShell::RemoveAnchorPosAnchor(const nsAtom* aName, nsIFrame* aFrame) {
   MOZ_ASSERT(aName);
+
+  if (!mLazyAnchorPosAnchorChanges.IsEmpty()) {
+    mLazyAnchorPosAnchorChanges.RemoveElementsBy(
+        [&](const AnchorPosAnchorChange& change) {
+          return change.mFrame == aFrame;
+        });
+  }
+
   auto entry = mAnchorPosAnchors.Lookup(aName);
   if (!entry) {
     return;  // Nothing to remove.
@@ -12038,6 +12154,248 @@ void PresShell::RemoveAnchorPosAnchor(const nsAtom* aName, nsIFrame* aFrame) {
   anchorArray.RemoveElement(aFrame);
   if (anchorArray.IsEmpty()) {
     entry.Remove();
+  }
+}
+
+void PresShell::MergeAnchorPosAnchorChanges() {
+  for (const auto& [name, frame] : mLazyAnchorPosAnchorChanges) {
+    AddAnchorPosAnchorImpl</* AreWeMerging */ true>(name, frame);
+  }
+
+  mLazyAnchorPosAnchorChanges.Clear();
+}
+
+static bool NeedReflowForAnchorPos(
+    const nsIFrame* aAnchor, const nsIFrame* aPositioned,
+    const Maybe<AnchorPosResolutionData>& aData) {
+  const bool validityChanged = (aAnchor && !aData) || (!aAnchor && aData);
+  if (validityChanged) {
+    return true;
+  }
+  if (!aData) {
+    // Was invalid, still invalid. No more consideration needed.
+    return false;
+  }
+  // Was valid, still valid Did the referenced value change?
+  if (!aAnchor) {
+    MOZ_ASSERT_UNREACHABLE("Anchor is supposed to be valid");
+    return false;
+  }
+  const auto& anchorReference = aData.ref();
+  const auto anchorSize = aAnchor->GetSize();
+  if (anchorReference.mSize != anchorSize) {
+    // Size changed, needs reflow.
+    return true;
+  }
+  if (!anchorReference.mOrigin) {
+    // Didn't resolve offsets, no need to reflow based on it.
+    return false;
+  }
+  const auto posInfo = AnchorPositioningUtils::GetAnchorPosRect(
+      aPositioned->GetParent(), aAnchor, true, nullptr);
+  MOZ_ASSERT(posInfo, "Can't resolve anchor rect?");
+  const auto newOrigin = posInfo.ref().mRect.TopLeft();
+  const auto& prevOrigin = anchorReference.mOrigin.ref();
+  // Did the offset change?
+  return newOrigin != prevOrigin;
+}
+
+PresShell::AnchorPosUpdateResult PresShell::UpdateAnchorPosLayout() {
+  if (mAnchorPosPositioned.IsEmpty()) {
+    return AnchorPosUpdateResult::NotApplicable;
+  }
+
+  // Flush the layout, so that positioned frames' anchor references are valid.
+  DoFlushLayout(/* aInterruptible = */ false);
+
+  auto result = AnchorPosUpdateResult::Flushed;
+  AUTO_PROFILER_MARKER_UNTYPED("UpdateAnchorPosLayout", LAYOUT, {});
+  for (auto* positioned : mAnchorPosPositioned) {
+    MOZ_ASSERT(positioned->IsAbsolutelyPositioned(),
+               "Anchor positioned frame is not absolutely positioned?");
+    const auto* referencedAnchors =
+        positioned->GetProperty(nsIFrame::AnchorPosReferences());
+    // Note that it's possible (Though unlikely) to register as anchor
+    // positioned but not actually make any anchor resolution - e.g.
+    // `position-anchor` is set, but no other anchor positioning property is
+    // used.
+    if (!referencedAnchors || referencedAnchors->IsEmpty()) {
+      continue;
+    }
+    if (positioned->HasAnyStateBits(NS_FRAME_IS_DIRTY)) {
+      // Already marked for reflow.
+      continue;
+    }
+    for (const auto& kv : *referencedAnchors) {
+      const auto& data = kv.GetData();
+      const auto& anchorName = kv.GetKey();
+      const auto* anchor = GetAnchorPosAnchor(anchorName, positioned);
+      if (NeedReflowForAnchorPos(anchor, positioned, data)) {
+        result = AnchorPosUpdateResult::NeedReflow;
+        // Abspos frames should not affect ancestor intrinsics.
+        FrameNeedsReflow(positioned, IntrinsicDirty::None,
+                         NS_FRAME_HAS_DIRTY_CHILDREN);
+      }
+    }
+  }
+  return result;
+}
+
+static ScrollContainerFrame* FindScrollContainerFrameOf(nsIFrame* aFrame) {
+  MOZ_ASSERT(aFrame, "NULL frame for FindScrollContainerFrameOf()");
+  auto* parent = aFrame->GetParent();
+  return nsLayoutUtils::GetNearestScrollContainerFrame(
+      parent, nsLayoutUtils::SCROLLABLE_SAME_DOC |
+                  nsLayoutUtils::SCROLLABLE_INCLUDE_HIDDEN);
+}
+
+static bool UnderScrollContainer(nsIFrame* aFrame,
+                                 ScrollContainerFrame* aScrollContainer) {
+  MOZ_ASSERT(aFrame);
+  MOZ_ASSERT(aScrollContainer);
+  return aFrame == aScrollContainer ||
+         nsLayoutUtils::IsProperAncestorFrame(aScrollContainer, aFrame);
+}
+
+void PresShell::UpdateAnchorPosLayoutForScroll(
+    ScrollContainerFrame* aScrollContainer) {
+  if (mAnchorPosAnchors.IsEmpty()) {
+    return;
+  }
+
+  AUTO_PROFILER_MARKER_UNTYPED("UpdateAnchorPosLayoutForScroll", LAYOUT, {});
+  // TODO(dshin, bug 1923401): What follows is a non-spec compliant
+  // implementation of scroll handling for anchor positioning. Specifically, it
+  // will compensate for any offset between anchor and all positioned elements,
+  // instead of compensating in axes anchoring to elements in the same scroller
+  // as the default anchor. As a result, positioned elements will resize to
+  // stay attached to all anchors. This needs to be adressed after we stop
+  // storing anchor offset that includes scroll offsets.
+  // TODO(dshin, bug 1987463): After bug 1923401, we still need this code path
+  // to update the scroll offset, so it's worth investigating further
+  // optimizations.
+  struct AffectedAnchor {
+    const nsIFrame* mFrame;
+    ScrollContainerFrame* mNearestScrollContainer;
+  };
+  struct AffectedAnchorGroup {
+    const nsAtom* mAnchorName;
+    nsTArray<AffectedAnchor> mFrames;
+  };
+  struct Comparator {
+    bool Equals(const AffectedAnchor& aEntry, const nsIFrame* aFrame) const {
+      return aEntry.mFrame == aFrame;
+    }
+  };
+
+  // First, find all anchors under this scroll container. Can look at positioned
+  // frames' anchor references first, but we want to avoid anchor lookups if we
+  // can.
+  nsTArray<AffectedAnchorGroup> affectedAnchors;
+  for (const auto& kv : mAnchorPosAnchors) {
+    const auto& anchorFrames = kv.GetData();
+    Maybe<nsTArray<AffectedAnchor>> affected;
+    for (const auto& frame : anchorFrames) {
+      auto* nearestScrollFrame = FindScrollContainerFrameOf(frame);
+      if (!nearestScrollFrame) {
+        // Fixed-pos anchor.
+        continue;
+      }
+      if (!UnderScrollContainer(nearestScrollFrame, aScrollContainer)) {
+        continue;
+      }
+      if (affected.isNothing()) {
+        affected = Some(nsTArray<AffectedAnchor>{anchorFrames.Length()});
+      }
+      affected.ref().AppendElement(AffectedAnchor{frame, nearestScrollFrame});
+    }
+    if (affected.isSome()) {
+      affectedAnchors.AppendElement(
+          AffectedAnchorGroup{kv.GetKey(), std::move(*affected)});
+    }
+  }
+
+  if (affectedAnchors.IsEmpty()) {
+    return;
+  }
+
+  // Now, find positioned frames that depend on anchors under the scroll frame.
+  for (auto* positioned : mAnchorPosPositioned) {
+    MOZ_ASSERT(positioned->IsAbsolutelyPositioned(),
+               "Anchor positioned frame is not absolutely positioned?");
+    if (positioned->HasAnyStateBits(NS_FRAME_IS_DIRTY)) {
+      // Already dirty? Skip.
+      continue;
+    }
+
+    const auto* stylePos = positioned->StylePosition();
+    if (!stylePos->mPositionAnchor.IsIdent()) {
+      // If it doesn't have a default anchor then it doesn't compensate for
+      // scroll.
+      continue;
+    }
+
+    const auto* referencedAnchors =
+        positioned->GetProperty(nsIFrame::AnchorPosReferences());
+    if (!referencedAnchors || referencedAnchors->IsEmpty()) {
+      // If it doesn't reference any anchors then it doesn't compensate for
+      // scroll.
+      continue;
+    }
+
+    const nsAtom* defaultAnchorName =
+        stylePos->mPositionAnchor.AsIdent().AsAtom();
+    // We might not need to do this GetAnchorPosAnchor call at all if none of
+    // the affected anchors are referenced by positioned below. We could
+    // improve this.
+    auto* defaultAnchorFrame =
+        GetAnchorPosAnchor(defaultAnchorName, positioned);
+    if (!defaultAnchorFrame) {
+      continue;
+    }
+    auto* nearestScrollToDefaultAnchor =
+        FindScrollContainerFrameOf(defaultAnchorFrame);
+
+    auto* absoluteContainingBlock = positioned->GetParent();
+
+    if (UnderScrollContainer(absoluteContainingBlock,
+                             nearestScrollToDefaultAnchor)) {
+      // If the positioned element's containing block is under the only possible
+      // anchor scroll container that it can scroll with, they'll scroll
+      // together without intervention, so skip the update.
+      continue;
+    }
+
+    for (const auto& entry : affectedAnchors) {
+      const auto* anchorName = entry.mAnchorName;
+      const auto& anchors = entry.mFrames;
+      const auto* data = referencedAnchors->Lookup(anchorName);
+      if (!data) {
+        continue;
+      }
+      const auto* anchorFrame =
+          anchorName == defaultAnchorName
+              ? defaultAnchorFrame
+              : GetAnchorPosAnchor(anchorName, positioned);
+      const auto idx = anchors.IndexOf(anchorFrame, 0, Comparator{});
+      if (idx == anchors.NoIndex) {
+        // Referring to an anchor of the same name but unaffected by scrolling -
+        // skip.
+        continue;
+      }
+      auto* anchorScrollContainer =
+          anchors.ElementAt(idx).mNearestScrollContainer;
+      if (anchorScrollContainer != nearestScrollToDefaultAnchor) {
+        // We do not compensate for scroll for this anchor
+        continue;
+      }
+
+      if (NeedReflowForAnchorPos(anchorFrame, positioned, *data)) {
+        // Abspos frames should not affect ancestor intrinsics.
+        FrameNeedsReflow(positioned, IntrinsicDirty::None,
+                         NS_FRAME_HAS_DIRTY_CHILDREN);
+      }
+    }
   }
 }
 
@@ -12370,8 +12728,7 @@ void PresShell::MarkStickyFramesForReflow() {
     return;
   }
 
-  StickyScrollContainer* ssc =
-      StickyScrollContainer::GetStickyScrollContainerForScrollFrame(sc);
+  StickyScrollContainer* ssc = sc->GetStickyContainer();
   if (!ssc) {
     return;
   }
@@ -12590,6 +12947,13 @@ nsSize PresShell::GetLayoutViewportSize() const {
   return result;
 }
 
+nsSize PresShell::GetInnerSize() const {
+  if (ScrollContainerFrame* sf = GetRootScrollContainerFrame()) {
+    return sf->GetSizeForWindowInnerSize();
+  }
+  return mPresContext->GetVisibleArea().Size();
+}
+
 nsSize PresShell::GetVisualViewportSizeUpdatedByDynamicToolbar() const {
   NS_ASSERTION(mVisualViewportSizeSet,
                "asking for visual viewport size when its not set?");
@@ -12726,22 +13090,19 @@ PresShell::WindowSizeConstraints PresShell::GetWindowSizeConstraints() {
   const auto* pos = rootFrame->StylePosition();
   const auto anchorResolutionParams =
       AnchorPosResolutionParams::From(rootFrame);
-  if (const auto styleMinWidth =
-          pos->GetMinWidth(anchorResolutionParams.mPosition);
+  if (const auto styleMinWidth = pos->GetMinWidth(anchorResolutionParams);
       styleMinWidth->ConvertsToLength()) {
     minSize.width = styleMinWidth->ToLength();
   }
-  if (const auto styleMinHeight =
-          pos->GetMinHeight(anchorResolutionParams.mPosition);
+  if (const auto styleMinHeight = pos->GetMinHeight(anchorResolutionParams);
       styleMinHeight->ConvertsToLength()) {
     minSize.height = styleMinHeight->ToLength();
   }
-  if (const auto maxWidth = pos->GetMaxWidth(anchorResolutionParams.mPosition);
+  if (const auto maxWidth = pos->GetMaxWidth(anchorResolutionParams);
       maxWidth->ConvertsToLength()) {
     maxSize.width = maxWidth->ToLength();
   }
-  if (const auto maxHeight =
-          pos->GetMaxHeight(anchorResolutionParams.mPosition);
+  if (const auto maxHeight = pos->GetMaxHeight(anchorResolutionParams);
       maxHeight->ConvertsToLength()) {
     maxSize.height = maxHeight->ToLength();
   }

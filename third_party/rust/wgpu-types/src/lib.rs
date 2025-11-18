@@ -16,6 +16,7 @@ extern crate alloc;
 
 use alloc::borrow::Cow;
 use alloc::{string::String, vec, vec::Vec};
+use core::cmp::Ordering;
 use core::{
     fmt,
     hash::{Hash, Hasher},
@@ -36,14 +37,17 @@ pub mod assertions;
 mod cast_utils;
 mod counters;
 mod env;
+pub mod error;
 mod features;
 pub mod instance;
 pub mod math;
+mod tokens;
 mod transfers;
 
 pub use counters::*;
 pub use features::*;
 pub use instance::*;
+pub use tokens::*;
 pub use transfers::*;
 
 /// Integral type used for [`Buffer`] offsets and sizes.
@@ -71,12 +75,14 @@ pub type ShaderLocation = u32;
 /// [dynamic bind group offsets](../wgpu/struct.RenderPass.html#method.set_bind_group).
 pub type DynamicOffset = u32;
 
-/// Buffer-to-texture copies must have [`bytes_per_row`] aligned to this number.
+/// Buffer-texture copies must have [`bytes_per_row`] aligned to this number.
 ///
-/// This doesn't apply to [`Queue::write_texture`][Qwt], only to [`copy_buffer_to_texture()`].
+/// This doesn't apply to [`Queue::write_texture`][Qwt], only to [`copy_buffer_to_texture()`]
+/// and [`copy_texture_to_buffer()`].
 ///
 /// [`bytes_per_row`]: TexelCopyBufferLayout::bytes_per_row
 /// [`copy_buffer_to_texture()`]: ../wgpu/struct.Queue.html#method.copy_buffer_to_texture
+/// [`copy_texture_to_buffer()`]: ../wgpu/struct.Queue.html#method.copy_texture_to_buffer
 /// [Qwt]: ../wgpu/struct.Queue.html#method.write_texture
 pub const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
 
@@ -96,10 +102,18 @@ pub const COPY_BUFFER_ALIGNMENT: BufferAddress = 4;
 /// [`get_mapped_range()`]: ../wgpu/struct.Buffer.html#method.get_mapped_range
 pub const MAP_ALIGNMENT: BufferAddress = 8;
 
+/// [Vertex buffer offsets] and [strides] have to be a multiple of this number.
+///
+/// [Vertex buffer offsets]: ../wgpu/util/trait.RenderEncoder.html#tymethod.set_vertex_buffer
+/// [strides]: ../wgpu/struct.VertexBufferLayout.html#structfield.array_stride
+pub const VERTEX_ALIGNMENT: BufferAddress = 4;
+
 /// [Vertex buffer strides] have to be a multiple of this number.
 ///
 /// [Vertex buffer strides]: ../wgpu/struct.VertexBufferLayout.html#structfield.array_stride
+#[deprecated(note = "Use `VERTEX_ALIGNMENT` instead", since = "27.0.0")]
 pub const VERTEX_STRIDE_ALIGNMENT: BufferAddress = 4;
+
 /// Ranges of [writes to push constant storage] must be at least this aligned.
 ///
 /// [writes to push constant storage]: ../wgpu/struct.RenderPass.html#method.set_push_constants
@@ -323,7 +337,7 @@ impl Backends {
                 "webgpu" => Self::BROWSER_WEBGPU,
                 "noop" => Self::NOOP,
                 b => {
-                    log::warn!("unknown backend string '{}'", b);
+                    log::warn!("unknown backend string '{b}'");
                     continue;
                 }
             }
@@ -446,6 +460,71 @@ impl fmt::Display for RequestAdapterError {
         }
         Ok(())
     }
+}
+
+/// Invoke a macro for each of the limits.
+///
+/// The supplied macro should take two arguments. The first is a limit name, as
+/// an identifier, typically used to access a member of `struct Limits`. The
+/// second is `Ordering::Less` if valid values are less than the limit (the
+/// common case), or `Ordering::Greater` if valid values are more than the limit
+/// (for limits like alignments, which are minima instead of maxima).
+macro_rules! with_limits {
+    ($macro_name:ident) => {
+        $macro_name!(max_texture_dimension_1d, Ordering::Less);
+        $macro_name!(max_texture_dimension_1d, Ordering::Less);
+        $macro_name!(max_texture_dimension_2d, Ordering::Less);
+        $macro_name!(max_texture_dimension_3d, Ordering::Less);
+        $macro_name!(max_texture_array_layers, Ordering::Less);
+        $macro_name!(max_bind_groups, Ordering::Less);
+        $macro_name!(max_bindings_per_bind_group, Ordering::Less);
+        $macro_name!(
+            max_dynamic_uniform_buffers_per_pipeline_layout,
+            Ordering::Less
+        );
+        $macro_name!(
+            max_dynamic_storage_buffers_per_pipeline_layout,
+            Ordering::Less
+        );
+        $macro_name!(max_sampled_textures_per_shader_stage, Ordering::Less);
+        $macro_name!(max_samplers_per_shader_stage, Ordering::Less);
+        $macro_name!(max_storage_buffers_per_shader_stage, Ordering::Less);
+        $macro_name!(max_storage_textures_per_shader_stage, Ordering::Less);
+        $macro_name!(max_uniform_buffers_per_shader_stage, Ordering::Less);
+        $macro_name!(max_binding_array_elements_per_shader_stage, Ordering::Less);
+        $macro_name!(max_uniform_buffer_binding_size, Ordering::Less);
+        $macro_name!(max_storage_buffer_binding_size, Ordering::Less);
+        $macro_name!(max_vertex_buffers, Ordering::Less);
+        $macro_name!(max_buffer_size, Ordering::Less);
+        $macro_name!(max_vertex_attributes, Ordering::Less);
+        $macro_name!(max_vertex_buffer_array_stride, Ordering::Less);
+        $macro_name!(min_uniform_buffer_offset_alignment, Ordering::Greater);
+        $macro_name!(min_storage_buffer_offset_alignment, Ordering::Greater);
+        $macro_name!(max_inter_stage_shader_components, Ordering::Less);
+        $macro_name!(max_color_attachments, Ordering::Less);
+        $macro_name!(max_color_attachment_bytes_per_sample, Ordering::Less);
+        $macro_name!(max_compute_workgroup_storage_size, Ordering::Less);
+        $macro_name!(max_compute_invocations_per_workgroup, Ordering::Less);
+        $macro_name!(max_compute_workgroup_size_x, Ordering::Less);
+        $macro_name!(max_compute_workgroup_size_y, Ordering::Less);
+        $macro_name!(max_compute_workgroup_size_z, Ordering::Less);
+        $macro_name!(max_compute_workgroups_per_dimension, Ordering::Less);
+
+        $macro_name!(min_subgroup_size, Ordering::Greater);
+        $macro_name!(max_subgroup_size, Ordering::Less);
+
+        $macro_name!(max_push_constant_size, Ordering::Less);
+        $macro_name!(max_non_sampler_bindings, Ordering::Less);
+
+        $macro_name!(max_task_workgroup_total_count, Ordering::Less);
+        $macro_name!(max_task_workgroups_per_dimension, Ordering::Less);
+        $macro_name!(max_mesh_multiview_count, Ordering::Less);
+        $macro_name!(max_mesh_output_layers, Ordering::Less);
+
+        $macro_name!(max_blas_primitive_count, Ordering::Less);
+        $macro_name!(max_blas_geometry_count, Ordering::Less);
+        $macro_name!(max_tlas_instance_count, Ordering::Less);
+    };
 }
 
 /// Represents the sets of limits an adapter/device supports.
@@ -606,6 +685,33 @@ pub struct Limits {
     /// This limit only affects the d3d12 backend. Using a large number will allow the device
     /// to create many bind groups at the cost of a large up-front allocation at device creation.
     pub max_non_sampler_bindings: u32,
+
+    /// The maximum total value of x*y*z for a given `draw_mesh_tasks` command
+    pub max_task_workgroup_total_count: u32,
+    /// The maximum value for each dimension of a `RenderPass::draw_mesh_tasks(x, y, z)` operation.
+    /// Defaults to 65535. Higher is "better".
+    pub max_task_workgroups_per_dimension: u32,
+    /// The maximum number of layers that can be output from a mesh shader
+    pub max_mesh_output_layers: u32,
+    /// The maximum number of views that can be used by a mesh shader
+    pub max_mesh_multiview_count: u32,
+
+    /// The maximum number of primitive (ex: triangles, aabbs) a BLAS is allowed to have. Requesting
+    /// more than 0 during device creation only makes sense if [`Features::EXPERIMENTAL_RAY_QUERY`]
+    /// is enabled.
+    pub max_blas_primitive_count: u32,
+    /// The maximum number of geometry descriptors a BLAS is allowed to have. Requesting
+    /// more than 0 during device creation only makes sense if [`Features::EXPERIMENTAL_RAY_QUERY`]
+    /// is enabled.
+    pub max_blas_geometry_count: u32,
+    /// The maximum number of instances a TLAS is allowed to have. Requesting more than 0 during
+    /// device creation only makes sense if [`Features::EXPERIMENTAL_RAY_QUERY`]
+    /// is enabled.
+    pub max_tlas_instance_count: u32,
+    /// The maximum number of acceleration structures allowed to be used in a shader stage.
+    /// Requesting more than 0 during device creation only makes sense if [`Features::EXPERIMENTAL_RAY_QUERY`]
+    /// is enabled.
+    pub max_acceleration_structures_per_shader_stage: u32,
 }
 
 impl Default for Limits {
@@ -658,6 +764,14 @@ impl Limits {
     ///     max_subgroup_size: 0,
     ///     max_push_constant_size: 0,
     ///     max_non_sampler_bindings: 1_000_000,
+    ///     max_task_workgroup_total_count: 0,
+    ///     max_task_workgroups_per_dimension: 0,
+    ///     max_mesh_multiview_count: 0,
+    ///     max_mesh_output_layers: 0,
+    ///     max_blas_primitive_count: 0,
+    ///     max_blas_geometry_count: 0,
+    ///     max_tlas_instance_count: 0,
+    ///     max_acceleration_structures_per_shader_stage: 0,
     /// });
     /// ```
     ///
@@ -702,6 +816,16 @@ impl Limits {
             max_subgroup_size: 0,
             max_push_constant_size: 0,
             max_non_sampler_bindings: 1_000_000,
+
+            max_task_workgroup_total_count: 0,
+            max_task_workgroups_per_dimension: 0,
+            max_mesh_multiview_count: 0,
+            max_mesh_output_layers: 0,
+
+            max_blas_primitive_count: 0,
+            max_blas_geometry_count: 0,
+            max_tlas_instance_count: 0,
+            max_acceleration_structures_per_shader_stage: 0,
         }
     }
 
@@ -747,6 +871,16 @@ impl Limits {
     ///     max_compute_workgroups_per_dimension: 65535,
     ///     max_buffer_size: 256 << 20, // (256 MiB)
     ///     max_non_sampler_bindings: 1_000_000,
+    ///
+    ///     max_task_workgroup_total_count: 0,
+    ///     max_task_workgroups_per_dimension: 0,
+    ///     max_mesh_multiview_count: 0,
+    ///     max_mesh_output_layers: 0,
+    ///
+    ///     max_blas_primitive_count: 0,
+    ///     max_blas_geometry_count: 0,
+    ///     max_tlas_instance_count: 0,
+    ///     max_acceleration_structures_per_shader_stage: 0,
     /// });
     /// ```
     #[must_use]
@@ -760,6 +894,11 @@ impl Limits {
             max_color_attachments: 4,
             // see: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf#page=7
             max_compute_workgroup_storage_size: 16352,
+
+            max_task_workgroups_per_dimension: 0,
+            max_task_workgroup_total_count: 0,
+            max_mesh_multiview_count: 0,
+            max_mesh_output_layers: 0,
             ..Self::defaults()
         }
     }
@@ -807,6 +946,16 @@ impl Limits {
     ///     max_compute_workgroups_per_dimension: 0, // +
     ///     max_buffer_size: 256 << 20, // (256 MiB),
     ///     max_non_sampler_bindings: 1_000_000,
+    ///
+    ///     max_task_workgroup_total_count: 0,
+    ///     max_task_workgroups_per_dimension: 0,
+    ///     max_mesh_multiview_count: 0,
+    ///     max_mesh_output_layers: 0,
+    ///
+    ///     max_blas_primitive_count: 0,
+    ///     max_blas_geometry_count: 0,
+    ///     max_tlas_instance_count: 0,
+    ///     max_acceleration_structures_per_shader_stage: 0,
     /// });
     /// ```
     #[must_use]
@@ -862,6 +1011,52 @@ impl Limits {
         }
     }
 
+    /// The minimum guaranteed limits for acceleration structures if you enable [`Features::EXPERIMENTAL_RAY_QUERY`]
+    #[must_use]
+    pub const fn using_minimum_supported_acceleration_structure_values(self) -> Self {
+        Self {
+            max_blas_geometry_count: (1 << 24) - 1, // 2^24 - 1: Vulkan's minimum
+            max_tlas_instance_count: (1 << 24) - 1, // 2^24 - 1: Vulkan's minimum
+            max_blas_primitive_count: 1 << 28,      // 2^28: Metal's minimum
+            max_acceleration_structures_per_shader_stage: 16, // Vulkan's minimum
+            ..self
+        }
+    }
+
+    /// Modify the current limits to use the acceleration structure limits of `other` (`other` could
+    /// be the limits of the adapter).
+    #[must_use]
+    pub const fn using_acceleration_structure_values(self, other: Self) -> Self {
+        Self {
+            max_blas_geometry_count: other.max_blas_geometry_count,
+            max_tlas_instance_count: other.max_tlas_instance_count,
+            max_blas_primitive_count: other.max_blas_primitive_count,
+            max_acceleration_structures_per_shader_stage: other
+                .max_acceleration_structures_per_shader_stage,
+            ..self
+        }
+    }
+
+    /// The recommended minimum limits for mesh shaders if you enable [`Features::EXPERIMENTAL_MESH_SHADER`]
+    ///
+    /// These are chosen somewhat arbitrarily. They are small enough that they should cover all physical devices,
+    /// but not necessarily all use cases.
+    #[must_use]
+    pub const fn using_recommended_minimum_mesh_shader_values(self) -> Self {
+        Self {
+            // Literally just made this up as 256^2 or 2^16.
+            // My GPU supports 2^22, and compute shaders don't have this kind of limit.
+            // This very likely is never a real limiter
+            max_task_workgroup_total_count: 65536,
+            max_task_workgroups_per_dimension: 256,
+            // llvmpipe reports 0 multiview count, which just means no multiview is allowed
+            max_mesh_multiview_count: 0,
+            // llvmpipe once again requires this to be 8. An RTX 3060 supports well over 1024.
+            max_mesh_output_layers: 8,
+            ..self
+        }
+    }
+
     /// Compares every limits within self is within the limits given in `allowed`.
     ///
     /// If you need detailed information on failures, look at [`Limits::check_limits_with_fail_fn`].
@@ -888,59 +1083,61 @@ impl Limits {
         fatal: bool,
         mut fail_fn: impl FnMut(&'static str, u64, u64),
     ) {
-        use core::cmp::Ordering;
-
-        macro_rules! compare {
-            ($name:ident, $ordering:ident) => {
-                match self.$name.cmp(&allowed.$name) {
-                    Ordering::$ordering | Ordering::Equal => (),
-                    _ => {
-                        fail_fn(stringify!($name), self.$name as u64, allowed.$name as u64);
-                        if fatal {
-                            return;
-                        }
+        macro_rules! check_with_fail_fn {
+            ($name:ident, $ordering:expr) => {
+                let invalid_ord = $ordering.reverse();
+                // In the case of `min_subgroup_size`, requesting a value of
+                // zero means "I'm not going to use subgroups", so we have to
+                // special case that. If any of our minimum limits could
+                // meaningfully go all the way to zero, that would conflict with
+                // this.
+                if self.$name != 0 && self.$name.cmp(&allowed.$name) == invalid_ord {
+                    fail_fn(stringify!($name), self.$name as u64, allowed.$name as u64);
+                    if fatal {
+                        return;
                     }
                 }
             };
         }
 
-        compare!(max_texture_dimension_1d, Less);
-        compare!(max_texture_dimension_2d, Less);
-        compare!(max_texture_dimension_3d, Less);
-        compare!(max_texture_array_layers, Less);
-        compare!(max_bind_groups, Less);
-        compare!(max_bindings_per_bind_group, Less);
-        compare!(max_dynamic_uniform_buffers_per_pipeline_layout, Less);
-        compare!(max_dynamic_storage_buffers_per_pipeline_layout, Less);
-        compare!(max_sampled_textures_per_shader_stage, Less);
-        compare!(max_samplers_per_shader_stage, Less);
-        compare!(max_storage_buffers_per_shader_stage, Less);
-        compare!(max_storage_textures_per_shader_stage, Less);
-        compare!(max_uniform_buffers_per_shader_stage, Less);
-        compare!(max_binding_array_elements_per_shader_stage, Less);
-        compare!(max_uniform_buffer_binding_size, Less);
-        compare!(max_storage_buffer_binding_size, Less);
-        compare!(max_vertex_buffers, Less);
-        compare!(max_buffer_size, Less);
-        compare!(max_vertex_attributes, Less);
-        compare!(max_vertex_buffer_array_stride, Less);
-        compare!(min_uniform_buffer_offset_alignment, Greater);
-        compare!(min_storage_buffer_offset_alignment, Greater);
-        compare!(max_inter_stage_shader_components, Less);
-        compare!(max_color_attachments, Less);
-        compare!(max_color_attachment_bytes_per_sample, Less);
-        compare!(max_compute_workgroup_storage_size, Less);
-        compare!(max_compute_invocations_per_workgroup, Less);
-        compare!(max_compute_workgroup_size_x, Less);
-        compare!(max_compute_workgroup_size_y, Less);
-        compare!(max_compute_workgroup_size_z, Less);
-        compare!(max_compute_workgroups_per_dimension, Less);
-        if self.min_subgroup_size > 0 && self.max_subgroup_size > 0 {
-            compare!(min_subgroup_size, Greater);
-            compare!(max_subgroup_size, Less);
+        if self.min_subgroup_size > self.max_subgroup_size {
+            fail_fn(
+                "max_subgroup_size",
+                self.min_subgroup_size as u64,
+                allowed.min_subgroup_size as u64,
+            );
         }
-        compare!(max_push_constant_size, Less);
-        compare!(max_non_sampler_bindings, Less);
+        with_limits!(check_with_fail_fn);
+    }
+
+    /// For each limit in `other` that is better than the value in `self`,
+    /// replace the value in `self` with the value from `other`.
+    ///
+    /// A request for a limit value less than the WebGPU-specified default must
+    /// be ignored. This function is used to clamp such requests to the default
+    /// value.
+    ///
+    /// This function is not for clamping requests for values beyond the
+    /// supported limits. For that purpose the desired function would be
+    /// `or_worse_values_from` (which doesn't exist, but could be added if
+    /// needed).
+    #[must_use]
+    pub fn or_better_values_from(mut self, other: &Self) -> Self {
+        macro_rules! or_better_value_from {
+            ($name:ident, $ordering:expr) => {
+                match $ordering {
+                    // Limits that are maximum values (most of them)
+                    Ordering::Less => self.$name = self.$name.max(other.$name),
+                    // Limits that are minimum values
+                    Ordering::Greater => self.$name = self.$name.min(other.$name),
+                    Ordering::Equal => unreachable!(),
+                }
+            };
+        }
+
+        with_limits!(or_better_value_from);
+
+        self
     }
 }
 
@@ -995,7 +1192,7 @@ impl DownlevelCapabilities {
 bitflags::bitflags! {
     /// Binary flags listing features that may or may not be present on downlevel adapters.
     ///
-    /// A downlevel adapter is a GPU adapter that WGPU supports, but with potentially limited
+    /// A downlevel adapter is a GPU adapter that wgpu supports, but with potentially limited
     /// features, due to the lack of hardware feature support.
     ///
     /// Flags that are **not** present for a downlevel adapter or device usually indicates
@@ -1128,6 +1325,12 @@ bitflags::bitflags! {
         /// Not Supported by:
         /// - GL ES / WebGL
         const NONBLOCKING_QUERY_RESOLVE = 1 << 22;
+
+        /// Allows shaders to use `quantizeToF16`, `pack2x16float`, and `unpack2x16float`, which
+        /// operate on `f16`-precision values stored in `f32`s.
+        ///
+        /// Not supported by Vulkan on Mesa when [`Features::SHADER_F16`] is absent.
+        const SHADER_F16_IN_F32 = 1 << 23;
     }
 }
 
@@ -1267,6 +1470,9 @@ pub struct DeviceDescriptor<L> {
     /// Exactly the specified limits, and no better or worse,
     /// will be allowed in validation of API calls on the resulting device.
     pub required_limits: Limits,
+    /// Specifies whether `self.required_features` is allowed to contain experimental features.
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub experimental_features: ExperimentalFeatures,
     /// Hints for memory allocation strategies.
     pub memory_hints: MemoryHints,
     /// Whether API tracing for debugging is enabled,
@@ -1282,6 +1488,7 @@ impl<L> DeviceDescriptor<L> {
             label: fun(&self.label),
             required_features: self.required_features,
             required_limits: self.required_limits.clone(),
+            experimental_features: self.experimental_features,
             memory_hints: self.memory_hints.clone(),
             trace: self.trace.clone(),
         }
@@ -1332,9 +1539,9 @@ bitflags::bitflags! {
         const COMPUTE = 1 << 2;
         /// Binding is visible from the vertex and fragment shaders of a render pipeline.
         const VERTEX_FRAGMENT = Self::VERTEX.bits() | Self::FRAGMENT.bits();
-        /// Binding is visible from the task shader of a mesh pipeline
+        /// Binding is visible from the task shader of a mesh pipeline.
         const TASK = 1 << 3;
-        /// Binding is visible from the mesh shader of a mesh pipeline
+        /// Binding is visible from the mesh shader of a mesh pipeline.
         const MESH = 1 << 4;
     }
 }
@@ -2094,6 +2301,23 @@ pub enum TextureFormat {
     /// [`Features::TEXTURE_FORMAT_NV12`] must be enabled to use this texture format.
     NV12,
 
+    /// YUV 4:2:0 chroma subsampled format.
+    ///
+    /// Contains two planes:
+    /// - 0: Single 16 bit channel luminance, of which only the high 10 bits
+    ///   are used.
+    /// - 1: Dual 16 bit channel chrominance at half width and half height, of
+    ///   which only the high 10 bits are used.
+    ///
+    /// Valid view formats for luminance are [`TextureFormat::R16Unorm`].
+    ///
+    /// Valid view formats for chrominance are [`TextureFormat::Rg16Unorm`].
+    ///
+    /// Width and height must be even.
+    ///
+    /// [`Features::TEXTURE_FORMAT_P010`] must be enabled to use this texture format.
+    P010,
+
     // Compressed textures usable with `TEXTURE_COMPRESSION_BC` feature. `TEXTURE_COMPRESSION_SLICED_3D` is required to use with 3D textures.
     /// 4x4 block compressed texture. 8 bytes per block (4 bit/px). 4 color + alpha pallet. 5 bit R + 6 bit G + 5 bit B + 1 bit alpha.
     /// [0, 63] ([0, 1] for alpha) converted to/from float [0, 1] in shader.
@@ -2339,6 +2563,7 @@ impl<'de> Deserialize<'de> for TextureFormat {
                     "depth24plus" => TextureFormat::Depth24Plus,
                     "depth24plus-stencil8" => TextureFormat::Depth24PlusStencil8,
                     "nv12" => TextureFormat::NV12,
+                    "p010" => TextureFormat::P010,
                     "rgb9e5ufloat" => TextureFormat::Rgb9e5Ufloat,
                     "bc1-rgba-unorm" => TextureFormat::Bc1RgbaUnorm,
                     "bc1-rgba-unorm-srgb" => TextureFormat::Bc1RgbaUnormSrgb,
@@ -2468,6 +2693,7 @@ impl Serialize for TextureFormat {
             TextureFormat::Depth24Plus => "depth24plus",
             TextureFormat::Depth24PlusStencil8 => "depth24plus-stencil8",
             TextureFormat::NV12 => "nv12",
+            TextureFormat::P010 => "p010",
             TextureFormat::Rgb9e5Ufloat => "rgb9e5ufloat",
             TextureFormat::Bc1RgbaUnorm => "bc1-rgba-unorm",
             TextureFormat::Bc1RgbaUnormSrgb => "bc1-rgba-unorm-srgb",
@@ -2538,6 +2764,8 @@ impl TextureAspect {
     }
 }
 
+// There are some additional texture format helpers in `wgpu-core/src/conv.rs`,
+// that may need to be modified along with the ones here.
 impl TextureFormat {
     /// Returns the aspect-specific format of the original format
     ///
@@ -2558,6 +2786,8 @@ impl TextureFormat {
             (Self::Depth32FloatStencil8, TextureAspect::DepthOnly) => Some(Self::Depth32Float),
             (Self::NV12, TextureAspect::Plane0) => Some(Self::R8Unorm),
             (Self::NV12, TextureAspect::Plane1) => Some(Self::Rg8Unorm),
+            (Self::P010, TextureAspect::Plane0) => Some(Self::R16Unorm),
+            (Self::P010, TextureAspect::Plane1) => Some(Self::Rg16Unorm),
             // views to multi-planar formats must specify the plane
             (format, TextureAspect::All) if !format.is_multi_planar_format() => Some(format),
             _ => None,
@@ -2613,6 +2843,7 @@ impl TextureFormat {
     pub fn planes(&self) -> Option<u32> {
         match *self {
             Self::NV12 => Some(2),
+            Self::P010 => Some(2),
             _ => None,
         }
     }
@@ -2650,6 +2881,7 @@ impl TextureFormat {
     pub fn size_multiple_requirement(&self) -> (u32, u32) {
         match *self {
             Self::NV12 => (2, 2),
+            Self::P010 => (2, 2),
             _ => self.block_dimensions(),
         }
     }
@@ -2710,7 +2942,8 @@ impl TextureFormat {
             | Self::Depth24PlusStencil8
             | Self::Depth32Float
             | Self::Depth32FloatStencil8
-            | Self::NV12 => (1, 1),
+            | Self::NV12
+            | Self::P010 => (1, 1),
 
             Self::Bc1RgbaUnorm
             | Self::Bc1RgbaUnormSrgb
@@ -2828,6 +3061,7 @@ impl TextureFormat {
             Self::Depth32FloatStencil8 => Features::DEPTH32FLOAT_STENCIL8,
 
             Self::NV12 => Features::TEXTURE_FORMAT_NV12,
+            Self::P010 => Features::TEXTURE_FORMAT_P010,
 
             Self::R16Unorm
             | Self::R16Snorm
@@ -2896,11 +3130,12 @@ impl TextureFormat {
             storage | binding
         };
         let atomic = attachment | atomic_64;
-        let rg11b10f = if device_features.contains(Features::RG11B10UFLOAT_RENDERABLE) {
-            attachment
-        } else {
-            basic
-        };
+        let (rg11b10f_f, rg11b10f_u) =
+            if device_features.contains(Features::RG11B10UFLOAT_RENDERABLE) {
+                (msaa_resolve, attachment)
+            } else {
+                (msaa, basic)
+            };
         let (bgra8unorm_f, bgra8unorm) = if device_features.contains(Features::BGRA8UNORM_STORAGE) {
             (
                 msaa_resolve | TextureFormatFeatureFlags::STORAGE_WRITE_ONLY,
@@ -2941,7 +3176,7 @@ impl TextureFormat {
             Self::Bgra8UnormSrgb =>       (msaa_resolve, attachment),
             Self::Rgb10a2Uint =>          (        msaa, attachment),
             Self::Rgb10a2Unorm =>         (msaa_resolve, attachment),
-            Self::Rg11b10Ufloat =>        (        msaa,   rg11b10f),
+            Self::Rg11b10Ufloat =>        (  rg11b10f_f, rg11b10f_u),
             Self::R64Uint =>              (     s_ro_wo,  atomic_64),
             Self::Rg32Uint =>             (     s_ro_wo,  all_flags),
             Self::Rg32Sint =>             (     s_ro_wo,  all_flags),
@@ -2960,8 +3195,10 @@ impl TextureFormat {
             Self::Depth32Float =>         (        msaa, attachment),
             Self::Depth32FloatStencil8 => (        msaa, attachment),
 
-            // We only support sampling nv12 textures until we implement transfer plane data.
+            // We only support sampling nv12 and p010 textures until we
+            // implement transfer plane data.
             Self::NV12 =>                 (        none,    binding),
+            Self::P010 =>                 (        none,    binding),
 
             Self::R16Unorm =>             (        msaa | s_ro_wo,    storage),
             Self::R16Snorm =>             (        msaa | s_ro_wo,    storage),
@@ -3091,7 +3328,7 @@ impl TextureFormat {
                 _ => None,
             },
 
-            Self::NV12 => match aspect {
+            Self::NV12 | Self::P010 => match aspect {
                 Some(TextureAspect::Plane0) | Some(TextureAspect::Plane1) => {
                     Some(unfilterable_float)
                 }
@@ -3224,6 +3461,12 @@ impl TextureFormat {
                 _ => None,
             },
 
+            Self::P010 => match aspect {
+                Some(TextureAspect::Plane0) => Some(2),
+                Some(TextureAspect::Plane1) => Some(4),
+                _ => None,
+            },
+
             Self::Bc1RgbaUnorm | Self::Bc1RgbaUnormSrgb | Self::Bc4RUnorm | Self::Bc4RSnorm => {
                 Some(8)
             }
@@ -3309,6 +3552,7 @@ impl TextureFormat {
             | Self::Depth32Float
             | Self::Depth32FloatStencil8
             | Self::NV12
+            | Self::P010
             | Self::Rgb9e5Ufloat
             | Self::Bc1RgbaUnorm
             | Self::Bc1RgbaUnormSrgb
@@ -3392,6 +3636,7 @@ impl TextureFormat {
             | Self::Depth32Float
             | Self::Depth32FloatStencil8
             | Self::NV12
+            | Self::P010
             | Self::Rgb9e5Ufloat
             | Self::Bc1RgbaUnorm
             | Self::Bc1RgbaUnormSrgb
@@ -3486,7 +3731,7 @@ impl TextureFormat {
                 _ => 2,
             },
 
-            Self::NV12 => match aspect {
+            Self::NV12 | Self::P010 => match aspect {
                 TextureAspect::Plane0 => 1,
                 TextureAspect::Plane1 => 2,
                 _ => 3,
@@ -3596,8 +3841,10 @@ impl TextureFormat {
                 Self::Stencil8 => 1,
                 // Two chroma bytes per block, one luma byte per block
                 Self::NV12 => 3,
+                // Two chroma u16s and one luma u16 per block
+                Self::P010 => 6,
                 f => {
-                    log::warn!("Memory footprint for format {:?} is not implemented", f);
+                    log::warn!("Memory footprint for format {f:?} is not implemented");
                     0
                 }
             },
@@ -4314,6 +4561,12 @@ pub enum PollError {
         error("The requested Wait timed out before the submission was completed.")
     )]
     Timeout,
+    /// The requested Wait was given a wrong submission index.
+    #[cfg_attr(
+        feature = "std",
+        error("Tried to wait using a submission index ({0}) that has not been returned by a successful submission (last successful submission: {1})")
+    )]
+    WrongSubmissionIndex(u64, u64),
 }
 
 /// Status of device poll operation.
@@ -5012,6 +5265,10 @@ bitflags::bitflags! {
     /// The usages determine what kind of memory the buffer is allocated from and what
     /// actions the buffer can partake in.
     ///
+    /// Specifying only usages the application will actually perform may increase performance.
+    /// Additionally, on the WebGL backend, there are restrictions on [`BufferUsages::INDEX`];
+    /// see [`DownlevelFlags::UNRESTRICTED_INDEX_BUFFER`] for more information.
+    ///
     /// Corresponds to [WebGPU `GPUBufferUsageFlags`](
     /// https://gpuweb.github.io/gpuweb/#typedefdef-gpubufferusageflags).
     #[repr(transparent)]
@@ -5130,6 +5387,10 @@ pub struct BufferDescriptor<L> {
     pub size: BufferAddress,
     /// Usages of a buffer. If the buffer is used in any way that isn't specified here, the operation
     /// will panic.
+    ///
+    /// Specifying only usages the application will actually perform may increase performance.
+    /// Additionally, on the WebGL backend, there are restrictions on [`BufferUsages::INDEX`];
+    /// see [`DownlevelFlags::UNRESTRICTED_INDEX_BUFFER`] for more information.
     pub usage: BufferUsages,
     /// Allows a buffer to be mapped immediately after they are made. It does not have to be [`BufferUsages::MAP_READ`] or
     /// [`BufferUsages::MAP_WRITE`], all buffers are allowed to be mapped at creation.
@@ -6127,6 +6388,168 @@ impl<L, V> TextureDescriptor<L, V> {
         match self.dimension {
             TextureDimension::D1 | TextureDimension::D3 => 1,
             TextureDimension::D2 => self.size.depth_or_array_layers,
+        }
+    }
+}
+
+/// Format of an `ExternalTexture`. This indicates the number of underlying
+/// planes used by the `ExternalTexture` as well as each plane's format.
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum ExternalTextureFormat {
+    /// Single [`TextureFormat::Rgba8Unorm`] or [`TextureFormat::Bgra8Unorm`] format plane.
+    Rgba,
+    /// [`TextureFormat::R8Unorm`] Y plane, and [`TextureFormat::Rg8Unorm`]
+    /// interleaved CbCr plane.
+    Nv12,
+    /// Separate [`TextureFormat::R8Unorm`] Y, Cb, and Cr planes.
+    Yu12,
+}
+
+/// Parameters describing a gamma encoding transfer function in the form
+/// tf = { k * linear                   | linear < b
+///      { a * pow(linear, 1/g) - (a-1) | linear >= b
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, bytemuck::Zeroable, bytemuck::Pod)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
+pub struct ExternalTextureTransferFunction {
+    pub a: f32,
+    pub b: f32,
+    pub g: f32,
+    pub k: f32,
+}
+
+impl Default for ExternalTextureTransferFunction {
+    fn default() -> Self {
+        Self {
+            a: 1.0,
+            b: 1.0,
+            g: 1.0,
+            k: 1.0,
+        }
+    }
+}
+
+/// Describes an [`ExternalTexture`](../wgpu/struct.ExternalTexture.html).
+///
+/// Note that [`width`] and [`height`] are the values that should be returned by
+/// size queries in shader code; they do not necessarily match the dimensions of
+/// the underlying plane texture(s). As a special case, if `(width, height)` is
+/// `(0, 0)`, the actual size of the first underlying plane should be used instead.
+///
+/// The size given by [`width`] and [`height`] must be consistent with
+/// [`sample_transform`]: they should be the size in texels of the rectangle
+/// covered by the square (0,0)..(1,1) after [`sample_transform`] has been applied
+/// to it.
+///
+/// [`width`]: Self::width
+/// [`height`]: Self::height
+/// [`sample_transform`]: Self::sample_transform
+///
+/// Corresponds to [WebGPU `GPUExternalTextureDescriptor`](
+/// https://gpuweb.github.io/gpuweb/#dictdef-gpuexternaltexturedescriptor).
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct ExternalTextureDescriptor<L> {
+    /// Debug label of the external texture. This will show up in graphics
+    /// debuggers for easy identification.
+    pub label: L,
+
+    /// Width of the external texture.
+    pub width: u32,
+
+    /// Height of the external texture.
+    pub height: u32,
+
+    /// Format of the external texture.
+    pub format: ExternalTextureFormat,
+
+    /// 4x4 column-major matrix with which to convert sampled YCbCr values
+    /// to RGBA.
+    /// This is ignored when `format` is [`ExternalTextureFormat::Rgba`].
+    pub yuv_conversion_matrix: [f32; 16],
+
+    /// 3x3 column-major matrix to transform linear RGB values in the source
+    /// color space to linear RGB values in the destination color space. In
+    /// combination with [`Self::src_transfer_function`] and
+    /// [`Self::dst_transfer_function`] this can be used to ensure that
+    /// [`ImageSample`] and [`ImageLoad`] operations return values in the
+    /// desired destination color space rather than the source color space of
+    /// the underlying planes.
+    ///
+    /// [`ImageSample`]: https://docs.rs/naga/latest/naga/ir/enum.Expression.html#variant.ImageSample
+    /// [`ImageLoad`]: https://docs.rs/naga/latest/naga/ir/enum.Expression.html#variant.ImageLoad
+    pub gamut_conversion_matrix: [f32; 9],
+
+    /// Transfer function for the source color space. The *inverse* of this
+    /// will be applied to decode non-linear RGB to linear RGB in the source
+    /// color space.
+    pub src_transfer_function: ExternalTextureTransferFunction,
+
+    /// Transfer function for the destination color space. This will be applied
+    /// to encode linear RGB to non-linear RGB in the destination color space.
+    pub dst_transfer_function: ExternalTextureTransferFunction,
+
+    /// Transform to apply to [`ImageSample`] coordinates.
+    ///
+    /// This is a 3x2 column-major matrix representing an affine transform from
+    /// normalized texture coordinates to the normalized coordinates that should
+    /// be sampled from the external texture's underlying plane(s).
+    ///
+    /// This transform may scale, translate, flip, and rotate in 90-degree
+    /// increments, but the result of transforming the rectangle (0,0)..(1,1)
+    /// must be an axis-aligned rectangle that falls within the bounds of
+    /// (0,0)..(1,1).
+    ///
+    /// [`ImageSample`]: https://docs.rs/naga/latest/naga/ir/enum.Expression.html#variant.ImageSample
+    pub sample_transform: [f32; 6],
+
+    /// Transform to apply to [`ImageLoad`] coordinates.
+    ///
+    /// This is a 3x2 column-major matrix representing an affine transform from
+    /// non-normalized texel coordinates to the non-normalized coordinates of
+    /// the texel that should be loaded from the external texture's underlying
+    /// plane 0. For planes 1 and 2, if present, plane 0's coordinates are
+    /// scaled according to the textures' relative sizes.
+    ///
+    /// This transform may scale, translate, flip, and rotate in 90-degree
+    /// increments, but the result of transforming the rectangle (0,0)..([`width`],
+    /// [`height`]) must be an axis-aligned rectangle that falls within the bounds
+    /// of (0,0)..([`width`], [`height`]).
+    ///
+    /// [`ImageLoad`]: https://docs.rs/naga/latest/naga/ir/enum.Expression.html#variant.ImageLoad
+    /// [`width`]: Self::width
+    /// [`height`]: Self::height
+    pub load_transform: [f32; 6],
+}
+
+impl<L> ExternalTextureDescriptor<L> {
+    /// Takes a closure and maps the label of the external texture descriptor into another.
+    #[must_use]
+    pub fn map_label<K>(&self, fun: impl FnOnce(&L) -> K) -> ExternalTextureDescriptor<K> {
+        ExternalTextureDescriptor {
+            label: fun(&self.label),
+            width: self.width,
+            height: self.height,
+            format: self.format,
+            yuv_conversion_matrix: self.yuv_conversion_matrix,
+            sample_transform: self.sample_transform,
+            load_transform: self.load_transform,
+            gamut_conversion_matrix: self.gamut_conversion_matrix,
+            src_transfer_function: self.src_transfer_function,
+            dst_transfer_function: self.dst_transfer_function,
+        }
+    }
+
+    /// The number of underlying planes used by the external texture.
+    pub fn num_planes(&self) -> usize {
+        match self.format {
+            ExternalTextureFormat::Rgba => 1,
+            ExternalTextureFormat::Nv12 => 2,
+            ExternalTextureFormat::Yu12 => 3,
         }
     }
 }
@@ -7443,7 +7866,7 @@ impl Default for ShaderRuntimeChecks {
 /// Descriptor for all size defining attributes of a single triangle geometry inside a bottom level acceleration structure.
 pub struct BlasTriangleGeometrySizeDescriptor {
     /// Format of a vertex position, must be [`VertexFormat::Float32x3`]
-    /// with just [`Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE`]
+    /// with just [`Features::EXPERIMENTAL_RAY_QUERY`]
     /// but [`Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS`] adds more.
     pub vertex_format: VertexFormat,
     /// Number of vertices.
@@ -7681,29 +8104,65 @@ mod send_sync {
     impl<T> WasmNotSync for T {}
 }
 
-/// Reason for "lose the device".
+/// Corresponds to a [`GPUDeviceLostReason`].
 ///
-/// Corresponds to [WebGPU `GPUDeviceLostReason`](https://gpuweb.github.io/gpuweb/#enumdef-gpudevicelostreason).
+/// [`GPUDeviceLostReason`]: https://www.w3.org/TR/webgpu/#enumdef-gpudevicelostreason
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DeviceLostReason {
-    /// Triggered by driver
+    /// The device was lost for an unspecific reason, including driver errors.
     Unknown = 0,
-    /// After `Device::destroy`
+    /// The device's `destroy` method was called.
     Destroyed = 1,
 }
 
-/// Descriptor for creating a shader module.
-///
-/// This type is unique to the Rust API of `wgpu`. In the WebGPU specification,
-/// only WGSL source code strings are accepted.
+/// Descriptor for a shader module given by any of several sources.
+/// These shaders are passed through directly to the underlying api.
+/// At least one shader type that may be used by the backend must be `Some` or a panic is raised.
 #[derive(Debug, Clone)]
-pub enum CreateShaderModuleDescriptorPassthrough<'a, L> {
-    /// Passthrough for SPIR-V binaries.
-    SpirV(ShaderModuleDescriptorSpirV<'a, L>),
-    /// Passthrough for MSL source code.
-    Msl(ShaderModuleDescriptorMsl<'a, L>),
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CreateShaderModuleDescriptorPassthrough<'a, L> {
+    /// Entrypoint. Unused for Spir-V.
+    pub entry_point: String,
+    /// Debug label of the shader module. This will show up in graphics debuggers for easy identification.
+    pub label: L,
+    /// Number of workgroups in each dimension x, y and z. Unused for Spir-V.
+    pub num_workgroups: (u32, u32, u32),
+    /// Runtime checks that should be enabled.
+    pub runtime_checks: ShaderRuntimeChecks,
+
+    /// Binary SPIR-V data, in 4-byte words.
+    pub spirv: Option<Cow<'a, [u32]>>,
+    /// Shader DXIL source.
+    pub dxil: Option<Cow<'a, [u8]>>,
+    /// Shader MSL source.
+    pub msl: Option<Cow<'a, str>>,
+    /// Shader HLSL source.
+    pub hlsl: Option<Cow<'a, str>>,
+    /// Shader GLSL source (currently unused).
+    pub glsl: Option<Cow<'a, str>>,
+    /// Shader WGSL source.
+    pub wgsl: Option<Cow<'a, str>>,
+}
+
+// This is so people don't have to fill in fields they don't use, like num_workgroups,
+// entry_point, or other shader languages they didn't compile for
+impl<'a, L: Default> Default for CreateShaderModuleDescriptorPassthrough<'a, L> {
+    fn default() -> Self {
+        Self {
+            entry_point: "".into(),
+            label: Default::default(),
+            num_workgroups: (0, 0, 0),
+            runtime_checks: ShaderRuntimeChecks::unchecked(),
+            spirv: None,
+            dxil: None,
+            msl: None,
+            hlsl: None,
+            glsl: None,
+            wgsl: None,
+        }
+    }
 }
 
 impl<'a, L> CreateShaderModuleDescriptorPassthrough<'a, L> {
@@ -7711,80 +8170,46 @@ impl<'a, L> CreateShaderModuleDescriptorPassthrough<'a, L> {
     pub fn map_label<K>(
         &self,
         fun: impl FnOnce(&L) -> K,
-    ) -> CreateShaderModuleDescriptorPassthrough<'_, K> {
-        match self {
-            CreateShaderModuleDescriptorPassthrough::SpirV(inner) => {
-                CreateShaderModuleDescriptorPassthrough::<'_, K>::SpirV(
-                    ShaderModuleDescriptorSpirV {
-                        label: fun(&inner.label),
-                        source: inner.source.clone(),
-                    },
-                )
-            }
-            CreateShaderModuleDescriptorPassthrough::Msl(inner) => {
-                CreateShaderModuleDescriptorPassthrough::<'_, K>::Msl(ShaderModuleDescriptorMsl {
-                    entry_point: inner.entry_point.clone(),
-                    label: fun(&inner.label),
-                    num_workgroups: inner.num_workgroups,
-                    source: inner.source.clone(),
-                })
-            }
-        }
-    }
-
-    /// Returns the label of shader module passthrough descriptor.
-    pub fn label(&'a self) -> &'a L {
-        match self {
-            CreateShaderModuleDescriptorPassthrough::SpirV(inner) => &inner.label,
-            CreateShaderModuleDescriptorPassthrough::Msl(inner) => &inner.label,
+    ) -> CreateShaderModuleDescriptorPassthrough<'a, K> {
+        CreateShaderModuleDescriptorPassthrough {
+            entry_point: self.entry_point.clone(),
+            label: fun(&self.label),
+            num_workgroups: self.num_workgroups,
+            runtime_checks: self.runtime_checks,
+            spirv: self.spirv.clone(),
+            dxil: self.dxil.clone(),
+            msl: self.msl.clone(),
+            hlsl: self.hlsl.clone(),
+            glsl: self.glsl.clone(),
+            wgsl: self.wgsl.clone(),
         }
     }
 
     #[cfg(feature = "trace")]
     /// Returns the source data for tracing purpose.
     pub fn trace_data(&self) -> &[u8] {
-        match self {
-            CreateShaderModuleDescriptorPassthrough::SpirV(inner) => {
-                bytemuck::cast_slice(&inner.source)
-            }
-            CreateShaderModuleDescriptorPassthrough::Msl(inner) => inner.source.as_bytes(),
+        if let Some(spirv) = &self.spirv {
+            bytemuck::cast_slice(spirv)
+        } else if let Some(msl) = &self.msl {
+            msl.as_bytes()
+        } else if let Some(dxil) = &self.dxil {
+            dxil
+        } else {
+            panic!("No binary data provided to `ShaderModuleDescriptorGeneric`")
         }
     }
 
     #[cfg(feature = "trace")]
     /// Returns the binary file extension for tracing purpose.
     pub fn trace_binary_ext(&self) -> &'static str {
-        match self {
-            CreateShaderModuleDescriptorPassthrough::SpirV(..) => "spv",
-            CreateShaderModuleDescriptorPassthrough::Msl(..) => "msl",
+        if self.spirv.is_some() {
+            "spv"
+        } else if self.msl.is_some() {
+            "msl"
+        } else if self.dxil.is_some() {
+            "dxil"
+        } else {
+            panic!("No binary data provided to `ShaderModuleDescriptorGeneric`")
         }
     }
-}
-
-/// Descriptor for a shader module given by Metal MSL source.
-///
-/// This type is unique to the Rust API of `wgpu`. In the WebGPU specification,
-/// only WGSL source code strings are accepted.
-#[derive(Debug, Clone)]
-pub struct ShaderModuleDescriptorMsl<'a, L> {
-    /// Entrypoint.
-    pub entry_point: String,
-    /// Debug label of the shader module. This will show up in graphics debuggers for easy identification.
-    pub label: L,
-    /// Number of workgroups in each dimension x, y and z.
-    pub num_workgroups: (u32, u32, u32),
-    /// Shader MSL source.
-    pub source: Cow<'a, str>,
-}
-
-/// Descriptor for a shader module given by SPIR-V binary.
-///
-/// This type is unique to the Rust API of `wgpu`. In the WebGPU specification,
-/// only WGSL source code strings are accepted.
-#[derive(Debug, Clone)]
-pub struct ShaderModuleDescriptorSpirV<'a, L> {
-    /// Debug label of the shader module. This will show up in graphics debuggers for easy identification.
-    pub label: L,
-    /// Binary SPIR-V data, in 4-byte words.
-    pub source: Cow<'a, [u32]>,
 }

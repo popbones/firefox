@@ -2,13 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-do-not-track-removal = We no longer support the “Do Not Track” signal
+do-not-track-removal2 =
+    .label = We no longer support the “Do Not Track” signal
 
 global-privacy-control-description =
     .label = Tell websites not to sell or share my data
     .accesskey = s
 
 non-technical-privacy-header = Website Privacy Preferences
+
+non-technical-privacy-label =
+     .aria-label = { non-technical-privacy-header }
 
 # Do not translate.
 # "Global Privacy Control" or "GPC" are a web platform feature name and abbreviation
@@ -276,34 +280,26 @@ preferences-web-appearance-header = Website appearance
 
 preferences-web-appearance-description = Some websites adapt their color scheme based on your preferences. Choose which color scheme you’d like to use for those sites.
 
-preferences-web-appearance-choice-auto = Automatic
-preferences-web-appearance-choice-light = Light
-preferences-web-appearance-choice-dark = Dark
-
-preferences-web-appearance-choice-tooltip-auto =
+preferences-web-appearance-choice-auto2 =
+  .label = Automatic
   .title = Automatically change website backgrounds and content based on your system settings and { -brand-short-name } theme.
-preferences-web-appearance-choice-tooltip-light =
+preferences-web-appearance-choice-light2 =
+  .label = Light
   .title = Use a light appearance for website backgrounds and content.
-preferences-web-appearance-choice-tooltip-dark =
+preferences-web-appearance-choice-dark2 =
+  .label = Dark
   .title = Use a dark appearance for website backgrounds and content.
 
-preferences-web-appearance-choice-input-auto =
-  .aria-description = { preferences-web-appearance-choice-tooltip-auto.title }
-
-preferences-web-appearance-choice-input-light =
-  .aria-description = { preferences-web-appearance-choice-tooltip-light.title }
-
-preferences-web-appearance-choice-input-dark =
-  .aria-description = { preferences-web-appearance-choice-tooltip-dark.title }
+web-appearance-group =
+  .aria-label = Website appearance
 
 # This can appear when using windows HCM or "Override colors: always" without
 # system colors.
 preferences-web-appearance-override-warning3 =
     .message = Your contrast control settings are overriding website appearance.
 
-# This message contains one link. It can be moved within the sentence as needed
-# to adapt to your language, but should not be changed.
-preferences-web-appearance-footer = Manage { -brand-short-name } themes in <a data-l10n-name="themes-link">Extensions & Themes</a>
+preferences-web-appearance-link =
+    .label = Manage { -brand-short-name } themes in Extensions & Themes
 
 preferences-contrast-control-header = Contrast Control
 
@@ -388,22 +384,12 @@ check-user-spelling =
 
 files-and-applications-title = Files and Applications
 
-download-header = Downloads
+downloads-header-2 =
+    .label = Downloads
 
-download-save-where = Save files to
+download-save-where-2 =
+    .label = Save files to
     .accesskey = v
-
-download-choose-folder =
-    .label =
-        { PLATFORM() ->
-            [macos] Choose…
-           *[other] Browse…
-        }
-    .accesskey =
-        { PLATFORM() ->
-            [macos] e
-           *[other] o
-        }
 
 download-always-ask-where =
     .label = Always ask you where to save files
@@ -728,8 +714,6 @@ home-prefs-recommended-by-description-generic = Exceptional content curated by t
 home-prefs-recommended-by-learn-more = How it works
 home-prefs-recommended-by-option-sponsored-stories =
     .label = Sponsored stories
-home-prefs-recommended-by-option-recent-saves =
-    .label = Show Recent Saves
 
 home-prefs-highlights-option-visited-pages =
     .label = Visited pages
@@ -1115,21 +1099,29 @@ autofill-creditcard-os-auth-dialog-caption = { -brand-full-name }
 
 ## Privacy section - Autofill
 
-pane-privacy-autofill-header = Autofill
-autofill-addresses-checkbox = Save and fill addresses
-    .accesskey = a
-autofill-saved-addresses-button = Saved addresses
-    .accesskey = S
-autofill-payment-methods-checkbox-message = Save and fill payment methods
+autofill-payment-methods-title = Payment methods
+autofill-payment-methods-header =
+    .aria-label = Payment methods
+autofill-payment-methods-checkbox-message-2 =
+    .label = Save and autofill payment info
+    .accesskey = p
+autofill-payment-methods-manage-payments-button =
+    .label = Manage payment methods
     .accesskey = m
-autofill-payment-methods-checkbox-submessage = Includes credit and debit cards
-    .accesskey = I
-autofill-saved-payment-methods-button = Saved payment methods
-    .accesskey = v
-
 # This operation requires the user to authenticate with the operating system (device sign-in)
-autofill-reauth-payment-methods-checkbox = Require device sign in to fill and manage payment methods
+autofill-reauth-payment-methods-checkbox-2 =
+    .label = Require device sign in to autofill and manage payments methods
     .accesskey = o
+
+autofill-addresses-title = Addresses and more
+autofill-addresses-header =
+    .aria-label = Addresses and more
+autofill-addresses-checkbox-message =
+    .label = Save and autofill addresses
+    .accesskey = S
+autofill-addresses-manage-addresses-button =
+    .label = Manage addresses and more
+    .accesskey = M
 
 ## Privacy Section - History
 
@@ -1204,8 +1196,8 @@ sitedata-option-block-cross-site-trackers =
     .label = Cross-site trackers
 sitedata-option-block-cross-site-tracking-cookies =
     .label = Cross-site tracking cookies
-sitedata-option-block-cross-site-cookies =
-    .label = Cross-site tracking cookies, and isolate other cross-site cookies
+sitedata-option-block-cross-site-cookies2 =
+    .label = Isolate cross-site cookies
 sitedata-option-block-unvisited =
     .label = Cookies from unvisited websites
 sitedata-option-block-all-cross-site-cookies =
@@ -1337,7 +1329,7 @@ content-blocking-private-windows = Tracking content in Private Windows
 content-blocking-cross-site-cookies-in-all-windows2 = Cross-site cookies in all windows
 content-blocking-cross-site-tracking-cookies = Cross-site tracking cookies
 content-blocking-all-cross-site-cookies-private-windows = Cross-site cookies in Private Windows
-content-blocking-cross-site-tracking-cookies-plus-isolate = Cross-site tracking cookies, and isolate remaining cookies
+content-blocking-isolate-cross-site-cookies = Isolate cross-site cookies
 content-blocking-social-media-trackers = Social media trackers
 content-blocking-all-cookies = All cookies
 content-blocking-unvisited-cookies = Cookies from unvisited sites
@@ -1358,9 +1350,25 @@ content-blocking-etp-standard-tcp-rollout-learn-more = Learn more
 
 content-blocking-etp-standard-tcp-title = Includes Total Cookie Protection, our most powerful privacy feature ever
 
-content-blocking-warning-title = Heads up!
-content-blocking-and-isolating-etp-warning-description-2 = This setting may cause some websites to not display content or work correctly. If a site seems broken, you may want to turn off tracking protection for that site to load all content.
+content-blocking-warning-title-2 = Some sites may break with strict tracking protection
+content-blocking-warning-title-custom = Some sites may break with custom tracking protection
+# “Fix site issues” references the string content-blocking-exceptions-subheader
+content-blocking-and-isolating-etp-warning-description-4 = { -brand-short-name } recommends using the “Fix site issues” settings to reduce broken site features and content. If a site seems broken, try turning off tracking protection for that site to load all content.
 content-blocking-warning-learn-how = Learn how
+
+content-blocking-baseline-exceptions-3 =
+    .label = Fix major site issues (recommended)
+    .description = Helps load sites and features by unblocking only essential elements that may contain trackers. Covers most common problems.
+
+# This option to fix minor site issues must be used with the option to fix major site issues (string content-blocking-baseline-exceptions-3)
+content-blocking-convenience-exceptions-3 =
+    .label = Fix minor site issues
+    .description = Restores things like videos in an article or comment sections by unblocking elements that may contain trackers. This can reduce site issues but offers less protection. Must be used with fixes for major issues.
+
+content-blocking-baseline-uncheck-warning-dialog-title = Are you sure you want to turn off fixes?
+content-blocking-baseline-uncheck-warning-dialog-body = This setting helps fix the most common site problems. If you turn it off, some sites may not work, and { -brand-short-name } won’t be able to help troubleshoot those issues.
+content-blocking-baseline-uncheck-warning-dialog-ok-button = Turn fixes off
+content-blocking-baseline-uncheck-warning-dialog-cancel-button = Keep fixes on
 
 content-blocking-reload-description = You will need to reload your tabs to apply these changes.
 content-blocking-reload-tabs-button =
@@ -1418,6 +1426,16 @@ permissions-location-settings =
     .label = Settings…
     .accesskey = t
 
+permissions-localhost = Device apps and services
+permissions-localhost-settings =
+    .label = Settings…
+    .accesskey = t
+
+permissions-local-network = Local Network Devices
+permissions-local-network-settings =
+    .label = Settings…
+    .accesskey = t
+
 permissions-xr = Virtual Reality
 permissions-xr-settings =
     .label = Settings…
@@ -1455,8 +1473,8 @@ permissions-autoplay-settings =
     .label = Settings…
     .accesskey = t
 
-permissions-block-popups =
-    .label = Block pop-up windows
+permissions-block-popups2 =
+    .label = Block pop-ups and third-party redirects
     .accesskey = B
 
 # "popup" is a misspelling that is more popular than the correct spelling of
@@ -1526,16 +1544,6 @@ privacy-segmentation-radio-off =
 privacy-segmentation-radio-on =
     .label = Show detailed information
 
-## Privacy Section - Website Advertising Preferences
-
-website-advertising-header = Website Advertising Preferences
-
-website-advertising-private-attribution =
-    .label = Allow websites to perform privacy-preserving ad measurement
-    .accesskey = a
-
-website-advertising-private-attribution-description = This helps sites understand how their ads perform without collecting data about you.
-
 ## Privacy Section - Security
 ##
 ## It is important that wording follows the guidelines outlined on this page:
@@ -1562,9 +1570,7 @@ security-block-uncommon-software =
 
 certs-header = Certificates
 
-certs-enable-ocsp =
-    .label = Query OCSP responder servers to confirm the current validity of certificates
-    .accesskey = Q
+certs-description = Configure the certificates that { -brand-short-name } uses for authentication.
 
 certs-view =
     .label = View Certificates…
@@ -1590,7 +1596,9 @@ space-alert-under-5gb-message2 = <strong>{ -brand-short-name } is running out of
 
 httpsonly-header = HTTPS-Only Mode
 
-httpsonly-description3 = Only allows secure connections to websites. { -brand-short-name } will ask before connecting insecurely.
+httpsonly-label =
+    .aria-label = { httpsonly-header }
+    .description = Only allows secure connections to websites. { -brand-short-name } will ask before connecting insecurely.
 
 httpsonly-learn-more2 = How HTTPS-Only works
 
@@ -1672,4 +1680,3 @@ preferences-doh-manage-exceptions =
 
 desktop-folder-name = Desktop
 downloads-folder-name = Downloads
-choose-download-folder-title = Choose Download Folder:

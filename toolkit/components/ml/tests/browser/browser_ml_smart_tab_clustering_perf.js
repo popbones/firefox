@@ -29,7 +29,7 @@ const perfMetadata = {
   },
 };
 
-requestLongerTimeout(300);
+requestLongerTimeout(10);
 
 const { sinon } = ChromeUtils.importESModule(
   "resource://testing-common/Sinon.sys.mjs"
@@ -79,8 +79,7 @@ async function generateEmbeddings(textList) {
     args: [requestInfo.inputArgs],
     options: requestInfo.runOptions,
   };
-  const mlEngineParent = await EngineProcess.getMLEngineParent();
-  const engine = await mlEngineParent.getEngine(options);
+  const engine = await createEngine(options);
   const output = await engine.run(request);
   return output;
 }
@@ -107,8 +106,7 @@ async function runTopicModel(texts, keywords = []) {
     args: [requestInfo.inputArgs],
     options: requestInfo.runOptions,
   };
-  const mlEngineParent = await EngineProcess.getMLEngineParent();
-  const engine = await mlEngineParent.getEngine(options);
+  const engine = await createEngine(options);
   const output = await engine.run(request);
   return output.map(o => o.generated_text);
 }

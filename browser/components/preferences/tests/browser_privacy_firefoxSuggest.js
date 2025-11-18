@@ -6,7 +6,7 @@
 "use strict";
 
 ChromeUtils.defineESModuleGetters(this, {
-  QuickSuggest: "resource:///modules/QuickSuggest.sys.mjs",
+  QuickSuggest: "moz-src:///browser/components/urlbar/QuickSuggest.sys.mjs",
 });
 
 const DATA_COLLECTION_TOGGLE_ID = "firefoxSuggestDataCollectionPrivacyToggle";
@@ -28,6 +28,16 @@ const EXPECTED = {
 // This test can take a while due to the many permutations some of these tasks
 // run through, so request a longer timeout.
 requestLongerTimeout(10);
+
+add_setup(async () => {
+  // Set the default value of the preference to FULL, since that's what the
+  // test was originally written with.
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["browser.urlbar.quicksuggest.settingsUi", QuickSuggest.SETTINGS_UI.FULL],
+    ],
+  });
+});
 
 // The following tasks check the initial visibility of the Firefox Suggest UI
 // and the visibility after installing a Nimbus experiment.

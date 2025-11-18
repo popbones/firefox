@@ -25,7 +25,7 @@ def add_common_config(config, tasks):
             "linux64-jdk",
         ]
         fetches["build-fat-aar"] = [
-            "target.maven.tar.xz",
+            "target.maven.zip",
             {"artifact": "mozconfig", "extract": False},
         ]
 
@@ -37,7 +37,7 @@ def add_common_config(config, tasks):
         treeherder["kind"] = "build"
         treeherder["tier"] = 1
 
-        task["worker-type"] = "b-linux-medium-gcp"
+        task["worker-type"] = "b-linux-amd"
 
         worker = task.setdefault("worker", {})
         worker["docker-image"] = {}

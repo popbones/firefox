@@ -6,7 +6,7 @@
 const HOMEPAGE_PREF = "browser.startup.homepage";
 const PRIVACY_SEGMENTATION_PREF = "browser.dataFeatureRecommendations.enabled";
 const MESSAGING_ACTION_PREF = "special-message-testpref";
-const TIMESTAMP_PREF = "datareporting.policy.dataSubmissionPolicyNotifiedTime";
+const TIMESTAMP_PREF = "termsofuse.acceptedDate";
 
 const PREFS_TO_CLEAR = [
   HOMEPAGE_PREF,
@@ -197,4 +197,139 @@ add_task(async function test_set_pref_to_timestamp_string() {
     timestamp >= before && timestamp <= after,
     "Timestamp is within the expected time range"
   );
+});
+
+add_task(async function test_set_messaging_system_pref_onImpression() {
+  const action = {
+    type: "SET_PREF",
+    data: {
+      pref: {
+        name: MESSAGING_ACTION_PREF,
+        value: true,
+      },
+      onImpression: true,
+    },
+  };
+
+  Assert.ok(
+    !Services.prefs.prefHasUserValue(
+      `messaging-system-action.${MESSAGING_ACTION_PREF}`
+    ),
+    "Test setup ok"
+  );
+
+  await SMATestUtils.executeAndValidateAction(action);
+
+  Assert.equal(
+    Services.prefs.getBoolPref(
+      `messaging-system-action.${MESSAGING_ACTION_PREF}`
+    ),
+    true,
+    "messaging-system-action.<name> pref successfully set on impression"
+  );
+
+  Services.prefs.clearUserPref(
+    `messaging-system-action.${MESSAGING_ACTION_PREF}`
+  );
+});
+
+add_task(async function test_set_unallowed_pref_onImpression_namespaced() {
+  const action = {
+    type: "SET_PREF",
+    data: {
+      pref: {
+        name: PRIVACY_SEGMENTATION_PREF,
+        value: true,
+      },
+      onImpression: true,
+    },
+  };
+
+  Assert.ok(
+    !Services.prefs.prefHasUserValue(PRIVACY_SEGMENTATION_PREF),
+    "Original pref not set"
+  );
+  Assert.ok(
+    !Services.prefs.prefHasUserValue(
+      `messaging-system-action.${PRIVACY_SEGMENTATION_PREF}`
+    ),
+    "Namespaced pref not set"
+  );
+
+  await SMATestUtils.executeAndValidateAction(action);
+
+  Assert.ok(
+    !Services.prefs.prefHasUserValue(PRIVACY_SEGMENTATION_PREF),
+    "Original pref still not set"
+  );
+
+  Assert.ok(
+    Services.prefs.getBoolPref(
+      `messaging-system-action.${PRIVACY_SEGMENTATION_PREF}`
+    ),
+    "Non-allowed existing pref name was namespaced and set on impression"
+  );
+
+  Services.prefs.clearUserPref(
+    `messaging-system-action.${PRIVACY_SEGMENTATION_PREF}`
+  );
+});
+
+add_task(async function test_clear_namespaced_pref_onImpression() {
+  const namespaced = `messaging-system-action.${MESSAGING_ACTION_PREF}`;
+
+  Services.prefs.setBoolPref(namespaced, true);
+  Assert.ok(Services.prefs.prefHasUserValue(namespaced), "Test setup ok");
+
+  const action = {
+    type: "SET_PREF",
+    data: {
+      pref: {
+        name: namespaced,
+      },
+      onImpression: true,
+    },
+  };
+
+  await SMATestUtils.executeAndValidateAction(action);
+
+  Assert.ok(
+    !Services.prefs.prefHasUserValue(namespaced),
+    "Namespace pref successfully cleared on impression"
+  );
+});
+
+add_task(async function test_update_namespaced_timestamp_pref_onImpression() {
+  const namespaced = `messaging-system-action.${MESSAGING_ACTION_PREF}`;
+  Services.prefs.clearUserPref(namespaced);
+
+  const action = {
+    type: "SET_PREF",
+    data: {
+      pref: {
+        name: namespaced,
+        value: { timestamp: true },
+      },
+      onImpression: true,
+    },
+  };
+
+  await SMATestUtils.executeAndValidateAction(action);
+  const first = Services.prefs.getStringPref(namespaced);
+  Assert.ok(first, "First timestamp was written");
+
+  // Small delay so the next timestamp will be strictly greater
+  // eslint-disable-next-line mozilla/no-arbitrary-setTimeout
+  await new Promise(r => setTimeout(r, 5));
+
+  await SMATestUtils.executeAndValidateAction(action);
+  const second = Services.prefs.getStringPref(namespaced);
+  Assert.ok(second, "Second timestamp was written");
+  Assert.greater(
+    parseInt(second, 10),
+    parseInt(first, 10),
+    `Timestamp bumped on re-impression (first=${first}, second=${second})`
+  );
+
+  Services.prefs.clearUserPref(namespaced);
 });

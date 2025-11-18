@@ -15,14 +15,15 @@ import mozilla.components.feature.toolbar.ToolbarAutocompleteFeature
 import mozilla.components.support.ktx.android.content.getColorFromAttr
 import mozilla.components.support.ktx.android.content.res.resolveAttribute
 import mozilla.components.support.ktx.android.view.hideKeyboard
-import org.mozilla.fenix.GleanMetrics.Events
 import org.mozilla.fenix.R
-import org.mozilla.fenix.browser.tabstrip.isTabStripEnabled
 import org.mozilla.fenix.components.Components
-import org.mozilla.fenix.ext.settings
+import org.mozilla.fenix.ext.pixelSizeFor
 import org.mozilla.fenix.search.SearchEngineSource
 import org.mozilla.fenix.search.SearchFragmentState
+import org.mozilla.fenix.telemetry.ACTION_CLEAR_CLICKED
+import org.mozilla.fenix.telemetry.SOURCE_ADDRESS_BAR
 import org.mozilla.fenix.utils.Settings
+import org.mozilla.fenix.GleanMetrics.Toolbar as GleanMetricsToolbar
 
 /**
  * Interface for the Toolbar Interactor. This interface is implemented by objects that want
@@ -123,13 +124,18 @@ class ToolbarView(
                     }
 
                     override fun onInputCleared() {
-                        Events.browserToolbarInputCleared.record()
+                        GleanMetricsToolbar.buttonTapped.record(
+                            GleanMetricsToolbar.ButtonTappedExtra(
+                                source = SOURCE_ADDRESS_BAR,
+                                item = ACTION_CLEAR_CLICKED,
+                            ),
+                        )
                     }
                 },
             )
-            if (context.isTabStripEnabled() && fromHomeFragment) {
+            if (settings.isTabStripEnabled && fromHomeFragment) {
                 (layoutParams as ViewGroup.MarginLayoutParams).updateMargins(
-                    top = context.resources.getDimensionPixelSize(R.dimen.tab_strip_height),
+                    top = pixelSizeFor(R.dimen.tab_strip_height),
                 )
             }
         }

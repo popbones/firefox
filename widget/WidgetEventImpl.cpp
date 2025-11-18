@@ -14,7 +14,6 @@
 
 #include "mozilla/EventForwards.h"
 #include "mozilla/EventStateManager.h"
-#include "mozilla/InternalMutationEvent.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/StaticPrefs_dom.h"
@@ -204,6 +203,28 @@ const char* ToChar(EventClassID aEventClassID) {
   }
 }
 
+nsCString InputSourceToString(uint16_t aInputSource) {
+  switch (aInputSource) {
+    case dom::MouseEvent_Binding::MOZ_SOURCE_UNKNOWN:
+      return "MOZ_SOURCE_UNKNOWN"_ns;
+    case dom::MouseEvent_Binding::MOZ_SOURCE_MOUSE:
+      return "MOZ_SOURCE_MOUSE"_ns;
+    case dom::MouseEvent_Binding::MOZ_SOURCE_PEN:
+      return "MOZ_SOURCE_PEN"_ns;
+    case dom::MouseEvent_Binding::MOZ_SOURCE_ERASER:
+      return "MOZ_SOURCE_ERASER"_ns;
+    case dom::MouseEvent_Binding::MOZ_SOURCE_CURSOR:
+      return "MOZ_SOURCE_CURSOR"_ns;
+    case dom::MouseEvent_Binding::MOZ_SOURCE_TOUCH:
+      return "MOZ_SOURCE_TOUCH"_ns;
+    case dom::MouseEvent_Binding::MOZ_SOURCE_KEYBOARD:
+      return "MOZ_SOURCE_KEYBOARD"_ns;
+    default:
+      return nsPrintfCString("<unknown value %u (0x%04X)>", aInputSource,
+                             aInputSource);
+  }
+}
+
 const nsCString ToString(KeyNameIndex aKeyNameIndex) {
   if (aKeyNameIndex == KEY_NAME_INDEX_USE_STRING) {
     return "USE_STRING"_ns;
@@ -270,17 +291,13 @@ const nsCString GetDOMKeyCodeName(uint32_t aKeyCode) {
  * non class method implementation
  ******************************************************************************/
 
-static nsTHashMap<nsDepCharHashKey, Command>* sCommandHashtable = nullptr;
+static nsTHashMap<nsCStringHashKey, Command>* sCommandHashtable = nullptr;
 
-Command GetInternalCommand(const char* aCommandName,
+Command GetInternalCommand(const nsACString& aCommandName,
                            const nsCommandParams* aCommandParams) {
-  if (!aCommandName) {
-    return Command::DoNothing;
-  }
-
   // Special cases for "cmd_align".  It's mapped to multiple internal commands
   // with additional param.  Therefore, we cannot handle it with the hashtable.
-  if (!strcmp(aCommandName, "cmd_align")) {
+  if (aCommandName.EqualsLiteral("cmd_align")) {
     if (!aCommandParams) {
       // Note that if this is called by EditorCommand::IsCommandEnabled(),
       // it cannot set aCommandParams.  So, don't warn in this case even though
@@ -316,9 +333,9 @@ Command GetInternalCommand(const char* aCommandName,
   }
 
   if (!sCommandHashtable) {
-    sCommandHashtable = new nsTHashMap<nsDepCharHashKey, Command>();
+    sCommandHashtable = new nsTHashMap<nsCStringHashKey, Command>();
 #define NS_DEFINE_COMMAND(aName, aCommandStr) \
-  sCommandHashtable->InsertOrUpdate(#aCommandStr, Command::aName);
+  sCommandHashtable->InsertOrUpdate(#aCommandStr ""_ns, Command::aName);
 
 #define NS_DEFINE_COMMAND_WITH_PARAM(aName, aCommandStr, aParam)
 

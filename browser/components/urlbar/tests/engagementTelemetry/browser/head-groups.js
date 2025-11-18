@@ -6,14 +6,13 @@
 /* import-globals-from head.js */
 
 ChromeUtils.defineESModuleGetters(this, {
-  UrlbarProviderClipboard:
-    "resource:///modules/UrlbarProviderClipboard.sys.mjs",
+  UrlbarProvidersManager:
+    "moz-src:///browser/components/urlbar/UrlbarProvidersManager.sys.mjs",
 });
 
 async function doHeuristicsTest({ trigger, assert }) {
   await doTest(async () => {
     await openPopup("x");
-
     await trigger();
     await assert();
   });
@@ -103,7 +102,7 @@ async function doTailSearchSuggestTest({ trigger, assert }) {
 
   await doTest(async () => {
     await openPopup("hello");
-    await selectRowByProvider("SearchSuggestions");
+    await selectRowByProvider("UrlbarProviderSearchSuggestions");
 
     await trigger();
     await assert();
@@ -166,7 +165,9 @@ async function doClipboardTest({ trigger, assert }) {
     await assert();
   });
   SpecialPowers.clipboardCopyString("");
-  UrlbarProviderClipboard.setPreviousClipboardValue("");
+  UrlbarProvidersManager.getProvider(
+    "UrlbarProviderClipboard"
+  ).setPreviousClipboardValue("");
   await SpecialPowers.popPrefEnv();
 }
 
@@ -175,7 +176,7 @@ async function doRemoteTabTest({ trigger, assert }) {
 
   await doTest(async () => {
     await openPopup("example");
-    await selectRowByProvider("RemoteTabs");
+    await selectRowByProvider("UrlbarProviderRemoteTabs");
 
     await trigger();
     await assert();
@@ -269,7 +270,7 @@ async function doSuggestedIndexTest({ trigger, assert }) {
 
   await doTest(async () => {
     await openPopup("1m to cm");
-    await selectRowByProvider("UnitConversion");
+    await selectRowByProvider("UrlbarProviderUnitConversion");
 
     await trigger();
     await assert();
@@ -336,8 +337,7 @@ async function doSemanticHistoryTest({ trigger, assert }) {
 
 async function doSerpHistoryTest({ trigger, assert }) {
   let defaultEngine = await Services.search.getDefault();
-  const searchUrl = defaultEngine.getSubmission("serp history", null, "keyword")
-    .uri.spec;
+  const searchUrl = defaultEngine.getSubmission("serp history", null).uri.spec;
 
   await doTest(async () => {
     await PlacesTestUtils.addVisits(searchUrl);
@@ -352,8 +352,7 @@ async function doSerpHistoryTest({ trigger, assert }) {
 
 async function doTabSerpHistoryTest({ trigger, assert }) {
   let defaultEngine = await Services.search.getDefault();
-  const searchUrl = defaultEngine.getSubmission("serp history", null, "keyword")
-    .uri.spec;
+  const searchUrl = defaultEngine.getSubmission("serp history", null).uri.spec;
   let visited = PlacesTestUtils.waitForNotification("page-visited", visits =>
     visits.some(({ url }) => url == searchUrl)
   );

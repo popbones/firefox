@@ -169,6 +169,7 @@ test_newtab({
     Assert.ok(getWeatherWidget(), "Weather widget is rendered");
   },
   async after() {
+    sinon.restore();
     Services.prefs.clearUserPref(
       "browser.newtabpage.activity-stream.showWeather"
     );
@@ -199,7 +200,7 @@ test_newtab({
     );
 
     await ContentTaskUtils.waitForCondition(
-      () => content.document.activeElement.classList.contains("close-button"),
+      () => content.document.activeElement.id === "close-button",
       "Close button should be focused when menu becomes visible"
     );
 
@@ -212,7 +213,7 @@ test_newtab({
     );
 
     // Test close button.
-    let closeButton = content.document.querySelector(".close-button");
+    let closeButton = content.document.querySelector("#close-button");
     closeButton.click();
     await ContentTaskUtils.waitForCondition(
       () =>

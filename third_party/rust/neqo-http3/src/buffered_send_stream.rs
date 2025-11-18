@@ -4,8 +4,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::{self, Display, Formatter};
-
+use neqo_common::Encoder;
 use neqo_transport::{Connection, StreamId};
 
 use crate::{qlog, Res};
@@ -18,12 +17,6 @@ pub enum BufferedStream {
         stream_id: StreamId,
         buf: Vec<u8>,
     },
-}
-
-impl Display for BufferedStream {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "BufferedStream {:?}", Option::<StreamId>::from(self))
-    }
 }
 
 impl BufferedStream {
@@ -46,6 +39,14 @@ impl BufferedStream {
         };
     }
 
+    pub fn encode_with<F: FnOnce(&mut Encoder<&mut Vec<u8>>)>(&mut self, f: F) {
+        if let Self::Initialized { buf, .. } = self {
+            f(&mut Encoder::new_borrowed_vec(buf));
+        } else {
+            debug_assert!(false, "Do not encode data before the stream is initialized");
+        }
+    }
+
     /// # Panics
     ///
     /// This function cannot be called before the `BufferedStream` is initialized.
@@ -53,7 +54,7 @@ impl BufferedStream {
         if let Self::Initialized { buf, .. } = self {
             buf.extend_from_slice(to_buf);
         } else {
-            debug_assert!(false, "Do not buffer date before the stream is initialized");
+            debug_assert!(false, "Do not buffer data before the stream is initialized");
         }
     }
 

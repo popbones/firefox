@@ -28,9 +28,6 @@ exports.fixed = {
   "chrome://remote/content/webdriver-bidi/modules/ModuleRegistry.sys.mjs": [
     "remote/webdriver-bidi/modules/ModuleRegistry.sys.mjs",
   ],
-  "resource:///modules/CustomizeMode.sys.mjs": [
-    "browser/components/customizableui/CustomizeMode.sys.mjs",
-  ],
   "resource:///modules/ExtensionBrowsingData.sys.mjs": [
     "browser/components/extensions/ExtensionBrowsingData.sys.mjs",
   ],
@@ -58,9 +55,6 @@ exports.fixed = {
     "toolkit/components/passwordmgr/storage-desktop.sys.mjs",
   ],
   "resource://services-common/utils.sys.mjs": ["services/common/utils.sys.mjs"],
-  "resource://services-crypto/utils.sys.mjs": [
-    "services/crypto/modules/utils.sys.mjs",
-  ],
   "resource://services-settings/Utils.sys.mjs": [
     "services/settings/Utils.sys.mjs",
   ],
@@ -70,6 +64,9 @@ exports.fixed = {
   "resource://test/es6module.js": ["js/xpconnect/tests/unit/es6module.js"],
   "resource://test/module.sys.mjs": undefined,
   "resource://test/not_found.mjs": undefined,
+  "resource://test/es6module_dynamic_import_syntax_error.js": undefined,
+  "resource://test/es6module_parse_error.js": undefined,
+  "resource://test/es6module_parse_error_in_import.js": undefined,
   "resource://testing-common/AppInfo.sys.mjs": [
     "testing/modules/AppInfo.sys.mjs",
   ],

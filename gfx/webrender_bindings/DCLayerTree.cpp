@@ -521,6 +521,7 @@ void DCLayerTree::MaybeCommit() {
     return;
   }
   mCompositionDevice->Commit();
+  mPendingCommit = false;
 }
 
 void DCLayerTree::WaitForCommitCompletion() {
@@ -530,13 +531,28 @@ void DCLayerTree::WaitForCommitCompletion() {
   // correctly that works on both Win10/11. Even though this can
   // be slower than necessary, it's only used by the reftest
   // screenshotting code, so isn't particularly perf sensitive.
+  bool needsWait = false;
   for (auto it = mDCSurfaces.begin(); it != mDCSurfaces.end(); it++) {
     auto* surface = it->second->AsDCSwapChain();
     if (surface) {
-      for (int i = 0; i < surface->mSwapChainBufferCount; i++) {
-        surface->Present(nullptr, 0);
-      }
+      needsWait = true;
     }
+  }
+
+  if (needsWait) {
+    RefPtr<IDXGIDevice2> dxgiDevice2;
+    mDevice->QueryInterface((IDXGIDevice2**)getter_AddRefs(dxgiDevice2));
+    MOZ_ASSERT(dxgiDevice2);
+
+    HANDLE event = ::CreateEvent(nullptr, false, false, nullptr);
+    HRESULT hr = dxgiDevice2->EnqueueSetEvent(event);
+    if (SUCCEEDED(hr)) {
+      DebugOnly<DWORD> result = ::WaitForSingleObject(event, INFINITE);
+      MOZ_ASSERT(result == WAIT_OBJECT_0);
+    } else {
+      gfxCriticalNoteOnce << "EnqueueSetEvent failed: " << gfx::hexa(hr);
+    }
+    ::CloseHandle(event);
   }
 
   mCompositionDevice->WaitForCommitCompletion();
@@ -547,13 +563,8 @@ bool DCLayerTree::UseNativeCompositor() const {
 }
 
 bool DCLayerTree::UseLayerCompositor() const {
-// Only allow the layer compositor in nightly builds, for now.
-#ifdef NIGHTLY_BUILD
   return UseNativeCompositor() &&
          StaticPrefs::gfx_webrender_layer_compositor_AtStartup();
-#else
-  return false;
-#endif
 }
 
 void DCLayerTree::DisableNativeCompositor() {
@@ -566,14 +577,21 @@ void DCLayerTree::DisableNativeCompositor() {
   mRootVisual->RemoveAllVisuals();
 }
 
-void DCLayerTree::EnableAsyncScreenshot() {
+bool DCLayerTree::EnableAsyncScreenshot() {
   MOZ_ASSERT(UseLayerCompositor());
   if (!UseLayerCompositor()) {
     MOZ_ASSERT_UNREACHABLE("unexpected to be called");
-    return;
+    return false;
   }
-  mEnableAsyncScreenshot = true;
+
   mAsyncScreenshotLastFrameUsed = mCurrentFrame;
+
+  if (!mEnableAsyncScreenshot) {
+    mEnableAsyncScreenshotInNextFrame = true;
+    return false;
+  }
+
+  return true;
 }
 
 bool DCLayerTree::MaybeUpdateDebugCounter() {
@@ -626,12 +644,16 @@ bool DCLayerTree::MaybeUpdateDebugVisualRedrawRegions() {
 void DCLayerTree::CompositorBeginFrame() {
   mCurrentFrame++;
   mUsedOverlayTypesInFrame = DCompOverlayTypes::NO_OVERLAY;
+  if (mEnableAsyncScreenshotInNextFrame) {
+    mEnableAsyncScreenshot = true;
+    mEnableAsyncScreenshotInNextFrame = false;
+  }
 }
 
 void DCLayerTree::CompositorEndFrame() {
   auto start = TimeStamp::Now();
   // Check if the visual tree of surfaces is the same as last frame.
-  bool same = mPrevLayers == mCurrentLayers;
+  const bool same = mPrevLayers == mCurrentLayers;
 
   if (!same) {
     // If not, we need to rebuild the visual tree. Note that addition or
@@ -661,7 +683,11 @@ void DCLayerTree::CompositorEndFrame() {
   mPrevLayers.swap(mCurrentLayers);
   mCurrentLayers.clear();
 
-  mCompositionDevice->Commit();
+  if (!same || !UseLayerCompositor()) {
+    mPendingCommit = true;
+  }
+
+  MaybeCommit();
 
   auto end = TimeStamp::Now();
   mozilla::glean::gfx::composite_swap_time.AccumulateSingleSample(
@@ -686,7 +712,7 @@ void DCLayerTree::CompositorEndFrame() {
   }
 
   if (mEnableAsyncScreenshot &&
-      (mCurrentFrame - mAsyncScreenshotLastFrameUsed) > 5) {
+      (mCurrentFrame - mAsyncScreenshotLastFrameUsed) > 1) {
     mEnableAsyncScreenshot = false;
   }
 
@@ -848,6 +874,8 @@ void DCLayerTree::ResizeSwapChainSurface(wr::NativeSurfaceId aId,
   auto it = mDCSurfaces.find(aId);
   MOZ_RELEASE_ASSERT(it != mDCSurfaces.end());
   auto surface = it->second.get();
+
+  mPendingCommit = true;
 
   if (!surface->AsDCLayerSurface()->Resize(aSize)) {
     RenderThread::Get()->HandleWebRenderError(WebRenderError::NEW_SURFACE);
@@ -1082,8 +1110,6 @@ void DCLayerTree::AddSurface(wr::NativeSurfaceId aId,
   const auto surface = it->second.get();
   const auto visual = surface->GetContentVisual();
 
-  wr::DeviceIntPoint virtualOffset = surface->GetVirtualOffset();
-
   float sx = aTransform.scale.x;
   float sy = aTransform.scale.y;
   float tx = aTransform.offset.x;
@@ -1092,6 +1118,16 @@ void DCLayerTree::AddSurface(wr::NativeSurfaceId aId,
 
   surface->PresentExternalSurface(transform);
 
+  if (UseLayerCompositor() &&
+      !surface->IsUpdated(aTransform, aClipRect, aImageRendering,
+                          aRoundedClipRect, aClipRadius)) {
+    mCurrentLayers.push_back(aId);
+    return;
+  }
+
+  mPendingCommit = true;
+
+  wr::DeviceIntPoint virtualOffset = surface->GetVirtualOffset();
   transform.PreTranslate(-virtualOffset.x, -virtualOffset.y);
 
   // The DirectComposition API applies clipping *before* any
@@ -1265,6 +1301,11 @@ bool DCLayerTree::SupportsSwapChainTearing() {
     }
     return !!presentAllowTearing;
   }();
+
+  if (!StaticPrefs::gfx_webrender_swap_chain_allow_tearing_AtStartup()) {
+    return false;
+  }
+
   return supported;
 }
 
@@ -1324,6 +1365,24 @@ DCSurface::DCSurface(wr::DeviceIntSize aTileSize,
       mVirtualOffset(aVirtualOffset) {}
 
 DCSurface::~DCSurface() {}
+
+bool DCSurface::IsUpdated(const wr::CompositorSurfaceTransform& aTransform,
+                          const wr::DeviceIntRect& aClipRect,
+                          const wr::ImageRendering aImageRendering,
+                          const wr::DeviceIntRect& aRoundedClipRect,
+                          const wr::ClipRadius& aClipRadius) {
+  if (mDCSurfaceData.isSome() &&
+      mDCSurfaceData.ref().mTransform == aTransform &&
+      mDCSurfaceData.ref().mClipRect == aClipRect &&
+      mDCSurfaceData.ref().mImageRendering == aImageRendering &&
+      mDCSurfaceData.ref().mRoundedClipRect == aRoundedClipRect &&
+      mDCSurfaceData.ref().mClipRadius == aClipRadius) {
+    return false;
+  }
+  mDCSurfaceData = Some(DCSurfaceData(aTransform, aClipRect, aImageRendering,
+                                      aRoundedClipRect, aClipRadius));
+  return true;
+}
 
 bool DCSurface::Initialize() {
   // Create a visual for tiles to attach to, whether virtual or not.
@@ -1526,6 +1585,9 @@ bool DCSwapChain::Initialize() {
   desc.AlphaMode =
       mIsOpaque ? DXGI_ALPHA_MODE_IGNORE : DXGI_ALPHA_MODE_PREMULTIPLIED;
   desc.Flags = 0;
+  if (mDCLayerTree->SupportsSwapChainTearing()) {
+    desc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+  }
 
   hr = dxgiFactory->CreateSwapChainForComposition(device, &desc, nullptr,
                                                   getter_AddRefs(mSwapChain));
@@ -1577,6 +1639,12 @@ void DCSwapChain::Bind(const wr::DeviceIntRect* aDirtyRects,
 }
 
 bool DCSwapChain::Resize(wr::DeviceIntSize aSize) {
+  MOZ_ASSERT(mSwapChain);
+
+  if (!mSwapChain) {
+    return false;
+  }
+
   const auto gl = mDCLayerTree->GetGLContext();
 
   const auto& gle = gl::GLContextEGL::Cast(gl);
@@ -1592,8 +1660,11 @@ bool DCSwapChain::Resize(wr::DeviceIntSize aSize) {
 
   mSwapChain->GetDesc(&desc);
 
+  UINT flags = mDCLayerTree->SupportsSwapChainTearing()
+                   ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
+                   : 0;
   hr = mSwapChain->ResizeBuffers(desc.BufferCount, aSize.width, aSize.height,
-                                 DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+                                 DXGI_FORMAT_B8G8R8A8_UNORM, flags);
   if (FAILED(hr)) {
     gfxCriticalNote << "Failed to resize swap chain buffers: " << gfx::hexa(hr)
                     << " Size : "
@@ -1638,9 +1709,17 @@ void DCSwapChain::Present(const wr::DeviceIntRect* aDirtyRects,
                           size_t aNumDirtyRects) {
   MOZ_ASSERT_IF(aNumDirtyRects > 0, !mFirstPresent);
 
+  MOZ_ASSERT(mSwapChain);
+
+  if (!mSwapChain) {
+    return;
+  }
+
   HRESULT hr = S_OK;
   int rectsCount = 0;
   StackArray<RECT, 1> rects(aNumDirtyRects);
+  const UINT flags =
+      mDCLayerTree->SupportsSwapChainTearing() ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
   if (aNumDirtyRects > 0) {
     for (size_t i = 0; i < aNumDirtyRects; ++i) {
@@ -1667,13 +1746,13 @@ void DCSwapChain::Present(const wr::DeviceIntRect* aDirtyRects,
       params.DirtyRectsCount = rectsCount;
       params.pDirtyRects = rects.data();
 
-      hr = mSwapChain->Present1(0, 0, &params);
+      hr = mSwapChain->Present1(0, flags, &params);
       if (FAILED(hr) && hr != DXGI_STATUS_OCCLUDED) {
         gfxCriticalNote << "Present1 failed: " << gfx::hexa(hr);
       }
     }
   } else {
-    mSwapChain->Present(0, 0);
+    mSwapChain->Present(0, flags);
   }
 
   if (mFirstPresent) {
@@ -1838,6 +1917,8 @@ void DCLayerCompositionSurface::Present(const wr::DeviceIntRect* aDirtyRects,
                                         size_t aNumDirtyRects) {
   MOZ_ASSERT(mEGLSurface);
   MOZ_ASSERT(mCompositionSurface);
+
+  mDCSurfaceData = Nothing();
 
   if (!mCompositionSurface) {
     return;
@@ -2034,8 +2115,6 @@ void DCSurfaceVideo::PresentVideo() {
     return;
   }
 
-  mContentVisual->SetContent(mVideoSwapChain);
-
   if (!CallVideoProcessorBlt()) {
     bool useYUVSwapChain = IsYUVSwapChainFormat(mSwapChainFormat);
     if (useYUVSwapChain) {
@@ -2214,6 +2293,7 @@ bool DCSurfaceVideo::CreateVideoSwapChain(DXGI_FORMAT aSwapChainFormat) {
   }
 
   mSwapChainFormat = aSwapChainFormat;
+  mContentVisual->SetContent(mVideoSwapChain);
   return true;
 }
 

@@ -5,8 +5,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/SVGFESpotLightElement.h"
-#include "mozilla/dom/SVGFESpotLightElementBinding.h"
+
 #include "mozilla/SVGFilterInstance.h"
+#include "mozilla/dom/SVGFESpotLightElementBinding.h"
 
 NS_IMPL_NS_NEW_SVG_ELEMENT(FESpotLight)
 
@@ -54,10 +55,13 @@ LightType SVGFESpotLightElement::ComputeLightAttributes(
     SVGFilterInstance* aInstance, nsTArray<float>& aFloatAttributes) {
   aFloatAttributes.SetLength(kSpotLightNumAttributes);
   Point3D lightPos, lightPointsAt;
-  GetAnimatedNumberValues(
-      &lightPos.x, &lightPos.y, &lightPos.z, &lightPointsAt.x, &lightPointsAt.y,
-      &lightPointsAt.z, &aFloatAttributes[kSpotLightFocusIndex],
-      &aFloatAttributes[kSpotLightLimitingConeAngleIndex], nullptr);
+  float limitingConeAngle;
+
+  GetAnimatedNumberValues(&lightPos.x, &lightPos.y, &lightPos.z,
+                          &lightPointsAt.x, &lightPointsAt.y, &lightPointsAt.z,
+                          &aFloatAttributes[kSpotLightFocusIndex],
+                          &limitingConeAngle, nullptr);
+
   lightPos = aInstance->ConvertLocation(lightPos);
   lightPointsAt = aInstance->ConvertLocation(lightPointsAt);
   aFloatAttributes[kSpotLightPositionXIndex] = lightPos.x;
@@ -67,10 +71,14 @@ LightType SVGFESpotLightElement::ComputeLightAttributes(
   aFloatAttributes[kSpotLightPointsAtYIndex] = lightPointsAt.y;
   aFloatAttributes[kSpotLightPointsAtZIndex] = lightPointsAt.z;
 
-  if (!mNumberAttributes[SVGFESpotLightElement::LIMITING_CONE_ANGLE]
-           .IsExplicitlySet()) {
-    aFloatAttributes[kSpotLightLimitingConeAngleIndex] = 90;
+  if (mNumberAttributes[SVGFESpotLightElement::LIMITING_CONE_ANGLE]
+          .IsExplicitlySet()) {
+    limitingConeAngle = std::clamp(limitingConeAngle, -90.0f, 90.0f);
+  } else {
+    limitingConeAngle = 90.0f;
   }
+
+  aFloatAttributes[kSpotLightLimitingConeAngleIndex] = limitingConeAngle;
 
   return LightType::Spot;
 }

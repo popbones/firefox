@@ -9,6 +9,7 @@ import { LinkMenu } from "../../LinkMenu/LinkMenu";
 import { useIntersectionObserver } from "../../../lib/utils";
 
 const PREF_TRENDING_VARIANT = "trendingSearch.variant";
+const PREF_REFINED_CARDS_LAYOUT = "discoverystream.refinedCardsLayout.enabled";
 
 function TrendingSearches() {
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -20,11 +21,13 @@ function TrendingSearches() {
   const { values: prefs } = Prefs;
   const { suggestions, collapsed } = TrendingSearch;
   const variant = prefs[PREF_TRENDING_VARIANT];
+  const refinedCards = prefs[PREF_REFINED_CARDS_LAYOUT];
   let resultRef = useRef([]);
+  let contextMenuHost = useRef(null);
 
   const TRENDING_SEARCH_CONTEXT_MENU_OPTIONS = [
-    "TrendingSearchLearnMore",
     "TrendingSearchDismiss",
+    "TrendingSearchLearnMore",
   ];
 
   function onArrowClick() {
@@ -50,9 +53,42 @@ function TrendingSearches() {
     );
   }
 
+  // If the window is small, the context menu in variant B will move closer to the card
+  // so that it doesn't cut off
+  const handleContextMenuShow = () => {
+    const host = contextMenuHost.current;
+    const isRTL = document.dir === "rtl"; // returns true if page language is right-to-left
+    const checkRect = host.getBoundingClientRect();
+    const maxBounds = 200;
+
+    // Adds the class of "last-item" if the card is near the edge of the window
+    const checkBounds = isRTL
+      ? checkRect.left <= maxBounds
+      : window.innerWidth - checkRect.right <= maxBounds;
+
+    if (checkBounds) {
+      host.classList.add("last-item");
+    }
+  };
+
+  const handleContextMenuUpdate = () => {
+    const host = contextMenuHost.current;
+    if (!host) {
+      return;
+    }
+
+    host.classList.remove("last-item");
+  };
+
   const toggleContextMenu = isKeyBoard => {
     setShowContextMenu(!showContextMenu);
     setIsKeyboardAccess(isKeyBoard);
+
+    if (!showContextMenu) {
+      handleContextMenuShow();
+    } else {
+      handleContextMenuUpdate();
+    }
   };
 
   function onContextMenuClick(e) {
@@ -95,6 +131,7 @@ function TrendingSearches() {
     resultRef.current[nextIndex].tabIndex = 0;
     resultRef.current[nextIndex].focus();
   }
+
   const handleIntersection = useCallback(() => {
     dispatch(
       ac.AlsoToMain({
@@ -131,7 +168,7 @@ function TrendingSearches() {
               onClick={onArrowClick}
               className={`icon icon-arrowhead-up`}
               type="icon ghost"
-              data-l10n-id={`newtab-trending-searches-${collapsed ? "hide" : "show"}-trending`}
+              data-l10n-id={`newtab-trending-searches-${collapsed ? "show" : "hide"}-trending`}
             ></moz-button>
           </div>
         </div>
@@ -165,6 +202,7 @@ function TrendingSearches() {
       <div
         ref={el => {
           ref.current = [el];
+          contextMenuHost.current = el;
         }}
         className="trending-searches-list-view"
       >
@@ -203,7 +241,7 @@ function TrendingSearches() {
             return (
               <li
                 key={result.suggestion}
-                className="trending-searches-list-item"
+                className={`trending-searches-list-item ${refinedCards ? "compact" : ""}`}
                 onKeyDown={e => handleResultKeyDown(e, index)}
               >
                 <SafeAnchor

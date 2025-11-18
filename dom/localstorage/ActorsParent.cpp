@@ -19,8 +19,10 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+
 #include "ErrorList.h"
 #include "MainThreadUtils.h"
+#include "NotifyUtils.h"
 #include "mozIStorageAsyncConnection.h"
 #include "mozIStorageConnection.h"
 #include "mozIStorageFunction.h"
@@ -33,6 +35,7 @@
 #include "mozilla/Atomics.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/DebugOnly.h"
+#include "mozilla/GeckoTrace.h"
 #include "mozilla/Logging.h"
 #include "mozilla/MacroForEach.h"
 #include "mozilla/Maybe.h"
@@ -85,10 +88,10 @@
 #include "mozilla/dom/quota/PersistenceType.h"
 #include "mozilla/dom/quota/PrincipalUtils.h"
 #include "mozilla/dom/quota/QuotaCommon.h"
-#include "mozilla/dom/quota/StorageHelpers.h"
 #include "mozilla/dom/quota/QuotaManager.h"
 #include "mozilla/dom/quota/QuotaObject.h"
 #include "mozilla/dom/quota/ResultExtensions.h"
+#include "mozilla/dom/quota/StorageHelpers.h"
 #include "mozilla/dom/quota/ThreadUtils.h"
 #include "mozilla/dom/quota/UsageInfo.h"
 #include "mozilla/glean/DomLocalstorageMetrics.h"
@@ -99,11 +102,9 @@
 #include "mozilla/ipc/PBackgroundSharedTypes.h"
 #include "mozilla/ipc/ProtocolUtils.h"
 #include "mozilla/storage/Variant.h"
-#include "NotifyUtils.h"
 #include "nsBaseHashtable.h"
 #include "nsCOMPtr.h"
 #include "nsClassHashtable.h"
-#include "nsTHashMap.h"
 #include "nsDebug.h"
 #include "nsError.h"
 #include "nsHashKeys.h"
@@ -135,6 +136,7 @@
 #include "nsStringFlags.h"
 #include "nsStringFwd.h"
 #include "nsTArray.h"
+#include "nsTHashMap.h"
 #include "nsTHashSet.h"
 #include "nsTLiteralString.h"
 #include "nsTStringRepr.h"
@@ -738,6 +740,8 @@ Result<nsCOMPtr<nsIFile>, nsresult> GetArchiveFile(
 
 Result<nsCOMPtr<mozIStorageConnection>, nsresult>
 CreateArchiveStorageConnection(const nsAString& aStoragePath) {
+  GECKO_TRACE_SCOPE("dom::localstorage", "CreateArchiveStorageConnection");
+
   AssertIsOnIOThread();
   MOZ_ASSERT(!aStoragePath.IsEmpty());
 
@@ -1060,6 +1064,8 @@ nsresult UpdateUsageFile(nsIFile* aUsageFile, nsIFile* aUsageJournalFile,
 }
 
 Result<UsageInfo, nsresult> LoadUsageFile(nsIFile& aUsageFile) {
+  GECKO_TRACE_SCOPE("dom::localstorage", "LoadUsageFile");
+
   AssertIsOnIOThread();
 
   QM_TRY_INSPECT(const int64_t& fileSize,
@@ -1704,7 +1710,7 @@ class PreparedDatastore {
 
     MOZ_ALWAYS_SUCCEEDS(mTimer->InitWithNamedFuncCallback(
         TimerCallback, this, kPreparedDatastoreTimeoutMs,
-        nsITimer::TYPE_ONE_SHOT, "PreparedDatastore::TimerCallback"));
+        nsITimer::TYPE_ONE_SHOT, "PreparedDatastore::TimerCallback"_ns));
   }
 
   ~PreparedDatastore() {
@@ -1746,7 +1752,7 @@ class PreparedDatastore {
 
       MOZ_ALWAYS_SUCCEEDS(mTimer->InitWithNamedFuncCallback(
           TimerCallback, this, 0, nsITimer::TYPE_ONE_SHOT,
-          "PreparedDatastore::TimerCallback"));
+          "PreparedDatastore::TimerCallback"_ns));
     }
   }
 
@@ -2894,6 +2900,8 @@ already_AddRefed<Datastore> GetDatastore(const nsACString& aOrigin) {
 }
 
 nsresult LoadArchivedOrigins() {
+  GECKO_TRACE_SCOPE("dom::localstorage", "LoadArchivedOrigins");
+
   AssertIsOnIOThread();
   MOZ_ASSERT(!gArchivedOrigins);
 
@@ -4229,7 +4237,7 @@ void Connection::ScheduleFlush() {
 
   MOZ_ALWAYS_SUCCEEDS(mFlushTimer->InitWithNamedFuncCallback(
       FlushTimerCallback, this, kFlushTimeoutMs, nsITimer::TYPE_ONE_SHOT,
-      "Connection::FlushTimerCallback"));
+      "Connection::FlushTimerCallback"_ns));
 
   mFlushScheduled = true;
 }
@@ -7020,6 +7028,8 @@ void PrepareDatastoreOp::SendToIOThread() {
 }
 
 nsresult PrepareDatastoreOp::DatabaseWork() {
+  GECKO_TRACE_SCOPE("dom::localstorage", "PrepareDatastoreOp::DatabaseWork");
+
   AssertIsOnIOThread();
   MOZ_ASSERT(mArchivedOriginScope);
   MOZ_ASSERT(mUsage == 0);

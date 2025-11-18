@@ -4,13 +4,52 @@ title: Changelog
 permalink: /changelog/
 ---
 
-# 142.0 (In Development)
+# 145.0 (In Development)
+* **support-ktx**
+  * 🚒 Bug fixed [Bug 1979064](https://bugzilla.mozilla.org/show_bug.cgi?id=1979064). Added back the API checks for `Window.setupPersistentInsets` and `ImeInsetsSynchronizer.setup` as on Android <13 the insets framework is not reliable.
+* **support-appservices**
+  * ⚠️ **Breaking change**: Updated the `AppServicesInitializer.init` to take in a configuration object instead of individual components.
+
+# 144.0
+* **feature-customtabs**
+  * 🚒 Bug fixed [Bug 1983103](https://bugzilla.mozilla.org/show_bug.cgi?id=1983103). Fixed issues with system status bars not being correctly themed for custom tabs and PWAs when used on devices with edge-to-edge enabled.
+* **support-ktx**
+  * 🆕 New `Window.setSystemBarsBackground()` allows to still theme the status bar, navigation bar and other insets background in landscape mode even when edge-to-edge is enabled and Android doesn't theme these anymore. [Bug 1981861](https://bugzilla.mozilla.org/show_bug.cgi?id=1981861)
+* **feature-sitepermissions**
+  * 🆕 New `SitePermissionsLearnMoreUrlProvider` interface that allows customizing whether to show "learn more" links in permission prompts and what URl to link to. [Bug 1985629](https://bugzilla.mozilla.org/show_bug.cgi?id=1985629)
+* **feature-framebusting**
+  * 🆕 New `GeckoSession.PromptDelegate.RedirectPrompt` prompt that is displayed when a third-party redirect is blocked. [Bug 1988107](https://bugzilla.mozilla.org/show_bug.cgi?id=1988107)
+
+# 143.0
+* **feature-downloads**:
+  * `AbstractFetchDownloadService.onDestroy` will now cancel all non-completed downloads. [Bug 1977393](https://bugzilla.mozilla.org/show_bug.cgi?id=1977393)
+* **concept-engine** and **browser-engine-gecko**
+  * Added methods to get and set multiple browser preferences. [Bug 1974800](https://bugzilla.mozilla.org/show_bug.cgi?id=1974800)
+  * 🌟️ Added a mechanism to observe browser preferences changing. Use `registerPrefObserverDelegate` to register the delegate on the engine and `registerPrefForObservation` to register a specific pref for observation. Alternatively, use `BrowserPrefObserverFeature` which handles registration and broadcasts the events using an `ObserverRegistery`.
+  * Added new LNA content permissions - `ContentLocalDeviceAccess` and `ContentLocalNetworkAccess` and map to respective `GeckoSession.PermissionDelegate` permission. [Bug 1971500](https://bugzilla.mozilla.org/show_bug.cgi?id=1971500)
+  * Added `localDeviceAccess` and `localNetworkAccess` to `SitePermissions`
+* **feature-sitepermissions**
+    * Added two new columns - `local_device_access` and `local_network_access` to `site_permissions` db table
+    * Migrated `SitePermissionsDatabase` to version 9
+
+# 142.0
+* **feature-tabs**:
+  * Updated `LastTabFeature` to not close the current tab when there's no history. [Bug 1813413](https://bugzilla.mozilla.org/show_bug.cgi?id=1813413).
 * **feature-downloads**:
   * `DownloadAction.RemoveDeletedDownloads` will now only remove downloads that are cancelled or completed. [Bug 1971848](https://bugzilla.mozilla.org/show_bug.cgi?id=1971848).
 * **concept-engine** and **browser-engine-gecko**
   * 🌟️ Added `TrackingProtectionPolicy.bounceTrackingProtectionMode` it allows configuring the Bounce Tracking Protection feature, disabled by default. [Bug 1963445](https://bugzilla.mozilla.org/show_bug.cgi?id=1963445)
+  * ⚠️ Options to get, set, and clear browser preferences now require opt in for additional safety.
+  * 🌟️ Added `TrackingProtectionPolicy.allowListBaselineTrackingProtection` and `TrackingProtectionPolicy.allowListConvenienceTrackingProtection`.  Url-classifier(tracking-protection, tracking-annotation, etc) exception entries are categorized into baseline and convenience. The new member variables specify whether exception entries from the corresponding categories are applied. [Bug 1970632](https://bugzilla.mozilla.org/show_bug.cgi?id=1970632)
 * **browser-state**
   * Removed `ContentState.isProductUrl` and related internal changes.
+* **support-ktx**
+  * Remove API level check for `setupPersistentInsets` and add a new option to consume insets; the default is the same current behaviour. [Bug 1977270](https://bugzilla.mozilla.org/show_bug.cgi?id=1977270) and [Bug 1976746](https://bugzilla.mozilla.org/show_bug.cgi?id=1976746).
+  * Remove API level check for `ImeInsetsSynchronizer`. [Bug 1977270](https://bugzilla.mozilla.org/show_bug.cgi?id=1977270)
+* **All components**
+  * ⚠️ Introduced `@ExperimentalAndroidComponentsApi` to indicate an API requires special care. Opt in via `@OptIn(ExperimentalAndroidComponentsApi::class)`.
+* **service-firefox-accounts**
+  * Renamed `withConstellation` to `withConstellationIfExists` to signify the block execution is dependant on the account being authenticated first. [Bug 1794207](https://bugzilla.mozilla.org/show_bug.cgi?id=1794207)
 
 # 141.0
 =======

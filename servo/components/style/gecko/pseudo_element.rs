@@ -16,7 +16,8 @@ use crate::str::{starts_with_ignore_ascii_case, string_as_ascii_lowercase};
 use crate::string_cache::Atom;
 use crate::values::serialize_atom_identifier;
 use crate::values::AtomIdent;
-use cssparser::{ToCss, Parser};
+use cssparser::{Parser, ToCss};
+use selectors::parser::PseudoElement as PseudoElementTrait;
 use static_prefs::pref;
 use std::fmt;
 use style_traits::ParseError;
@@ -93,8 +94,8 @@ impl PtNameAndClassSelector {
         // <pt-name-selector> = '*' | <custom-ident>
         let parse_pt_name = |input: &mut Parser<'i, '_>| {
             // For pseudo-element string, we don't accept '*'.
-            if matches!(target, Target::Selector) &&
-                input.try_parse(|i| i.expect_delim('*')).is_ok()
+            if matches!(target, Target::Selector)
+                && input.try_parse(|i| i.expect_delim('*')).is_ok()
             {
                 Ok(atom!("*"))
             } else {
@@ -136,7 +137,7 @@ impl PtNameAndClassSelector {
         // If we don't have `<pt-name-selector>`, we must have `<pt-class-selector>`, per the
         // syntax: `<pt-name-selector> <pt-class-selector>? | <pt-class-selector>`.
         if name.is_err() && classes.is_empty() {
-            return Err(input.new_custom_error(StyleParseErrorKind::UnspecifiedError))
+            return Err(input.new_custom_error(StyleParseErrorKind::UnspecifiedError));
         }
 
         // Use the universal symbol as the first element to present the part of
@@ -170,7 +171,7 @@ impl ToCss for PtNameAndClassSelector {
     }
 }
 
-impl ::selectors::parser::PseudoElement for PseudoElement {
+impl PseudoElementTrait for PseudoElement {
     type Impl = SelectorImpl;
 
     // ::slotted() should support all tree-abiding pseudo-elements, see
@@ -180,13 +181,20 @@ impl ::selectors::parser::PseudoElement for PseudoElement {
     fn valid_after_slotted(&self) -> bool {
         matches!(
             *self,
-            Self::Before |
-                Self::After |
-                Self::Marker |
-                Self::Placeholder |
-                Self::FileSelectorButton |
-                Self::DetailsContent
+            Self::Before
+                | Self::After
+                | Self::Marker
+                | Self::Placeholder
+                | Self::FileSelectorButton
+                | Self::DetailsContent
         )
+    }
+
+    // ::before/::after should support ::marker, but no others.
+    // https://drafts.csswg.org/css-pseudo-4/#marker-pseudo
+    #[inline]
+    fn valid_after_before_or_after(&self) -> bool {
+        matches!(*self, Self::Marker)
     }
 
     #[inline]
@@ -212,9 +220,15 @@ impl ::selectors::parser::PseudoElement for PseudoElement {
     /// flat tree parent, which might not be the originating element.
     #[inline]
     fn is_element_backed(&self) -> bool {
-        // Note: We doen't include ::view-transition here because it inherits from the originating
+        // Note: We don't include ::view-transition here because it inherits from the originating
         // element, instead of the snapshot containing block.
         self.is_named_view_transition() || *self == PseudoElement::DetailsContent
+    }
+
+    /// Whether the current pseudo element is ::before or ::after.
+    #[inline]
+    fn is_before_or_after(&self) -> bool {
+        matches!(*self, PseudoElement::Before | PseudoElement::After)
     }
 }
 
@@ -259,12 +273,6 @@ impl PseudoElement {
     #[inline]
     pub fn animations_stored_in_parent(&self) -> bool {
         matches!(*self, Self::Before | Self::After | Self::Marker)
-    }
-
-    /// Whether the current pseudo element is ::before or ::after.
-    #[inline]
-    pub fn is_before_or_after(&self) -> bool {
-        matches!(*self, Self::Before | Self::After)
     }
 
     /// Whether this pseudo-element is the ::before pseudo.
@@ -338,20 +346,20 @@ impl PseudoElement {
     pub fn is_named_view_transition(&self) -> bool {
         matches!(
             *self,
-            Self::ViewTransitionGroup(..) |
-                Self::ViewTransitionImagePair(..) |
-                Self::ViewTransitionOld(..) |
-                Self::ViewTransitionNew(..)
+            Self::ViewTransitionGroup(..)
+                | Self::ViewTransitionImagePair(..)
+                | Self::ViewTransitionOld(..)
+                | Self::ViewTransitionNew(..)
         )
     }
 
     /// The count we contribute to the specificity from this pseudo-element.
     pub fn specificity_count(&self) -> u32 {
         match *self {
-            Self::ViewTransitionGroup(ref name_and_class) |
-            Self::ViewTransitionImagePair(ref name_and_class) |
-            Self::ViewTransitionOld(ref name_and_class) |
-            Self::ViewTransitionNew(ref name_and_class) => {
+            Self::ViewTransitionGroup(ref name_and_class)
+            | Self::ViewTransitionImagePair(ref name_and_class)
+            | Self::ViewTransitionOld(ref name_and_class)
+            | Self::ViewTransitionNew(ref name_and_class) => {
                 // The specificity of a named view transition pseudo-element selector with either:
                 // 1. a <pt-name-selector> with a <custom-ident>; or
                 // 2. a <pt-class-selector> with at least one <custom-ident>,
@@ -383,11 +391,11 @@ impl PseudoElement {
             Self::DetailsContent => {
                 pref!("layout.css.details-content.enabled")
             },
-            Self::ViewTransition |
-            Self::ViewTransitionGroup(..) |
-            Self::ViewTransitionImagePair(..) |
-            Self::ViewTransitionOld(..) |
-            Self::ViewTransitionNew(..) => pref!("dom.viewTransitions.enabled"),
+            Self::ViewTransition
+            | Self::ViewTransitionGroup(..)
+            | Self::ViewTransitionImagePair(..)
+            | Self::ViewTransitionOld(..)
+            | Self::ViewTransitionNew(..) => pref!("dom.viewTransitions.enabled"),
             // If it's not explicitly enabled in UA sheets or chrome, then we're enabled for
             // content.
             _ => (self.flags() & structs::CSS_PSEUDO_ELEMENT_ENABLED_IN_UA_SHEETS_AND_CHROME) == 0,
@@ -472,7 +480,7 @@ impl PseudoElement {
             };
             return PseudoElement::from_slice(&name, false).ok_or(location.new_custom_error(
                 SelectorParseErrorKind::UnsupportedPseudoClassOrElement(name.clone()),
-            ))
+            ));
         }
 
         // Now we have double colons, so check the following tokens.
@@ -510,13 +518,13 @@ impl PseudoElement {
             (
                 &Self::ViewTransitionGroup(ref name),
                 &Self::ViewTransitionGroup(ref s_name_class),
-            ) |
-            (
+            )
+            | (
                 &Self::ViewTransitionImagePair(ref name),
                 &Self::ViewTransitionImagePair(ref s_name_class),
-            ) |
-            (&Self::ViewTransitionOld(ref name), &Self::ViewTransitionOld(ref s_name_class)) |
-            (&Self::ViewTransitionNew(ref name), &Self::ViewTransitionNew(ref s_name_class)) => {
+            )
+            | (&Self::ViewTransitionOld(ref name), &Self::ViewTransitionOld(ref s_name_class))
+            | (&Self::ViewTransitionNew(ref name), &Self::ViewTransitionNew(ref s_name_class)) => {
                 // Named view transition pseudos accept the universal selector as the name, so we
                 // check it first.
                 // https://drafts.csswg.org/css-view-transitions-1/#named-view-transition-pseudo
@@ -527,8 +535,8 @@ impl PseudoElement {
 
                 // We have to check class list only when the name is matched and there are one or
                 // more <pt-class-selector>s.
-                s_name_class.classes().is_empty() ||
-                    unsafe {
+                s_name_class.classes().is_empty()
+                    || unsafe {
                         bindings::Gecko_MatchViewTransitionClass(
                             element.0,
                             s_name_class.name_and_classes(),

@@ -97,7 +97,8 @@ bool IsNotificationForbiddenFor(nsIPrincipal* aPrincipal,
   if (outForeignByAncestorContext) {
     // nested first party
     ReportTelemetry(GleanLabel::eNestedFirstParty, aPurpose);
-    return false;
+    return StaticPrefs::
+        dom_webnotifications_forbid_nested_first_party_enabled();
   }
 
   // third party
@@ -166,6 +167,71 @@ nsresult GetOrigin(nsIPrincipal* aPrincipal, nsString& aOrigin) {
 nsCOMPtr<nsINotificationStorage> GetNotificationStorage(bool isPrivate) {
   return do_GetService(isPrivate ? NS_MEMORY_NOTIFICATION_STORAGE_CONTRACTID
                                  : NS_NOTIFICATION_STORAGE_CONTRACTID);
+}
+
+class NotificationsCallback : public nsINotificationStorageCallback {
+ public:
+  NS_DECL_ISUPPORTS
+
+  already_AddRefed<NotificationsPromise> Promise() {
+    return mPromiseHolder.Ensure(__func__);
+  }
+
+  NS_IMETHOD Done(
+      const nsTArray<RefPtr<nsINotificationStorageEntry>>& aEntries) final {
+    AssertIsOnMainThread();
+
+    nsTArray<IPCNotification> notifications(aEntries.Length());
+    for (const auto& entry : aEntries) {
+      auto result = NotificationStorageEntry::ToIPC(*entry);
+      if (result.isErr()) {
+        continue;
+      }
+      MOZ_ASSERT(!result.inspect().id().IsEmpty());
+      notifications.AppendElement(result.unwrap());
+    }
+
+    mPromiseHolder.Resolve(std::move(notifications), __func__);
+    return NS_OK;
+  }
+
+ protected:
+  virtual ~NotificationsCallback() {
+    // We may be shutting down prematurely without getting the result, so make
+    // sure to settle the promise.
+    mPromiseHolder.RejectIfExists(NS_ERROR_DOM_INVALID_STATE_ERR, __func__);
+  };
+
+  MozPromiseHolder<NotificationsPromise> mPromiseHolder;
+};
+
+NS_IMPL_ISUPPORTS(NotificationsCallback, nsINotificationStorageCallback)
+
+already_AddRefed<NotificationsPromise> GetStoredNotificationsForScope(
+    nsIPrincipal* aPrincipal, const nsACString& aScope, const nsAString& aTag) {
+  nsString origin;
+  nsresult rv = GetOrigin(aPrincipal, origin);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    return NotificationsPromise::CreateAndReject(rv, __func__).forget();
+  }
+
+  RefPtr<NotificationsCallback> callback = new NotificationsCallback();
+  RefPtr<NotificationsPromise> promise = callback->Promise();
+
+  nsCOMPtr<nsINotificationStorage> notificationStorage =
+      GetNotificationStorage(aPrincipal->GetIsInPrivateBrowsing());
+  if (!notificationStorage) {
+    return NotificationsPromise::CreateAndReject(NS_ERROR_NOT_AVAILABLE,
+                                                 __func__)
+        .forget();
+  }
+
+  rv = notificationStorage->Get(origin, NS_ConvertUTF8toUTF16(aScope), aTag,
+                                callback);
+  if (NS_WARN_IF(NS_FAILED(rv))) {
+    return NotificationsPromise::CreateAndReject(rv, __func__).forget();
+  }
+  return promise.forget();
 }
 
 nsresult PersistNotification(nsIPrincipal* aPrincipal,
@@ -238,10 +304,12 @@ nsresult ShowAlertWithCleanup(nsIAlertNotification* aAlert,
     // NotificationDB.
     // (This won't affect the following persist call by ShowAlert, as the DB
     // maintains a job queue)
+    // Note that we ignore the result of GetHistory - we still go ahead and
+    // clears notifications even if it fails, as the failure implies there's no
+    // history and thus we should clear everything.
     nsTArray<nsString> history;
-    if (NS_SUCCEEDED(alertService->GetHistory(history))) {
-      UnpersistAllNotificationsExcept(history);
-    }
+    (void)alertService->GetHistory(history);
+    UnpersistAllNotificationsExcept(history);
   }
 
   MOZ_TRY(alertService->ShowAlert(aAlert, aAlertListener));

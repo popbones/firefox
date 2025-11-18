@@ -9,6 +9,7 @@
 #include "builtin/WeakSetObject.h"
 #include "gc/GC.h"
 #include "gc/GCContext.h"
+#include "jit/InlinableNatives.h"
 #include "js/friend/ErrorMessages.h"  // JSMSG_*
 #include "js/PropertySpec.h"
 #include "js/WeakMap.h"
@@ -31,7 +32,7 @@ using namespace js;
     JSContext* cx, const CallArgs& args) {
   MOZ_ASSERT(is(args.thisv()));
 
-  if (!CanBeHeldWeakly(cx, args.get(0))) {
+  if (!CanBeHeldWeakly(args.get(0))) {
     args.rval().setBoolean(false);
     return true;
   }
@@ -56,11 +57,18 @@ bool WeakMapObject::has(JSContext* cx, unsigned argc, Value* vp) {
                                                                           args);
 }
 
+// static
+bool WeakMapObject::hasObject(WeakMapObject* weakMap, JSObject* obj) {
+  AutoUnsafeCallWithABI unsafe;
+  ValueValueWeakMap* map = weakMap->getMap();
+  return map && map->has(ObjectValue(*obj));
+}
+
 /* static */ MOZ_ALWAYS_INLINE bool WeakMapObject::get_impl(
     JSContext* cx, const CallArgs& args) {
   MOZ_ASSERT(WeakMapObject::is(args.thisv()));
 
-  if (!CanBeHeldWeakly(cx, args.get(0))) {
+  if (!CanBeHeldWeakly(args.get(0))) {
     args.rval().setUndefined();
     return true;
   }
@@ -85,11 +93,24 @@ bool WeakMapObject::get(JSContext* cx, unsigned argc, Value* vp) {
                                                                           args);
 }
 
+// static
+void WeakMapObject::getObject(WeakMapObject* weakMap, JSObject* obj,
+                              Value* result) {
+  AutoUnsafeCallWithABI unsafe;
+  if (ValueValueWeakMap* map = weakMap->getMap()) {
+    if (ValueValueWeakMap::Ptr ptr = map->lookup(ObjectValue(*obj))) {
+      *result = ptr->value();
+      return;
+    }
+  }
+  *result = UndefinedValue();
+}
+
 /* static */ MOZ_ALWAYS_INLINE bool WeakMapObject::delete_impl(
     JSContext* cx, const CallArgs& args) {
   MOZ_ASSERT(WeakMapObject::is(args.thisv()));
 
-  if (!CanBeHeldWeakly(cx, args.get(0))) {
+  if (!CanBeHeldWeakly(args.get(0))) {
     args.rval().setBoolean(false);
     return true;
   }
@@ -119,7 +140,7 @@ bool WeakMapObject::delete_(JSContext* cx, unsigned argc, Value* vp) {
 }
 
 static bool EnsureValidWeakMapKey(JSContext* cx, Handle<Value> keyVal) {
-  if (MOZ_UNLIKELY(!CanBeHeldWeakly(cx, keyVal))) {
+  if (MOZ_UNLIKELY(!CanBeHeldWeakly(keyVal))) {
     unsigned errorNum = GetErrorNumber(true);
     ReportValueError(cx, errorNum, JSDVG_IGNORE_STACK, keyVal, nullptr);
     return false;
@@ -155,7 +176,6 @@ bool WeakMapObject::set(JSContext* cx, unsigned argc, Value* vp) {
                                                                           args);
 }
 
-#ifdef NIGHTLY_BUILD
 static bool GetOrAddWeakMapEntry(JSContext* cx, Handle<WeakMapObject*> mapObj,
                                  Handle<Value> key, Handle<Value> value,
                                  MutableHandleValue rval) {
@@ -196,7 +216,6 @@ bool WeakMapObject::getOrInsert(JSContext* cx, unsigned argc, Value* vp) {
   return CallNonGenericMethod<WeakMapObject::is,
                               WeakMapObject::getOrInsert_impl>(cx, args);
 }
-#endif  // #ifdef NIGHTLY_BUILD
 
 size_t WeakCollectionObject::sizeOfExcludingThis(
     mozilla::MallocSizeOf aMallocSizeOf) {
@@ -278,7 +297,7 @@ JS_PUBLIC_API bool JS::GetWeakMapEntry(JSContext* cx, HandleObject mapObj,
   cx->check(key);
   rval.setUndefined();
 
-  if (!CanBeHeldWeakly(cx, key)) {
+  if (!CanBeHeldWeakly(key)) {
     return true;
   }
 
@@ -411,7 +430,7 @@ const ClassSpec WeakMapObject::classSpec_ = {
     nullptr,
     WeakMapObject::methods,
     WeakMapObject::properties,
-    GenericFinishInit<WhichHasFuseProperty::Proto>,
+    GenericFinishInit<WhichHasRealmFuseProperty::Proto>,
 };
 
 const JSClass WeakMapObject::class_ = {
@@ -435,14 +454,12 @@ const JSPropertySpec WeakMapObject::properties[] = {
 };
 
 const JSFunctionSpec WeakMapObject::methods[] = {
-    JS_FN("has", has, 1, 0),
-    JS_FN("get", get, 1, 0),
+    JS_INLINABLE_FN("has", has, 1, 0, WeakMapHas),
+    JS_INLINABLE_FN("get", get, 1, 0, WeakMapGet),
     JS_FN("delete", delete_, 1, 0),
     JS_FN("set", set, 2, 0),
-#ifdef NIGHTLY_BUILD
     JS_FN("getOrInsert", getOrInsert, 2, 0),
     JS_SELF_HOSTED_FN("getOrInsertComputed", "WeakMapGetOrInsertComputed", 2,
                       0),
-#endif
     JS_FS_END,
 };

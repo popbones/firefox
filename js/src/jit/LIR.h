@@ -11,6 +11,7 @@
 // inputs and outputs, as well as the interface instructions must conform to.
 
 #include "mozilla/Array.h"
+#include "mozilla/Attributes.h"
 #include "mozilla/Casting.h"
 
 #include "jit/Bailouts.h"
@@ -609,18 +610,12 @@ class LDefinition {
   Type type() const { return (Type)((bits_ >> TYPE_SHIFT) & TYPE_MASK); }
 
   static bool isFloatRegCompatible(Type type, FloatRegister reg) {
-#ifdef JS_CODEGEN_RISCV64
-    if (type == FLOAT32 || type == DOUBLE) {
-      return reg.isSingle() || reg.isDouble();
-    }
-#else
     if (type == FLOAT32) {
       return reg.isSingle();
     }
     if (type == DOUBLE) {
       return reg.isDouble();
     }
-#endif
     MOZ_ASSERT(type == SIMD128);
     return reg.isSimd128();
   }
@@ -1182,6 +1177,11 @@ class LBlock {
   // which is not forming a loop. No code will be emitted for such blocks.
   bool isTrivial() { return begin()->isGoto() && !mir()->isLoopHeader(); }
 
+  // Test whether this basic block is a sequence of MoveGroups followed by a
+  // simple goto, and is not a loop header.  If so return the target of the
+  // jump, otherwise return nullptr.
+  LBlock* isMoveGroupsThenGoto();
+
 #ifdef JS_JITSPEW
   void dump(GenericPrinter& out);
   void dump();
@@ -1269,7 +1269,7 @@ inline LDefinition* LInstruction::getTemp(size_t index) {
 template <size_t Defs, size_t Operands, size_t Temps>
 class LInstructionHelper
     : public details::LInstructionFixedDefsTempsHelper<Defs, Temps> {
-  mozilla::Array<LAllocation, Operands> operands_;
+  MOZ_NO_UNIQUE_ADDRESS mozilla::Array<LAllocation, Operands> operands_;
 
  protected:
   explicit LInstructionHelper(LNode::Opcode opcode)
@@ -1359,7 +1359,7 @@ class LCallInstructionHelper
 template <size_t Succs, size_t Operands, size_t Temps>
 class LControlInstructionHelper
     : public LInstructionHelper<0, Operands, Temps> {
-  mozilla::Array<MBasicBlock*, Succs> successors_;
+  MOZ_NO_UNIQUE_ADDRESS mozilla::Array<MBasicBlock*, Succs> successors_;
 
  protected:
   explicit LControlInstructionHelper(LNode::Opcode opcode)

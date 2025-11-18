@@ -11,18 +11,20 @@
 
 #include "nsAbsoluteContainingBlock.h"
 
-#include "nsAtomicContainerFrame.h"
-#include "nsContainerFrame.h"
-#include "nsGkAtoms.h"
 #include "mozilla/CSSAlignUtils.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/ReflowInput.h"
+#include "mozilla/Sprintf.h"
+#include "mozilla/ViewportFrame.h"
+#include "mozilla/dom/ViewTransition.h"
+#include "nsAtomicContainerFrame.h"
+#include "nsCSSFrameConstructor.h"
+#include "nsContainerFrame.h"
+#include "nsGkAtoms.h"
+#include "nsGridContainerFrame.h"
+#include "nsIFrameInlines.h"
 #include "nsPlaceholderFrame.h"
 #include "nsPresContext.h"
-#include "nsCSSFrameConstructor.h"
-#include "nsGridContainerFrame.h"
-
-#include "mozilla/Sprintf.h"
 
 #ifdef DEBUG
 #  include "nsBlockFrame.h"
@@ -41,8 +43,6 @@ static void PrettyUC(nscoord aSize, char* aBuf, int aBufSize) {
 #endif
 
 using namespace mozilla;
-
-typedef mozilla::CSSAlignUtils::AlignJustifyFlags AlignJustifyFlags;
 
 void nsAbsoluteContainingBlock::SetInitialChildList(nsIFrame* aDelegatingFrame,
                                                     FrameChildListID aListID,
@@ -148,6 +148,11 @@ static void MaybeMarkAncestorsAsHavingDescendantDependentOnItsStaticPos(
   }
 }
 
+static bool IsSnapshotContainingBlock(const nsIFrame* aFrame) {
+  return aFrame->Style()->GetPseudoType() ==
+         PseudoStyleType::mozSnapshotContainingBlock;
+}
+
 void nsAbsoluteContainingBlock::Reflow(nsContainerFrame* aDelegatingFrame,
                                        nsPresContext* aPresContext,
                                        const ReflowInput& aReflowInput,
@@ -170,21 +175,43 @@ void nsAbsoluteContainingBlock::Reflow(nsContainerFrame* aDelegatingFrame,
   nsOverflowContinuationTracker tracker(aDelegatingFrame, true);
   for (kidFrame = mAbsoluteFrames.FirstChild(); kidFrame;
        kidFrame = kidFrame->GetNextSibling()) {
+    AnchorPosReferencedAnchors* referencedAnchors = nullptr;
+    if (kidFrame->HasAnchorPosReference()) {
+      referencedAnchors = kidFrame->SetOrUpdateDeletableProperty(
+          nsIFrame::AnchorPosReferences());
+    } else {
+      kidFrame->RemoveProperty(nsIFrame::AnchorPosReferences());
+    }
+
     bool kidNeedsReflow =
         reflowAll || kidFrame->IsSubtreeDirty() ||
         FrameDependsOnContainer(
             kidFrame, !!(aFlags & AbsPosReflowFlags::CBWidthChanged),
-            !!(aFlags & AbsPosReflowFlags::CBHeightChanged));
+            !!(aFlags & AbsPosReflowFlags::CBHeightChanged), referencedAnchors);
 
     if (kidFrame->IsSubtreeDirty()) {
       MaybeMarkAncestorsAsHavingDescendantDependentOnItsStaticPos(
           kidFrame, aDelegatingFrame);
     }
 
-    nscoord availBSize = aReflowInput.AvailableBSize();
-    const nsRect& cb =
-        isGrid ? nsGridContainerFrame::GridItemCB(kidFrame) : aContainingBlock;
-    WritingMode containerWM = aReflowInput.GetWritingMode();
+    const nsRect usedCbForKid = [&] {
+      if (isGrid) {
+        return nsGridContainerFrame::GridItemCB(kidFrame);
+      }
+
+      if (ViewportFrame* viewport = do_QueryFrame(aDelegatingFrame)) {
+        if (!IsSnapshotContainingBlock(kidFrame)) {
+          return viewport->GetContainingBlockAdjustedForScrollbars(
+              aReflowInput);
+        }
+        return dom::ViewTransition::SnapshotContainingBlockRect(
+            viewport->PresContext());
+      }
+      return aContainingBlock;
+    }();
+
+    const nscoord availBSize = aReflowInput.AvailableBSize();
+    const WritingMode containerWM = aReflowInput.GetWritingMode();
     if (!kidNeedsReflow && availBSize != NS_UNCONSTRAINEDSIZE) {
       // If we need to redo pagination on the kid, we need to reflow it.
       // This can happen either if the available height shrunk and the
@@ -197,13 +224,14 @@ void nsAbsoluteContainingBlock::Reflow(nsContainerFrame* aDelegatingFrame,
         // Not sure what the right test would be here.
         kidNeedsReflow = true;
       } else {
-        nscoord kidBEnd = kidFrame->GetLogicalRect(cb.Size()).BEnd(kidWM);
+        nscoord kidBEnd =
+            kidFrame->GetLogicalRect(usedCbForKid.Size()).BEnd(kidWM);
         nscoord kidOverflowBEnd =
             LogicalRect(containerWM,
                         // Use ...RelativeToSelf to ignore transforms
                         kidFrame->ScrollableOverflowRectRelativeToSelf() +
                             kidFrame->GetPosition(),
-                        aContainingBlock.Size())
+                        usedCbForKid.Size())
                 .BEnd(containerWM);
         NS_ASSERTION(kidOverflowBEnd >= kidBEnd,
                      "overflow area should be at least as large as frame rect");
@@ -216,8 +244,9 @@ void nsAbsoluteContainingBlock::Reflow(nsContainerFrame* aDelegatingFrame,
     if (kidNeedsReflow && !aPresContext->HasPendingInterrupt()) {
       // Reflow the frame
       nsReflowStatus kidStatus;
-      ReflowAbsoluteFrame(aDelegatingFrame, aPresContext, aReflowInput, cb,
-                          aFlags, kidFrame, kidStatus, aOverflowAreas);
+      ReflowAbsoluteFrame(aDelegatingFrame, aPresContext, aReflowInput,
+                          usedCbForKid, aFlags, kidFrame, kidStatus,
+                          aOverflowAreas, referencedAnchors);
       MOZ_ASSERT(!kidStatus.IsInlineBreakBefore(),
                  "ShouldAvoidBreakInside should prevent this from happening");
       nsIFrame* nextFrame = kidFrame->GetNextInFlow();
@@ -291,9 +320,9 @@ static inline bool IsFixedOffset(const AnchorResolvedInset& aInset) {
   return aInset->ConvertsToLength();
 }
 
-bool nsAbsoluteContainingBlock::FrameDependsOnContainer(nsIFrame* f,
-                                                        bool aCBWidthChanged,
-                                                        bool aCBHeightChanged) {
+bool nsAbsoluteContainingBlock::FrameDependsOnContainer(
+    nsIFrame* f, bool aCBWidthChanged, bool aCBHeightChanged,
+    AnchorPosReferencedAnchors* aReferencedAnchors) {
   const nsStylePosition* pos = f->StylePosition();
   // See if f's position might have changed because it depends on a
   // placeholder's position.
@@ -307,7 +336,8 @@ bool nsAbsoluteContainingBlock::FrameDependsOnContainer(nsIFrame* f,
   const nsStylePadding* padding = f->StylePadding();
   const nsStyleMargin* margin = f->StyleMargin();
   WritingMode wm = f->GetWritingMode();
-  const auto anchorResolutionParams = AnchorPosResolutionParams::From(f);
+  const auto anchorResolutionParams =
+      AnchorPosResolutionParams::From(f, aReferencedAnchors);
   if (wm.IsVertical() ? aCBHeightChanged : aCBWidthChanged) {
     // See if f's inline-size might have changed.
     // If margin-inline-start/end, padding-inline-start/end,
@@ -316,11 +346,11 @@ bool nsAbsoluteContainingBlock::FrameDependsOnContainer(nsIFrame* f,
     // Note that borders never depend on the parent isize.
     // XXX All of the enumerated values except -moz-available are ok too.
     if (nsStylePosition::ISizeDependsOnContainer(
-            pos->ISize(wm, anchorResolutionParams.mPosition)) ||
+            pos->ISize(wm, anchorResolutionParams)) ||
         nsStylePosition::MinISizeDependsOnContainer(
-            pos->MinISize(wm, anchorResolutionParams.mPosition)) ||
+            pos->MinISize(wm, anchorResolutionParams)) ||
         nsStylePosition::MaxISizeDependsOnContainer(
-            pos->MaxISize(wm, anchorResolutionParams.mPosition)) ||
+            pos->MaxISize(wm, anchorResolutionParams)) ||
         !IsFixedPaddingSize(padding->mPadding.GetIStart(wm)) ||
         !IsFixedPaddingSize(padding->mPadding.GetIEnd(wm))) {
       return true;
@@ -329,10 +359,10 @@ bool nsAbsoluteContainingBlock::FrameDependsOnContainer(nsIFrame* f,
     // See if f's position might have changed. If we're RTL then the
     // rules are slightly different. We'll assume percentage or auto
     // margins will always induce a dependency on the size
-    if (!IsFixedMarginSize(margin->GetMargin(
-            LogicalSide::IStart, wm, anchorResolutionParams.mPosition)) ||
-        !IsFixedMarginSize(margin->GetMargin(
-            LogicalSide::IEnd, wm, anchorResolutionParams.mPosition))) {
+    if (!IsFixedMarginSize(margin->GetMargin(LogicalSide::IStart, wm,
+                                             anchorResolutionParams)) ||
+        !IsFixedMarginSize(
+            margin->GetMargin(LogicalSide::IEnd, wm, anchorResolutionParams))) {
       return true;
     }
   }
@@ -346,7 +376,7 @@ bool nsAbsoluteContainingBlock::FrameDependsOnContainer(nsIFrame* f,
     //
     // FIXME(emilio): Should the BSize(wm).IsAuto() check also for the extremum
     // lengths?
-    const auto bSize = pos->BSize(wm, anchorResolutionParams.mPosition);
+    const auto bSize = pos->BSize(wm, anchorResolutionParams);
     const auto anchorOffsetResolutionParams =
         AnchorPosOffsetResolutionParams::UseCBFrameSize(anchorResolutionParams);
     if ((nsStylePosition::BSizeDependsOnContainer(bSize) &&
@@ -358,19 +388,19 @@ bool nsAbsoluteContainingBlock::FrameDependsOnContainer(nsIFrame* f,
                                         anchorOffsetResolutionParams)
                 ->IsAuto())) ||
         nsStylePosition::MinBSizeDependsOnContainer(
-            pos->MinBSize(wm, anchorResolutionParams.mPosition)) ||
+            pos->MinBSize(wm, anchorResolutionParams)) ||
         nsStylePosition::MaxBSizeDependsOnContainer(
-            pos->MaxBSize(wm, anchorResolutionParams.mPosition)) ||
+            pos->MaxBSize(wm, anchorResolutionParams)) ||
         !IsFixedPaddingSize(padding->mPadding.GetBStart(wm)) ||
         !IsFixedPaddingSize(padding->mPadding.GetBEnd(wm))) {
       return true;
     }
 
     // See if f's position might have changed.
-    if (!IsFixedMarginSize(margin->GetMargin(
-            LogicalSide::BStart, wm, anchorResolutionParams.mPosition)) ||
-        !IsFixedMarginSize(margin->GetMargin(
-            LogicalSide::BEnd, wm, anchorResolutionParams.mPosition))) {
+    if (!IsFixedMarginSize(margin->GetMargin(LogicalSide::BStart, wm,
+                                             anchorResolutionParams)) ||
+        !IsFixedMarginSize(
+            margin->GetMargin(LogicalSide::BEnd, wm, anchorResolutionParams))) {
       return true;
     }
   }
@@ -590,7 +620,8 @@ static nscoord OffsetToAlignedStaticPos(
                                        : alignAreaSize.BSize(pcWM)) -
       existingOffset;
 
-  AlignJustifyFlags flags = AlignJustifyFlags::IgnoreAutoMargins;
+  using AlignJustifyFlag = CSSAlignUtils::AlignJustifyFlag;
+  CSSAlignUtils::AlignJustifyFlags flags(AlignJustifyFlag::IgnoreAutoMargins);
   // Given that scenario 2 ignores the parent container type, special handling
   // of absolutely-positioned child is also ignored.
   StyleAlignFlags alignConst =
@@ -605,18 +636,18 @@ static nscoord OffsetToAlignedStaticPos(
       alignConst & (StyleAlignFlags::SAFE | StyleAlignFlags::UNSAFE);
   alignConst &= ~StyleAlignFlags::FLAG_BITS;
   if (safetyBits & StyleAlignFlags::SAFE) {
-    flags |= AlignJustifyFlags::OverflowSafe;
+    flags += AlignJustifyFlag::OverflowSafe;
   }
 
   // Find out if placeholder-container & the OOF child have the same start-sides
   // in the placeholder-container's pcAxis.
   WritingMode kidWM = aKidReflowInput.GetWritingMode();
   if (pcWM.ParallelAxisStartsOnSameSide(pcAxis, kidWM)) {
-    flags |= AlignJustifyFlags::SameSide;
+    flags += AlignJustifyFlag::SameSide;
   }
 
   if (aNonAutoAlignParams) {
-    flags |= AlignJustifyFlags::AligningMarginBox;
+    flags += AlignJustifyFlag::AligningMarginBox;
   }
 
   // (baselineAdjust is unused. CSSAlignmentForAbsPosChild() should've
@@ -763,7 +794,7 @@ void nsAbsoluteContainingBlock::ResolveAutoMarginsAfterLayout(
     ReflowInput& aKidReflowInput, const LogicalSize* aLogicalCBSize,
     const LogicalSize& aKidSize, LogicalMargin& aMargin,
     LogicalMargin& aOffsets) {
-  MOZ_ASSERT(aKidReflowInput.mFrame->HasIntrinsicKeywordForBSize());
+  MOZ_ASSERT(aKidReflowInput.mFlags.mDeferAutoMarginComputation);
 
   WritingMode wm = aKidReflowInput.GetWritingMode();
   WritingMode outerWM = aKidReflowInput.mParentReflowInput->GetWritingMode();
@@ -789,24 +820,20 @@ void nsAbsoluteContainingBlock::ResolveAutoMarginsAfterLayout(
     ReflowInput::ComputeAbsPosInlineAutoMargin(
         availMarginSpace, outerWM,
         styleMargin
-            ->GetMargin(LogicalSide::IStart, outerWM,
-                        anchorResolutionParams.mPosition)
+            ->GetMargin(LogicalSide::IStart, outerWM, anchorResolutionParams)
             ->IsAuto(),
         styleMargin
-            ->GetMargin(LogicalSide::IEnd, outerWM,
-                        anchorResolutionParams.mPosition)
+            ->GetMargin(LogicalSide::IEnd, outerWM, anchorResolutionParams)
             ->IsAuto(),
         aMargin, aOffsets);
   } else {
     ReflowInput::ComputeAbsPosBlockAutoMargin(
         availMarginSpace, outerWM,
         styleMargin
-            ->GetMargin(LogicalSide::BStart, outerWM,
-                        anchorResolutionParams.mPosition)
+            ->GetMargin(LogicalSide::BStart, outerWM, anchorResolutionParams)
             ->IsAuto(),
         styleMargin
-            ->GetMargin(LogicalSide::BEnd, outerWM,
-                        anchorResolutionParams.mPosition)
+            ->GetMargin(LogicalSide::BEnd, outerWM, anchorResolutionParams)
             ->IsAuto(),
         aMargin, aOffsets);
   }
@@ -818,11 +845,10 @@ void nsAbsoluteContainingBlock::ResolveAutoMarginsAfterLayout(
       aKidReflowInput.mFrame->GetProperty(nsIFrame::UsedMarginProperty());
   // InitOffsets should've created a UsedMarginProperty for us, if any margin is
   // auto.
-  MOZ_ASSERT_IF(styleMargin->HasInlineAxisAuto(
-                    outerWM, anchorResolutionParams.mPosition) ||
-                    styleMargin->HasBlockAxisAuto(
-                        outerWM, anchorResolutionParams.mPosition),
-                propValue);
+  MOZ_ASSERT_IF(
+      styleMargin->HasInlineAxisAuto(outerWM, anchorResolutionParams) ||
+          styleMargin->HasBlockAxisAuto(outerWM, anchorResolutionParams),
+      propValue);
   if (propValue) {
     *propValue = aMargin.GetPhysicalMargin(outerWM);
   }
@@ -840,7 +866,8 @@ void nsAbsoluteContainingBlock::ReflowAbsoluteFrame(
     nsIFrame* aDelegatingFrame, nsPresContext* aPresContext,
     const ReflowInput& aReflowInput, const nsRect& aContainingBlock,
     AbsPosReflowFlags aFlags, nsIFrame* aKidFrame, nsReflowStatus& aStatus,
-    OverflowAreas* aOverflowAreas) {
+    OverflowAreas* aOverflowAreas,
+    AnchorPosReferencedAnchors* aReferencedAnchors) {
   MOZ_ASSERT(aStatus.IsEmpty(), "Caller should pass a fresh reflow status!");
 
 #ifdef DEBUG
@@ -866,12 +893,6 @@ void nsAbsoluteContainingBlock::ReflowAbsoluteFrame(
   WritingMode wm = aKidFrame->GetWritingMode();
   LogicalSize logicalCBSize(wm, aContainingBlock.Size());
   nscoord availISize = logicalCBSize.ISize(wm);
-  if (availISize == -1) {
-    NS_ASSERTION(
-        aReflowInput.ComputedSize(wm).ISize(wm) != NS_UNCONSTRAINEDSIZE,
-        "Must have a useful inline-size _somewhere_");
-    availISize = aReflowInput.ComputedSizeWithPadding(wm).ISize(wm);
-  }
 
   ReflowInput::InitFlags initFlags;
   if (aFlags & AbsPosReflowFlags::IsGridContainerCB) {
@@ -915,9 +936,29 @@ void nsAbsoluteContainingBlock::ReflowAbsoluteFrame(
                                        border.ConvertTo(wm, outerWM).BStart(wm)
                                  : NS_UNCONSTRAINEDSIZE;
 
-  ReflowInput kidReflowInput(aPresContext, aReflowInput, aKidFrame,
-                             LogicalSize(wm, availISize, availBSize),
-                             Some(logicalCBSize), initFlags);
+  // If |aDelegatingFrame| is ViewportFrame, the parent reflow input is also
+  // |mCBReflowInput| of |kidReflowInput|. When initializing |kidReflowInput|,
+  // we use |logicalCBSize|, instead of the computed size of |mCBReflowInput|,
+  // if the cb size is not NS_UNCONSTRAINEDSIZE. However, in
+  // ReflowInput::CalculateHypotheticalPosition(), we may use the computed size
+  // of |mCBReflowInput| to calculate the hypothetical position, so here, we are
+  // trying to update the cb reflow input for kidReflowInput to match the size
+  // of |logicalCBSize|.
+  //
+  // FIXME: Bug 1983345. We may not need this if all the init functions in
+  // ReflowInput use the customized containing block rect (if any), instead of
+  // using the size of |mCBReflowInput| to do calculation.
+  Maybe<ReflowInput> parentReflowInput;
+  if (const ViewportFrame* viewport = do_QueryFrame(aDelegatingFrame)) {
+    parentReflowInput.emplace(aReflowInput);
+    // This function tweaks the computed inline size, computed block size, and
+    // available inline size of the input reflow input by scrollbars.
+    Unused << viewport->AdjustReflowInputForScrollbars(parentReflowInput.ref());
+  }
+  ReflowInput kidReflowInput(
+      aPresContext, parentReflowInput.refOr(aReflowInput), aKidFrame,
+      LogicalSize(wm, availISize, availBSize), Some(logicalCBSize), initFlags,
+      {}, {}, aReferencedAnchors);
 
   if (nscoord kidAvailBSize = kidReflowInput.AvailableBSize();
       kidAvailBSize != NS_UNCONSTRAINEDSIZE) {
@@ -958,7 +999,7 @@ void nsAbsoluteContainingBlock::ReflowAbsoluteFrame(
     ResolveSizeDependentOffsets(aPresContext, kidReflowInput, kidSize, margin,
                                 &offsets, &logicalCBSize);
 
-    if (kidReflowInput.mFrame->HasIntrinsicKeywordForBSize()) {
+    if (kidReflowInput.mFlags.mDeferAutoMarginComputation) {
       ResolveAutoMarginsAfterLayout(kidReflowInput, &logicalCBSize, kidSize,
                                     margin, offsets);
     }
@@ -970,7 +1011,7 @@ void nsAbsoluteContainingBlock::ReflowAbsoluteFrame(
     const auto* stylePos = aKidFrame->StylePosition();
     const auto anchorResolutionParams =
         AnchorPosOffsetResolutionParams::UseCBFrameSize(
-            AnchorPosResolutionParams::From(aKidFrame));
+            AnchorPosResolutionParams::From(aKidFrame, aReferencedAnchors));
     const bool iInsetAuto =
         stylePos
             ->GetAnchorResolvedInset(LogicalSide::IStart, outerWM,

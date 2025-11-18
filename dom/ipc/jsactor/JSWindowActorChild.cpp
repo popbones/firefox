@@ -4,14 +4,15 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/dom/JSWindowActorBinding.h"
 #include "mozilla/dom/JSWindowActorChild.h"
+
+#include "mozilla/dom/BrowsingContext.h"
 #include "mozilla/dom/ContentChild.h"
+#include "mozilla/dom/JSWindowActorBinding.h"
+#include "mozilla/dom/MessageManagerBinding.h"
 #include "mozilla/dom/WindowGlobalChild.h"
 #include "mozilla/dom/WindowGlobalParent.h"
 #include "mozilla/dom/WindowProxyHolder.h"
-#include "mozilla/dom/MessageManagerBinding.h"
-#include "mozilla/dom/BrowsingContext.h"
 #include "nsGlobalWindowInner.h"
 
 namespace mozilla::dom {
@@ -37,8 +38,8 @@ void JSWindowActorChild::Init(const nsACString& aName,
 }
 
 void JSWindowActorChild::SendRawMessage(
-    const JSActorMessageMeta& aMeta, Maybe<ipc::StructuredCloneData>&& aData,
-    Maybe<ipc::StructuredCloneData>&& aStack, ErrorResult& aRv) {
+    const JSActorMessageMeta& aMeta, UniquePtr<ipc::StructuredCloneData> aData,
+    UniquePtr<ipc::StructuredCloneData> aStack, ErrorResult& aRv) {
   if (!CanSend() || !mManager || !mManager->CanSend()) {
     aRv.ThrowInvalidStateError("JSWindowActorChild cannot send at the moment");
     return;
@@ -52,9 +53,9 @@ void JSWindowActorChild::SendRawMessage(
   }
 
   // Cross-process case - send data over WindowGlobalChild to other side.
-  Maybe<ClonedMessageData> msgData;
+  UniquePtr<ClonedMessageData> msgData;
   if (aData) {
-    msgData.emplace();
+    msgData = MakeUnique<ClonedMessageData>();
     if (!aData->BuildClonedMessageData(*msgData)) {
       aRv.ThrowDataCloneError(
           nsPrintfCString("JSWindowActorChild serialization error: cannot "
@@ -64,9 +65,9 @@ void JSWindowActorChild::SendRawMessage(
     }
   }
 
-  Maybe<ClonedMessageData> stackData;
+  UniquePtr<ClonedMessageData> stackData;
   if (aStack) {
-    stackData.emplace();
+    stackData = MakeUnique<ClonedMessageData>();
     if (!aStack->BuildClonedMessageData(*stackData)) {
       stackData.reset();
     }

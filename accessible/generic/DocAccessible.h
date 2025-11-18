@@ -66,7 +66,8 @@ class DocAccessible : public HyperTextAccessible,
   Document* DocumentNode() const { return mDocumentNode; }
 
   virtual mozilla::a11y::ENameValueFlag Name(nsString& aName) const override;
-  virtual void Description(nsString& aDescription) const override;
+  virtual EDescriptionValueFlag Description(
+      nsString& aDescription) const override;
   virtual Accessible* FocusedChild() override;
   virtual mozilla::a11y::role NativeRole() const override;
   virtual uint64_t NativeState() const override;
@@ -402,7 +403,7 @@ class DocAccessible : public HyperTextAccessible,
    * the root scroll frame. Return values have been scaled by the
    * PresShell's resolution.
    */
-  std::pair<nsPoint, nsRect> ComputeScrollData(LocalAccessible* aAcc);
+  std::pair<nsPoint, nsRect> ComputeScrollData(const LocalAccessible* aAcc);
 
   /**
    * Only works in content process documents.

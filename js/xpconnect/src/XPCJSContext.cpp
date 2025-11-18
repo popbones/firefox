@@ -18,6 +18,7 @@
 #include "mozJSModuleLoader.h"
 #include "nsNetUtil.h"
 #include "nsThreadUtils.h"
+#include "ExecutionTracerIntegration.h"
 
 #include "nsIObserverService.h"
 #include "nsIDebug2.h"
@@ -41,10 +42,12 @@
 #include "nsCCUncollectableMarker.h"
 #include "nsCycleCollectionNoteRootCallback.h"
 #include "nsCycleCollector.h"
+#include "nsINode.h"
 #include "nsJSEnvironment.h"
 #include "jsapi.h"
 #include "js/ArrayBuffer.h"
 #include "js/ContextOptions.h"
+#include "js/DOMEventDispatch.h"
 #include "js/experimental/LoggingInterface.h"
 #include "js/HelperThreadAPI.h"
 #include "js/Initialization.h"
@@ -60,6 +63,7 @@
 #include "mozilla/dom/WindowBinding.h"
 #include "mozilla/dom/WakeLockBinding.h"
 #include "mozilla/extensions/WebExtensionPolicy.h"
+#include "mozilla/AsyncEventDispatcher.h"
 #include "mozilla/Atomics.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/ProcessHangMonitor.h"
@@ -94,6 +98,50 @@ using namespace mozilla;
 using namespace mozilla::dom;
 using namespace xpc;
 using namespace JS;
+
+// Callback for JIT trace events to dispatch DOM events to global target
+static void DispatchJitEventToDOM(JSContext* cx, const char* eventType) {
+  // Check if test interfaces are enabled
+  if (!StaticPrefs::dom_expose_test_interfaces()) {
+    return;
+  }
+
+  if (!cx) {
+    return;
+  }
+
+  // Get the global object from the context
+  JSObject* globalObj = JS::CurrentGlobalOrNull(cx);
+  if (!globalObj) {
+    return;
+  }
+
+  nsIGlobalObject* global = xpc::NativeGlobal(globalObj);
+  if (!global) {
+    return;
+  }
+
+  nsCOMPtr<nsPIDOMWindowInner> window = do_QueryInterface(global);
+  if (!window) {
+    return;
+  }
+
+  mozilla::dom::Document* doc = window->GetDoc();
+  if (!doc) {
+    return;
+  }
+
+  nsCOMPtr<nsINode> target = doc;
+  if (!target) {
+    return;
+  }
+
+  // Convert event type to nsString and dispatch to document
+  NS_ConvertUTF8toUTF16 eventTypeStr(eventType);
+  RefPtr<AsyncEventDispatcher> dispatcher = new AsyncEventDispatcher(
+      target, eventTypeStr, CanBubble::eYes, ChromeOnlyDispatch::eNo);
+  dispatcher->PostDOMEvent();
+}
 
 // We will clamp to reasonable values if this isn't set.
 #if !defined(PTHREAD_STACK_MIN)
@@ -792,8 +840,6 @@ void xpc::SetPrefableRealmOptions(JS::RealmOptions& options) {
 
 void xpc::SetPrefableCompileOptions(JS::PrefableCompileOptions& options) {
   options.setSourcePragmas(StaticPrefs::javascript_options_source_pragmas())
-      .setImportAttributes(
-          StaticPrefs::javascript_options_experimental_import_attributes())
       .setAsmJS(StaticPrefs::javascript_options_asmjs())
       .setThrowOnAsmJSValidationFailure(
           StaticPrefs::javascript_options_throw_on_asmjs_validation_failure());
@@ -883,12 +929,11 @@ static void LoadStartupJSPrefs(XPCJSContext* xpccx) {
         javascript_options_self_hosted_use_shared_memory_DoNotUseDirectly();
   }
 
-#ifdef NIGHTLY_BUILD
-  JS_SetOffthreadBaselineCompilationEnabled(
-      cx,
-      StaticPrefs::
-          javascript_options_experimental_baselinejit_offthread_compilation_DoNotUseDirectly());
-#endif
+  uint32_t strategyIndex = StaticPrefs::
+      javascript_options_baselinejit_offthread_compilation_strategy();
+  bool onDemandOMTBaselineEnabled = strategyIndex == 1 || strategyIndex == 3;
+  JS_SetOffthreadBaselineCompilationEnabled(cx, onDemandOMTBaselineEnabled);
+
   JS_SetOffthreadIonCompilationEnabled(
       cx, StaticPrefs::
               javascript_options_ion_offthread_compilation_DoNotUseDirectly());
@@ -999,6 +1044,13 @@ static void ReloadPrefsCallback(const char* pref, void* aXpccx) {
     if (safeMode) {
       contextOptions.disableOptionsForSafeMode();
     }
+  }
+
+  // Set up the callback for DOM event dispatch
+  if (StaticPrefs::dom_expose_test_interfaces()) {
+    JS::SetDispatchDOMEventCallback(cx, DispatchJitEventToDOM);
+  } else {
+    JS::SetDispatchDOMEventCallback(cx, nullptr);
   }
 }
 
@@ -1401,6 +1453,10 @@ nsresult XPCJSContext::Initialize() {
     // Failed to execute self-hosted JavaScript! Uh oh.
     MOZ_CRASH("InitSelfHostedCode failed");
   }
+
+#ifdef MOZ_EXECUTION_TRACING
+  JS_SetCustomObjectSummaryCallback(cx, ExecutionTracerIntegration::Callback);
+#endif
 
   MOZ_RELEASE_ASSERT(Runtime()->InitializeStrings(cx),
                      "InitializeStrings failed");

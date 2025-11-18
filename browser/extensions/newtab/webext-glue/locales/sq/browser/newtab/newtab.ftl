@@ -53,6 +53,9 @@ newtab-topsites-add-shortcut-header = Shkurtore e Re
 newtab-topsites-edit-topsites-header = Përpunoni Sajtin Kryesues
 newtab-topsites-edit-shortcut-header = Përpunoni Shkurtore
 newtab-topsites-add-shortcut-label = Shtoni Shkurtore
+newtab-topsites-add-shortcut-title =
+    .title = Shtoni Shkurtore
+    .aria-label = Shtoni Shkurtore
 newtab-topsites-title-label = Titull
 newtab-topsites-title-input =
     .placeholder = Jepni një titull
@@ -301,9 +304,6 @@ newtab-custom-pocket-sponsored = Histori të sponsorizuara
 newtab-custom-pocket-show-recent-saves = Shfaq të ruajturat së fundi
 newtab-custom-recent-title = Veprimtari së fundi
 newtab-custom-recent-subtitle = Një përzgjedhje sajtesh dhe lënde së fundi
-newtab-custom-recent-toggle =
-    .label = Veprimtari së fundi
-    .description = Një përzgjedhje sajtesh dhe lënde së fundi
 newtab-custom-weather-toggle =
     .label = Moti
     .description = Parashikimi i motit për sot me një vështrim
@@ -424,7 +424,6 @@ newtab-weather-menu-change-location = Ndryshoni vendndodhje
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Kërkoni për vendndodhje
     .aria-label = Kërkoni për vendndodhje
-newtab-weather-change-location-search-input = Kërkoni për vendndodhje
 newtab-weather-menu-weather-display = Shfaqje moti
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -553,6 +552,3 @@ newtab-report-cancel = Anuloje
 newtab-report-submit = Parashtroje
 newtab-toast-thanks-for-reporting =
     .message = Faleminderit për njoftimin rreth kësaj.
-
-## Strings for trending searches
-

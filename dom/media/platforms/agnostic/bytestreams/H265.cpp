@@ -3,6 +3,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "H265.h"
+
 #include <stdint.h>
 
 #include <cmath>
@@ -1247,7 +1248,7 @@ already_AddRefed<mozilla::MediaByteBuffer> H265::ExtractHVCCExtraData(
   // If we encounter SPS with the same id but different content, we will stop
   // attempting to detect duplicates.
   bool checkDuplicate = true;
-  const H265SPS* firstSPS = nullptr;
+  Maybe<uint8_t> firstSPSId;
 
   RefPtr<mozilla::MediaByteBuffer> extradata = new mozilla::MediaByteBuffer;
   while (reader.Remaining() > nalLenSize) {
@@ -1307,8 +1308,8 @@ already_AddRefed<mozilla::MediaByteBuffer> H265::ExtractHVCCExtraData(
       } else {
         spsRefTable[spsId] = Some(sps);
         nalusMap.LookupOrInsert(nalu.mNalUnitType).AppendElement(nalu);
-        if (!firstSPS) {
-          firstSPS = spsRefTable[spsId].ptr();
+        if (!firstSPSId) {
+          firstSPSId.emplace(spsId);
         }
       }
     } else if (nalu.IsVPS() || nalu.IsPPS()) {
@@ -1324,8 +1325,10 @@ already_AddRefed<mozilla::MediaByteBuffer> H265::ExtractHVCCExtraData(
        spsEntry ? spsEntry.Data().Length() : 0,
        vpsEntry ? vpsEntry.Data().Length() : 0,
        ppsEntry ? ppsEntry.Data().Length() : 0);
-  if (firstSPS) {
+  if (firstSPSId) {
     BitWriter writer(extradata);
+    const H265SPS* firstSPS = spsRefTable[*firstSPSId].ptr();
+    MOZ_ASSERT(firstSPS);
 
     // ISO/IEC 14496-15, HEVCDecoderConfigurationRecord.
     writer.WriteBits(1, 8);  // version
@@ -1535,6 +1538,56 @@ already_AddRefed<mozilla::MediaByteBuffer> H265::CreateNewExtraData(
   }
   MOZ_ASSERT(HVCCConfig::Parse(extradata).isOk());
   return extradata.forget();
+}
+
+/* static */
+Result<bool, nsresult> H265::IsKeyFrame(const mozilla::MediaRawData* aSample) {
+  if (aSample->mCrypto.IsEncrypted()) {
+    LOG("Can't check if encrypted sample is keyframe");
+    return Err(NS_ERROR_DOM_MEDIA_DEMUXER_ERR);
+  }
+
+  size_t sampleSize = aSample->Size();
+  auto hvcc = HVCCConfig::Parse(aSample);
+  if (hvcc.isErr()) {
+    LOG("Only support extracting extradata from HVCC");
+    return Err(NS_ERROR_DOM_MEDIA_DEMUXER_ERR);
+  }
+  const auto nalLenSize = hvcc.unwrap().NALUSize();
+  BufferReader reader(aSample->Data(), sampleSize);
+  RefPtr<mozilla::MediaByteBuffer> extradata = new mozilla::MediaByteBuffer;
+  while (reader.Remaining() > nalLenSize) {
+    // ISO/IEC 14496-15, 4.2.3.2 Syntax. (NALUSample) Reading the size of NALU.
+    uint32_t nalLen = 0;
+    switch (nalLenSize) {
+      case 1:
+        Unused << reader.ReadU8().map(
+            [&](uint8_t x) mutable { return nalLen = x; });
+        break;
+      case 2:
+        Unused << reader.ReadU16().map(
+            [&](uint16_t x) mutable { return nalLen = x; });
+        break;
+      case 3:
+        Unused << reader.ReadU24().map(
+            [&](uint32_t x) mutable { return nalLen = x; });
+        break;
+      default:
+        MOZ_DIAGNOSTIC_ASSERT(nalLenSize == 4);
+        Unused << reader.ReadU32().map(
+            [&](uint32_t x) mutable { return nalLen = x; });
+        break;
+    }
+    const uint8_t* p = reader.Read(nalLen);
+    if (!p) {
+      break;
+    }
+    const H265NALU nalu(p, nalLen);
+    if (nalu.IsIframe()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 #undef LOG

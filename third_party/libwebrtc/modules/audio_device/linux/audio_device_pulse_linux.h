@@ -263,13 +263,13 @@ class AudioDeviceLinuxPulse : public AudioDeviceGeneric {
   AudioDeviceBuffer* _ptrAudioBuffer;
 
   mutable Mutex mutex_;
-  rtc::Event _timeEventRec;
-  rtc::Event _timeEventPlay;
-  rtc::Event _recStartEvent;
-  rtc::Event _playStartEvent;
+  Event _timeEventRec;
+  Event _timeEventPlay;
+  Event _recStartEvent;
+  Event _playStartEvent;
 
-  rtc::PlatformThread _ptrThreadPlay;
-  rtc::PlatformThread _ptrThreadRec;
+  PlatformThread _ptrThreadPlay;
+  PlatformThread _ptrThreadRec;
 
   AudioMixerManagerLinuxPulse _mixerManager;
 

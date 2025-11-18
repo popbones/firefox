@@ -126,11 +126,6 @@ inline bool IgnoreForPreBarrierVerifier(JSRuntime* runtime,
     return true;
   }
 
-  // Ignore buffers as these don't escape and are not barriered.
-  if (thing.kind() == JS::TraceKind::SmallBuffer) {
-    return true;
-  }
-
   return false;
 }
 
@@ -524,6 +519,16 @@ void js::gc::MarkingValidator::nonIncrementalMark(AutoGCSession& session) {
 
   MOZ_ASSERT(!gcmarker->isWeakMarking());
 
+#  ifdef DEBUG
+  // The test mark queue can cause spurious differences if the non-incremental
+  // marking for validation happens before the full queue has been processed,
+  // since the later part of the queue may mark things during sweeping. Disable
+  // validation if there is anything left in the queue at this point.
+  if (gc->testMarkQueueRemaining() > 0) {
+    return;
+  }
+#  endif
+
   /* We require that the nursery is empty at the start of collection. */
   MOZ_ASSERT(gc->nursery().isEmpty());
 
@@ -575,6 +580,8 @@ void js::gc::MarkingValidator::nonIncrementalMark(AutoGCSession& session) {
       MOZ_ASSERT(r.front().key()->asTenured().zone() == zone);
       if (!savedEphemeronEdges.putNew(r.front().key(),
                                       std::move(r.front().value()))) {
+        // Notice the std::move -- this could consume the moved-from value even
+        // on failure, so it's unsafe to continue if putNew fails.
         oomUnsafe.crash("saving weak keys table for validator");
       }
     }
@@ -582,19 +589,9 @@ void js::gc::MarkingValidator::nonIncrementalMark(AutoGCSession& session) {
     zone->gcEphemeronEdges().clearAndCompact();
   }
 
-#  ifdef DEBUG
-  // The test mark queue can cause spurious differences if the non-incremental
-  // marking for validation happens before the full queue has been processed,
-  // since the later part of the queue may mark things during sweeping. Disable
-  // validation if there is anything left in the queue at this point.
-  if (gc->testMarkQueueRemaining() > 0) {
-    return;
-  }
-#  endif
-
   /*
-   * After this point, the function should run to completion, so we shouldn't
-   * do anything fallible.
+   * After this point, the function must run to completion, so we shouldn't do
+   * anything fallible.
    */
   initialized = true;
 
@@ -1271,12 +1268,8 @@ bool GCRuntime::isPointerWithinTenuredCell(void* ptr, JS::TraceKind traceKind) {
 }
 
 bool GCRuntime::isPointerWithinBufferAlloc(void* ptr) {
-  if (isPointerWithinTenuredCell(ptr, JS::TraceKind::SmallBuffer)) {
-    return true;
-  }
-
   for (AllZonesIter zone(this); !zone.done(); zone.next()) {
-    if (zone->bufferAllocator.isPointerWithinMediumOrLargeBuffer(ptr)) {
+    if (zone->bufferAllocator.isPointerWithinBuffer(ptr)) {
       return true;
     }
   }

@@ -9,8 +9,8 @@ ChromeUtils.defineESModuleGetters(lazy, {
   Preferences: "resource://gre/modules/Preferences.sys.mjs",
   Region: "resource://gre/modules/Region.sys.mjs",
   TelemetryEnvironment: "resource://gre/modules/TelemetryEnvironment.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarUtils: "resource:///modules/UrlbarUtils.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
+  UrlbarUtils: "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs",
 });
 
 // See the `QuickSuggest.SETTINGS_UI` jsdoc below.
@@ -61,6 +61,8 @@ const EN_LOCALES = ["en-CA", "en-GB", "en-US", "en-ZA"];
  */
 const SUGGEST_PREFS = Object.freeze({
   // Prefs related to Suggest overall
+  //
+  // Please update `test_quicksuggest_offlineDefault.js` when you change these.
   "quicksuggest.dataCollection.enabled": {
     nimbusVariableIfExposedInUi: "quickSuggestDataCollectionEnabled",
   },
@@ -79,7 +81,7 @@ const SUGGEST_PREFS = Object.freeze({
       FR: [["fr"], SETTINGS_UI.OFFLINE_ONLY],
       GB: [EN_LOCALES, SETTINGS_UI.OFFLINE_ONLY],
       IT: [["it"], SETTINGS_UI.OFFLINE_ONLY],
-      US: [EN_LOCALES, SETTINGS_UI.FULL],
+      US: [EN_LOCALES, SETTINGS_UI.OFFLINE_ONLY],
     },
   },
   "suggest.quicksuggest.nonsponsored": {
@@ -104,6 +106,8 @@ const SUGGEST_PREFS = Object.freeze({
   },
 
   // Prefs related to individual features
+  //
+  // Please update `test_quicksuggest_offlineDefault.js` when you change these.
   "addons.featureGate": {
     defaultValues: {
       US: [EN_LOCALES, true],
@@ -112,6 +116,15 @@ const SUGGEST_PREFS = Object.freeze({
   "amp.featureGate": {
     defaultValues: {
       GB: [EN_LOCALES, true],
+      US: [EN_LOCALES, true],
+    },
+  },
+  "importantDates.featureGate": {
+    defaultValues: {
+      DE: [["de"], true],
+      FR: [["fr"], true],
+      GB: [EN_LOCALES, true],
+      IT: [["it"], true],
       US: [EN_LOCALES, true],
     },
   },
@@ -146,32 +159,40 @@ const SUGGEST_PREFS = Object.freeze({
 // class and keeps it in the `#featuresByName` map. See `SuggestFeature`.
 const FEATURES = {
   AddonSuggestions:
-    "resource:///modules/urlbar/private/AddonSuggestions.sys.mjs",
-  AmpSuggestions: "resource:///modules/urlbar/private/AmpSuggestions.sys.mjs",
-  FakespotSuggestions:
-    "resource:///modules/urlbar/private/FakespotSuggestions.sys.mjs",
+    "moz-src:///browser/components/urlbar/private/AddonSuggestions.sys.mjs",
+  AmpSuggestions:
+    "moz-src:///browser/components/urlbar/private/AmpSuggestions.sys.mjs",
   DynamicSuggestions:
-    "resource:///modules/urlbar/private/DynamicSuggestions.sys.mjs",
-  ImpressionCaps: "resource:///modules/urlbar/private/ImpressionCaps.sys.mjs",
-  MDNSuggestions: "resource:///modules/urlbar/private/MDNSuggestions.sys.mjs",
+    "moz-src:///browser/components/urlbar/private/DynamicSuggestions.sys.mjs",
+  ImportantDatesSuggestions:
+    "moz-src:///browser/components/urlbar/private/ImportantDatesSuggestions.sys.mjs",
+  ImpressionCaps:
+    "moz-src:///browser/components/urlbar/private/ImpressionCaps.sys.mjs",
+  MarketSuggestions:
+    "moz-src:///browser/components/urlbar/private/MarketSuggestions.sys.mjs",
+  MDNSuggestions:
+    "moz-src:///browser/components/urlbar/private/MDNSuggestions.sys.mjs",
   SuggestBackendMerino:
-    "resource:///modules/urlbar/private/SuggestBackendMerino.sys.mjs",
+    "moz-src:///browser/components/urlbar/private/SuggestBackendMerino.sys.mjs",
   SuggestBackendMl:
-    "resource:///modules/urlbar/private/SuggestBackendMl.sys.mjs",
+    "moz-src:///browser/components/urlbar/private/SuggestBackendMl.sys.mjs",
   SuggestBackendRust:
-    "resource:///modules/urlbar/private/SuggestBackendRust.sys.mjs",
+    "moz-src:///browser/components/urlbar/private/SuggestBackendRust.sys.mjs",
   WeatherSuggestions:
-    "resource:///modules/urlbar/private/WeatherSuggestions.sys.mjs",
+    "moz-src:///browser/components/urlbar/private/WeatherSuggestions.sys.mjs",
   WikipediaSuggestions:
-    "resource:///modules/urlbar/private/WikipediaSuggestions.sys.mjs",
-  YelpSuggestions: "resource:///modules/urlbar/private/YelpSuggestions.sys.mjs",
+    "moz-src:///browser/components/urlbar/private/WikipediaSuggestions.sys.mjs",
+  YelpRealtimeSuggestions:
+    "moz-src:///browser/components/urlbar/private/YelpRealtimeSuggestions.sys.mjs",
+  YelpSuggestions:
+    "moz-src:///browser/components/urlbar/private/YelpSuggestions.sys.mjs",
 };
 
 /**
- * @import {SuggestBackendRust} from "resource:///modules/urlbar/private/SuggestBackendRust.sys.mjs"
- * @import {SuggestFeature} from "resource:///modules/urlbar/private/SuggestFeature.sys.mjs"
- * @import {SuggestProvider} from "resource:///modules/urlbar/private/SuggestFeature.sys.mjs"
- * @import {ImpressionCaps} from "resource:///modules/urlbar/private/ImpressionCaps.sys.mjs"
+ * @import {SuggestBackendRust} from "moz-src:///browser/components/urlbar/private/SuggestBackendRust.sys.mjs"
+ * @import {SuggestFeature} from "moz-src:///browser/components/urlbar/private/SuggestFeature.sys.mjs"
+ * @import {SuggestProvider} from "moz-src:///browser/components/urlbar/private/SuggestFeature.sys.mjs"
+ * @import {ImpressionCaps} from "moz-src:///browser/components/urlbar/private/ImpressionCaps.sys.mjs"
  */
 
 /**
@@ -190,8 +211,16 @@ class _QuickSuggest {
   get HELP_URL() {
     return (
       Services.urlFormatter.formatURLPref("app.support.baseURL") +
-      "firefox-suggest"
+      this.HELP_TOPIC
     );
+  }
+
+  /**
+   * @returns {string}
+   *   The help URL topic for Suggest.
+   */
+  get HELP_TOPIC() {
+    return "firefox-suggest";
   }
 
   /**
@@ -260,7 +289,10 @@ class _QuickSuggest {
    *   each feature's `rustSuggestionType`.
    */
   get rustFeatures() {
-    return new Set(this.#featuresByRustSuggestionType.values());
+    return new Set([
+      ...this.#featuresByRustSuggestionType.values(),
+      ...this.#featuresByDynamicRustSuggestionType.values(),
+    ]);
   }
 
   /**
@@ -317,10 +349,16 @@ class _QuickSuggest {
         this.#featuresByMerinoProvider.set(feature.merinoProvider, feature);
       }
       if (feature.rustSuggestionType) {
-        this.#featuresByRustSuggestionType.set(
-          feature.rustSuggestionType,
-          feature
-        );
+        if (feature.dynamicRustSuggestionTypes?.length) {
+          for (let t of feature.dynamicRustSuggestionTypes) {
+            this.#featuresByDynamicRustSuggestionType.set(t, feature);
+          }
+        } else {
+          this.#featuresByRustSuggestionType.set(
+            feature.rustSuggestionType,
+            feature
+          );
+        }
       }
       if (feature.mlIntent) {
         this.#featuresByMlIntent.set(feature.mlIntent, feature);
@@ -356,36 +394,6 @@ class _QuickSuggest {
    */
   getFeature(name) {
     return this.#featuresByName.get(name);
-  }
-
-  /**
-   * Returns a Suggest feature by the name of the Merino provider that serves
-   * its suggestions (as defined by `feature.merinoProvider`). Not all features
-   * correspond to a Merino provider.
-   *
-   * @param {string} provider
-   *   The name of a Merino provider.
-   * @returns {SuggestProvider}
-   *   The feature object, an instance of a subclass of `SuggestProvider`, or
-   *   null if no feature corresponds to the Merino provider.
-   */
-  getFeatureByMerinoProvider(provider) {
-    return this.#featuresByMerinoProvider.get(provider);
-  }
-
-  /**
-   * Returns a Suggest feature by the type of Rust suggestion it manages (as
-   * defined by `feature.rustSuggestionType`). Not all features correspond to a
-   * Rust suggestion type.
-   *
-   * @param {string} type
-   *   The name of a Rust suggestion type.
-   * @returns {SuggestProvider}
-   *   The feature object, an instance of a subclass of `SuggestProvider`, or
-   *   null if no feature corresponds to the type.
-   */
-  getFeatureByRustSuggestionType(type) {
-    return this.#featuresByRustSuggestionType.get(type);
   }
 
   /**
@@ -432,15 +440,26 @@ class _QuickSuggest {
    *     The name of the intent as determined by `MLSuggest`
    *   rust:
    *     The name of the suggestion type as defined in Rust
+   *
+   * @param {string} options.suggestionType
+   *   This value is only relevant to dynamic Rust suggestions. It is
+   *   `suggestion.suggestionType` value, the dynamic Rust suggestion type.
    * @returns {SuggestProvider}
    *   The feature instance or null if none was found.
    */
-  getFeatureBySource({ source, provider }) {
+  getFeatureBySource({ source, provider, suggestionType }) {
     switch (source) {
       case "merino":
-        return this.getFeatureByMerinoProvider(provider);
+        return this.#featuresByMerinoProvider.get(provider);
       case "rust":
-        return this.getFeatureByRustSuggestionType(provider);
+        if (provider == "Dynamic" && suggestionType) {
+          let dynamicFeature =
+            this.#featuresByDynamicRustSuggestionType.get(suggestionType);
+          if (dynamicFeature) {
+            return dynamicFeature;
+          }
+        }
+        return this.#featuresByRustSuggestionType.get(provider);
       case "ml":
         return this.getFeatureByMlIntent(provider);
     }
@@ -517,19 +536,20 @@ class _QuickSuggest {
     // Clear the user value of each feature's primary user-controlled pref if
     // its value is `false`.
     for (let [name, feature] of this.#featuresByName) {
-      let pref = feature.primaryUserControlledPreference;
-      // This should never throw, but try-catch to avoid breaking the entire
-      // loop if `UrlbarPrefs` doesn't recognize a pref in one iteration.
-      try {
-        if (pref && !lazy.UrlbarPrefs.get(pref)) {
-          lazy.UrlbarPrefs.clear(pref);
+      for (let pref of feature.primaryUserControlledPreferences) {
+        // This should never throw, but try-catch to avoid breaking the entire
+        // loop if `UrlbarPrefs` doesn't recognize a pref in one iteration.
+        try {
+          if (pref && !lazy.UrlbarPrefs.get(pref)) {
+            lazy.UrlbarPrefs.clear(pref);
+          }
+        } catch (error) {
+          this.logger.error("Error clearing primaryEnablingPreference", {
+            "feature.name": name,
+            pref,
+            error,
+          });
         }
-      } catch (error) {
-        this.logger.error("Error clearing primaryEnablingPreference", {
-          "feature.name": name,
-          pref,
-          error,
-        });
       }
     }
 
@@ -552,23 +572,27 @@ class _QuickSuggest {
     // Return true if any feature's primary user-controlled pref is `false` on
     // the user branch.
     for (let [name, feature] of this.#featuresByName) {
-      let pref = feature.primaryUserControlledPreference;
-      // This should never throw, but try-catch to avoid breaking the entire
-      // loop if `UrlbarPrefs` doesn't recognize a pref in one iteration.
-      try {
-        if (
-          pref &&
-          !lazy.UrlbarPrefs.get(pref) &&
-          lazy.UrlbarPrefs.hasUserValue(pref)
-        ) {
-          return true;
+      for (let pref of feature.primaryUserControlledPreferences) {
+        // This should never throw, but try-catch to avoid breaking the entire
+        // loop if `UrlbarPrefs` doesn't recognize a pref in one iteration.
+        try {
+          if (
+            pref &&
+            !lazy.UrlbarPrefs.get(pref) &&
+            lazy.UrlbarPrefs.hasUserValue(pref)
+          ) {
+            return true;
+          }
+        } catch (error) {
+          this.logger.error(
+            "Error accessing primaryUserControlledPreferences",
+            {
+              "feature.name": name,
+              pref,
+              error,
+            }
+          );
         }
-      } catch (error) {
-        this.logger.error("Error accessing primaryUserControlledPreference", {
-          "feature.name": name,
-          pref,
-          error,
-        });
       }
     }
 
@@ -628,7 +652,7 @@ class _QuickSuggest {
 
     for (let f of features) {
       f.update();
-      if (pref == f.primaryUserControlledPreference) {
+      if (f.primaryUserControlledPreferences.includes(pref)) {
         isPrimaryUserControlledPref = true;
       }
     }
@@ -866,7 +890,7 @@ class _QuickSuggest {
    * @returns {number}
    */
   get MIGRATION_VERSION() {
-    return 2;
+    return 3;
   }
 
   /**
@@ -968,6 +992,12 @@ class _QuickSuggest {
     }
   }
 
+  _migrateFirefoxSuggestPrefsTo_3() {
+    if (lazy.UrlbarPrefs.get("quicksuggest.dataCollection.enabled")) {
+      lazy.UrlbarPrefs.set("quicksuggest.settingsUi", SETTINGS_UI.FULL);
+    }
+  }
+
   async _test_reinit(testOverrides = null) {
     if (this.#initStarted) {
       await this.initPromise;
@@ -976,9 +1006,10 @@ class _QuickSuggest {
     }
 
     if (this.rustBackend) {
-      // Make sure to await any queued ingests before re-initializing.  Otherwise there could be a race
-      // between when that ingestion finishes and when the test finishes and calls
-      // `SharedRemoteSettingsService.updateServer()` to reset the remote settings server.
+      // Make sure to await any queued ingests before re-initializing. Otherwise
+      // there could be a race between when that ingestion finishes and when the
+      // test finishes and calls `SharedRemoteSettingsService.updateServer()` to
+      // reset the remote settings server.
       await this.rustBackend.ingestPromise;
     }
 
@@ -996,6 +1027,11 @@ class _QuickSuggest {
 
   // Maps from Rust suggestion types to Suggest feature instances.
   #featuresByRustSuggestionType = new Map();
+
+  // Maps from dynamic Rust suggestion types to Suggest feature instances.
+  // Features that manage a dynamic Rust suggestion type will be in this map
+  // instead of `#featuresByRustSuggestionType`.
+  #featuresByDynamicRustSuggestionType = new Map();
 
   // Maps from ML intent strings to Suggest feature instances.
   #featuresByMlIntent = new Map();

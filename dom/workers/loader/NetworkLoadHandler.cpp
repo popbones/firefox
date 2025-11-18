@@ -5,8 +5,19 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "NetworkLoadHandler.h"
-#include "CacheLoadHandler.h"  // CachePromiseHandler
 
+#include "CacheLoadHandler.h"  // CachePromiseHandler
+#include "js/loader/ModuleLoadRequest.h"
+#include "js/loader/ScriptLoadRequest.h"
+#include "mozilla/Encoding.h"
+#include "mozilla/dom/BlobURLProtocolHandler.h"
+#include "mozilla/dom/InternalResponse.h"
+#include "mozilla/dom/Response.h"
+#include "mozilla/dom/ScriptLoader.h"
+#include "mozilla/dom/ServiceWorkerBinding.h"
+#include "mozilla/dom/ServiceWorkerManager.h"
+#include "mozilla/dom/WorkerScope.h"
+#include "mozilla/dom/workerinternals/ScriptLoader.h"  // WorkerScriptLoader
 #include "nsContentUtils.h"
 #include "nsIChannel.h"
 #include "nsIHttpChannel.h"
@@ -14,17 +25,6 @@
 #include "nsIPrincipal.h"
 #include "nsIScriptError.h"
 #include "nsNetUtil.h"
-
-#include "mozilla/Encoding.h"
-#include "mozilla/dom/BlobURLProtocolHandler.h"
-#include "mozilla/dom/InternalResponse.h"
-#include "mozilla/dom/ServiceWorkerBinding.h"
-#include "mozilla/dom/ServiceWorkerManager.h"
-#include "mozilla/dom/ScriptLoader.h"
-#include "mozilla/dom/Response.h"
-#include "mozilla/dom/WorkerScope.h"
-
-#include "mozilla/dom/workerinternals/ScriptLoader.h"  // WorkerScriptLoader
 
 using mozilla::ipc::PrincipalInfo;
 
@@ -155,8 +155,8 @@ nsresult NetworkLoadHandler::DataReceivedFromNetwork(nsIStreamLoader* aLoader,
 
     nsAutoCString sourceMapURL;
     if (nsContentUtils::GetSourceMapURL(httpChannel, sourceMapURL)) {
-      loadContext->mRequest->mSourceMapURL =
-          Some(NS_ConvertUTF8toUTF16(sourceMapURL));
+      loadContext->mRequest->SetSourceMapURL(
+          NS_ConvertUTF8toUTF16(sourceMapURL));
     }
   }
 

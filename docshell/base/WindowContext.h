@@ -64,7 +64,11 @@ class BrowsingContextGroup;
   FIELD(IsSecure, bool)                                                  \
   /* Whether this window has registered a "beforeunload" event           \
    * handler */                                                          \
-  FIELD(HasBeforeUnload, bool)                                           \
+  FIELD(NeedsBeforeUnload, bool)                                         \
+  /* Whether this window's navigation object has registered any          \
+   * event handlers or has ongoing or upcoming method trackers. Only     \
+   * valid for the top-level context. */                                 \
+  FIELD(NeedsTraverse, bool)                                             \
   /* Controls whether the WindowContext is currently considered to be    \
    * activated by a gesture */                                           \
   FIELD(UserActivationStateAndModifiers,                                 \
@@ -131,7 +135,9 @@ class WindowContext : public nsISupports, public nsWrapperCache {
 
   bool IsInProcess() const { return mIsInProcess; }
 
-  bool HasBeforeUnload() const { return GetHasBeforeUnload(); }
+  bool NeedsBeforeUnload() const { return GetNeedsBeforeUnload(); }
+
+  bool HasBeforeUnload() const { return NeedsBeforeUnload(); }
 
   bool IsLocalIP() const { return GetIsLocalIP(); }
 
@@ -283,7 +289,10 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   bool CanSet(FieldIndex<IDX_IsSecure>, const bool& aIsSecure,
               ContentParent* aSource);
 
-  bool CanSet(FieldIndex<IDX_HasBeforeUnload>, const bool& aHasBeforeUnload,
+  bool CanSet(FieldIndex<IDX_NeedsBeforeUnload>, const bool& aHasBeforeUnload,
+              ContentParent* aSource);
+
+  bool CanSet(FieldIndex<IDX_NeedsTraverse>, const bool& aNeedsTraverse,
               ContentParent* aSource);
 
   bool CanSet(FieldIndex<IDX_CookieBehavior>, const Maybe<uint32_t>& aValue,
@@ -304,6 +313,7 @@ class WindowContext : public nsISupports, public nsWrapperCache {
               ContentParent* aSource);
   bool CanSet(FieldIndex<IDX_UsingStorageAccess>,
               const bool& aUsingStorageAccess, ContentParent* aSource);
+  void DidSet(FieldIndex<IDX_UsingStorageAccess>, bool aOldValue);
   bool CanSet(FieldIndex<IDX_ShouldResistFingerprinting>,
               const bool& aShouldResistFingerprinting, ContentParent* aSource);
   bool CanSet(FieldIndex<IDX_OverriddenFingerprintingSettings>,
@@ -356,6 +366,8 @@ class WindowContext : public nsISupports, public nsWrapperCache {
   void DidSet(FieldIndex<IDX_HasReportedShadowDOMUsage>, bool aOldValue);
 
   void DidSet(FieldIndex<IDX_SHEntryHasUserInteraction>, bool aOldValue);
+
+  void DidSet(FieldIndex<IDX_HasActivePeerConnections>, bool aOldValue);
 
   bool CanSet(FieldIndex<IDX_WindowStateSaved>, bool aValue,
               ContentParent* aSource);

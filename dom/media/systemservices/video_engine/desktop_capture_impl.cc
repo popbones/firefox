@@ -21,18 +21,18 @@
 #include "common_video/libyuv/include/webrtc_libyuv.h"
 #include "desktop_device_info.h"
 #include "libyuv/convert.h"
-#include "rtc_base/logging.h"
-#include "rtc_base/time_utils.h"
-#include "rtc_base/trace_event.h"
 #include "modules/desktop_capture/desktop_and_cursor_composer.h"
-#include "modules/desktop_capture/desktop_frame.h"
 #include "modules/desktop_capture/desktop_capture_options.h"
 #include "modules/desktop_capture/desktop_capturer_differ_wrapper.h"
+#include "modules/desktop_capture/desktop_frame.h"
 #include "modules/video_capture/video_capture.h"
 #include "mozilla/StaticPrefs_media.h"
 #include "mozilla/SyncRunnable.h"
 #include "mozilla/TimeStamp.h"
 #include "nsThreadUtils.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/time_utils.h"
+#include "rtc_base/trace_event.h"
 #include "tab_capturer.h"
 
 #ifdef XP_MACOSX
@@ -54,8 +54,8 @@ namespace webrtc {
 DesktopCaptureImpl* DesktopCaptureImpl::Create(const int32_t aModuleId,
                                                const char* aUniqueId,
                                                const CaptureDeviceType aType) {
-  return new rtc::RefCountedObject<DesktopCaptureImpl>(aModuleId, aUniqueId,
-                                                       aType);
+  return new webrtc::RefCountedObject<DesktopCaptureImpl>(aModuleId, aUniqueId,
+                                                          aType);
 }
 
 static DesktopCaptureOptions CreateDesktopCaptureOptions() {
@@ -281,13 +281,13 @@ DesktopCaptureImpl::~DesktopCaptureImpl() {
 }
 
 void DesktopCaptureImpl::RegisterCaptureDataCallback(
-    rtc::VideoSinkInterface<VideoFrame>* aDataCallback) {
+    webrtc::VideoSinkInterface<VideoFrame>* aDataCallback) {
   auto callbacks = mCallbacks.Lock();
   callbacks->insert(aDataCallback);
 }
 
 void DesktopCaptureImpl::DeRegisterCaptureDataCallback(
-    rtc::VideoSinkInterface<VideoFrame>* aDataCallback) {
+    webrtc::VideoSinkInterface<VideoFrame>* aDataCallback) {
   auto callbacks = mCallbacks.Lock();
   auto it = callbacks->find(aDataCallback);
   if (it != callbacks->end()) {
@@ -434,7 +434,7 @@ void DesktopCaptureImpl::OnCaptureResult(DesktopCapturer::Result aResult,
     return;
   }
 
-  const auto startProcessTime = Timestamp::Micros(rtc::TimeMicros());
+  const auto startProcessTime = Timestamp::Micros(webrtc::TimeMicros());
   auto frameTime = startProcessTime;
   if (auto diff = startProcessTime - mNextFrameMinimumTime;
       diff < TimeDelta::Zero()) {
@@ -482,7 +482,7 @@ void DesktopCaptureImpl::OnCaptureResult(DesktopCapturer::Result aResult,
   mozilla::PerformanceRecorder<mozilla::CopyVideoStage> rec(
       "DesktopCaptureImpl::ConvertToI420"_ns, mTrackingId, width, abs(height));
   // TODO(nisse): Use a pool?
-  rtc::scoped_refptr<I420Buffer> buffer =
+  webrtc::scoped_refptr<I420Buffer> buffer =
       I420Buffer::Create(width, abs(height), stride_y, stride_uv, stride_uv);
 
   const int conversionResult = libyuv::ConvertToI420(
@@ -504,7 +504,7 @@ void DesktopCaptureImpl::OnCaptureResult(DesktopCapturer::Result aResult,
                     .build());
 
   const TimeDelta processTime =
-      Timestamp::Micros(rtc::TimeMicros()) - startProcessTime;
+      Timestamp::Micros(webrtc::TimeMicros()) - startProcessTime;
 
   if (processTime > TimeDelta::Millis(10)) {
     RTC_LOG(LS_WARNING)
@@ -598,7 +598,7 @@ void DesktopCaptureImpl::CaptureFrameOnThread() {
   mCaptureTimer->InitHighResolutionWithNamedFuncCallback(
       &::CaptureFrameOnThread, this,
       std::max(timeUntilRequestedCapture, sleepTime), nsITimer::TYPE_ONE_SHOT,
-      "DesktopCaptureImpl::mCaptureTimer");
+      "DesktopCaptureImpl::mCaptureTimer"_ns);
 }
 
 mozilla::MediaEventSource<void>* DesktopCaptureImpl::CaptureEndedEvent() {

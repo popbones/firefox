@@ -4,7 +4,7 @@
 
 import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
-import { SearchWidgetTracker } from "resource:///modules/SearchWidgetTracker.sys.mjs";
+import { SearchWidgetTracker } from "moz-src:///browser/components/customizableui/SearchWidgetTracker.sys.mjs";
 
 const lazy = {};
 
@@ -12,9 +12,11 @@ ChromeUtils.defineESModuleGetters(lazy, {
   AddonManager: "resource://gre/modules/AddonManager.sys.mjs",
   AddonManagerPrivate: "resource://gre/modules/AddonManager.sys.mjs",
   BrowserUsageTelemetry: "resource:///modules/BrowserUsageTelemetry.sys.mjs",
-  CustomizableWidgets: "resource:///modules/CustomizableWidgets.sys.mjs",
+  CustomizableWidgets:
+    "moz-src:///browser/components/customizableui/CustomizableWidgets.sys.mjs",
   HomePage: "resource:///modules/HomePage.sys.mjs",
-  PanelMultiView: "resource:///modules/PanelMultiView.sys.mjs",
+  PanelMultiView:
+    "moz-src:///browser/components/customizableui/PanelMultiView.sys.mjs",
   PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
   ShortcutUtils: "resource://gre/modules/ShortcutUtils.sys.mjs",
 });
@@ -231,6 +233,9 @@ XPCOMUtils.defineLazyPreferenceGetter(
           : undefined // Adds to the end of navbar if position_start is false.
       );
     }
+    // Ensure CUI knows to not restore this button if the user later removes it
+    let prefId = "browser.toolbarbuttons.introduced.sidebar-button";
+    Services.prefs.setBoolPref(prefId, true);
   }
 );
 
@@ -4876,7 +4881,7 @@ var CustomizableUIInternal = {
               container.getAttribute("type") == "menubar"
                 ? "autohide"
                 : "collapsed";
-            collapsed = container.getAttribute(attribute) == "true";
+            collapsed = container.hasAttribute(attribute);
             nondefaultState = collapsed != defaultCollapsed;
           }
           if (defaultCollapsed !== null && nondefaultState) {
@@ -4970,7 +4975,7 @@ var CustomizableUIInternal = {
       let hidingAttribute =
         toolbar.getAttribute("type") == "menubar" ? "autohide" : "collapsed";
 
-      if (toolbar.getAttribute(hidingAttribute) == "true") {
+      if (toolbar.hasAttribute(hidingAttribute)) {
         collapsedToolbars.add(toolbarId);
       }
     }
@@ -7898,8 +7903,13 @@ class OverflowableToolbar {
 
     // If the target has min-width: 0, their children might actually overflow
     // it, so check for both cases explicitly.
-    let targetContentWidth = Math.max(targetWidth, targetChildrenWidth);
-    let isOverflowing = Math.floor(targetContentWidth) > totalAvailWidth;
+    // We don't care about <1px differences, so ceil the avail width and floor
+    // the content width to deal with it.
+    let targetContentWidth = Math.floor(
+      Math.max(targetWidth, targetChildrenWidth)
+    );
+    totalAvailWidth = Math.ceil(totalAvailWidth);
+    let isOverflowing = targetContentWidth > totalAvailWidth;
     return { isOverflowing, targetContentWidth, totalAvailWidth };
   }
 

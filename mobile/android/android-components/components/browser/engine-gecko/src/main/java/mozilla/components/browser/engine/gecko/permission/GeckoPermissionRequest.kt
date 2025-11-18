@@ -25,6 +25,8 @@ import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_AUTOPLAY
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_AUTOPLAY_INAUDIBLE
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_DESKTOP_NOTIFICATION
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_GEOLOCATION
+import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_LOCAL_DEVICE_ACCESS
+import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_LOCAL_NETWORK_ACCESS
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_MEDIA_KEY_SYSTEM_ACCESS
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_PERSISTENT_STORAGE
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate.PERMISSION_STORAGE_ACCESS
@@ -34,12 +36,10 @@ import java.util.UUID
  * Gecko-based implementation of [PermissionRequest].
  *
  * @property permissions the list of requested permissions.
- * @property callback the callback to grant/reject the requested permissions.
  * @property id a unique identifier for the request.
  */
 sealed class GeckoPermissionRequest constructor(
     override val permissions: List<Permission>,
-    private val callback: PermissionDelegate.Callback? = null,
     override val id: String = UUID.randomUUID().toString(),
 ) : PermissionRequest {
 
@@ -69,6 +69,8 @@ sealed class GeckoPermissionRequest constructor(
                 PERMISSION_PERSISTENT_STORAGE to Permission.ContentPersistentStorage(),
                 PERMISSION_MEDIA_KEY_SYSTEM_ACCESS to Permission.ContentMediaKeySystemAccess(),
                 PERMISSION_STORAGE_ACCESS to Permission.ContentCrossOriginStorageAccess(),
+                PERMISSION_LOCAL_DEVICE_ACCESS to Permission.ContentLocalDeviceAccess(),
+                PERMISSION_LOCAL_NETWORK_ACCESS to Permission.ContentLocalNetworkAccess(),
             )
         }
 
@@ -131,14 +133,13 @@ sealed class GeckoPermissionRequest constructor(
      * @property uri the URI of the content requesting the permissions.
      * @property nativePermissions the list of requested app permissions (will be
      * mapped to corresponding [Permission]s).
-     * @property callback the callback to grant/reject the requested permissions.
+     * @property callbacks the callbacks to grant/reject the requested permissions.
      */
     data class App(
         private val nativePermissions: List<String>,
-        private val callback: PermissionDelegate.Callback,
+        private val callbacks: MutableList<PermissionDelegate.Callback>,
     ) : GeckoPermissionRequest(
         nativePermissions.map { permissionsMap.getOrElse(it) { Permission.Generic(it) } },
-        callback,
     ) {
         override val uri: String? = null
 
@@ -149,6 +150,29 @@ sealed class GeckoPermissionRequest constructor(
                 CAMERA to Permission.AppCamera(CAMERA),
                 RECORD_AUDIO to Permission.AppAudio(RECORD_AUDIO),
             )
+        }
+
+        override fun grant(permissions: List<Permission>) {
+            callbacks.forEach {
+                it.grant()
+            }
+        }
+
+        override fun reject() {
+            callbacks.forEach {
+                it.reject()
+            }
+        }
+
+        override fun merge(permissionRequest: PermissionRequest) {
+            if (permissions == permissionRequest.permissions) {
+                val geckoPermissionRequest: GeckoPermissionRequest.App? =
+                    permissionRequest as? GeckoPermissionRequest.App
+                geckoPermissionRequest?.let {
+                    callbacks.addAll(it.callbacks)
+                    it.callbacks.clear()
+                }
+            }
         }
     }
 
@@ -210,13 +234,9 @@ sealed class GeckoPermissionRequest constructor(
         }
     }
 
-    override fun grant(permissions: List<Permission>) {
-        callback?.grant()
-    }
+    override fun grant(permissions: List<Permission>) = Unit
 
-    override fun reject() {
-        callback?.reject()
-    }
+    override fun reject() = Unit
 
     override fun merge(permissionRequest: PermissionRequest) = Unit
 }

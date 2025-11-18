@@ -7,20 +7,19 @@
 #include "WaveDemuxer.h"
 
 #include <inttypes.h>
+
 #include <algorithm>
 
-#include "mozilla/Assertions.h"
-#include "mozilla/Utf8.h"
 #include "BufferReader.h"
-#include "mozilla/EndianUtils.h"
-#include "VideoUtils.h"
 #include "TimeUnits.h"
+#include "VideoUtils.h"
+#include "mozilla/Assertions.h"
+#include "mozilla/EndianUtils.h"
 #include "mozilla/Logging.h"
+#include "mozilla/Utf8.h"
 
 using mozilla::media::TimeIntervals;
 using mozilla::media::TimeUnit;
-
-extern mozilla::LazyLogModule gMediaDemuxerLog;
 
 namespace mozilla {
 

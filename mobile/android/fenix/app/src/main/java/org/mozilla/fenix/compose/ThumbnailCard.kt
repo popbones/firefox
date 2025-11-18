@@ -56,21 +56,21 @@ fun ThumbnailCard(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
     ) {
-        ThumbnailImage(
-            request = request,
-            contentScale = contentScale,
-            alignment = alignment,
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center,
         ) {
-            components.core.icons.Loader(url) {
-                Placeholder {
-                    Box(modifier = Modifier.background(color = FirefoxTheme.colors.layer3))
-                }
+            ThumbnailImage(
+                request = request,
+                contentScale = contentScale,
+                alignment = alignment,
+            ) {
+                components.core.icons.Loader(url) {
+                    Placeholder {
+                        Box(modifier = Modifier.background(color = FirefoxTheme.colors.layer3))
+                    }
 
-                WithIcon { icon ->
-                    Box(
-                        modifier = Modifier.size(FALLBACK_ICON_SIZE.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    WithIcon { icon ->
                         Image(
                             painter = icon.painter,
                             contentDescription = contentDescription,

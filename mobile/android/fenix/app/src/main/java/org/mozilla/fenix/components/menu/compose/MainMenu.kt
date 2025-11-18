@@ -29,12 +29,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -44,8 +44,11 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CollectionInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.collectionInfo
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
@@ -60,21 +63,21 @@ import mozilla.components.feature.addons.Addon
 import mozilla.components.feature.addons.ui.displayName
 import mozilla.components.feature.addons.ui.summary
 import mozilla.components.service.fxa.manager.AccountState
-import mozilla.components.service.fxa.manager.AccountState.Authenticated
-import mozilla.components.service.fxa.manager.AccountState.Authenticating
 import mozilla.components.service.fxa.manager.AccountState.AuthenticationProblem
-import mozilla.components.service.fxa.manager.AccountState.NotAuthenticated
 import mozilla.components.service.fxa.store.Account
 import org.mozilla.fenix.R
 import org.mozilla.fenix.components.menu.MenuAccessPoint
 import org.mozilla.fenix.components.menu.MenuDialogTestTag.DESKTOP_SITE_OFF
 import org.mozilla.fenix.components.menu.MenuDialogTestTag.DESKTOP_SITE_ON
 import org.mozilla.fenix.components.menu.MenuDialogTestTag.EXTENSIONS
-import org.mozilla.fenix.components.menu.compose.header.MenuNavHeader
+import org.mozilla.fenix.components.menu.MenuDialogTestTag.EXTENSIONS_OPTION_CHEVRON
+import org.mozilla.fenix.components.menu.MenuDialogTestTag.MORE_OPTION_CHEVRON
+import org.mozilla.fenix.components.menu.compose.header.MozillaAccountMenuItem
 import org.mozilla.fenix.components.menu.store.WebExtensionMenuItem
 import org.mozilla.fenix.theme.FirefoxTheme
 import org.mozilla.fenix.theme.Theme
 import org.mozilla.fenix.utils.DURATION_MS_MAIN_MENU_ITEM
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * Wrapper column containing the main menu items.
@@ -84,6 +87,8 @@ import org.mozilla.fenix.utils.DURATION_MS_MAIN_MENU_ITEM
  * @param accountState The [AccountState] of a Mozilla account.
  * @param showQuitMenu Whether or not the button to delete browsing data and quit
  * should be visible.
+ * @param isBottomToolbar Whether or not the browser toolbar is at the bottom.
+ * @param isExpandedToolbarEnabled Whether or not the expanded toolbar layout is enabled.
  * @param isSiteLoading Whether or not the tab is loading.
  * @param isExtensionsExpanded Whether or not the extensions menu is expanded.
  * @param isMoreMenuExpanded Whether or not the more menu is expanded.
@@ -93,11 +98,13 @@ import org.mozilla.fenix.utils.DURATION_MS_MAIN_MENU_ITEM
  * @param isPrivate Whether or not the current browsing mode is private
  * @param isReaderViewActive Whether or not Reader View is active or not.
  * @param isExtensionsProcessDisabled Whether or not the extensions process is disabled due to extension errors.
+ * @param isMoreMenuHighlighted Whether or not the more menu icon is highlighted.
  * @param allWebExtensionsDisabled Whether or not all web extensions are disabled.
  * @param canGoBack Whether or not the back button is enabled.
  * @param canGoForward Whether or not the forward button is enabled.
  * @param scrollState The [ScrollState] used for vertical scrolling.
  * @param showBanner Whether or not the default browser banner should be shown.
+ * @param isDownloadHighlighted `true` if the downloads menu item should be visually highlighted.
  * @param webExtensionMenuCount The number of web extensions.
  * @param onMoreMenuClick Invoked when the user clicks on the more menu item.
  * @param onCustomizeReaderViewMenuClick Invoked when the user clicks on the Customize Reader View button.
@@ -115,8 +122,6 @@ import org.mozilla.fenix.utils.DURATION_MS_MAIN_MENU_ITEM
  * @param onHistoryMenuClick Invoked when the user clicks on the history menu item.
  * @param onDownloadsMenuClick Invoked when the user clicks on the downloads menu item.
  * @param onPasswordsMenuClick Invoked when the user clicks on the passwords menu item.
- * @param onCustomizeHomepageMenuClick Invoked when the user clicks on the customize
- * homepage menu item.
  * @param onQuitMenuClick Invoked when the user clicks on the quit menu item.
  * @param onBackButtonClick Invoked when the user clicks on the back button.
  * @param onForwardButtonClick Invoked when the user clicks on the forward button.
@@ -127,13 +132,15 @@ import org.mozilla.fenix.utils.DURATION_MS_MAIN_MENU_ITEM
  * @param extensionSubmenu The content of extensions menu item to avoid configuration during animation.
  * @param extensionsMenuItemDescription The label of extensions menu item description.
  */
-@Suppress("LongParameterList", "LongMethod")
+@Suppress("LongParameterList", "LongMethod", "CyclomaticComplexMethod")
 @Composable
 fun MainMenu(
     accessPoint: MenuAccessPoint,
     account: Account?,
     accountState: AccountState,
     showQuitMenu: Boolean,
+    isBottomToolbar: Boolean,
+    isExpandedToolbarEnabled: Boolean,
     isSiteLoading: Boolean,
     isExtensionsExpanded: Boolean,
     isMoreMenuExpanded: Boolean,
@@ -143,11 +150,13 @@ fun MainMenu(
     isPrivate: Boolean,
     isReaderViewActive: Boolean,
     isExtensionsProcessDisabled: Boolean,
+    isMoreMenuHighlighted: Boolean,
     allWebExtensionsDisabled: Boolean,
     canGoBack: Boolean,
     canGoForward: Boolean,
     scrollState: ScrollState,
     showBanner: Boolean,
+    isDownloadHighlighted: Boolean,
     webExtensionMenuCount: Int,
     onMoreMenuClick: () -> Unit,
     onCustomizeReaderViewMenuClick: () -> Unit,
@@ -164,7 +173,6 @@ fun MainMenu(
     onHistoryMenuClick: () -> Unit,
     onDownloadsMenuClick: () -> Unit,
     onPasswordsMenuClick: () -> Unit,
-    onCustomizeHomepageMenuClick: () -> Unit,
     onQuitMenuClick: () -> Unit,
     onBackButtonClick: (longPress: Boolean) -> Unit,
     onForwardButtonClick: (longPress: Boolean) -> Unit,
@@ -176,47 +184,79 @@ fun MainMenu(
     extensionsMenuItemDescription: String?,
 ) {
     MenuFrame(
-        header = {
-            MenuNavHeader(
-                state = if (accessPoint == MenuAccessPoint.Home) {
-                    MenuItemState.DISABLED
+        contentModifier = Modifier
+            .padding(
+                start = 8.dp,
+                top = if (accessPoint != MenuAccessPoint.Home &&
+                    (isBottomToolbar || isExpandedToolbarEnabled)
+                ) {
+                    0.dp
                 } else {
-                    MenuItemState.ENABLED
+                    8.dp
                 },
-                goBackState = if (canGoBack && accessPoint != MenuAccessPoint.Home) {
-                    MenuItemState.ENABLED
+                end = 8.dp,
+                bottom = if (accessPoint != MenuAccessPoint.Home &&
+                    (isBottomToolbar || isExpandedToolbarEnabled)
+                ) {
+                    84.dp
                 } else {
-                    MenuItemState.DISABLED
+                    16.dp
                 },
-                goForwardState = if (canGoForward && accessPoint != MenuAccessPoint.Home) {
-                    MenuItemState.ENABLED
-                } else {
-                    MenuItemState.DISABLED
-                },
-                isSiteLoading = accessPoint != MenuAccessPoint.Home && isSiteLoading,
-                onBackButtonClick = onBackButtonClick,
-                onForwardButtonClick = onForwardButtonClick,
-                onRefreshButtonClick = onRefreshButtonClick,
-                onStopButtonClick = onStopButtonClick,
-                onShareButtonClick = onShareButtonClick,
-                isExtensionsExpanded = isExtensionsExpanded,
-                isMoreMenuExpanded = isMoreMenuExpanded,
-            )
-        },
+            ),
         scrollState = scrollState,
+        header = {
+            if (accessPoint != MenuAccessPoint.Home && !isBottomToolbar && !isExpandedToolbarEnabled) {
+                MenuNavigation(
+                    state = MenuItemState.ENABLED,
+                    goBackState = if (canGoBack) MenuItemState.ENABLED else MenuItemState.DISABLED,
+                    goForwardState = if (canGoForward) MenuItemState.ENABLED else MenuItemState.DISABLED,
+                    isSiteLoading = isSiteLoading,
+                    onBackButtonClick = onBackButtonClick,
+                    onForwardButtonClick = onForwardButtonClick,
+                    onRefreshButtonClick = onRefreshButtonClick,
+                    onStopButtonClick = onStopButtonClick,
+                    onShareButtonClick = onShareButtonClick,
+                    isExtensionsExpanded = isExtensionsExpanded,
+                    isMoreMenuExpanded = isMoreMenuExpanded,
+                )
+                if (scrollState.value != 0) {
+                    HorizontalDivider(color = FirefoxTheme.colors.borderPrimary)
+                }
+            }
+        },
+        footer = {
+            if (accessPoint != MenuAccessPoint.Home && (isBottomToolbar || isExpandedToolbarEnabled)) {
+                if (scrollState.value != 0) {
+                    HorizontalDivider(color = FirefoxTheme.colors.borderPrimary)
+                }
+                MenuNavigation(
+                    state = MenuItemState.ENABLED,
+                    goBackState = if (canGoBack) MenuItemState.ENABLED else MenuItemState.DISABLED,
+                    goForwardState = if (canGoForward) MenuItemState.ENABLED else MenuItemState.DISABLED,
+                    isSiteLoading = isSiteLoading,
+                    onBackButtonClick = onBackButtonClick,
+                    onForwardButtonClick = onForwardButtonClick,
+                    onRefreshButtonClick = onRefreshButtonClick,
+                    onStopButtonClick = onStopButtonClick,
+                    onShareButtonClick = onShareButtonClick,
+                    isExtensionsExpanded = isExtensionsExpanded,
+                    isMoreMenuExpanded = isMoreMenuExpanded,
+                )
+            }
+        },
     ) {
-        if (isReaderViewActive) {
+        if (isReaderViewActive && accessPoint != MenuAccessPoint.Home) {
             MenuGroup {
                 MenuItem(
                     label = stringResource(id = R.string.browser_menu_customize_reader_view_2),
-                    beforeIconPainter = painterResource(id = R.drawable.mozac_ic_tool_24),
+                    beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_tool_24),
                     onClick = onCustomizeReaderViewMenuClick,
                 )
             }
         }
 
         if (accessPoint == MenuAccessPoint.Home && showBanner) {
-            DefaultBrowserBanner(
+            MenuBanner(
                 onDismiss = {
                     onBannerDismiss()
                 },
@@ -228,7 +268,6 @@ fun MainMenu(
 
         if (accessPoint == MenuAccessPoint.Home) {
             HomepageMenuGroup(
-                onCustomizeHomepageMenuClick = onCustomizeHomepageMenuClick,
                 onExtensionsMenuClick = onExtensionsMenuClick,
                 isExtensionsProcessDisabled = isExtensionsProcessDisabled,
                 isExtensionsExpanded = isExtensionsExpanded,
@@ -248,6 +287,7 @@ fun MainMenu(
                 isPrivate = isPrivate,
                 isExtensionsProcessDisabled = isExtensionsProcessDisabled,
                 isExtensionsExpanded = isExtensionsExpanded,
+                isMoreMenuHighlighted = isMoreMenuHighlighted,
                 moreMenuExpanded = isMoreMenuExpanded,
                 webExtensionMenuCount = webExtensionMenuCount,
                 allWebExtensionsDisabled = allWebExtensionsDisabled,
@@ -264,6 +304,7 @@ fun MainMenu(
         }
 
         LibraryMenuGroup(
+            isDownloadHighlighted = isDownloadHighlighted,
             onBookmarksMenuClick = onBookmarksMenuClick,
             onHistoryMenuClick = onHistoryMenuClick,
             onDownloadsMenuClick = onDownloadsMenuClick,
@@ -274,13 +315,13 @@ fun MainMenu(
             MozillaAccountMenuItem(
                 account = account,
                 accountState = accountState,
-                onClick = onMozillaAccountButtonClick,
                 isPrivate = isPrivate,
+                onClick = onMozillaAccountButtonClick,
             )
 
             MenuItem(
                 label = stringResource(id = R.string.browser_menu_settings),
-                beforeIconPainter = painterResource(id = R.drawable.mozac_ic_settings_24),
+                beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_settings_24),
                 onClick = onSettingsButtonClick,
             )
         }
@@ -294,7 +335,6 @@ fun MainMenu(
 }
 
 @Suppress("LongParameterList", "LongMethod")
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ExtensionsMenuItem(
     isExtensionsProcessDisabled: Boolean,
@@ -311,12 +351,24 @@ private fun ExtensionsMenuItem(
         MenuItem(
             label = stringResource(id = R.string.browser_menu_extensions),
             description = extensionsMenuItemDescription,
-            beforeIconPainter = if (isExtensionsProcessDisabled && isPrivate) {
-                painterResource(id = R.drawable.mozac_ic_extension_warning_private_24)
-            } else if (isExtensionsProcessDisabled) {
-                painterResource(id = R.drawable.mozac_ic_extension_warning_24)
+            maxDescriptionLines = 1,
+            stateDescription = if (
+                isExtensionsProcessDisabled ||
+                allWebExtensionsDisabled ||
+                extensionsMenuItemDescription == null
+            ) {
+                ""
+            } else if (isExtensionsExpanded) {
+                "Expanded"
             } else {
-                painterResource(id = R.drawable.mozac_ic_extension_24)
+                "Collapsed"
+            },
+            beforeIconPainter = if (isExtensionsProcessDisabled && isPrivate) {
+                painterResource(id = iconsR.drawable.mozac_ic_extension_warning_private_24)
+            } else if (isExtensionsProcessDisabled) {
+                painterResource(id = iconsR.drawable.mozac_ic_extension_warning_24)
+            } else {
+                painterResource(id = iconsR.drawable.mozac_ic_extension_24)
             },
             onClick = onExtensionsMenuClick,
             descriptionState = if (isExtensionsProcessDisabled) {
@@ -340,7 +392,7 @@ private fun ExtensionsMenuItem(
 
             if (isExtensionsProcessDisabled || allWebExtensionsDisabled) {
                 Icon(
-                    painter = painterResource(id = R.drawable.mozac_ic_settings_24),
+                    painter = painterResource(id = iconsR.drawable.mozac_ic_settings_24),
                     contentDescription = null,
                     tint = FirefoxTheme.colors.iconPrimary,
                 )
@@ -350,7 +402,7 @@ private fun ExtensionsMenuItem(
             Row(
                 modifier = Modifier
                     .background(
-                        color = FirefoxTheme.colors.layerSearch,
+                        color = FirefoxTheme.colors.layer2,
                         shape = RoundedCornerShape(16.dp),
                     )
                     .padding(start = leftPadding, top = 2.dp, bottom = 2.dp, end = 2.dp),
@@ -369,12 +421,17 @@ private fun ExtensionsMenuItem(
 
                 Icon(
                     painter = if (isExtensionsExpanded) {
-                        painterResource(id = R.drawable.mozac_ic_chevron_up_20)
+                        painterResource(id = iconsR.drawable.mozac_ic_chevron_up_20)
                     } else {
-                        painterResource(id = R.drawable.mozac_ic_chevron_down_20)
+                        painterResource(id = iconsR.drawable.mozac_ic_chevron_down_20)
                     },
                     contentDescription = null,
                     tint = FirefoxTheme.colors.iconPrimary,
+                    modifier = Modifier.semantics {
+                        testTagsAsResourceId = true
+                        testTag = EXTENSIONS_OPTION_CHEVRON
+                    },
+
                 )
             }
         }
@@ -434,14 +491,13 @@ private fun QuitMenuGroup(
                 id = R.string.browser_menu_delete_browsing_data_on_quit,
                 stringResource(id = R.string.app_name),
             ),
-            beforeIconPainter = painterResource(id = R.drawable.mozac_ic_cross_circle_fill_24),
+            beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_cross_circle_fill_24),
             state = MenuItemState.WARNING,
             onClick = onQuitMenuClick,
         )
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Suppress("LongParameterList", "LongMethod")
 @Composable
 private fun ToolsAndActionsMenuGroup(
@@ -451,6 +507,7 @@ private fun ToolsAndActionsMenuGroup(
     isPrivate: Boolean,
     isExtensionsProcessDisabled: Boolean,
     isExtensionsExpanded: Boolean,
+    isMoreMenuHighlighted: Boolean,
     moreMenuExpanded: Boolean,
     webExtensionMenuCount: Int,
     allWebExtensionsDisabled: Boolean,
@@ -476,32 +533,32 @@ private fun ToolsAndActionsMenuGroup(
             menuItemState = if (isPdf) MenuItemState.DISABLED else MenuItemState.ACTIVE
         } else {
             badgeText = stringResource(id = R.string.browser_feature_desktop_site_off)
-            badgeBackgroundColor = FirefoxTheme.colors.layerSearch
+            badgeBackgroundColor = FirefoxTheme.colors.layer2
             menuItemState = if (isPdf) MenuItemState.DISABLED else MenuItemState.ENABLED
         }
 
         if (isBookmarked) {
-                MenuItem(
-                    label = stringResource(id = R.string.browser_menu_edit_bookmark),
-                    beforeIconPainter = painterResource(id = R.drawable.mozac_ic_bookmark_fill_24),
-                    state = MenuItemState.ACTIVE,
-                    onClick = onEditBookmarkButtonClick,
-                )
-            } else {
-                MenuItem(
-                    label = stringResource(id = R.string.browser_menu_bookmark_this_page_2),
-                    beforeIconPainter = painterResource(id = R.drawable.mozac_ic_bookmark_24),
-                    onClick = onBookmarkPageMenuClick,
-                )
-            }
+            MenuItem(
+                label = stringResource(id = R.string.browser_menu_edit_bookmark),
+                beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_bookmark_fill_24),
+                state = MenuItemState.ACTIVE,
+                onClick = onEditBookmarkButtonClick,
+            )
+        } else {
+            MenuItem(
+                label = stringResource(id = R.string.browser_menu_bookmark_this_page_2),
+                beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_bookmark_24),
+                onClick = onBookmarkPageMenuClick,
+            )
+        }
 
         MenuItem(
             label = stringResource(id = R.string.browser_menu_find_in_page),
-            beforeIconPainter = painterResource(id = R.drawable.mozac_ic_search_24),
+            beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_search_24),
             onClick = onFindInPageMenuClick,
         )
 
-            MenuItem(
+        MenuItem(
             modifier = Modifier.semantics {
                 testTagsAsResourceId = true
                 testTag = when (menuItemState) {
@@ -510,7 +567,8 @@ private fun ToolsAndActionsMenuGroup(
                 }
             },
             label = stringResource(id = labelId),
-            beforeIconPainter = painterResource(id = R.drawable.mozac_ic_device_mobile_24),
+            stateDescription = badgeText,
+            beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_device_desktop_24),
             state = menuItemState,
             onClick = onSwitchToDesktopSiteMenuClick,
         ) {
@@ -536,10 +594,12 @@ private fun ToolsAndActionsMenuGroup(
             extensionsMenuItemDescription = extensionsMenuItemDescription,
         )
 
-        MoreMenuButtonGroup(
-            moreMenuExpanded = moreMenuExpanded,
-            onMoreMenuClick = onMoreMenuClick,
-        )
+        if (!moreMenuExpanded) {
+            MoreMenuButtonGroup(
+                isMoreMenuHighlighted = isMoreMenuHighlighted,
+                onMoreMenuClick = onMoreMenuClick,
+            )
+        }
 
         MenuItemAnimation(
             isExpanded = moreMenuExpanded,
@@ -550,22 +610,20 @@ private fun ToolsAndActionsMenuGroup(
 
 @Composable
 private fun MoreMenuButtonGroup(
-    moreMenuExpanded: Boolean,
+    isMoreMenuHighlighted: Boolean,
     onMoreMenuClick: () -> Unit,
 ) {
     MenuItem(
-        label = if (moreMenuExpanded) {
-            stringResource(id = R.string.browser_menu_less_settings)
-        } else {
-            stringResource(id = R.string.browser_menu_more_settings)
-        },
-        beforeIconPainter = painterResource(id = R.drawable.mozac_ic_ellipsis_horizontal_24),
+        label = stringResource(id = R.string.browser_menu_more_settings),
+        stateDescription = "Collapsed",
+        beforeIconPainter = painterResource(id = iconsR.drawable.mozac_ic_ellipsis_horizontal_24),
+        isBeforeIconHighlighted = isMoreMenuHighlighted,
         onClick = onMoreMenuClick,
     ) {
         Row(
             modifier = Modifier
                 .background(
-                    color = FirefoxTheme.colors.layerSearch,
+                    color = FirefoxTheme.colors.layer2,
                     shape = RoundedCornerShape(16.dp),
                 )
                 .padding(2.dp),
@@ -573,13 +631,13 @@ private fun MoreMenuButtonGroup(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                painter = if (moreMenuExpanded) {
-                    painterResource(id = R.drawable.mozac_ic_chevron_up_20)
-                } else {
-                    painterResource(id = R.drawable.mozac_ic_chevron_down_20)
-                },
+                painter = painterResource(id = iconsR.drawable.mozac_ic_chevron_down_20),
                 contentDescription = null,
                 tint = FirefoxTheme.colors.iconPrimary,
+                modifier = Modifier.semantics {
+                    testTagsAsResourceId = true
+                    testTag = MORE_OPTION_CHEVRON
+                },
             )
         }
     }
@@ -587,6 +645,7 @@ private fun MoreMenuButtonGroup(
 
 @Composable
 private fun LibraryMenuGroup(
+    isDownloadHighlighted: Boolean = false,
     onBookmarksMenuClick: () -> Unit,
     onHistoryMenuClick: () -> Unit,
     onDownloadsMenuClick: () -> Unit,
@@ -609,7 +668,13 @@ private fun LibraryMenuGroup(
     Row(
         Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min),
+            .height(IntrinsicSize.Min)
+            .semantics {
+                this.collectionInfo = CollectionInfo(
+                    rowCount = 1,
+                    columnCount = 4,
+                )
+            },
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -617,9 +682,10 @@ private fun LibraryMenuGroup(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            iconRes = R.drawable.mozac_ic_history_24,
+            iconRes = iconsR.drawable.mozac_ic_history_24,
             labelRes = R.string.library_history,
             shape = leftShape,
+            index = 0,
             onClick = onHistoryMenuClick,
         )
 
@@ -629,9 +695,10 @@ private fun LibraryMenuGroup(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            iconRes = R.drawable.mozac_ic_bookmark_tray_fill_24,
+            iconRes = iconsR.drawable.mozac_ic_bookmark_tray_fill_24,
             labelRes = R.string.library_bookmarks,
             shape = middleShape,
+            index = 1,
             onClick = onBookmarksMenuClick,
         )
 
@@ -641,9 +708,11 @@ private fun LibraryMenuGroup(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            iconRes = R.drawable.mozac_ic_download_24,
+            isHighlighted = isDownloadHighlighted,
+            iconRes = iconsR.drawable.mozac_ic_download_24,
             labelRes = R.string.library_downloads,
             shape = middleShape,
+            index = 2,
             onClick = onDownloadsMenuClick,
         )
 
@@ -653,9 +722,10 @@ private fun LibraryMenuGroup(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            iconRes = R.drawable.mozac_ic_login_24,
+            iconRes = iconsR.drawable.mozac_ic_login_24,
             labelRes = R.string.browser_menu_passwords,
             shape = rightShape,
+            index = 3,
             onClick = onPasswordsMenuClick,
         )
     }
@@ -670,17 +740,10 @@ private fun HomepageMenuGroup(
     webExtensionMenuCount: Int,
     allWebExtensionsDisabled: Boolean,
     onExtensionsMenuClick: () -> Unit,
-    onCustomizeHomepageMenuClick: () -> Unit,
     extensionSubmenu: @Composable ColumnScope.() -> Unit,
     extensionsMenuItemDescription: String?,
 ) {
     MenuGroup {
-        MenuItem(
-            label = stringResource(id = R.string.browser_menu_customize_home_1),
-            beforeIconPainter = painterResource(id = R.drawable.mozac_ic_tool_24),
-            onClick = onCustomizeHomepageMenuClick,
-        )
-
         ExtensionsMenuItem(
             isExtensionsProcessDisabled = isExtensionsProcessDisabled,
             isExtensionsExpanded = isExtensionsExpanded,
@@ -692,63 +755,6 @@ private fun HomepageMenuGroup(
             extensionsMenuItemDescription = extensionsMenuItemDescription,
         )
     }
-}
-
-@Composable
-internal fun MozillaAccountMenuItem(
-    account: Account?,
-    accountState: AccountState,
-    onClick: () -> Unit,
-    isPrivate: Boolean,
-) {
-    val label: String
-    val description: String?
-
-    when (accountState) {
-        NotAuthenticated -> {
-            label = stringResource(id = R.string.browser_menu_sign_in)
-            description = stringResource(id = R.string.browser_menu_sign_in_caption_3)
-        }
-
-        AuthenticationProblem -> {
-            label = stringResource(id = R.string.browser_menu_sign_back_in_to_sync)
-            description = stringResource(id = R.string.browser_menu_syncing_paused_caption)
-        }
-
-        Authenticated -> {
-            label = account?.displayName ?: account?.email
-                ?: stringResource(id = R.string.browser_menu_account_settings)
-            description = null
-        }
-
-        is Authenticating -> {
-            label = ""
-            description = null
-        }
-    }
-
-    MenuItem(
-        label = label,
-        beforeIconPainter = if (accountState is AuthenticationProblem && isPrivate) {
-            painterResource(id = R.drawable.mozac_ic_avatar_warning_circle_fill_critical_private_24)
-        } else if (accountState is AuthenticationProblem) {
-            painterResource(id = R.drawable.mozac_ic_avatar_warning_circle_fill_critical_24)
-        } else {
-            painterResource(id = R.drawable.mozac_ic_avatar_circle_24)
-        },
-        description = description,
-        state = if (accountState is AuthenticationProblem) {
-            MenuItemState.CRITICAL
-        } else {
-            MenuItemState.ENABLED
-        },
-        descriptionState = if (accountState is AuthenticationProblem) {
-            MenuItemState.WARNING
-        } else {
-            MenuItemState.ENABLED
-        },
-        onClick = onClick,
-    )
 }
 
 @Suppress("LongParameterList")
@@ -772,7 +778,7 @@ internal fun Addons(
         if (accessPoint == MenuAccessPoint.Home && availableAddons.isNotEmpty()) {
             AddonsMenuItems(
                 availableAddons = availableAddons,
-                iconPainter = painterResource(id = R.drawable.mozac_ic_settings_24),
+                iconPainter = painterResource(id = iconsR.drawable.mozac_ic_settings_24),
                 onClick = {
                     onWebExtensionMenuItemClick()
                     onAddonClick(it)
@@ -821,10 +827,16 @@ private fun AddonsMenuItems(
     onIconClick: (Addon) -> Unit,
 ) {
     Column(
-        modifier = Modifier.padding(top = 2.dp),
+        modifier = Modifier.padding(top = 2.dp)
+            .semantics {
+                collectionInfo = CollectionInfo(
+                    rowCount = availableAddons.size,
+                    columnCount = 1,
+                )
+            },
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        for (addon in availableAddons) {
+        for ((index, addon) in availableAddons.withIndex()) {
             val description = stringResource(
                 R.string.browser_menu_extension_plus_icon_content_description_2,
                 addon.displayName(LocalContext.current),
@@ -833,9 +845,10 @@ private fun AddonsMenuItems(
             AddonMenuItem(
                 addon = addon,
                 addonInstallationInProgress = addonInstallationInProgress,
-                iconPainter = iconPainter ?: painterResource(id = R.drawable.mozac_ic_plus_24),
+                iconPainter = iconPainter ?: painterResource(id = iconsR.drawable.mozac_ic_plus_24),
                 iconDescription = if (iconPainter != null) addon.summary(LocalContext.current) else description,
                 showDivider = true,
+                index = index,
                 onClick = { onClick(addon) },
                 onIconClick = { onIconClick(addon) },
             )
@@ -851,7 +864,14 @@ private fun WebExtensionMenuItems(
     onSettingsClick: (Addon) -> Unit,
 ) {
     Column(
-        modifier = Modifier.padding(top = 2.dp),
+        modifier = Modifier
+            .padding(top = 2.dp)
+            .semantics {
+                collectionInfo = CollectionInfo(
+                    rowCount = availableAddons.size,
+                    columnCount = 1,
+                )
+            },
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         for (webExtensionMenuItem in webExtensionMenuItems) {
@@ -862,7 +882,11 @@ private fun WebExtensionMenuItems(
                 iconPainter = webExtensionMenuItem.icon?.let { icon ->
                     BitmapPainter(image = icon.asImageBitmap())
                 }
-                    ?: painterResource(R.drawable.mozac_ic_web_extension_default_icon),
+                    ?: painterResource(iconsR.drawable.mozac_ic_web_extension_default_icon),
+                iconTint = when (webExtensionMenuItem.icon) {
+                    null -> FirefoxTheme.colors.iconPrimary
+                    else -> null
+                },
                 enabled = webExtensionMenuItem.enabled,
                 badgeText = webExtensionMenuItem.badgeText,
                 onClick = {
@@ -892,6 +916,7 @@ private fun MoreExtensionsMenuItem(
             ) { onClick.invoke() }
             .clearAndSetSemantics {
                 role = Role.Button
+                contentDescription = label
             }
             .wrapContentSize()
             .clip(shape = RoundedCornerShape(4.dp))
@@ -901,7 +926,7 @@ private fun MoreExtensionsMenuItem(
     ) {
         MenuTextItem(
             label = label,
-            iconPainter = painterResource(id = R.drawable.mozac_ic_external_link_24),
+            iconPainter = painterResource(id = iconsR.drawable.mozac_ic_external_link_24),
             modifier = Modifier.padding(start = 40.dp),
         )
     }
@@ -921,6 +946,8 @@ private fun MenuDialogPreview() {
                 accountState = AuthenticationProblem,
                 isPrivate = false,
                 showQuitMenu = true,
+                isBottomToolbar = false,
+                isExpandedToolbarEnabled = false,
                 isSiteLoading = false,
                 isExtensionsExpanded = false,
                 isMoreMenuExpanded = true,
@@ -929,12 +956,14 @@ private fun MenuDialogPreview() {
                 isPdf = false,
                 isReaderViewActive = false,
                 isExtensionsProcessDisabled = true,
+                isMoreMenuHighlighted = false,
                 allWebExtensionsDisabled = false,
                 canGoBack = true,
                 canGoForward = true,
                 extensionsMenuItemDescription = "No extensions enabled",
                 scrollState = ScrollState(0),
                 showBanner = true,
+                isDownloadHighlighted = true,
                 webExtensionMenuCount = 1,
                 onMoreMenuClick = {},
                 onCustomizeReaderViewMenuClick = {},
@@ -951,7 +980,6 @@ private fun MenuDialogPreview() {
                 onHistoryMenuClick = {},
                 onDownloadsMenuClick = {},
                 onPasswordsMenuClick = {},
-                onCustomizeHomepageMenuClick = {},
                 onQuitMenuClick = {},
                 onBackButtonClick = {},
                 onForwardButtonClick = {},
@@ -982,6 +1010,8 @@ private fun MenuDialogPrivatePreview(
                 accountState = AuthenticationProblem,
                 isPrivate = false,
                 showQuitMenu = true,
+                isBottomToolbar = true,
+                isExpandedToolbarEnabled = false,
                 isSiteLoading = isSiteLoading,
                 isExtensionsExpanded = true,
                 isMoreMenuExpanded = true,
@@ -990,12 +1020,14 @@ private fun MenuDialogPrivatePreview(
                 isPdf = false,
                 isReaderViewActive = false,
                 isExtensionsProcessDisabled = false,
+                isMoreMenuHighlighted = false,
                 canGoBack = true,
                 canGoForward = true,
                 allWebExtensionsDisabled = false,
                 extensionsMenuItemDescription = "No extensions enabled",
                 scrollState = ScrollState(0),
                 showBanner = true,
+                isDownloadHighlighted = true,
                 webExtensionMenuCount = 0,
                 onMoreMenuClick = {},
                 onCustomizeReaderViewMenuClick = {},
@@ -1012,7 +1044,6 @@ private fun MenuDialogPrivatePreview(
                 onHistoryMenuClick = {},
                 onDownloadsMenuClick = {},
                 onPasswordsMenuClick = {},
-                onCustomizeHomepageMenuClick = {},
                 onQuitMenuClick = {},
                 onBackButtonClick = {},
                 onForwardButtonClick = {},

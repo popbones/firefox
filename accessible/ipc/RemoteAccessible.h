@@ -180,7 +180,8 @@ class RemoteAccessible : public Accessible, public HyperTextAccessibleBase {
   // Methods that potentially access a cache.
 
   virtual ENameValueFlag Name(nsString& aName) const override;
-  virtual void Description(nsString& aDescription) const override;
+  virtual EDescriptionValueFlag Description(
+      nsString& aDescription) const override;
   virtual void Value(nsString& aValue) const override;
 
   virtual double CurValue() const override;
@@ -208,6 +209,8 @@ class RemoteAccessible : public Accessible, public HyperTextAccessibleBase {
   virtual already_AddRefed<nsAtom> DisplayStyle() const override;
 
   virtual float Opacity() const override;
+
+  virtual WritingMode GetWritingMode() const override;
 
   virtual void LiveRegionAttributes(nsAString* aLive, nsAString* aRelevant,
                                     Maybe<bool>* aAtomic,
@@ -376,6 +379,8 @@ class RemoteAccessible : public Accessible, public HyperTextAccessibleBase {
   virtual void ScrollToPoint(uint32_t aScrollType, int32_t aX,
                              int32_t aY) override;
 
+  virtual bool IsScrollable() const override;
+
 #if !defined(XP_WIN)
   void Announce(const nsString& aAnnouncement, uint16_t aPriority);
 #endif  // !defined(XP_WIN)
@@ -389,6 +394,9 @@ class RemoteAccessible : public Accessible, public HyperTextAccessibleBase {
   virtual void ScrollSubstringToPoint(int32_t aStartOffset, int32_t aEndOffset,
                                       uint32_t aCoordinateType, int32_t aX,
                                       int32_t aY) override;
+
+  virtual std::pair<mozilla::LayoutDeviceIntRect, nsIWidget*> GetCaretRect()
+      override;
 
   /**
    * Invalidate cached HyperText offsets. This should be called whenever a

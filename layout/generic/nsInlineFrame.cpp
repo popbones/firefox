@@ -13,17 +13,17 @@
 #include "mozilla/Likely.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/RestyleManager.h"
-#include "mozilla/ServoStyleSet.h"
 #include "mozilla/SVGTextFrame.h"
-#include "nsLineLayout.h"
+#include "mozilla/ServoStyleSet.h"
 #include "nsBlockFrame.h"
-#include "nsLayoutUtils.h"
-#include "nsPlaceholderFrame.h"
-#include "nsGkAtoms.h"
-#include "nsPresContext.h"
-#include "nsPresContextInlines.h"
 #include "nsCSSAnonBoxes.h"
 #include "nsDisplayList.h"
+#include "nsGkAtoms.h"
+#include "nsLayoutUtils.h"
+#include "nsLineLayout.h"
+#include "nsPlaceholderFrame.h"
+#include "nsPresContext.h"
+#include "nsPresContextInlines.h"
 #include "nsStyleChangeList.h"
 
 #ifdef DEBUG
@@ -97,9 +97,9 @@ bool nsInlineFrame::IsSelfEmpty() {
   bool haveStart, haveEnd;
 
   const auto IsMarginZero = [](const nsStyleMargin& aStyleMargin,
-                               StylePositionProperty aProp,
-                               mozilla::Side aSide) {
-    const auto margin = aStyleMargin.GetMargin(aSide, aProp);
+                               mozilla::Side aSide,
+                               const AnchorPosResolutionParams& aParams) {
+    const auto margin = aStyleMargin.GetMargin(aSide, aParams);
     if (!margin->IsLengthPercentage()) {
       return true;
     }
@@ -110,7 +110,7 @@ bool nsInlineFrame::IsSelfEmpty() {
   auto HaveSide = [&](mozilla::Side aSide) -> bool {
     return border->GetComputedBorderWidth(aSide) != 0 ||
            !nsLayoutUtils::IsPaddingZero(padding->mPadding.Get(aSide)) ||
-           !IsMarginZero(*margin, anchorResolutionParams.mPosition, aSide);
+           !IsMarginZero(*margin, aSide, anchorResolutionParams);
   };
   // Initially set up haveStart and haveEnd in terms of visual (LTR/TTB)
   // coordinates; we'll exchange them later if bidi-RTL is in effect to
@@ -389,7 +389,8 @@ void nsInlineFrame::Reflow(nsPresContext* aPresContext,
 }
 
 nsresult nsInlineFrame::AttributeChanged(int32_t aNameSpaceID,
-                                         nsAtom* aAttribute, int32_t aModType) {
+                                         nsAtom* aAttribute,
+                                         AttrModType aModType) {
   nsresult rv =
       nsContainerFrame::AttributeChanged(aNameSpaceID, aAttribute, aModType);
 

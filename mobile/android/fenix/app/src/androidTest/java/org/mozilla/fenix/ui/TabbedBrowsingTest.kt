@@ -5,8 +5,6 @@
 package org.mozilla.fenix.ui
 
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import mozilla.components.concept.engine.mediasession.MediaSession
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
@@ -14,7 +12,6 @@ import org.mozilla.fenix.customannotations.SkipLeaks
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
-import org.mozilla.fenix.helpers.MatcherHelper
 import org.mozilla.fenix.helpers.MockBrowserDataHelper
 import org.mozilla.fenix.helpers.RetryTestRule
 import org.mozilla.fenix.helpers.TestAssetHelper
@@ -27,7 +24,6 @@ import org.mozilla.fenix.helpers.TestHelper.verifySnackBarText
 import org.mozilla.fenix.helpers.TestSetup
 import org.mozilla.fenix.helpers.perf.DetectMemoryLeaksRule
 import org.mozilla.fenix.ui.robots.browserScreen
-import org.mozilla.fenix.ui.robots.clickPageObject
 import org.mozilla.fenix.ui.robots.homeScreen
 import org.mozilla.fenix.ui.robots.navigationToolbar
 import org.mozilla.fenix.ui.robots.notificationShade
@@ -66,6 +62,7 @@ class TabbedBrowsingTest : TestSetup() {
     val retryTestRule = RetryTestRule(3)
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/903599
+    @Ignore("disabled - https://bugzilla.mozilla.org/show_bug.cgi?id=1989405")
     @Test
     fun closeAllTabsTest() {
         val defaultWebPage = TestAssetHelper.getGenericAsset(mockWebServer, 1)
@@ -76,7 +73,6 @@ class TabbedBrowsingTest : TestSetup() {
             verifyNormalTabsList()
         }.openThreeDotMenu {
             verifyCloseAllTabsButton()
-            verifyShareAllTabsButton()
             verifySelectTabsButton()
         }.closeAllTabs {
             verifyTabCounter("0")
@@ -118,24 +114,33 @@ class TabbedBrowsingTest : TestSetup() {
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/903604
     @Test
     fun swipeToCloseTabsTest() {
-        val genericURL = TestAssetHelper.getGenericAsset(mockWebServer, 1)
+        val webPages = TestAssetHelper.getGenericAssets(mockWebServer)
 
-        navigationToolbar {
-        }.enterURLAndEnterToBrowser(genericURL.url) {
-            waitForPageToLoad()
-        }.openTabDrawer(composeTestRule) {
-            verifyExistingOpenTabs("Test_Page_1")
-            swipeTabRight("Test_Page_1")
-            verifySnackBarText("Tab closed")
-        }
+        MockBrowserDataHelper.createTabItem(webPages[0].url.toString())
+        MockBrowserDataHelper.createTabItem(webPages[1].url.toString())
+
         homeScreen {
-            verifyTabCounter("0")
-        }.openNavigationToolbar {
-        }.enterURLAndEnterToBrowser(genericURL.url) {
-            waitForPageToLoad()
         }.openTabDrawer(composeTestRule) {
-            verifyExistingOpenTabs("Test_Page_1")
-            swipeTabLeft("Test_Page_1")
+            verifyExistingOpenTabs(webPages[0].title)
+            verifyExistingOpenTabs(webPages[1].title)
+            swipeTabRight(webPages[0].title)
+            verifySnackBarText("Tab closed")
+            clickSnackbarButton(composeTestRule, "UNDO")
+            verifyExistingOpenTabs(webPages[0].title)
+            verifyExistingOpenTabs(webPages[1].title)
+            swipeTabRight(webPages[0].title)
+            verifySnackBarText("Tab closed")
+            verifyNoExistingOpenTabs(webPages[0].title)
+            verifyExistingOpenTabs(webPages[1].title)
+            swipeTabLeft(webPages[1].title)
+            verifySnackBarText("Tab closed")
+            clickSnackbarButton(composeTestRule, "UNDO")
+        }
+        browserScreen {
+            verifyPageContent(webPages[1].content)
+        }.openTabDrawer(composeTestRule) {
+            verifyExistingOpenTabs(webPages[1].title)
+            swipeTabLeft(webPages[1].title)
             verifySnackBarText("Tab closed")
         }
         homeScreen {
@@ -162,29 +167,10 @@ class TabbedBrowsingTest : TestSetup() {
         }
     }
 
-    // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/903606
-    @SmokeTest
-    @Test
-    fun tabMediaControlButtonTest() {
-        val audioTestPage = TestAssetHelper.getAudioPageAsset(mockWebServer)
-
-        navigationToolbar {
-        }.enterURLAndEnterToBrowser(audioTestPage.url) {
-            mDevice.waitForIdle()
-            clickPageObject(MatcherHelper.itemWithText("Play"))
-            assertPlaybackState(browserStore, MediaSession.PlaybackState.PLAYING)
-        }.openTabDrawer(composeTestRule) {
-            verifyTabMediaControlButtonState("Pause")
-            clickTabMediaControlButton("Pause")
-            verifyTabMediaControlButtonState("Play")
-        }.openTab(audioTestPage.title) {
-            assertPlaybackState(browserStore, MediaSession.PlaybackState.PAUSED)
-        }
-    }
-
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/903592
     @SmokeTest
     @Test
+    @SkipLeaks
     fun verifyCloseAllPrivateTabsNotificationTest() {
         val defaultWebPage = TestAssetHelper.getGenericAsset(mockWebServer, 1)
 
@@ -200,30 +186,6 @@ class TabbedBrowsingTest : TestSetup() {
             verifyPrivateTabsNotification()
         }.clickClosePrivateTabsNotification {
             verifyHomeScreen()
-        }
-    }
-
-    // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/903602
-    @Test
-    fun verifyTabTrayNotShowingStateHalfExpanded() {
-        homeScreen {
-        }.openTabDrawer(composeTestRule) {
-            verifyNoOpenTabsInNormalBrowsing()
-            // With no tabs opened the state should be STATE_COLLAPSED.
-            verifyTabsTrayBehaviorState(BottomSheetBehavior.STATE_COLLAPSED)
-            // Need to ensure the halfExpandedRatio is very small so that when in STATE_HALF_EXPANDED
-            // the tabTray will actually have a very small height (for a very short time) akin to being hidden.
-            verifyMinusculeHalfExpandedRatio()
-        }.clickTopBar {
-        }.waitForTabTrayBehaviorToIdle {
-            // Touching the topBar would normally advance the tabTray to the next state.
-            // We don't want that.
-            verifyTabsTrayBehaviorState(BottomSheetBehavior.STATE_COLLAPSED)
-        }.advanceToHalfExpandedState {
-        }.waitForTabTrayBehaviorToIdle {
-            // TabTray should not be displayed in STATE_HALF_EXPANDED.
-            // When advancing to this state it should immediately be hidden.
-            verifyTabTrayIsClosed()
         }
     }
 
@@ -274,7 +236,6 @@ class TabbedBrowsingTest : TestSetup() {
             verifyPrivateBrowsingButtonIsSelected(isSelected = false)
             verifySyncedTabsButtonIsSelected(isSelected = false)
             verifyThreeDotButton()
-            verifyNormalTabCounter()
             verifyNormalTabsList()
             verifyFab()
             verifyTabThumbnail()
@@ -302,7 +263,6 @@ class TabbedBrowsingTest : TestSetup() {
             verifyPrivateBrowsingButtonIsSelected(true)
             verifySyncedTabsButtonIsSelected(false)
             verifyThreeDotButton()
-            verifyNormalTabCounter()
             verifyPrivateTabsList()
             verifyExistingOpenTabs(website.title)
             verifyTabCloseButton()
@@ -484,8 +444,13 @@ class TabbedBrowsingTest : TestSetup() {
             verifyExistingOpenTabs("Test_Page_1")
             verifyExistingOpenTabs("Test_Page_2")
         }.openThreeDotMenu {
-            verifyShareAllTabsButton()
-        }.clickShareAllTabsButton {
+            verifySelectTabsButton()
+        }.clickSelectTabsButton {
+            selectTab("Test_Page_1", 1)
+            selectTab("Test_Page_2", 2)
+        }.openThreeDotMenu {
+            verifyShareTabsButton()
+        }.clickShareTabsButton {
             verifyShareTabsOverlay(firstWebsiteTitle, secondWebsiteTitle)
             verifySharingWithSelectedApp(
                 sharingApp,
@@ -495,9 +460,9 @@ class TabbedBrowsingTest : TestSetup() {
         }
     }
 
-    @Ignore("Temporarily disabled: https://bugzilla.mozilla.org/show_bug.cgi?id=1972361")
+    // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/526244
     @Test
-    fun privateModeDoNotPersistAfterRestartTest() {
+    fun privateModeStaysAsDefaultAfterRestartTest() {
         val defaultWebPage = TestAssetHelper.getGenericAsset(mockWebServer, 1)
 
         navigationToolbar {
@@ -509,6 +474,7 @@ class TabbedBrowsingTest : TestSetup() {
         restartApp(composeTestRule.activityRule)
 
         homeScreen {
+            verifyPrivateBrowsingHomeScreenItems()
         }.openTabDrawer(composeTestRule) {
         }.toggleToNormalTabs {
             verifyExistingOpenTabs(defaultWebPage.title)
@@ -534,6 +500,7 @@ class TabbedBrowsingTest : TestSetup() {
         closeApp(composeTestRule.activityRule)
         restartApp(composeTestRule.activityRule)
         homeScreen {
+            verifyPrivateBrowsingHomeScreenItems()
         }.openTabDrawer(composeTestRule) {
             verifyNoOpenTabsInPrivateBrowsing()
         }

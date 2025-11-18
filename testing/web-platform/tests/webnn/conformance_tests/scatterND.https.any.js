@@ -8,10 +8,6 @@
 
 'use strict';
 
-const getScatterNDPrecisionTolerance = () => {
-  return {metricType: 'ULP', value: 0};
-};
-
 const scatterNDTests = [
   {
     'name':
@@ -167,11 +163,5 @@ const scatterNDTests = [
   }
 ];
 
-if (navigator.ml) {
-  scatterNDTests.forEach((test) => {
-    webnn_conformance_test(
-        buildAndExecuteGraph, getScatterNDPrecisionTolerance, test);
-  });
-} else {
-  test(() => assert_implements(navigator.ml, 'missing navigator.ml'));
-}
+webnn_conformance_test(
+    scatterNDTests, buildAndExecuteGraph, getZeroULPTolerance);

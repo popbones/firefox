@@ -11,6 +11,16 @@
 
 #include "ActiveLayerTracker.h"
 #include "DisplayItemClip.h"
+#include "ImageContainer.h"
+#include "ImageOps.h"
+#include "ImageRegion.h"
+#include "LayoutLogging.h"
+#include "MobileViewportManager.h"
+#include "RegionBuilder.h"
+#include "RetainedDisplayListBuilder.h"
+#include "TextDrawTarget.h"
+#include "UnitTransforms.h"
+#include "ViewportFrame.h"
 #include "gfx2DGlue.h"
 #include "gfxContext.h"
 #include "gfxDrawable.h"
@@ -20,58 +30,20 @@
 #include "gfxRect.h"
 #include "gfxTypes.h"
 #include "gfxUtils.h"
-#include "ImageContainer.h"
-#include "ImageOps.h"
-#include "ImageRegion.h"
 #include "imgIContainer.h"
 #include "imgIRequest.h"
-#include "LayoutLogging.h"
-#include "MobileViewportManager.h"
 #include "mozilla/AccessibleCaretEventHub.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Baseline.h"
 #include "mozilla/BasicEvents.h"
 #include "mozilla/ClearOnShutdown.h"
 #include "mozilla/DisplayPortUtils.h"
-#include "mozilla/glean/GfxMetrics.h"
-#include "mozilla/dom/AnonymousContent.h"
-#include "mozilla/dom/BrowserChild.h"
-#include "mozilla/dom/CanvasUtils.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/dom/DOMRect.h"
-#include "mozilla/dom/DOMStringList.h"
-#include "mozilla/dom/Element.h"
-#include "mozilla/dom/HTMLBodyElement.h"
-#include "mozilla/dom/HTMLCanvasElement.h"
-#include "mozilla/dom/HTMLImageElement.h"
-#include "mozilla/dom/HTMLMediaElementBinding.h"
-#include "mozilla/dom/HTMLVideoElement.h"
-#include "mozilla/dom/InspectorFontFace.h"
-#include "mozilla/dom/ImageBitmap.h"
-#include "mozilla/dom/InteractiveWidget.h"
-#include "mozilla/dom/KeyframeEffect.h"
-#include "mozilla/dom/SVGViewportElement.h"
-#include "mozilla/dom/UIEvent.h"
-#include "mozilla/dom/VideoFrame.h"
-#include "mozilla/dom/VideoFrameBinding.h"
-#include "mozilla/intl/BidiEmbeddingLevel.h"
 #include "mozilla/EffectCompositor.h"
 #include "mozilla/EffectSet.h"
 #include "mozilla/EventDispatcher.h"
 #include "mozilla/EventStateManager.h"
 #include "mozilla/FloatingPoint.h"
-#include "mozilla/gfx/2D.h"
-#include "mozilla/gfx/gfxVars.h"
-#include "mozilla/gfx/PathHelpers.h"
-#include "mozilla/gfx/DataSurfaceHelpers.h"
 #include "mozilla/IntegerRange.h"
-#include "mozilla/layers/APZCCallbackHelper.h"
-#include "mozilla/layers/APZPublicUtils.h"  // for apz::CalculatePendingDisplayPort
-#include "mozilla/layers/CompositorBridgeChild.h"
-#include "mozilla/layers/PAPZ.h"
-#include "mozilla/layers/StackingContextHelper.h"
-#include "mozilla/layers/WebRenderLayerManager.h"
 #include "mozilla/Likely.h"
 #include "mozilla/LookAndFeel.h"
 #include "mozilla/Maybe.h"
@@ -82,6 +54,10 @@
 #include "mozilla/ProfilerLabels.h"
 #include "mozilla/ProfilerMarkers.h"
 #include "mozilla/RestyleManager.h"
+#include "mozilla/SVGImageContext.h"
+#include "mozilla/SVGIntegrationUtils.h"
+#include "mozilla/SVGTextFrame.h"
+#include "mozilla/SVGUtils.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/ScrollContainerFrame.h"
 #include "mozilla/ScrollOrigin.h"
@@ -98,32 +74,62 @@
 #include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/StaticPtr.h"
 #include "mozilla/StyleAnimationValue.h"
-#include "mozilla/SVGImageContext.h"
-#include "mozilla/SVGIntegrationUtils.h"
-#include "mozilla/SVGTextFrame.h"
-#include "mozilla/SVGUtils.h"
-#include "mozilla/glean/LayoutMetrics.h"
 #include "mozilla/ToString.h"
 #include "mozilla/Unused.h"
 #include "mozilla/ViewportFrame.h"
 #include "mozilla/ViewportUtils.h"
 #include "mozilla/WheelHandlingHelper.h"  // for WheelHandlingUtils
+#include "mozilla/dom/AnonymousContent.h"
+#include "mozilla/dom/BrowserChild.h"
+#include "mozilla/dom/CanvasUtils.h"
+#include "mozilla/dom/CharacterDataBuffer.h"
+#include "mozilla/dom/DOMRect.h"
+#include "mozilla/dom/DOMStringList.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
+#include "mozilla/dom/Element.h"
+#include "mozilla/dom/HTMLBodyElement.h"
+#include "mozilla/dom/HTMLCanvasElement.h"
+#include "mozilla/dom/HTMLImageElement.h"
+#include "mozilla/dom/HTMLMediaElementBinding.h"
+#include "mozilla/dom/HTMLVideoElement.h"
+#include "mozilla/dom/ImageBitmap.h"
+#include "mozilla/dom/InspectorFontFace.h"
+#include "mozilla/dom/InteractiveWidget.h"
+#include "mozilla/dom/KeyframeEffect.h"
+#include "mozilla/dom/SVGViewportElement.h"
+#include "mozilla/dom/UIEvent.h"
+#include "mozilla/dom/VideoFrame.h"
+#include "mozilla/dom/VideoFrameBinding.h"
+#include "mozilla/gfx/2D.h"
+#include "mozilla/gfx/DataSurfaceHelpers.h"
+#include "mozilla/gfx/PathHelpers.h"
+#include "mozilla/gfx/gfxVars.h"
+#include "mozilla/glean/GfxMetrics.h"
+#include "mozilla/glean/LayoutMetrics.h"
+#include "mozilla/intl/BidiEmbeddingLevel.h"
+#include "mozilla/layers/APZCCallbackHelper.h"
+#include "mozilla/layers/APZPublicUtils.h"  // for apz::CalculatePendingDisplayPort
+#include "mozilla/layers/CompositorBridgeChild.h"
+#include "mozilla/layers/PAPZ.h"
+#include "mozilla/layers/StackingContextHelper.h"
+#include "mozilla/layers/WebRenderLayerManager.h"
 #include "nsAnimationManager.h"
 #include "nsAtom.h"
 #include "nsBidiPresUtils.h"
 #include "nsBlockFrame.h"
-#include "nsCanvasFrame.h"
-#include "nsCaret.h"
-#include "nsCharTraits.h"
 #include "nsCOMPtr.h"
-#include "nsComputedDOMStyle.h"
-#include "nsContentUtils.h"
 #include "nsCSSAnonBoxes.h"
 #include "nsCSSColorUtils.h"
 #include "nsCSSFrameConstructor.h"
 #include "nsCSSProps.h"
 #include "nsCSSPseudoElements.h"
 #include "nsCSSRendering.h"
+#include "nsCanvasFrame.h"
+#include "nsCaret.h"
+#include "nsCharTraits.h"
+#include "nsComputedDOMStyle.h"
+#include "nsContentUtils.h"
 #include "nsDisplayList.h"
 #include "nsFieldSetFrame.h"
 #include "nsFlexContainerFrame.h"
@@ -154,22 +160,15 @@
 #include "nsStyleStructInlines.h"
 #include "nsStyleTransformMatrix.h"
 #include "nsSubDocumentFrame.h"
-#include "nsTableWrapperFrame.h"
 #include "nsTArray.h"
-#include "nsTextFragment.h"
-#include "nsTextFrame.h"
 #include "nsTHashMap.h"
+#include "nsTableWrapperFrame.h"
+#include "nsTextFrame.h"
 #include "nsTransitionManager.h"
 #include "nsView.h"
 #include "nsViewManager.h"
-#include "prenv.h"
-#include "RegionBuilder.h"
-#include "RetainedDisplayListBuilder.h"
-#include "TextDrawTarget.h"
-#include "UnitTransforms.h"
-#include "ViewportFrame.h"
-
 #include "nsXULPopupManager.h"
+#include "prenv.h"
 
 // Make sure getpid() works.
 #ifdef XP_WIN
@@ -680,11 +679,11 @@ ViewID nsLayoutUtils::FindIDForScrollContainerFrame(
 
 bool nsLayoutUtils::UsesAsyncScrolling(nsIFrame* aFrame) {
 #ifdef MOZ_WIDGET_ANDROID
-  // We always have async scrolling for android
+  // We always have async scrolling for Android.
   return true;
-#endif
-
+#else
   return AsyncPanZoomEnabled(aFrame);
+#endif
 }
 
 bool nsLayoutUtils::AsyncPanZoomEnabled(const nsIFrame* aFrame) {
@@ -914,11 +913,10 @@ void nsLayoutUtils::GetMarkerSpokenText(const nsIContent* aContent,
 }
 #endif
 
-// static
-nsIFrame* nsLayoutUtils::GetClosestFrameOfType(nsIFrame* aFrame,
-                                               LayoutFrameType aFrameType,
-                                               nsIFrame* aStopAt) {
-  for (nsIFrame* frame = aFrame; frame; frame = frame->GetParent()) {
+const nsIFrame* nsLayoutUtils::GetClosestFrameOfType(const nsIFrame* aFrame,
+                                                     LayoutFrameType aFrameType,
+                                                     const nsIFrame* aStopAt) {
+  for (const nsIFrame* frame = aFrame; frame; frame = frame->GetParent()) {
     if (frame->Type() == aFrameType) {
       return frame;
     }
@@ -927,6 +925,12 @@ nsIFrame* nsLayoutUtils::GetClosestFrameOfType(nsIFrame* aFrame,
     }
   }
   return nullptr;
+}
+nsIFrame* nsLayoutUtils::GetClosestFrameOfType(nsIFrame* aFrame,
+                                               LayoutFrameType aFrameType,
+                                               const nsIFrame* aStopAt) {
+  return const_cast<nsIFrame*>(GetClosestFrameOfType(
+      const_cast<const nsIFrame*>(aFrame), aFrameType, aStopAt));
 }
 
 /* static */
@@ -1150,7 +1154,7 @@ int32_t nsLayoutUtils::DoCompareTreePosition(const nsIFrame* aFrame1,
 // static
 int32_t nsLayoutUtils::DoCompareTreePosition(
     const nsIFrame* aFrame1, const nsIFrame* aFrame2,
-    nsTArray<const nsIFrame*>& aFrame2Ancestors,
+    const nsTArray<const nsIFrame*>& aFrame2Ancestors,
     const nsIFrame* aCommonAncestor) {
   MOZ_ASSERT(aFrame1, "aFrame1 must not be null");
   MOZ_ASSERT(aFrame2, "aFrame2 must not be null");
@@ -1162,11 +1166,16 @@ int32_t nsLayoutUtils::DoCompareTreePosition(
   }
 
   AutoTArray<const nsIFrame*, 20> frame1Ancestors;
-  if (aCommonAncestor &&
-      !FillAncestors(aFrame1, aCommonAncestor, &frame1Ancestors)) {
+  const nsIFrame* frame1CommonAncestor =
+      FillAncestors(aFrame1, aCommonAncestor, &frame1Ancestors);
+  if (aCommonAncestor && !frame1CommonAncestor) {
     // We reached the root of the frame tree ... if aCommonAncestor was set,
-    // it is wrong
-    return DoCompareTreePosition(aFrame1, aFrame2, nullptr);
+    // it is wrong. We need to recompute without aCommonAncestor,
+    // but computing frame1Ancestors array again can be avoided by
+    // swapping the order of the arguments.
+    const int32_t oppositeResult =
+        DoCompareTreePosition(aFrame2, aFrame1, frame1Ancestors, nullptr);
+    return -oppositeResult;
   }
 
   int32_t last1 = int32_t(frame1Ancestors.Length()) - 1;
@@ -1732,24 +1741,24 @@ void nsLayoutUtils::ConstrainToCoordValues(gfxFloat& aStart, gfxFloat& aSize) {
   }
 }
 
-nsRegion nsLayoutUtils::RoundedRectIntersectRect(const nsRect& aRoundedRect,
-                                                 const nscoord aRadii[8],
-                                                 const nsRect& aContainedRect) {
+nsRegion nsLayoutUtils::RoundedRectIntersectRect(
+    const nsRect& aRoundedRect, const nsRectCornerRadii& aRadii,
+    const nsRect& aContainedRect) {
   // rectFullHeight and rectFullWidth together will approximately contain
   // the total area of the frame minus the rounded corners.
   nsRect rectFullHeight = aRoundedRect;
-  nscoord xDiff = std::max(aRadii[eCornerTopLeftX], aRadii[eCornerBottomLeftX]);
+  nscoord xDiff = std::max(aRadii.TopLeft().width, aRadii.BottomLeft().width);
   rectFullHeight.x += xDiff;
   rectFullHeight.width -=
-      std::max(aRadii[eCornerTopRightX], aRadii[eCornerBottomRightX]) + xDiff;
+      std::max(aRadii.TopRight().width, aRadii.BottomRight().width) + xDiff;
   nsRect r1;
   r1.IntersectRect(rectFullHeight, aContainedRect);
 
   nsRect rectFullWidth = aRoundedRect;
-  nscoord yDiff = std::max(aRadii[eCornerTopLeftY], aRadii[eCornerTopRightY]);
+  nscoord yDiff = std::max(aRadii.TopLeft().height, aRadii.TopRight().height);
   rectFullWidth.y += yDiff;
   rectFullWidth.height -=
-      std::max(aRadii[eCornerBottomLeftY], aRadii[eCornerBottomRightY]) + yDiff;
+      std::max(aRadii.BottomLeft().height, aRadii.BottomRight().height) + yDiff;
   nsRect r2;
   r2.IntersectRect(rectFullWidth, aContainedRect);
 
@@ -1811,7 +1820,7 @@ static bool CheckCorner(nscoord aXOffset, nscoord aYOffset, nscoord aXRadius,
 }
 
 bool nsLayoutUtils::RoundedRectIntersectsRect(const nsRect& aRoundedRect,
-                                              const nscoord aRadii[8],
+                                              const nsRectCornerRadii& aRadii,
                                               const nsRect& aTestRect) {
   if (!aTestRect.Intersects(aRoundedRect)) {
     return false;
@@ -1828,14 +1837,14 @@ bool nsLayoutUtils::RoundedRectIntersectsRect(const nsRect& aRoundedRect,
   // Check whether the bottom-right corner of aTestRect is inside the
   // top left corner of aBounds when rounded by aRadii, etc.  If any
   // corner is not, then fail; otherwise succeed.
-  return CheckCorner(insets.left, insets.top, aRadii[eCornerTopLeftX],
-                     aRadii[eCornerTopLeftY]) &&
-         CheckCorner(insets.right, insets.top, aRadii[eCornerTopRightX],
-                     aRadii[eCornerTopRightY]) &&
-         CheckCorner(insets.right, insets.bottom, aRadii[eCornerBottomRightX],
-                     aRadii[eCornerBottomRightY]) &&
-         CheckCorner(insets.left, insets.bottom, aRadii[eCornerBottomLeftX],
-                     aRadii[eCornerBottomLeftY]);
+  return CheckCorner(insets.left, insets.top, aRadii.TopLeft().width,
+                     aRadii.TopLeft().height) &&
+         CheckCorner(insets.right, insets.top, aRadii.TopRight().width,
+                     aRadii.TopRight().height) &&
+         CheckCorner(insets.right, insets.bottom, aRadii.BottomRight().width,
+                     aRadii.BottomRight().height) &&
+         CheckCorner(insets.left, insets.bottom, aRadii.BottomLeft().width,
+                     aRadii.BottomLeft().height);
 }
 
 nsRect nsLayoutUtils::MatrixTransformRect(const nsRect& aBounds,
@@ -3456,8 +3465,7 @@ struct BoxToRect : public nsLayoutUtils::BoxCallback {
         const auto anchorResolutionParams =
             AnchorPosResolutionParams::From(aFrame);
         for (const Side side : AllPhysicalSides()) {
-          if (styleMargin->GetMargin(side, anchorResolutionParams.mPosition)
-                  ->IsAuto()) {
+          if (styleMargin->GetMargin(side, anchorResolutionParams)->IsAuto()) {
             usedMargin.Side(side) = 0;
           }
         }
@@ -4090,8 +4098,7 @@ static Maybe<nscoord> GetPercentBSize(const LengthPercentage& aSize,
   WritingMode wm = f->GetWritingMode();
   const nsStylePosition* pos = f->StylePosition();
   const auto anchorResolutionParams = AnchorPosResolutionParams::From(f);
-  Maybe<nscoord> bSize =
-      GetBSize(pos->BSize(wm, anchorResolutionParams.mPosition));
+  Maybe<nscoord> bSize = GetBSize(pos->BSize(wm, anchorResolutionParams));
   if (!bSize) {
     LayoutFrameType fType = f->Type();
     if (fType != LayoutFrameType::Viewport &&
@@ -4114,14 +4121,14 @@ static Maybe<nscoord> GetPercentBSize(const LengthPercentage& aSize,
   }
 
   if (Maybe<nscoord> maxBSize =
-          GetBSize(pos->MaxBSize(wm, anchorResolutionParams.mPosition))) {
+          GetBSize(pos->MaxBSize(wm, anchorResolutionParams))) {
     if (*maxBSize < *bSize) {
       *bSize = *maxBSize;
     }
   }
 
   if (Maybe<nscoord> minBSize =
-          GetBSize(pos->MinBSize(wm, anchorResolutionParams.mPosition))) {
+          GetBSize(pos->MinBSize(wm, anchorResolutionParams))) {
     if (*minBSize > *bSize) {
       *bSize = *minBSize;
     }
@@ -4633,27 +4640,19 @@ nscoord nsLayoutUtils::IntrinsicForAxis(
   const bool isInlineAxis = aAxis == ourInlineAxis;
 
   const auto anchorResolutionParams = AnchorPosResolutionParams::From(aFrame);
-  auto styleMinISize =
-      horizontalAxis ? stylePos->GetMinWidth(anchorResolutionParams.mPosition)
-                     : stylePos->GetMinHeight(anchorResolutionParams.mPosition);
-  auto styleISize = [&]() {
-    if (aFlags & MIN_INTRINSIC_ISIZE) {
-      return AnchorResolvedSizeHelper::Overridden(*styleMinISize);
-    }
-    const Maybe<StyleSize>& styleISizeOverride =
-        isInlineAxis ? aSizeOverrides.mStyleISize : aSizeOverrides.mStyleBSize;
-    return styleISizeOverride
-               ? AnchorResolvedSizeHelper::Overridden(*styleISizeOverride)
-               : (horizontalAxis
-                      ? stylePos->GetWidth(anchorResolutionParams.mPosition)
-                      : stylePos->GetHeight(anchorResolutionParams.mPosition));
-  }();
-  MOZ_ASSERT(!(aFlags & MIN_INTRINSIC_ISIZE) || styleISize->IsAuto() ||
-                 nsIFrame::ToExtremumLength(*styleISize),
-             "should only use MIN_INTRINSIC_ISIZE for intrinsic values");
-  auto styleMaxISize =
-      horizontalAxis ? stylePos->GetMaxWidth(anchorResolutionParams.mPosition)
-                     : stylePos->GetMaxHeight(anchorResolutionParams.mPosition);
+  auto styleMinISize = horizontalAxis
+                           ? stylePos->GetMinWidth(anchorResolutionParams)
+                           : stylePos->GetMinHeight(anchorResolutionParams);
+  const Maybe<StyleSize>& styleISizeOverride =
+      isInlineAxis ? aSizeOverrides.mStyleISize : aSizeOverrides.mStyleBSize;
+  auto styleISize =
+      styleISizeOverride
+          ? AnchorResolvedSizeHelper::Overridden(*styleISizeOverride)
+          : (horizontalAxis ? stylePos->GetWidth(anchorResolutionParams)
+                            : stylePos->GetHeight(anchorResolutionParams));
+  auto styleMaxISize = horizontalAxis
+                           ? stylePos->GetMaxWidth(anchorResolutionParams)
+                           : stylePos->GetMaxHeight(anchorResolutionParams);
 
   auto ResetIfKeywords = [](AnchorResolvedSize& aSize,
                             AnchorResolvedSize& aMinSize,
@@ -4711,15 +4710,14 @@ nscoord nsLayoutUtils::IntrinsicForAxis(
   auto styleBSize =
       styleBSizeOverride
           ? AnchorResolvedSizeHelper::Overridden(*styleBSizeOverride)
-          : (horizontalAxis
-                 ? stylePos->GetHeight(anchorResolutionParams.mPosition)
-                 : stylePos->GetWidth(anchorResolutionParams.mPosition));
-  auto styleMinBSize =
-      horizontalAxis ? stylePos->GetMinHeight(anchorResolutionParams.mPosition)
-                     : stylePos->GetMinWidth(anchorResolutionParams.mPosition);
-  auto styleMaxBSize =
-      horizontalAxis ? stylePos->GetMaxHeight(anchorResolutionParams.mPosition)
-                     : stylePos->GetMaxWidth(anchorResolutionParams.mPosition);
+          : (horizontalAxis ? stylePos->GetHeight(anchorResolutionParams)
+                            : stylePos->GetWidth(anchorResolutionParams));
+  auto styleMinBSize = horizontalAxis
+                           ? stylePos->GetMinHeight(anchorResolutionParams)
+                           : stylePos->GetMinWidth(anchorResolutionParams);
+  auto styleMaxBSize = horizontalAxis
+                           ? stylePos->GetMaxHeight(anchorResolutionParams)
+                           : stylePos->GetMaxWidth(anchorResolutionParams);
 
   // According to the spec, max-content and min-content should behave as the
   // property's initial values in block axis.
@@ -4887,10 +4885,6 @@ nscoord nsLayoutUtils::IntrinsicForAxis(
           contentEdgeToBoxSizing.emplace(GetContentEdgeToBoxSizing(boxSizing));
         }
 
-        // NOTE: This is only the minContentSize if we've been passed
-        // MIN_INTRINSIC_ISIZE (which is fine, because this should only be used
-        // inside a check for that flag).
-        nscoord minContentSize = result;
         if (Maybe<nscoord> bSize = GetBSize(styleBSize)) {
           *bSize = std::max(0, *bSize - bSizeTakenByBoxSizing);
           // We are computing the size of |aFrame|, so we use the inline & block
@@ -4908,12 +4902,7 @@ nscoord nsLayoutUtils::IntrinsicForAxis(
           nscoord maxISize = ratio.ComputeRatioDependentSize(
               isInlineAxis ? LogicalAxis::Inline : LogicalAxis::Block, childWM,
               *maxBSize, *contentEdgeToBoxSizing);
-          if (maxISize < result) {
-            result = maxISize;
-          }
-          if (maxISize < minContentSize) {
-            minContentSize = maxISize;
-          }
+          result = std::min(result, maxISize);
         }
 
         if (Maybe<nscoord> minBSize = GetBSize(styleMinBSize)) {
@@ -4921,24 +4910,7 @@ nscoord nsLayoutUtils::IntrinsicForAxis(
           nscoord minISize = ratio.ComputeRatioDependentSize(
               isInlineAxis ? LogicalAxis::Inline : LogicalAxis::Block, childWM,
               *minBSize, *contentEdgeToBoxSizing);
-          if (minISize > result) {
-            result = minISize;
-          }
-          if (minISize > minContentSize) {
-            minContentSize = minISize;
-          }
-        }
-
-        if (MOZ_UNLIKELY(aFlags & nsLayoutUtils::MIN_INTRINSIC_ISIZE) &&
-            // FIXME: Bug 1715681. Should we use HasReplacedSizing instead
-            // because IsReplaced is set on some other frames which are
-            // non-replaced elements, e.g. <select>?
-            aFrame->IsReplaced()) {
-          // This is the 'min-width/height:auto' "transferred size" piece of:
-          // https://drafts.csswg.org/css-flexbox-1/#min-size-auto
-          // https://drafts.csswg.org/css-grid/#min-size-auto
-          // Per spec, we handle it only for replaced elements.
-          result = std::min(result, minContentSize);
+          result = std::max(result, minISize);
         }
       }
     }
@@ -5012,11 +4984,11 @@ nscoord nsLayoutUtils::MinSizeContributionForAxis(
   const nsStylePosition* const stylePos = aFrame->StylePosition();
   const auto anchorResolutionParams = AnchorPosResolutionParams::From(aFrame);
   auto size = aAxis == PhysicalAxis::Horizontal
-                  ? stylePos->GetMinWidth(anchorResolutionParams.mPosition)
-                  : stylePos->GetMinHeight(anchorResolutionParams.mPosition);
+                  ? stylePos->GetMinWidth(anchorResolutionParams)
+                  : stylePos->GetMinHeight(anchorResolutionParams);
   auto maxSize = aAxis == PhysicalAxis::Horizontal
-                     ? stylePos->GetMaxWidth(anchorResolutionParams.mPosition)
-                     : stylePos->GetMaxHeight(anchorResolutionParams.mPosition);
+                     ? stylePos->GetMaxWidth(anchorResolutionParams)
+                     : stylePos->GetMaxHeight(anchorResolutionParams);
   auto childWM = aFrame->GetWritingMode();
   PhysicalAxis ourInlineAxis = childWM.PhysicalAxis(LogicalAxis::Inline);
   // According to the spec, max-content and min-content should behave as the
@@ -5041,8 +5013,8 @@ nscoord nsLayoutUtils::MinSizeContributionForAxis(
       fixedMinSize.emplace(0);
     } else {
       size = aAxis == PhysicalAxis::Horizontal
-                 ? stylePos->GetWidth(anchorResolutionParams.mPosition)
-                 : stylePos->GetHeight(anchorResolutionParams.mPosition);
+                 ? stylePos->GetWidth(anchorResolutionParams)
+                 : stylePos->GetHeight(anchorResolutionParams);
       // This is same as above: keywords should behaves as property's initial
       // values in block axis.
       if (aAxis != ourInlineAxis &&
@@ -5298,8 +5270,12 @@ gfxFloat nsLayoutUtils::GetMaybeSnappedBaselineY(nsIFrame* aFrame,
                                                  gfxContext* aContext,
                                                  nscoord aY, nscoord aAscent) {
   gfxFloat baseline = gfxFloat(aY) + aAscent;
-  // TODO: Remove this funciton when this pref is being removed.
+  // TODO: Remove this function when this pref is being removed.
   if (StaticPrefs::layout_disable_pixel_alignment()) {
+    return baseline;
+  }
+
+  if (aContext->CurrentMatrix().IsSingular()) {
     return baseline;
   }
 
@@ -5316,8 +5292,12 @@ gfxFloat nsLayoutUtils::GetMaybeSnappedBaselineX(nsIFrame* aFrame,
                                                  gfxContext* aContext,
                                                  nscoord aX, nscoord aAscent) {
   gfxFloat baseline = gfxFloat(aX) + aAscent;
-  // TODO: Remove this funciton when this pref is being removed.
+  // TODO: Remove this function when this pref is being removed.
   if (StaticPrefs::layout_disable_pixel_alignment()) {
+    return baseline;
+  }
+
+  if (aContext->CurrentMatrix().IsSingular()) {
     return baseline;
   }
 
@@ -5561,8 +5541,7 @@ void nsLayoutUtils::PaintTextShadow(
 
     gfxContext* shadowContext = contextBoxBlur.Init(
         shadowRect, 0, blurRadius, presCtx->AppUnitsPerDevPixel(), aDestCtx,
-        aDirtyRect, nullptr,
-        nsContextBoxBlur::DISABLE_HARDWARE_ACCELERATION_BLUR);
+        aDirtyRect, nullptr);
     if (!shadowContext) {
       continue;
     }
@@ -7961,9 +7940,9 @@ float nsLayoutUtils::FontSizeInflationInner(const nsIFrame* aFrame,
       WritingMode wm = f->GetWritingMode();
       const auto anchorResolutionParams = AnchorPosResolutionParams::From(f);
       const auto stylePosISize =
-          f->StylePosition()->ISize(wm, anchorResolutionParams.mPosition);
+          f->StylePosition()->ISize(wm, anchorResolutionParams);
       const auto stylePosBSize =
-          f->StylePosition()->BSize(wm, anchorResolutionParams.mPosition);
+          f->StylePosition()->BSize(wm, anchorResolutionParams);
       if (!stylePosISize->IsAuto() ||
           !stylePosBSize->BehavesLikeInitialValueOnBlockAxis()) {
         return 1.0;
@@ -9121,7 +9100,7 @@ void nsLayoutUtils::AppendFrameTextContent(nsIFrame* aFrame,
     auto* const textFrame = static_cast<nsTextFrame*>(aFrame);
     const auto offset = AssertedCast<uint32_t>(textFrame->GetContentOffset());
     const auto length = AssertedCast<uint32_t>(textFrame->GetContentLength());
-    textFrame->TextFragment()->AppendTo(aResult, offset, length);
+    textFrame->CharacterDataBuffer().AppendTo(aResult, offset, length);
   } else {
     for (nsIFrame* child : aFrame->PrincipalChildList()) {
       AppendFrameTextContent(child, aResult);

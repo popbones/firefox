@@ -42,10 +42,10 @@ To get up and running with a fresh checkout, run the following commands
    "trunk()" = "main@origin"
    "immutable_heads()" = '''
    builtin_immutable_heads()
-   | remote_bookmarks('autoland')
-   | remote_bookmarks('beta')
-   | remote_bookmarks('esr')
-   | remote_bookmarks('release')
+   | remote_bookmarks(exact:'autoland')
+   | remote_bookmarks(exact:'beta')
+   | remote_bookmarks(regex:'^esr\d+$')
+   | remote_bookmarks(exact:'release')
    '''
    </edit>
 
@@ -76,6 +76,22 @@ however there is a history of ``commits`` recorded for each ``change``
 (see ``jj evolog``, for example). You can specify either ``change``
 hashes *or* ``commit`` hashes in revsets.
 
+Co-located Jujutsu and Git
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A `co-located repository
+<https://jj-vcs.github.io/jj/latest/git-compatibility/#co-located-jujutsugit-repos>`__
+allows running ``jj`` and ``git`` commands in the same repository rather than
+syncing changes between ``jj`` and ``git`` repositories to switch between the
+different tools.
+
+Git commands can be useful because some features are not yet implemented in
+Jujutsu, such as ``git log`` and ``git rebase`` for `interactions with file
+renames <https://github.com/jj-vcs/jj/issues/6940>`__ and ``git am`` for
+`importing patches <https://github.com/jj-vcs/jj/issues/2702>`__.  See also
+:ref:`Transplanting Patches To and From Mercurial Repositories
+<git-mercurial-transplant>`.
+
 Firefox Main Tips
 -----------------
 
@@ -95,23 +111,20 @@ Other Useful revset aliases (place in ``.jj/repo/config.toml``)
 ``moz-phab``
 ~~~~~~~~~~~~
 
-WIP support for Jujutsu in ``moz-phab`` is being developed at
-```erichdongubler-mozilla/review``\ #1 <https://github.com/erichdongubler-mozilla/review/pull/1>`__.
-You can install this via:
+As of ``moz-phab`` 2.0.0, Jujutsu is officially supported! This applies to both
+colocated Git/Jujutsu repositories, as well as standalone Jujutsu repositories
+and workspaces.
 
-::
-
-   pip install MozPhab@git+https://github.com/erichdongubler-mozilla/review@refs/pull/1/head
-
-If you need to fall back to using Git with vanilla ``moz-phab``, most
-operations require you to not be in a detached ``HEAD`` state. However,
-Jujutsu frequently leaves it in one. One simple solution is to wrap the
-``moz-phab`` command with a script like:
+If you are using a colocated repository, you can make ``moz-phab`` use Git
+instead of Jujutsu by calling it with ``--avoid-jj-vcs``. Note that if you are
+using ``moz-phab`` with Git like that, most operations require your repo to not
+be in a detached ``HEAD`` state, which Jujutsu frequently leaves it in. One
+simple solution is to wrap the ``moz-phab`` command with a script like:
 
 ::
 
    #!/bin/sh
-   git checkout -B moz-phab && moz-phab "$@"
+   git checkout -B moz-phab && moz-phab --avoid-jj-vcs "$@"
 
 You could instead make this a shell alias/function, if preferred.
 

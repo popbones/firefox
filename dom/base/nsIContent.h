@@ -12,7 +12,6 @@
 
 // Forward declarations
 class nsIURI;
-class nsTextFragment;
 class nsIFrame;
 
 namespace mozilla {
@@ -22,6 +21,7 @@ class HTMLEditor;
 struct URLExtraData;
 namespace dom {
 struct BindContext;
+class CharacterDataBuffer;
 struct UnbindContext;
 class ShadowRoot;
 class HTMLSlotElement;
@@ -114,7 +114,7 @@ class nsIContent : public nsINode {
    * @note This method is safe to call on nodes that are not bound to a tree.
    */
   virtual void UnbindFromTree(UnbindContext&) = 0;
-  void UnbindFromTree();
+  void UnbindFromTree(nsINode* aNewParent = nullptr);
 
   enum {
     /**
@@ -227,7 +227,8 @@ class nsIContent : public nsINode {
    * NOTE: For elements this is *not* the concatenation of all text children,
    * it is simply null;
    */
-  virtual const nsTextFragment* GetText() = 0;
+  virtual const mozilla::dom::CharacterDataBuffer* GetCharacterDataBuffer()
+      const = 0;
 
   /**
    * Get the length of the text content.
@@ -553,7 +554,7 @@ class nsIContent : public nsINode {
    * host content.  When the content is in designMode, this returns its body
    * element.  Also, when the content isn't editable, this returns null.
    */
-  mozilla::dom::Element* GetEditingHost();
+  mozilla::dom::Element* GetEditingHost() const;
 
   bool SupportsLangAttr() const {
     return IsHTMLElement() || IsSVGElement() || IsXULElement();

@@ -42,6 +42,7 @@
 #include "nsIDOMXULButtonElement.h"
 #include "nsIDOMXULSelectCntrlEl.h"
 #include "nsIDOMXULSelectCntrlItemEl.h"
+#include "nsIMutationObserver.h"
 #include "nsINodeList.h"
 
 #include "mozilla/dom/Document.h"
@@ -80,7 +81,6 @@
 #include "mozilla/dom/KeyboardEventBinding.h"
 #include "mozilla/dom/TreeWalker.h"
 #include "mozilla/dom/UserActivation.h"
-#include "mozilla/dom/MutationEventBinding.h"
 
 using namespace mozilla;
 using namespace mozilla::a11y;
@@ -166,16 +166,24 @@ ENameValueFlag LocalAccessible::Name(nsString& aName) const {
   return nameFlag;
 }
 
-void LocalAccessible::Description(nsString& aDescription) const {
+EDescriptionValueFlag LocalAccessible::Description(
+    nsString& aDescription) const {
   // There are 4 conditions that make an accessible have no accDescription:
   // 1. it's a text node; or
   // 2. It has no ARIA describedby or description property
   // 3. it doesn't have an accName; or
   // 4. its title attribute already equals to its accName nsAutoString name;
 
-  if (!HasOwnContent() || mContent->IsText()) return;
+  EDescriptionValueFlag descFlag = eDescriptionOK;
+  aDescription.Truncate();
 
-  ARIADescription(aDescription);
+  if (!HasOwnContent() || mContent->IsText()) {
+    return descFlag;
+  }
+
+  if (ARIADescription(aDescription)) {
+    descFlag = eDescriptionFromARIA;
+  }
 
   if (aDescription.IsEmpty()) {
     NativeDescription(aDescription);
@@ -206,6 +214,8 @@ void LocalAccessible::Description(nsString& aDescription) const {
     // Don't expose a description if it is the same as the name.
     if (aDescription.Equals(name)) aDescription.Truncate();
   }
+
+  return descFlag;
 }
 
 KeyBinding LocalAccessible::AccessKey() const {
@@ -867,6 +877,18 @@ nsresult LocalAccessible::HandleAccEvent(AccEvent* aEvent) {
     if (ipcDoc) {
       uint64_t id = aEvent->GetAccessible()->ID();
 
+      auto getCaretRect = [aEvent] {
+        HyperTextAccessible* ht = aEvent->GetAccessible()->AsHyperText();
+        if (ht) {
+          auto [rect, widget] = ht->GetCaretRect();
+          // Remove doc offset and reapply in parent.
+          LayoutDeviceIntRect docBounds = ht->Document()->Bounds();
+          rect.MoveBy(-docBounds.X(), -docBounds.Y());
+          return rect;
+        }
+        return LayoutDeviceIntRect();
+      };
+
       switch (aEvent->GetEventType()) {
         case nsIAccessibleEvent::EVENT_SHOW:
           ipcDoc->ShowEvent(downcast_accEvent(aEvent));
@@ -913,9 +935,9 @@ nsresult LocalAccessible::HandleAccEvent(AccEvent* aEvent) {
         case nsIAccessibleEvent::EVENT_TEXT_CARET_MOVED: {
           AccCaretMoveEvent* event = downcast_accEvent(aEvent);
           ipcDoc->SendCaretMoveEvent(
-              id, event->GetCaretOffset(), event->IsSelectionCollapsed(),
-              event->IsAtEndOfLine(), event->GetGranularity(),
-              event->IsFromUserInput());
+              id, getCaretRect(), event->GetCaretOffset(),
+              event->IsSelectionCollapsed(), event->IsAtEndOfLine(),
+              event->GetGranularity(), event->IsFromUserInput());
           break;
         }
         case nsIAccessibleEvent::EVENT_TEXT_INSERTED:
@@ -936,7 +958,7 @@ nsresult LocalAccessible::HandleAccEvent(AccEvent* aEvent) {
           break;
         }
         case nsIAccessibleEvent::EVENT_FOCUS:
-          ipcDoc->SendFocusEvent(id);
+          ipcDoc->SendFocusEvent(id, getCaretRect());
           break;
         case nsIAccessibleEvent::EVENT_SCROLLING_END:
         case nsIAccessibleEvent::EVENT_SCROLLING: {
@@ -1037,16 +1059,9 @@ nsresult LocalAccessible::HandleAccEvent(AccEvent* aEvent) {
     }
     case nsIAccessibleEvent::EVENT_TEXT_CARET_MOVED: {
       AccCaretMoveEvent* event = downcast_accEvent(aEvent);
-      LayoutDeviceIntRect rect;
-      // The caret rect is only used on Windows, so just pass an empty rect on
-      // other platforms.
-      // XXX We pass an empty rect on Windows as well because
-      // AccessibleWrap::UpdateSystemCaretFor currently needs to call
-      // HyperTextAccessible::GetCaretRect again to get the widget and there's
-      // no point calling it twice.
-      PlatformCaretMoveEvent(
-          target, event->GetCaretOffset(), event->IsSelectionCollapsed(),
-          event->GetGranularity(), rect, event->IsFromUserInput());
+      PlatformCaretMoveEvent(target, event->GetCaretOffset(),
+                             event->IsSelectionCollapsed(),
+                             event->GetGranularity(), event->IsFromUserInput());
       break;
     }
     case nsIAccessibleEvent::EVENT_TEXT_INSERTED:
@@ -1067,16 +1082,7 @@ nsresult LocalAccessible::HandleAccEvent(AccEvent* aEvent) {
       break;
     }
     case nsIAccessibleEvent::EVENT_FOCUS: {
-      LayoutDeviceIntRect rect;
-      // The caret rect is only used on Windows, so just pass an empty rect on
-      // other platforms.
-#ifdef XP_WIN
-      if (HyperTextAccessible* text = target->AsHyperText()) {
-        nsIWidget* widget = nullptr;
-        rect = text->GetCaretRect(&widget);
-      }
-#endif
-      PlatformFocusEvent(target, rect);
+      PlatformFocusEvent(target);
       break;
     }
 #if defined(ANDROID)
@@ -1265,7 +1271,7 @@ already_AddRefed<AccAttributes> LocalAccessible::NativeAttributes() {
     // This is here only to guarantee that we do the same as getComputedStyle
     // does, so that we don't hit precision errors in tests.
     const auto margin =
-        f->StyleMargin()->GetMargin(aSide, f->StyleDisplay()->mPosition);
+        f->StyleMargin()->GetMargin(aSide, AnchorPosResolutionParams::From(f));
     if (margin->ConvertsToLength()) {
       return margin->AsLengthPercentage().ToLengthInCSSPixels();
     }
@@ -1317,12 +1323,14 @@ bool LocalAccessible::AttributeChangesState(nsAtom* aAttribute) {
          aAttribute == nsGkAtoms::aria_multiline ||
          aAttribute == nsGkAtoms::aria_multiselectable ||
          // We track this for focusable state update
+         aAttribute == nsGkAtoms::commandfor ||
          aAttribute == nsGkAtoms::contenteditable ||
          aAttribute == nsGkAtoms::popovertarget;
 }
 
 void LocalAccessible::DOMAttributeChanged(int32_t aNameSpaceID,
-                                          nsAtom* aAttribute, int32_t aModType,
+                                          nsAtom* aAttribute,
+                                          AttrModType aModType,
                                           const nsAttrValue* aOldValue,
                                           uint64_t aOldState) {
   // Fire accessible event after short timer, because we need to wait for
@@ -1455,8 +1463,7 @@ void LocalAccessible::DOMAttributeChanged(int32_t aNameSpaceID,
   if (aAttribute == nsGkAtoms::aria_describedby) {
     mDoc->QueueCacheUpdate(this, CacheDomain::Relations);
     mDoc->FireDelayedEvent(nsIAccessibleEvent::EVENT_DESCRIPTION_CHANGE, this);
-    if (aModType == dom::MutationEvent_Binding::MODIFICATION ||
-        aModType == dom::MutationEvent_Binding::ADDITION) {
+    if (IsAdditionOrModification(aModType)) {
       // The subtrees of the new aria-describedby targets might be used to
       // compute the description for this. Therefore, we need to set
       // the eHasDescriptionDependent flag on all Accessibles in these subtrees.
@@ -1474,8 +1481,7 @@ void LocalAccessible::DOMAttributeChanged(int32_t aNameSpaceID,
     // document itself.
     mDoc->QueueCacheUpdate(this, CacheDomain::Relations);
     mDoc->FireDelayedEvent(nsIAccessibleEvent::EVENT_NAME_CHANGE, this);
-    if (aModType == dom::MutationEvent_Binding::MODIFICATION ||
-        aModType == dom::MutationEvent_Binding::ADDITION) {
+    if (IsAdditionOrModification(aModType)) {
       // The subtrees of the new aria-labelledby targets might be used to
       // compute the name for this. Therefore, we need to set
       // the eHasNameDependent flag on all Accessibles in these subtrees.
@@ -1489,8 +1495,7 @@ void LocalAccessible::DOMAttributeChanged(int32_t aNameSpaceID,
 
   if ((aAttribute == nsGkAtoms::aria_expanded ||
        aAttribute == nsGkAtoms::href) &&
-      (aModType == dom::MutationEvent_Binding::ADDITION ||
-       aModType == dom::MutationEvent_Binding::REMOVAL)) {
+      IsAdditionOrRemoval(aModType)) {
     // The presence of aria-expanded adds an expand/collapse action.
     mDoc->QueueCacheUpdate(this, CacheDomain::Actions);
   }
@@ -1507,6 +1512,11 @@ void LocalAccessible::DOMAttributeChanged(int32_t aNameSpaceID,
   }
 
   if (aAttribute == nsGkAtoms::popovertarget) {
+    mDoc->QueueCacheUpdate(this, CacheDomain::Relations);
+    return;
+  }
+
+  if (aAttribute == nsGkAtoms::commandfor) {
     mDoc->QueueCacheUpdate(this, CacheDomain::Relations);
     return;
   }
@@ -2131,6 +2141,34 @@ nsIContent* LocalAccessible::GetAtomicRegion() const {
   return atomic.EqualsLiteral("true") ? loopContent : nullptr;
 }
 
+LocalAccessible* LocalAccessible::GetCommandForDetailsRelation() const {
+  dom::Element* targetEl = mContent->GetEffectiveCommandForElement();
+  if (!targetEl) {
+    return nullptr;
+  }
+  LocalAccessible* targetAcc = mDoc->GetAccessible(targetEl);
+  if (!targetAcc) {
+    return nullptr;
+  }
+  // Relations on Command/CommandFor should only be for ShowPopover &
+  // TogglePopover commands.
+  if (const nsAttrValue* actionVal = Elm()->GetParsedAttr(nsGkAtoms::command)) {
+    if (actionVal && actionVal->Type() != nsAttrValue::eEnum) {
+      return nullptr;
+    }
+    auto command =
+        static_cast<dom::Element::Command>(actionVal->GetEnumValue());
+    if (command != dom::Element::Command::ShowPopover &&
+        command != dom::Element::Command::TogglePopover) {
+      return nullptr;
+    }
+  }
+  if (targetAcc->NextSibling() == this || targetAcc->PrevSibling() == this) {
+    return nullptr;
+  }
+  return targetAcc;
+}
+
 LocalAccessible* LocalAccessible::GetPopoverTargetDetailsRelation() const {
   dom::Element* targetEl = mContent->GetEffectivePopoverTargetElement();
   if (!targetEl) {
@@ -2464,6 +2502,9 @@ Relation LocalAccessible::RelationByType(RelationType aType) const {
         return Relation(new AssociatedElementsIterator(
             mDoc, mContent, nsGkAtoms::aria_details));
       }
+      if (LocalAccessible* target = GetCommandForDetailsRelation()) {
+        return Relation(target);
+      }
       if (LocalAccessible* target = GetPopoverTargetDetailsRelation()) {
         return Relation(target);
       }
@@ -2473,15 +2514,27 @@ Relation LocalAccessible::RelationByType(RelationType aType) const {
     case RelationType::DETAILS_FOR: {
       Relation rel(
           new RelatedAccIterator(mDoc, mContent, nsGkAtoms::aria_details));
-      RelatedAccIterator invokers(mDoc, mContent, nsGkAtoms::popovertarget);
-      while (Accessible* invoker = invokers.Next()) {
+      RelatedAccIterator popover_invokers(mDoc, mContent,
+                                          nsGkAtoms::popovertarget);
+      while (Accessible* invoker = popover_invokers.Next()) {
         // We should only expose DETAILS_FOR if DETAILS was exposed on the
         // invoker. However, DETAILS exposure on popover invokers is
         // conditional.
-        LocalAccessible* popoverTarget =
-            invoker->AsLocal()->GetPopoverTargetDetailsRelation();
-        if (popoverTarget) {
-          MOZ_ASSERT(popoverTarget == this);
+        if (invoker->AsLocal()->GetPopoverTargetDetailsRelation()) {
+          MOZ_ASSERT(invoker->AsLocal()->GetPopoverTargetDetailsRelation() ==
+                     this);
+          rel.AppendTarget(invoker);
+        }
+      }
+      RelatedAccIterator command_invokers(mDoc, mContent,
+                                          nsGkAtoms::commandfor);
+      while (Accessible* invoker = command_invokers.Next()) {
+        // We should only expose DETAILS_FOR if DETAILS was exposed on the
+        // invoker. However, DETAILS exposure on popover invokers is
+        // conditional.
+        if (invoker->AsLocal()->GetCommandForDetailsRelation()) {
+          MOZ_ASSERT(invoker->AsLocal()->GetCommandForDetailsRelation() ==
+                     this);
           rel.AppendTarget(invoker);
         }
       }
@@ -2578,6 +2631,11 @@ void LocalAccessible::ScrollToPoint(uint32_t aCoordinateType, int32_t aX,
   }
 }
 
+bool LocalAccessible::IsScrollable() const {
+  const auto [scrollPosition, scrollRange] = mDoc->ComputeScrollData(this);
+  return scrollRange.width > 0 || scrollRange.height > 0;
+}
+
 void LocalAccessible::AppendTextTo(nsAString& aText, uint32_t aStartOffset,
                                    uint32_t aLength) {
   // Return text representation of non-text accessible within hypertext
@@ -2654,7 +2712,7 @@ ENameValueFlag LocalAccessible::ARIAName(nsString& aName) const {
 }
 
 // LocalAccessible protected
-void LocalAccessible::ARIADescription(nsString& aDescription) const {
+bool LocalAccessible::ARIADescription(nsString& aDescription) const {
   // aria-describedby takes precedence over aria-description
   nsresult rv = nsTextEquivUtils::GetTextEquivFromIDRefs(
       this, nsGkAtoms::aria_describedby, aDescription);
@@ -2667,6 +2725,8 @@ void LocalAccessible::ARIADescription(nsString& aDescription) const {
                               nsGkAtoms::aria_description, aDescription)) {
     aDescription.CompressWhitespace();
   }
+
+  return !aDescription.IsEmpty();
 }
 
 // LocalAccessible protected
@@ -3177,42 +3237,16 @@ LocalAccessible* LocalAccessible::ContainerWidget() const {
   return nullptr;
 }
 
-bool LocalAccessible::IsActiveDescendantId(LocalAccessible** aWidget) const {
-  if (!HasOwnContent() || !mContent->HasID()) {
-    return false;
+bool LocalAccessible::IsActiveDescendant(LocalAccessible** aWidget) const {
+  RelatedAccIterator widgets(mDoc, mContent, nsGkAtoms::aria_activedescendant);
+  if (LocalAccessible* widget = widgets.Next()) {
+    if (aWidget) {
+      *aWidget = widget;
+    }
+    return true;
   }
 
-  dom::DocumentOrShadowRoot* docOrShadowRoot =
-      mContent->GetUncomposedDocOrConnectedShadowRoot();
-  if (!docOrShadowRoot) {
-    return false;
-  }
-
-  nsAutoCString selector;
-  selector.AppendPrintf(
-      "[aria-activedescendant=\"%s\"]",
-      NS_ConvertUTF16toUTF8(mContent->GetID()->GetUTF16String()).get());
-  IgnoredErrorResult er;
-
-  dom::Element* widgetElm =
-      docOrShadowRoot->AsNode().QuerySelector(selector, er);
-
-  if (!widgetElm || er.Failed()) {
-    return false;
-  }
-
-  if (widgetElm->IsInclusiveDescendantOf(mContent)) {
-    // Don't want a cyclical descendant relationship. That would be bad.
-    return false;
-  }
-
-  LocalAccessible* widget = mDoc->GetAccessible(widgetElm);
-
-  if (aWidget) {
-    *aWidget = widget;
-  }
-
-  return !!widget;
+  return false;
 }
 
 void LocalAccessible::Announce(const nsAString& aAnnouncement,
@@ -3447,11 +3481,17 @@ already_AddRefed<AccAttributes> LocalAccessible::BundleFieldsForCache(
     }
 
     nsString description;
-    Description(description);
+    int32_t descFlag = Description(description);
     if (!description.IsEmpty()) {
       fields->SetAttribute(CacheKey::Description, std::move(description));
     } else if (IsUpdatePush(CacheDomain::NameAndDescription)) {
       fields->SetAttribute(CacheKey::Description, DeleteEntry());
+    }
+
+    if (descFlag != eDescriptionOK) {
+      fields->SetAttribute(CacheKey::DescriptionValueFlag, descFlag);
+    } else if (IsUpdatePush(CacheDomain::NameAndDescription)) {
+      fields->SetAttribute(CacheKey::DescriptionValueFlag, DeleteEntry());
     }
   }
 
@@ -3825,8 +3865,9 @@ already_AddRefed<AccAttributes> LocalAccessible::BundleFieldsForCache(
                 // this character isn't in the rendered text. We do have
                 // a way to convert between content and rendered offsets, but
                 // doing this for every character is expensive.
-                const char16_t contentChar = mContent->GetText()->CharAt(
-                    charData.Length() / kNumbersInRect);
+                const char16_t contentChar =
+                    mContent->GetCharacterDataBuffer()->CharAt(
+                        charData.Length() / kNumbersInRect);
                 if (contentChar == u' ' || contentChar == u'\t' ||
                     contentChar == u'\n') {
                   continue;
@@ -3991,6 +4032,13 @@ already_AddRefed<AccAttributes> LocalAccessible::BundleFieldsForCache(
       fields->SetAttribute(CacheKey::Opacity, opacity);
     } else if (IsUpdatePush(CacheDomain::Style)) {
       fields->SetAttribute(CacheKey::Opacity, DeleteEntry());
+    }
+
+    WritingMode wm = GetWritingMode();
+    if (wm.GetBits()) {
+      fields->SetAttribute(CacheKey::WritingMode, wm);
+    } else if (IsUpdatePush(CacheDomain::Style)) {
+      fields->SetAttribute(CacheKey::WritingMode, DeleteEntry());
     }
 
     if (frame &&
@@ -4385,6 +4433,14 @@ float LocalAccessible::Opacity() const {
   }
 
   return 1.0f;
+}
+
+WritingMode LocalAccessible::GetWritingMode() const {
+  if (nsIFrame* frame = GetFrame()) {
+    return WritingMode(frame->Style());
+  }
+
+  return WritingMode();
 }
 
 void LocalAccessible::DOMNodeID(nsString& aID) const {

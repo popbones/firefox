@@ -10,10 +10,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <cstdint>
 #include <new>
 #include <type_traits>
 #include <utility>
+
 #include "AudioChannelService.h"
 #include "AutoplayPolicy.h"
 #include "Crypto.h"
@@ -28,9 +30,7 @@
 #include "js/ComparisonOperators.h"
 #include "js/CompilationAndEvaluation.h"
 #include "js/CompileOptions.h"
-#include "js/friend/PerformanceHint.h"
 #include "js/Id.h"
-#include "js/loader/LoadedScript.h"
 #include "js/PropertyAndElement.h"  // JS_DefineProperty, JS_GetProperty
 #include "js/PropertyDescriptor.h"
 #include "js/RealmOptions.h"
@@ -38,12 +38,15 @@
 #include "js/TypeDecls.h"
 #include "js/Value.h"
 #include "js/Warnings.h"
+#include "js/friend/PerformanceHint.h"
+#include "js/loader/LoadedScript.h"
 #include "js/shadow/String.h"
 #include "jsapi.h"
 #include "jsfriendapi.h"
 #include "mozIDOMWindow.h"
 #include "moz_external_vr.h"
 #include "mozilla/AlreadyAddRefed.h"
+#include "mozilla/AppShutdown.h"
 #include "mozilla/ArrayIterator.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Attributes.h"
@@ -51,6 +54,7 @@
 #include "mozilla/BasicEvents.h"
 #include "mozilla/BounceTrackingStorageObserver.h"
 #include "mozilla/CallState.h"
+#include "mozilla/Components.h"
 #include "mozilla/CycleCollectedJSContext.h"
 #include "mozilla/DOMEventTargetHelper.h"
 #include "mozilla/ErrorResult.h"
@@ -62,8 +66,8 @@
 #include "mozilla/FlushType.h"
 #include "mozilla/Likely.h"
 #include "mozilla/LinkedList.h"
-#include "mozilla/LookAndFeel.h"
 #include "mozilla/Logging.h"
+#include "mozilla/LookAndFeel.h"
 #include "mozilla/MacroForEach.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/OwningNonNull.h"
@@ -75,7 +79,6 @@
 #include "mozilla/Result.h"
 #include "mozilla/ScrollContainerFrame.h"
 #include "mozilla/ScrollTypes.h"
-#include "mozilla/Components.h"
 #include "mozilla/SizeOfState.h"
 #include "mozilla/Span.h"
 #include "mozilla/SpinEventLoopUntil.h"
@@ -87,8 +90,8 @@
 #include "mozilla/StaticPrefs_privacy.h"
 #include "mozilla/StorageAccess.h"
 #include "mozilla/StoragePrincipalHelper.h"
-#include "mozilla/glean/DomMetrics.h"
 #include "mozilla/TelemetryHistogramEnums.h"
+#include "mozilla/ThrottledEventQueue.h"
 #include "mozilla/TimeStamp.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/Unused.h"
@@ -99,7 +102,6 @@
 #include "mozilla/dom/BindingUtils.h"
 #include "mozilla/dom/BrowserChild.h"
 #include "mozilla/dom/BrowsingContext.h"
-#include "mozilla/dom/Credential.h"
 #include "mozilla/dom/CSPEvalChecker.h"
 #include "mozilla/dom/CallbackDebuggerNotification.h"
 #include "mozilla/dom/ChromeMessageBroadcaster.h"
@@ -111,10 +113,11 @@
 #include "mozilla/dom/CloseWatcher.h"
 #include "mozilla/dom/CloseWatcherManager.h"
 #include "mozilla/dom/Console.h"
-#include "mozilla/dom/CookieStore.h"
 #include "mozilla/dom/ContentChild.h"
 #include "mozilla/dom/ContentFrameMessageManager.h"
 #include "mozilla/dom/ContentMediaController.h"
+#include "mozilla/dom/CookieStore.h"
+#include "mozilla/dom/Credential.h"
 #include "mozilla/dom/CustomElementRegistry.h"
 #include "mozilla/dom/DebuggerNotification.h"
 #include "mozilla/dom/DebuggerNotificationBinding.h"
@@ -136,7 +139,6 @@
 #include "mozilla/dom/IdleRequest.h"
 #include "mozilla/dom/ImageBitmap.h"
 #include "mozilla/dom/ImageBitmapSource.h"
-#include "mozilla/dom/InstallTriggerBinding.h"
 #include "mozilla/dom/IntlUtils.h"
 #include "mozilla/dom/JSExecutionUtils.h"  // mozilla::dom::Compile, mozilla::dom::EvaluationExceptionToNSResult
 #include "mozilla/dom/LSObject.h"
@@ -151,13 +153,13 @@
 #include "mozilla/dom/PartitionedLocalStorage.h"
 #include "mozilla/dom/Performance.h"
 #include "mozilla/dom/PerformanceMainThread.h"
+#include "mozilla/dom/PolicyContainer.h"
 #include "mozilla/dom/PopStateEvent.h"
 #include "mozilla/dom/PopStateEventBinding.h"
 #include "mozilla/dom/PopupBlocker.h"
 #include "mozilla/dom/PrimitiveConversions.h"
 #include "mozilla/dom/Promise.h"
 #include "mozilla/dom/RootedDictionary.h"
-#include "mozilla/dom/WebTaskSchedulerMainThread.h"
 #include "mozilla/dom/ScriptLoader.h"
 #include "mozilla/dom/ScriptSettings.h"
 #include "mozilla/dom/ServiceWorker.h"
@@ -183,8 +185,9 @@
 #include "mozilla/dom/VRDisplayEventBinding.h"
 #include "mozilla/dom/VREventObserver.h"
 #include "mozilla/dom/VisualViewport.h"
-#include "mozilla/dom/WebIdentityHandler.h"
 #include "mozilla/dom/WebIDLGlobalNameHash.h"
+#include "mozilla/dom/WebIdentityHandler.h"
+#include "mozilla/dom/WebTaskSchedulerMainThread.h"
 #include "mozilla/dom/WindowBinding.h"
 #include "mozilla/dom/WindowContext.h"
 #include "mozilla/dom/WindowGlobalChild.h"
@@ -195,8 +198,6 @@
 #include "mozilla/dom/XRPermissionRequest.h"
 #include "mozilla/dom/cache/CacheStorage.h"
 #include "mozilla/dom/cache/Types.h"
-#include "mozilla/glean/bindings/Glean.h"
-#include "mozilla/glean/bindings/GleanPings.h"
 #include "mozilla/extensions/WebExtensionPolicy.h"
 #include "mozilla/fallible.h"
 #include "mozilla/gfx/BasePoint.h"
@@ -204,6 +205,9 @@
 #include "mozilla/gfx/BaseSize.h"
 #include "mozilla/gfx/Rect.h"
 #include "mozilla/gfx/Types.h"
+#include "mozilla/glean/DomMetrics.h"
+#include "mozilla/glean/bindings/Glean.h"
+#include "mozilla/glean/bindings/GleanPings.h"
 #include "mozilla/intl/LocaleService.h"
 #include "mozilla/ipc/BackgroundUtils.h"
 #include "mozilla/ipc/PBackgroundSharedTypes.h"
@@ -244,6 +248,7 @@
 #include "nsICookieService.h"
 #include "nsID.h"
 #include "nsIDOMStorageManager.h"
+#include "nsIDOMXULControlElement.h"
 #include "nsIDeviceSensors.h"
 #include "nsIDocShell.h"
 #include "nsIDocShellTreeItem.h"
@@ -322,9 +327,6 @@
 #include "prtypes.h"
 #include "xpcprivate.h"
 #include "xpcpublic.h"
-#include "mozilla/ThrottledEventQueue.h"
-
-#include "nsIDOMXULControlElement.h"
 
 #ifdef NS_PRINTING
 #  include "nsIPrintSettings.h"
@@ -339,8 +341,9 @@
 #endif
 
 #ifdef XP_WIN
-#  include "mozilla/Debug.h"
 #  include <process.h>
+
+#  include "mozilla/Debug.h"
 #  define getpid _getpid
 #else
 #  include <unistd.h>  // for getpid()
@@ -912,7 +915,6 @@ nsGlobalWindowInner::nsGlobalWindowInner(nsGlobalWindowOuter* aOuterWindow,
       mIsChrome(false),
       mCleanMessageManager(false),
       mNeedsFocus(true),
-      mHasFocus(false),
       mFocusByKeyOccurred(false),
       mDidFireDocElemInserted(false),
       mHasGamepad(false),
@@ -1090,11 +1092,6 @@ nsGlobalWindowInner::~nsGlobalWindowInner() {
   MOZ_LOG(gDOMLeakPRLogInner, LogLevel::Debug,
           ("DOMWINDOW %p destroyed", this));
 
-  glean::dom::innerwindows_with_mutation_listeners
-      .EnumGet(static_cast<glean::dom::InnerwindowsWithMutationListenersLabel>(
-          mMutationBits ? 1 : 0))
-      .Add();
-
   // An inner window is destroyed, pull it out of the outer window's
   // list if inner windows.
 
@@ -1187,14 +1184,14 @@ void nsGlobalWindowInner::FreeInnerObjects() {
   mScreen = nullptr;
 
   if (mDoc) {
-    // Remember the document's principal, URI, and CSP.
+    // Remember the document's principal, URI, and policyContainer.
     mDocumentPrincipal = mDoc->NodePrincipal();
     mDocumentCookiePrincipal = mDoc->EffectiveCookiePrincipal();
     mDocumentStoragePrincipal = mDoc->EffectiveStoragePrincipal();
     mDocumentPartitionedPrincipal = mDoc->PartitionedPrincipal();
     mDocumentURI = mDoc->GetDocumentURI();
     mDocBaseURI = mDoc->GetDocBaseURI();
-    mDocumentCsp = mDoc->GetCsp();
+    mDocumentPolicyContainer = mDoc->GetPolicyContainer();
 
     while (mDoc->EventHandlingSuppressed()) {
       mDoc->UnsuppressEventHandlingAndFireEvents(false);
@@ -1285,7 +1282,6 @@ void nsGlobalWindowInner::FreeInnerObjects() {
   mPaintWorklet = nullptr;
 
   mExternal = nullptr;
-  mInstallTrigger = nullptr;
 
   if (mLocalStorage) {
     mLocalStorage->Disconnect();
@@ -1441,7 +1437,7 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INTERNAL(nsGlobalWindowInner)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mDocumentCookiePrincipal)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mDocumentStoragePrincipal)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mDocumentPartitionedPrincipal)
-  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mDocumentCsp)
+  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mDocumentPolicyContainer)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mBrowserChild)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mDoc)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mWebIdentityHandler)
@@ -1479,7 +1475,6 @@ NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INTERNAL(nsGlobalWindowInner)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mCookieStore)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mPaintWorklet)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mExternal)
-  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mInstallTrigger)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mIntlUtils)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mVisualViewport)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mCurrentPasteDataTransfer)
@@ -1563,7 +1558,7 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsGlobalWindowInner)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mDocumentCookiePrincipal)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mDocumentStoragePrincipal)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mDocumentPartitionedPrincipal)
-  NS_IMPL_CYCLE_COLLECTION_UNLINK(mDocumentCsp)
+  NS_IMPL_CYCLE_COLLECTION_UNLINK(mDocumentPolicyContainer)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mBrowserChild)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mDoc)
 
@@ -1596,7 +1591,6 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN(nsGlobalWindowInner)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mCookieStore)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mPaintWorklet)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mExternal)
-  NS_IMPL_CYCLE_COLLECTION_UNLINK(mInstallTrigger)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mIntlUtils)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mVisualViewport)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mCurrentPasteDataTransfer)
@@ -1877,14 +1871,6 @@ void nsGlobalWindowInner::InitDocumentDependentState(JSContext* aCx) {
 #ifdef DEBUG
   mLastOpenedURI = mDoc->GetDocumentURI();
 #endif
-
-  glean::dom::innerwindows_with_mutation_listeners
-      .EnumGet(static_cast<glean::dom::InnerwindowsWithMutationListenersLabel>(
-          mMutationBits ? 1 : 0))
-      .Add();
-
-  // Clear our mutation bitfield.
-  mMutationBits = 0;
 }
 
 nsresult nsGlobalWindowInner::EnsureClientSource() {
@@ -2051,11 +2037,12 @@ nsresult nsGlobalWindowInner::EnsureClientSource() {
   }
 
   if (mClientSource) {
-    // Generally the CSP is stored within the Client and cached on the document.
-    // At the time of CSP parsing however, the Client has not been created yet,
-    // hence we store the CSP on the document and propagate/sync the CSP with
-    // Client here when we create the Client.
-    mClientSource->SetCsp(mDoc->GetCsp());
+    // Generally the policyContainer is stored within the Client and cached on
+    // the document. At the time of policyContainer parsing however, the Client
+    // has not been created yet, hence we store the policyContainer on the
+    // document and propagate/sync the policyContainer with Client here when we
+    // create the Client.
+    mClientSource->SetPolicyContainer(mDoc->GetPolicyContainer());
 
     DocGroup* docGroup = GetDocGroup();
     MOZ_DIAGNOSTIC_ASSERT(docGroup);
@@ -2537,16 +2524,17 @@ Maybe<ServiceWorkerDescriptor> nsPIDOMWindowInner::GetController() const {
   return nsGlobalWindowInner::Cast(this)->GetController();
 }
 
-void nsPIDOMWindowInner::SetCsp(nsIContentSecurityPolicy* aCsp) {
-  return nsGlobalWindowInner::Cast(this)->SetCsp(aCsp);
+void nsPIDOMWindowInner::SetPolicyContainer(
+    nsIPolicyContainer* aPolicyContainer) {
+  return nsGlobalWindowInner::Cast(this)->SetPolicyContainer(aPolicyContainer);
 }
 
 void nsPIDOMWindowInner::SetPreloadCsp(nsIContentSecurityPolicy* aPreloadCsp) {
   return nsGlobalWindowInner::Cast(this)->SetPreloadCsp(aPreloadCsp);
 }
 
-nsIContentSecurityPolicy* nsPIDOMWindowInner::GetCsp() {
-  return nsGlobalWindowInner::Cast(this)->GetCsp();
+nsIPolicyContainer* nsPIDOMWindowInner::GetPolicyContainer() {
+  return nsGlobalWindowInner::Cast(this)->GetPolicyContainer();
 }
 
 void nsPIDOMWindowInner::NoteCalledRegisterForServiceWorkerScope(
@@ -2575,36 +2563,53 @@ bool nsGlobalWindowInner::ShouldReportForServiceWorkerScope(
   return result;
 }
 
-InstallTriggerImpl* nsGlobalWindowInner::GetInstallTrigger() {
-  if (!mInstallTrigger &&
-      !StaticPrefs::extensions_InstallTriggerImpl_enabled()) {
-    // Return nullptr when InstallTriggerImpl is disabled by pref,
-    // which does not yet break the "typeof InstallTrigger !== 'undefined"
-    // "UA detection" use case, but prevents access to the InstallTriggerImpl
-    // methods and properties.
-    //
-    // NOTE: a separate pref ("extensions.InstallTrigger.enabled"), associated
-    // to this property using the [Pref] extended attribute in Window.webidl,
-    // does instead hide the entire InstallTrigger property.
-    //
-    // See Bug 1754441 for more details about this deprecation.
-    return nullptr;
-  }
-  if (!mInstallTrigger) {
-    ErrorResult rv;
-    mInstallTrigger = ConstructJSImplementation<InstallTriggerImpl>(
-        "@mozilla.org/addons/installtrigger;1", this, rv);
-    if (rv.Failed()) {
-      rv.SuppressException();
-      return nullptr;
-    }
-  }
-
-  return mInstallTrigger;
+void nsGlobalWindowInner::GetInstallTrigger(
+    JSContext* aCx, JS::MutableHandle<JSObject*> aResult) {
+  // Return nullptr, to avoid breaking "typeof InstallTrigger !== 'undefined"
+  // "UA detection" use case.
+  //
+  // A pref ("extensions.InstallTrigger.enabled"), associated to this
+  // property using the [Pref] extended attribute in Window.webidl, hides the
+  // entire InstallTrigger property.
+  //
+  // See Bug 1754441 for more details about this deprecation.
+  aResult.set(nullptr);
 }
 
 nsIDOMWindowUtils* nsGlobalWindowInner::GetWindowUtils(ErrorResult& aRv) {
   FORWARD_TO_OUTER_OR_THROW(WindowUtils, (), aRv, nullptr);
+}
+
+bool nsGlobalWindowInner::SynthesizeMouseEvent(
+    const nsAString& aType, float aOffsetX, float aOffsetY,
+    const SynthesizeMouseEventData& aMouseEventData,
+    const SynthesizeMouseEventOptions& aOptions,
+    const Optional<OwningNonNull<VoidFunction>>& aCallback,
+    ErrorResult& aError) {
+  nsIDocShell* docShell = GetDocShell();
+  RefPtr<PresShell> presShell = docShell ? docShell->GetPresShell() : nullptr;
+  if (!presShell) {
+    aError.Throw(NS_ERROR_FAILURE);
+    return false;
+  }
+
+  nsPoint offset;
+  nsCOMPtr<nsIWidget> widget = nsContentUtils::GetWidget(presShell, &offset);
+  if (!widget) {
+    aError.Throw(NS_ERROR_FAILURE);
+    return false;
+  }
+
+  LayoutDeviceIntPoint refPoint = nsContentUtils::ToWidgetPoint(
+      CSSPoint(aOffsetX, aOffsetY), offset, presShell->GetPresContext());
+  auto result = nsContentUtils::SynthesizeMouseEvent(
+      presShell, widget, aType, refPoint, aMouseEventData, aOptions, aCallback);
+  if (result.isErr()) {
+    aError.Throw(result.unwrapErr());
+    return false;
+  }
+
+  return result.unwrap();
 }
 
 CallState nsGlobalWindowInner::ShouldReportForServiceWorkerScopeInternal(
@@ -3645,7 +3650,7 @@ void nsGlobalWindowInner::RefreshReduceTimerPrecisionCallerType() {
       RTPCallerTypeToToken(GetRTPCallerType()));
 }
 
-already_AddRefed<nsIWidget> nsGlobalWindowInner::GetMainWidget() {
+already_AddRefed<nsIWidget> nsGlobalWindowInner::GetMainWidget() const {
   FORWARD_TO_OUTER(GetMainWidget, (), nullptr);
 }
 
@@ -4349,7 +4354,6 @@ void nsGlobalWindowInner::SetFocusedElement(Element* aElement,
     aNeedsFocus = false;
   }
   if (mFocusedElement != aElement) {
-    UpdateCanvasFocus(false, aElement);
     mFocusedElement = aElement;
     // TODO: Maybe this should be set on refocus too?
     mFocusMethod = aFocusMethod & nsIFocusManager::METHOD_MASK;
@@ -4396,17 +4400,12 @@ bool nsGlobalWindowInner::TakeFocus(bool aFocus, uint32_t aFocusMethod) {
     mFocusMethod = aFocusMethod & nsIFocusManager::METHOD_MASK;
   }
 
-  if (mHasFocus != aFocus) {
-    mHasFocus = aFocus;
-    UpdateCanvasFocus(true, mFocusedElement);
-  }
-
   // if mNeedsFocus is true, then the document has not yet received a
   // document-level focus event. If there is a root content node, then return
   // true to tell the calling focus manager that a focus event is expected. If
   // there is no root content node, the document hasn't loaded enough yet, or
   // there isn't one and there is no point in firing a focus event.
-  if (aFocus && mNeedsFocus && mDoc && mDoc->GetRootElement() != nullptr) {
+  if (aFocus && mNeedsFocus && mDoc && mDoc->GetRootElement()) {
     mNeedsFocus = false;
     return true;
   }
@@ -4552,56 +4551,23 @@ nsresult nsGlobalWindowInner::DispatchSyncPopState() {
   return err.StealNSResult();
 }
 
-//-------------------------------------------------------
-// Tells the HTMLFrame/CanvasFrame that is now has focus
-void nsGlobalWindowInner::UpdateCanvasFocus(bool aFocusChanged,
-                                            nsIContent* aNewContent) {
-  // this is called from the inner window so use GetDocShell
-  nsIDocShell* docShell = GetDocShell();
-  if (!docShell) return;
-
-  bool editable;
-  docShell->GetEditable(&editable);
-  if (editable) return;
-
-  PresShell* presShell = docShell->GetPresShell();
-  if (!presShell || !mDoc) {
-    return;
-  }
-
-  Element* rootElement = mDoc->GetRootElement();
-  if (rootElement) {
-    if ((mHasFocus || aFocusChanged) &&
-        (mFocusedElement == rootElement || aNewContent == rootElement)) {
-      nsCanvasFrame* canvasFrame = presShell->GetCanvasFrame();
-      if (canvasFrame) {
-        canvasFrame->SetHasFocus(mHasFocus && rootElement == aNewContent);
-      }
-    }
-  } else {
-    // XXXbz I would expect that there is never a canvasFrame in this case...
-    nsCanvasFrame* canvasFrame = presShell->GetCanvasFrame();
-    if (canvasFrame) {
-      canvasFrame->SetHasFocus(false);
-    }
-  }
-}
-
-already_AddRefed<nsICSSDeclaration> nsGlobalWindowInner::GetComputedStyle(
+already_AddRefed<nsDOMCSSDeclaration> nsGlobalWindowInner::GetComputedStyle(
     Element& aElt, const nsAString& aPseudoElt, ErrorResult& aError) {
   return GetComputedStyleHelper(aElt, aPseudoElt, false, aError);
 }
 
-already_AddRefed<nsICSSDeclaration>
+already_AddRefed<nsDOMCSSDeclaration>
 nsGlobalWindowInner::GetDefaultComputedStyle(Element& aElt,
                                              const nsAString& aPseudoElt,
                                              ErrorResult& aError) {
   return GetComputedStyleHelper(aElt, aPseudoElt, true, aError);
 }
 
-already_AddRefed<nsICSSDeclaration> nsGlobalWindowInner::GetComputedStyleHelper(
-    Element& aElt, const nsAString& aPseudoElt, bool aDefaultStylesOnly,
-    ErrorResult& aError) {
+already_AddRefed<nsDOMCSSDeclaration>
+nsGlobalWindowInner::GetComputedStyleHelper(Element& aElt,
+                                            const nsAString& aPseudoElt,
+                                            bool aDefaultStylesOnly,
+                                            ErrorResult& aError) {
   FORWARD_TO_OUTER_OR_THROW(GetComputedStyleHelperOuter,
                             (aElt, aPseudoElt, aDefaultStylesOnly, aError),
                             aError, nullptr);
@@ -4984,6 +4950,11 @@ void nsGlobalWindowInner::FireOfflineStatusEventIfChanged() {
     return;
   }
 
+  if (ShouldResistFingerprinting(RFPTarget::NetworkConnection)) {
+    // We always report online=true when resistFingerprinting is enabled.
+    return;
+  }
+
   mWasOffline = !mWasOffline;
 
   nsAutoString name;
@@ -5060,10 +5031,12 @@ nsGlobalWindowInner::ShowSlowScriptDialog(JSContext* aCx,
       RefPtr<nsGlobalWindowOuter> outer = GetOuterWindowInternal();
       outer->EnterModalState();
       SpinEventLoopUntil("nsGlobalWindowInner::ShowSlowScriptDialog"_ns, [&]() {
-        return monitor->IsDebuggerStartupComplete();
+        return monitor->IsDebuggerStartupComplete() ||
+               AppShutdown::IsShutdownImpending();
       });
       outer->LeaveModalState();
-      return ContinueSlowScript;
+      return (AppShutdown::IsShutdownImpending()) ? KillSlowScript
+                                                  : ContinueSlowScript;
     }
 
     return ContinueSlowScriptAndKeepNotifying;
@@ -5867,17 +5840,31 @@ Maybe<ServiceWorkerDescriptor> nsGlobalWindowInner::GetController() const {
   return controller;
 }
 
-void nsGlobalWindowInner::SetCsp(nsIContentSecurityPolicy* aCsp) {
+void nsGlobalWindowInner::SetPolicyContainer(
+    nsIPolicyContainer* aPolicyContainer) {
   if (!mClientSource) {
     return;
   }
-  mClientSource->SetCsp(aCsp);
-  // Also cache the CSP within the document
-  mDoc->SetCsp(aCsp);
+  mClientSource->SetPolicyContainer(aPolicyContainer);
+  // Also cache the PolicyContainer within the document
+  mDoc->SetPolicyContainer(aPolicyContainer);
 
   if (mWindowGlobalChild) {
     mWindowGlobalChild->SendSetClientInfo(mClientSource->Info().ToIPC());
   }
+}
+
+nsIPolicyContainer* nsGlobalWindowInner::GetPolicyContainer() {
+  if (mDoc) {
+    return mDoc->GetPolicyContainer();
+  }
+
+  // If the window is partially torn down and has its document nulled out,
+  // we query the policy container we snapshot in FreeInnerObjects.
+  if (mDocumentPolicyContainer) {
+    return mDocumentPolicyContainer;
+  }
+  return nullptr;
 }
 
 void nsGlobalWindowInner::SetPreloadCsp(nsIContentSecurityPolicy* aPreloadCsp) {
@@ -5891,19 +5878,6 @@ void nsGlobalWindowInner::SetPreloadCsp(nsIContentSecurityPolicy* aPreloadCsp) {
   if (mWindowGlobalChild) {
     mWindowGlobalChild->SendSetClientInfo(mClientSource->Info().ToIPC());
   }
-}
-
-nsIContentSecurityPolicy* nsGlobalWindowInner::GetCsp() {
-  if (mDoc) {
-    return mDoc->GetCsp();
-  }
-
-  // If the window is partially torn down and has its document nulled out,
-  // we query the CSP we snapshot in FreeInnerObjects.
-  if (mDocumentCsp) {
-    return mDocumentCsp;
-  }
-  return nullptr;
 }
 
 already_AddRefed<ServiceWorkerContainer>
@@ -7074,6 +7048,14 @@ void nsGlobalWindowInner::MoveToWorkspace(const nsAString& workspaceID) {
   if (nsCOMPtr<nsIWidget> widget = GetMainWidget()) {
     widget->MoveToWorkspace(workspaceID);
   }
+}
+
+bool nsGlobalWindowInner::IsCloaked() const {
+  if (nsCOMPtr<nsIWidget> widget = GetMainWidget()) {
+    return widget->IsCloaked();
+  }
+  // Assume that it is not, since most windows are not cloaked.
+  return false;
 }
 
 void nsGlobalWindowInner::GetAttention(ErrorResult& aResult) {

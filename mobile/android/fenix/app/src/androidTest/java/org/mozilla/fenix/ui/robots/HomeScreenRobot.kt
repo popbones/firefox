@@ -34,7 +34,6 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.assertion.PositionAssertions.isCompletelyAbove
 import androidx.test.espresso.assertion.PositionAssertions.isPartiallyBelow
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.RootMatchers
@@ -48,6 +47,7 @@ import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiScrollable
 import androidx.test.uiautomator.UiSelector
 import androidx.test.uiautomator.Until
+import mozilla.components.compose.browser.toolbar.concept.BrowserToolbarTestTags.ADDRESSBAR_URL_BOX
 import org.hamcrest.CoreMatchers.allOf
 import org.junit.Assert.assertTrue
 import org.mozilla.fenix.R
@@ -81,6 +81,11 @@ import org.mozilla.fenix.home.ui.HomepageTestTag.HOMEPAGE_WORDMARK_LOGO
 import org.mozilla.fenix.home.ui.HomepageTestTag.HOMEPAGE_WORDMARK_TEXT
 import org.mozilla.fenix.home.ui.HomepageTestTag.PRIVATE_BROWSING_HOMEPAGE_BUTTON
 import org.mozilla.fenix.tabstray.TabsTrayTestTag
+import org.mozilla.fenix.ui.util.PositionOnScreenMatcher.Position.BOTTOM
+import org.mozilla.fenix.ui.util.PositionOnScreenMatcher.Position.TOP
+import org.mozilla.fenix.ui.util.isAtPosition
+import mozilla.components.browser.menu.R as menuR
+import mozilla.components.ui.tabcounter.R as tabcounterR
 
 /**
  * Implementation of Robot Pattern for the home screen menu.
@@ -127,8 +132,6 @@ class HomeScreenRobot {
     }
 
     fun verifyHomeWordmark() {
-        Log.i(TAG, "verifyHomeWordmark: Trying to scroll 3x to the beginning of the home screen")
-        homeScreenList().scrollToBeginning(3)
         Log.i(TAG, "verifyHomeWordmark: Scrolled 3x to the beginning of the home screen")
         assertUIObjectExists(homepageWordmarkLogo(), homepageWordmarkText())
     }
@@ -141,7 +144,7 @@ class HomeScreenRobot {
     fun verifyTabCounter(numberOfOpenTabs: String) =
         onView(
             allOf(
-                withId(R.id.counter_text),
+                withId(tabcounterR.id.counter_text),
                 withText(numberOfOpenTabs),
                 withEffectiveVisibility(Visibility.VISIBLE),
             ),
@@ -419,6 +422,7 @@ class HomeScreenRobot {
             composeTestRule.onNodeWithText(title).assertIsDisplayed()
             Log.i(TAG, "verifyCollectionIsDisplayed: Verified that collection with title: $title is displayed")
         } else {
+            composeTestRule.waitUntilDoesNotExist(hasText(title), waitingTime)
             Log.i(TAG, "verifyCollectionIsDisplayed: Trying to verify that collection with title: $title is not displayed")
             composeTestRule.onNodeWithText(title).assertIsNotDisplayed()
             Log.i(TAG, "verifyCollectionIsDisplayed: Verified that collection with title: $title is not displayed")
@@ -439,19 +443,11 @@ class HomeScreenRobot {
         }
     }
 
-    fun scrollToPocketProvokingStories() {
-        Log.i(TAG, "scrollToPocketProvokingStories: Trying to scroll into view the featured pocket stories")
-        homeScreenList().scrollIntoView(
-            mDevice.findObject(UiSelector().resourceId(HOMEPAGE_STORY).index(2)),
-        )
-        Log.i(TAG, "scrollToPocketProvokingStories: Scrolled into view the featured pocket stories")
-    }
-
     fun verifyPocketRecommendedStoriesItems(composeTestRule: ComposeTestRule) {
         Log.i(TAG, "verifyPocketRecommendedStoriesItems: Trying to scroll into view the \"Stories\" pocket section")
         composeTestRule.onNodeWithTag("homepage.view").performScrollToNode(hasTestTag("pocket.stories"))
         Log.i(TAG, "verifyPocketRecommendedStoriesItems: Scrolled into view the \"Stories\" pocket section")
-        for (position in 0..8) {
+        for (position in 0..7) {
             Log.i(TAG, "verifyPocketRecommendedStoriesItems: Trying to scroll into view the featured pocket story from position: $position")
             pocketStoriesList().scrollIntoView(UiSelector().index(position))
             Log.i(TAG, "verifyPocketRecommendedStoriesItems: Scrolled into view the featured pocket story from position: $position")
@@ -474,36 +470,35 @@ class HomeScreenRobot {
 //        }
 //    }
 
-    fun getProvokingStoryPublisher(position: Int): String {
-        val publisher = mDevice.findObject(
-            UiSelector()
-                .resourceId(HOMEPAGE_STORY)
-                .index(position - 1),
-        ).getChild(
-            UiSelector()
-                .className("android.widget.TextView")
-                .index(1),
-        ).text
-
-        return publisher
-    }
-
     fun verifyAddressBarPosition(bottomPosition: Boolean) {
         Log.i(TAG, "verifyAddressBarPosition: Trying to verify toolbar is set to top: $bottomPosition")
         onView(withId(R.id.toolbarLayout))
             .check(
                 if (bottomPosition) {
-                    isPartiallyBelow(withId(R.id.homepageView))
+                    matches(isAtPosition(BOTTOM))
                 } else {
-                    isCompletelyAbove(withId(R.id.homeAppBar))
+                    matches(isAtPosition(TOP))
                 },
             )
         Log.i(TAG, "verifyAddressBarPosition: Verified toolbar position is set to top: $bottomPosition")
     }
 
+    fun verifyComposableToolbarPosition(bottomPosition: Boolean) {
+        Log.i(TAG, "verifyComposableToolbarPosition: Trying to verify toolbar is set to top: $bottomPosition")
+        onView(withId(R.id.composable_toolbar))
+            .check(
+                if (bottomPosition) {
+                    matches(isAtPosition(BOTTOM))
+                } else {
+                    matches(isAtPosition(TOP))
+                },
+            )
+        Log.i(TAG, "verifyComposableToolbarPosition: Verified toolbar position is set to top: $bottomPosition")
+    }
+
     fun verifyNavigationToolbarIsSetToTheBottomOfTheHomeScreen() {
         Log.i(TAG, "verifyAddressBarPosition: Trying to verify that the navigation toolbar is set to bottom")
-        onView(withId(R.id.toolbar_navbar_container)).check(isPartiallyBelow(withId(R.id.homepageView)))
+        onView(withId(R.id.navigation_bar)).check(isPartiallyBelow(withId(R.id.homepageView)))
         Log.i(TAG, "verifyAddressBarPosition: Verified that the navigation toolbar is set to bottom")
     }
 
@@ -625,6 +620,16 @@ class HomeScreenRobot {
             return ThreeDotMenuMainRobotCompose.Transition(composeTestRule)
         }
 
+        fun openThreeDotMenuWithComposableToolbar(composeTestRule: ComposeTestRule, interact: ThreeDotMenuMainRobotCompose.() -> Unit): ThreeDotMenuMainRobotCompose.Transition {
+            Log.i(TAG, "openThreeDotMenuWithComposableToolbar: Trying to click main menu button")
+            composeTestRule.onNodeWithContentDescription(getStringResource(R.string.content_description_menu)).performClick()
+            Log.i(TAG, "openThreeDotMenuWithComposableToolbar: Clicked main menu button")
+            assertUIObjectExists(itemWithResId("$packageName:id/design_bottom_sheet"))
+
+            ThreeDotMenuMainRobotCompose(composeTestRule).interact()
+            return ThreeDotMenuMainRobotCompose.Transition(composeTestRule)
+        }
+
         fun openSearch(interact: SearchRobot.() -> Unit): SearchRobot.Transition {
             Log.i(TAG, "openSearch: Waiting for $waitingTime ms for the navigation toolbar to exist")
             navigationToolbar().waitForExists(waitingTime)
@@ -635,6 +640,17 @@ class HomeScreenRobot {
             Log.i(TAG, "openSearch: Waiting for device to be idle")
             mDevice.waitForIdle()
             Log.i(TAG, "openSearch: Device was idle")
+
+            SearchRobot().interact()
+            return SearchRobot.Transition()
+        }
+
+        @OptIn(ExperimentalTestApi::class)
+        fun openSearchWithComposableToolbar(composeTestRule: ComposeTestRule, interact: SearchRobot.() -> Unit): SearchRobot.Transition {
+            composeTestRule.waitUntilAtLeastOneExists(hasTestTag(ADDRESSBAR_URL_BOX), waitingTime)
+            Log.i(TAG, "openSearchWithComposableToolbar: Trying to click navigation toolbar")
+            composeTestRule.onNodeWithTag(ADDRESSBAR_URL_BOX).performClick()
+            Log.i(TAG, "openSearchWithComposableToolbar: Clicked navigation toolbar")
 
             SearchRobot().interact()
             return SearchRobot.Transition()
@@ -832,6 +848,9 @@ class HomeScreenRobot {
             Log.i(TAG, "expandCollection: Trying to click collection with title: $title")
             composeTestRule.onNodeWithText(title).performClick()
             Log.i(TAG, "expandCollection: Clicked collection with title: $title")
+            Log.i(TAG, "expandCollection: Waiting for compose test rule to be idle")
+            composeTestRule.waitForIdle()
+            Log.i(TAG, "expandCollection: Waited for compose test rule to be idle")
 
             CollectionRobot().interact()
             return CollectionRobot.Transition()
@@ -851,7 +870,7 @@ class HomeScreenRobot {
             mDevice
                 .findObject(
                     UiSelector()
-                        .textContains(getStringResource(R.string.recent_tabs_show_all)),
+                        .descriptionContains(getStringResource(R.string.recent_tabs_show_all_content_description_2)),
                 ).clickAndWaitForNewWindow(waitingTime)
             Log.i(TAG, "clickJumpBackInShowAllButton: Clicked \"Show all\" button and wait for $waitingTime ms for a new window")
 
@@ -859,19 +878,14 @@ class HomeScreenRobot {
             return TabDrawerRobot.Transition(composeTestRule)
         }
 
-        fun clickPocketStoryItem(publisher: String, position: Int, interact: BrowserRobot.() -> Unit): BrowserRobot.Transition {
-            Log.i(TAG, "clickPocketStoryItem: Trying to click pocket story item published by: $publisher at position: $position and wait for $waitingTime ms for a new window")
+        fun clickPocketStoryItem(position: Int, interact: BrowserRobot.() -> Unit): BrowserRobot.Transition {
+            Log.i(TAG, "clickPocketStoryItem: Trying to click pocket story item at position: $position and wait for $waitingTime ms for a new window")
             mDevice.findObject(
                 UiSelector()
-                    .className("android.view.View")
+                    .resourceId(HOMEPAGE_STORY)
                     .index(position - 1),
-            ).getChild(
-                UiSelector()
-                    .className("android.widget.TextView")
-                    .index(1)
-                    .textContains(publisher),
             ).clickAndWaitForNewWindow(waitingTime)
-            Log.i(TAG, "clickPocketStoryItem: Clicked pocket story item published by: $publisher at position: $position and wait for $waitingTime ms for a new window")
+            Log.i(TAG, "clickPocketStoryItem: Clicked pocket story item published at position: $position and wait for $waitingTime ms for a new window")
 
             BrowserRobot().interact()
             return BrowserRobot.Transition()
@@ -961,7 +975,7 @@ private fun tabCounter(numberOfOpenTabs: String) =
 fun deleteFromHistory() =
     onView(
         allOf(
-            withId(R.id.simple_text),
+            withId(menuR.id.simple_text),
             withText(R.string.delete_from_history),
         ),
     ).inRoot(RootMatchers.isPlatformPopup())

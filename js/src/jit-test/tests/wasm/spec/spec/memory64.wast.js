@@ -28,10 +28,10 @@ let $2 = instantiate(`(module (memory i64 1 256))`);
 let $3 = instantiate(`(module (memory i64 0 65536))`);
 
 // ./test/core/memory64.wast:8
-let _anon_7 = module(`(module (memory i64 0x1_0000_0000_0000))`);
+let _anon_7 = module(`(module (memory i64 137438953471))`);
 
 // ./test/core/memory64.wast:9
-let $4 = instantiate(`(module (memory i64 0 0x1_0000_0000_0000))`);
+let $4 = instantiate(`(module (memory i64 0 137438953471))`);
 
 // ./test/core/memory64.wast:11
 let $5 = instantiate(`(module (memory i64 (data)) (func (export "memsize") (result i64) (memory.size)))`);
@@ -173,44 +173,44 @@ let $8 = instantiate(`(module
   )
 
   ;; Sign and zero extending memory loads
-  (func (export "i32_load8_s") (param $$i i32) (result i32)
-    (i32.store8 (i64.const 8) (local.get $$i))
+  (func (export "i32_load8_s") (param \$i i32) (result i32)
+    (i32.store8 (i64.const 8) (local.get \$i))
     (i32.load8_s (i64.const 8))
   )
-  (func (export "i32_load8_u") (param $$i i32) (result i32)
-    (i32.store8 (i64.const 8) (local.get $$i))
+  (func (export "i32_load8_u") (param \$i i32) (result i32)
+    (i32.store8 (i64.const 8) (local.get \$i))
     (i32.load8_u (i64.const 8))
   )
-  (func (export "i32_load16_s") (param $$i i32) (result i32)
-    (i32.store16 (i64.const 8) (local.get $$i))
+  (func (export "i32_load16_s") (param \$i i32) (result i32)
+    (i32.store16 (i64.const 8) (local.get \$i))
     (i32.load16_s (i64.const 8))
   )
-  (func (export "i32_load16_u") (param $$i i32) (result i32)
-    (i32.store16 (i64.const 8) (local.get $$i))
+  (func (export "i32_load16_u") (param \$i i32) (result i32)
+    (i32.store16 (i64.const 8) (local.get \$i))
     (i32.load16_u (i64.const 8))
   )
-  (func (export "i64_load8_s") (param $$i i64) (result i64)
-    (i64.store8 (i64.const 8) (local.get $$i))
+  (func (export "i64_load8_s") (param \$i i64) (result i64)
+    (i64.store8 (i64.const 8) (local.get \$i))
     (i64.load8_s (i64.const 8))
   )
-  (func (export "i64_load8_u") (param $$i i64) (result i64)
-    (i64.store8 (i64.const 8) (local.get $$i))
+  (func (export "i64_load8_u") (param \$i i64) (result i64)
+    (i64.store8 (i64.const 8) (local.get \$i))
     (i64.load8_u (i64.const 8))
   )
-  (func (export "i64_load16_s") (param $$i i64) (result i64)
-    (i64.store16 (i64.const 8) (local.get $$i))
+  (func (export "i64_load16_s") (param \$i i64) (result i64)
+    (i64.store16 (i64.const 8) (local.get \$i))
     (i64.load16_s (i64.const 8))
   )
-  (func (export "i64_load16_u") (param $$i i64) (result i64)
-    (i64.store16 (i64.const 8) (local.get $$i))
+  (func (export "i64_load16_u") (param \$i i64) (result i64)
+    (i64.store16 (i64.const 8) (local.get \$i))
     (i64.load16_u (i64.const 8))
   )
-  (func (export "i64_load32_s") (param $$i i64) (result i64)
-    (i64.store32 (i64.const 8) (local.get $$i))
+  (func (export "i64_load32_s") (param \$i i64) (result i64)
+    (i64.store32 (i64.const 8) (local.get \$i))
     (i64.load32_s (i64.const 8))
   )
-  (func (export "i64_load32_u") (param $$i i64) (result i64)
-    (i64.store32 (i64.const 8) (local.get $$i))
+  (func (export "i64_load32_u") (param \$i i64) (result i64)
+    (i64.store32 (i64.const 8) (local.get \$i))
     (i64.load32_u (i64.const 8))
   )
 )`);

@@ -38,6 +38,15 @@ pub enum CompositorSurfaceKind {
     Overlay,
 }
 
+impl CompositorSurfaceKind {
+    pub fn is_composited(&self) -> bool {
+        match *self {
+            CompositorSurfaceKind::Blit => false,
+            CompositorSurfaceKind::Underlay | CompositorSurfaceKind::Overlay => true,
+        }
+    }
+}
+
 /// Describes details of an operation to apply to a native surface
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "capture", derive(Serialize))]
@@ -160,6 +169,7 @@ pub struct CompositeTile {
     pub kind: TileKind,
     pub transform_index: CompositorTransformIndex,
     pub clip_index: Option<CompositorClipIndex>,
+    pub tile_id: Option<TileId>,
 }
 
 pub fn tile_kind(surface: &CompositeTileSurface, is_opaque: bool) -> TileKind {
@@ -919,6 +929,7 @@ impl CompositeState {
             z_id: external_surface.z_id,
             transform_index: external_surface.transform_index,
             clip_index,
+            tile_id: None,
         };
 
         let (rounded_clip_rect, rounded_clip_radii) = self.compositor_clip_params(
@@ -1147,6 +1158,7 @@ impl CompositeState {
                 resource_cache,
                 gpu_cache,
                 deferred_resolves,
+                true,
             );
 
             if cache_item.texture_id != TextureSource::Invalid {
@@ -1218,6 +1230,71 @@ impl CompositeState {
     pub fn end_frame(&mut self) {
         // Sort tiles from front to back.
         self.tiles.sort_by_key(|tile| tile.z_id.0);
+    }
+
+    #[cfg(feature = "debugger")]
+    pub fn print_to_string(&self) -> String {
+        use crate::print_tree::PrintTree;
+        use crate::print_tree::PrintTreePrinter;
+
+        let mut buf = Vec::<u8>::new();
+        {
+            let mut pt = PrintTree::new_with_sink("composite config", &mut buf);
+
+            pt.new_level("tiles".into());
+            for (i, tile) in self.tiles.iter().enumerate() {
+                pt.new_level(format!("tile {}", i));
+                pt.add_item(format!("local_rect = {:?}", tile.local_rect.to_rect()));
+                pt.add_item(format!("local_valid_rect = {:?}", tile.local_valid_rect.to_rect()));
+                pt.add_item(format!("local_dirty_rect = {:?}", tile.local_dirty_rect.to_rect()));
+                pt.add_item(format!("device_clip_rect = {:?}", tile.device_clip_rect.to_rect()));
+                pt.add_item(format!("z_id = {:?}", tile.z_id));
+                pt.add_item(format!("kind = {:?}", tile.kind));
+                pt.add_item(format!("tile_id = {:?}", tile.tile_id));
+                pt.add_item(format!("clip = {:?}", tile.clip_index));
+                pt.add_item(format!("transform = {:?}", tile.transform_index));
+                pt.end_level();
+            }
+            pt.end_level();
+
+            pt.new_level("external_surfaces".into());
+            for (i, surface) in self.external_surfaces.iter().enumerate() {
+                pt.new_level(format!("surface {}", i));
+                pt.add_item(format!("{:?}", surface.image_buffer_kind));
+                pt.end_level();
+            }
+            pt.end_level();
+
+            pt.new_level("occluders".into());
+            for (i, occluder) in self.occluders.occluders.iter().enumerate() {
+                pt.new_level(format!("occluder {}", i));
+                pt.add_item(format!("{:?}", occluder.z_id));
+                pt.add_item(format!("{:?}", occluder.world_rect.to_rect()));
+                pt.end_level();
+            }
+            pt.end_level();
+
+            pt.new_level("transforms".into());
+            for (i, transform) in self.transforms.iter().enumerate() {
+                pt.new_level(format!("transform {}", i));
+                pt.add_item(format!("local_to_raster {:?}", transform.local_to_raster));
+                pt.add_item(format!("raster_to_device {:?}", transform.raster_to_device));
+                pt.add_item(format!("local_to_device {:?}", transform.local_to_device));
+                pt.end_level();
+            }
+            pt.end_level();
+
+            pt.new_level("clips".into());
+            for (i, clip) in self.clips.iter().enumerate() {
+                pt.new_level(format!("clip {}", i));
+                pt.add_item(format!("{:?}", clip.rect.to_rect()));
+                pt.add_item(format!("{:?}", clip.radius));
+                pt.end_level();
+            }
+            pt.end_level();
+        }
+
+        std::str::from_utf8(&buf).unwrap_or("(Tree printer emitted non-utf8)").to_string()
     }
 }
 

@@ -8,7 +8,6 @@ ChromeUtils.defineESModuleGetters(lazy, {
   NimbusFeatures: "resource://nimbus/ExperimentAPI.sys.mjs",
   NewTabUtils: "resource://gre/modules/NewTabUtils.sys.mjs",
   ObliviousHTTP: "resource://gre/modules/ObliviousHTTP.sys.mjs",
-  pktApi: "chrome://pocket/content/pktApi.sys.mjs",
   PersistentCache: "resource://newtab/lib/PersistentCache.sys.mjs",
   Region: "resource://gre/modules/Region.sys.mjs",
   RemoteSettings: "resource://services-settings/remote-settings.sys.mjs",
@@ -30,6 +29,11 @@ import {
   actionCreators as ac,
 } from "resource://newtab/common/Actions.mjs";
 
+import { scoreItemInferred } from "resource://newtab/lib/InferredModel/GreedyContentRanker.mjs";
+
+const LOCAL_POPULAR_RERANK = false; // default behavior for local re-ranking
+const LOCAL_WEIGHT = 1;
+const SERVER_WEIGHT = 1;
 const CACHE_KEY = "discovery_stream";
 const STARTUP_CACHE_EXPIRE_TIME = 7 * 24 * 60 * 60 * 1000; // 1 week
 const COMPONENT_FEEDS_UPDATE_TIME = 30 * 60 * 1000; // 30 minutes
@@ -48,8 +52,6 @@ const TOPIC_SELECTION_DISPLAY_TIMEOUT =
   "discoverystream.topicSelection.onboarding.displayTimeout";
 
 const SPOCS_URL = "https://spocs.getpocket.com/spocs";
-const FEED_URL =
-  "https://getpocket.cdn.mozilla.net/v3/firefox/global-recs?version=3&consumer_key=$apiKey&locale_lang=$locale&region=$region&count=30";
 const PREF_CONFIG = "discoverystream.config";
 const PREF_ENDPOINTS = "discoverystream.endpoints";
 const PREF_IMPRESSION_ID = "browser.newtabpage.activity-stream.impressionId";
@@ -76,6 +78,7 @@ const PREF_UNIFIED_ADS_BLOCKED_LIST = "unifiedAds.blockedAds";
 const PREF_UNIFIED_ADS_SPOCS_ENABLED = "unifiedAds.spocs.enabled";
 const PREF_UNIFIED_ADS_ADSFEED_ENABLED = "unifiedAds.adsFeed.enabled";
 const PREF_UNIFIED_ADS_ENDPOINT = "unifiedAds.endpoint";
+const PREF_UNIFIED_ADS_OHTTP = "unifiedAds.ohttp.enabled";
 const PREF_USER_TOPSITES = "feeds.topsites";
 const PREF_SPOCS_CLEAR_ENDPOINT = "discoverystream.endpointSpocsClear";
 const PREF_SHOW_SPONSORED = "showSponsored";
@@ -85,10 +88,6 @@ const PREF_SHOW_SPONSORED_TOPSITES = "showSponsoredTopSites";
 const NIMBUS_VARIABLE_CONTILE_SOV_ENABLED = "topSitesContileSovEnabled";
 const PREF_SPOC_IMPRESSIONS = "discoverystream.spoc.impressions";
 const PREF_FLIGHT_BLOCKS = "discoverystream.flight.blocks";
-const PREF_COLLECTIONS_ENABLED =
-  "discoverystream.sponsored-collections.enabled";
-const PREF_POCKET_BUTTON = "extensions.pocket.enabled";
-const PREF_COLLECTION_DISMISSIBLE = "discoverystream.isCollectionDismissible";
 const PREF_SELECTED_TOPICS = "discoverystream.topicSelection.selectedTopics";
 const PREF_TOPIC_SELECTION_ENABLED = "discoverystream.topicSelection.enabled";
 const PREF_TOPIC_SELECTION_PREVIOUS_SELECTED =
@@ -117,6 +116,15 @@ const PREF_USER_INFERRED_PERSONALIZATION =
   "discoverystream.sections.personalization.inferred.user.enabled";
 const PREF_SYSTEM_INFERRED_PERSONALIZATION =
   "discoverystream.sections.personalization.inferred.enabled";
+const PREF_MERINO_OHTTP = "discoverystream.merino-provider.ohttp.enabled";
+const PREF_BILLBOARD_ENABLED = "newtabAdSize.billboard";
+const PREF_LEADERBOARD_ENABLED = "newtabAdSize.leaderboard";
+const PREF_LEADERBOARD_POSITION = "newtabAdSize.leaderboard.position";
+const PREF_BILLBOARD_POSITION = "newtabAdSize.billboard.position";
+const PREF_CONTEXTUAL_BANNER_PLACEMENTS =
+  "discoverystream.placements.contextualBanners";
+const PREF_CONTEXTUAL_BANNER_COUNTS =
+  "discoverystream.placements.contextualBanners.counts";
 
 const PREF_SECTIONS_ENABLED = "discoverystream.sections.enabled";
 const PREF_SECTIONS_FOLLOWING = "discoverystream.sections.following";
@@ -129,6 +137,12 @@ const PREF_PRIVATE_PING_ENABLED = "telemetry.privatePing.enabled";
 const PREF_SURFACE_ID = "telemetry.surfaceId";
 
 let getHardcodedLayout;
+
+ChromeUtils.defineLazyGetter(lazy, "userAgent", () => {
+  return Cc["@mozilla.org/network/protocol;1?name=http"].getService(
+    Ci.nsIHttpProtocolHandler
+  ).userAgent;
+});
 
 export class DiscoveryStreamFeed {
   constructor() {
@@ -189,31 +203,12 @@ export class DiscoveryStreamFeed {
     return lazy.Region.home;
   }
 
-  get isBff() {
-    if (this._isBff === undefined) {
-      const pocketConfig =
-        this.store.getState().Prefs.values?.pocketConfig || {};
-
-      const preffedRegionBffConfigString = pocketConfig.regionBffConfig || "";
-      const preffedRegionBffConfig = preffedRegionBffConfigString
-        .split(",")
-        .map(s => s.trim());
-      const regionBff = preffedRegionBffConfig.includes(this.region);
-      this._isBff = regionBff;
-    }
-
-    return this._isBff;
-  }
-
   get isContextualAds() {
     if (this._isContextualAds === undefined) {
       // We care about if the contextual ads pref is on, if contextual is supported,
       // and if inferred is on, but OHTTP is off.
       const state = this.store.getState();
-      const marsOhttpEnabled = Services.prefs.getBoolPref(
-        "browser.newtabpage.activity-stream.unifiedAds.ohttp.enabled",
-        false
-      );
+      const marsOhttpEnabled = state.Prefs.values[PREF_UNIFIED_ADS_OHTTP];
       const contextualAds = state.Prefs.values[PREF_CONTEXTUAL_ADS];
       const inferredPersonalization =
         state.Prefs.values[PREF_USER_INFERRED_PERSONALIZATION] &&
@@ -230,15 +225,24 @@ export class DiscoveryStreamFeed {
     return this._isContextualAds;
   }
 
-  get isMerino() {
-    if (this._isMerino === undefined) {
-      const pocketConfig =
-        this.store.getState().Prefs.values?.pocketConfig || {};
+  get doLocalInferredRerank() {
+    if (this._doLocalInferredRerank === undefined) {
+      const state = this.store.getState();
 
-      this._isMerino = pocketConfig.merinoProviderEnabled;
+      const inferredPersonalization =
+        state.Prefs.values[PREF_USER_INFERRED_PERSONALIZATION] &&
+        state.Prefs.values[PREF_SYSTEM_INFERRED_PERSONALIZATION];
+      const sectionsEnabled = state.Prefs.values[PREF_SECTIONS_ENABLED];
+
+      const systemPref = inferredPersonalization && sectionsEnabled;
+      const expPref =
+        state.Prefs.values.inferredPersonalizationConfig
+          ?.local_popular_today_rerank ?? LOCAL_POPULAR_RERANK;
+
+      // we do it if inferred is on and the experiment is on
+      this._doLocalInferredRerank = systemPref && expPref;
     }
-
-    return this._isMerino;
+    return this._doLocalInferredRerank;
   }
 
   get showSpocs() {
@@ -351,19 +355,10 @@ export class DiscoveryStreamFeed {
       })
     );
 
-    const pocketButtonEnabled = Services.prefs.getBoolPref(PREF_POCKET_BUTTON);
-
     const nimbusConfig = this.store.getState().Prefs.values?.pocketConfig || {};
     const { region } = this.store.getState().Prefs.values;
 
     this.setupSpocsCacheUpdateTime();
-    const saveToPocketCardRegions = nimbusConfig.saveToPocketCardRegions
-      ?.split(",")
-      .map(s => s.trim());
-    const saveToPocketCard =
-      pocketButtonEnabled &&
-      (nimbusConfig.saveToPocketCard ||
-        saveToPocketCardRegions?.includes(region));
 
     const hideDescriptionsRegions = nimbusConfig.hideDescriptionsRegions
       ?.split(",")
@@ -380,9 +375,6 @@ export class DiscoveryStreamFeed {
       ac.AlsoToPreloaded({
         type: at.DISCOVERY_STREAM_PREFS_SETUP,
         data: {
-          recentSavesEnabled: nimbusConfig.recentSavesEnabled,
-          pocketButtonEnabled,
-          saveToPocketCard,
           hideDescriptions,
           compactImages: nimbusConfig.compactImages,
           imageGradient: nimbusConfig.imageGradient,
@@ -399,19 +391,6 @@ export class DiscoveryStreamFeed {
 
     // sync redux store with PersistantCache personalization data
     this.configureFollowedSections(isStartup);
-
-    this.store.dispatch(
-      ac.BroadcastToContent({
-        type: at.DISCOVERY_STREAM_COLLECTION_DISMISSIBLE_TOGGLE,
-        data: {
-          value:
-            this.store.getState().Prefs.values[PREF_COLLECTION_DISMISSIBLE],
-        },
-        meta: {
-          isStartup,
-        },
-      })
-    );
   }
 
   async configureFollowedSections(isStartup = false) {
@@ -465,59 +444,18 @@ export class DiscoveryStreamFeed {
     );
   }
 
-  async setupPocketState(target) {
-    let dispatch = action =>
-      this.store.dispatch(ac.OnlyToOneContent(action, target));
-    const isUserLoggedIn = lazy.pktApi.isUserLoggedIn();
-    dispatch({
-      type: at.DISCOVERY_STREAM_POCKET_STATE_SET,
-      data: {
-        isUserLoggedIn,
-      },
-    });
-
-    // If we're not logged in, don't bother fetching recent saves, we're done.
-    if (isUserLoggedIn) {
-      let recentSaves = await lazy.pktApi.getRecentSavesCache();
-      if (recentSaves) {
-        // We have cache, so we can use those.
-        dispatch({
-          type: at.DISCOVERY_STREAM_RECENT_SAVES,
-          data: {
-            recentSaves,
-          },
-        });
-      } else {
-        // We don't have cache, so fetch fresh stories.
-        lazy.pktApi.getRecentSaves({
-          success(data) {
-            dispatch({
-              type: at.DISCOVERY_STREAM_RECENT_SAVES,
-              data: {
-                recentSaves: data,
-              },
-            });
-          },
-          error() {},
-        });
-      }
-    }
-  }
-
   uninitPrefs() {
     // Reset in-memory cache
     this._prefCache = {};
   }
 
-  async fetchFromEndpoint(rawEndpoint, options = {}, useOhttp = false) {
+  async fetchFromEndpoint(endpoint, options = {}, useOhttp = false) {
     let fetchPromise;
-    if (!rawEndpoint) {
+    if (!endpoint) {
       console.error("Tried to fetch endpoint but none was configured.");
       return null;
     }
 
-    const apiKeyPref = this.config.api_key_pref;
-    const apiKey = Services.prefs.getCharPref(apiKeyPref, "");
     const ohttpRelayURL = Services.prefs.getStringPref(
       "browser.newtabpage.activity-stream.discoverystream.ohttp.relayURL",
       ""
@@ -526,11 +464,6 @@ export class DiscoveryStreamFeed {
       "browser.newtabpage.activity-stream.discoverystream.ohttp.configURL",
       ""
     );
-
-    const endpoint = rawEndpoint
-      .replace("$apiKey", apiKey)
-      .replace("$locale", this.locale)
-      .replace("$region", this.region);
 
     try {
       // Make sure the requested endpoint is allowed
@@ -608,7 +541,7 @@ export class DiscoveryStreamFeed {
       this.store.getState().Prefs.values[PREF_SPOCS_CACHE_TIMEOUT];
     const MAX_TIMEOUT = 30;
     const MIN_TIMEOUT = 5;
-    // We do a bit of min max checking the the configured value is between
+    // We do a bit of min max checking the configured value is between
     // 5 and 30 minutes, to protect against unreasonable values.
     if (
       spocsCacheTimeout &&
@@ -768,23 +701,9 @@ export class DiscoveryStreamFeed {
   }
 
   generateFeedUrl() {
-    // check for experiment parameters
-    const hasParameters = lazy.NimbusFeatures.pocketNewtab.getVariable(
-      "pocketFeedParameters"
-    );
-
-    if (this.isMerino) {
-      return `https://${Services.prefs.getStringPref(
-        "browser.newtabpage.activity-stream.discoverystream.merino-provider.endpoint"
-      )}/api/v1/curated-recommendations`;
-    } else if (this.isBff) {
-      return `https://${Services.prefs.getStringPref(
-        "extensions.pocket.bffApi"
-      )}/desktop/v1/recommendations?locale=$locale&region=$region&count=30${
-        hasParameters || ""
-      }`;
-    }
-    return FEED_URL;
+    return `https://${Services.prefs.getStringPref(
+      "browser.newtabpage.activity-stream.discoverystream.merino-provider.endpoint"
+    )}/api/v1/curated-recommendations`;
   }
 
   loadLayout(sendUpdate, isStartup) {
@@ -796,12 +715,7 @@ export class DiscoveryStreamFeed {
       this.store.getState().Prefs.values[PREF_HARDCODED_BASIC_LAYOUT] ||
       this.store.getState().Prefs.values[PREF_REGION_BASIC_LAYOUT];
 
-    const sponsoredCollectionsEnabled =
-      this.store.getState().Prefs.values[PREF_COLLECTIONS_ENABLED];
-
     const pocketConfig = this.store.getState().Prefs.values?.pocketConfig || {};
-    const onboardingExperience =
-      this.isBff && pocketConfig.onboardingExperience;
 
     // The Unified Ads API does not support the spoc topsite placement.
     const unifiedAdsEnabled =
@@ -852,14 +766,6 @@ export class DiscoveryStreamFeed {
 
     pocketConfig.pocketStoriesHeadlineId = pocketStoriesHeadlineId;
 
-    let spocMessageVariant = "";
-    if (
-      pocketConfig.spocMessageVariant === "variant-a" ||
-      pocketConfig.spocMessageVariant === "variant-b"
-    ) {
-      spocMessageVariant = pocketConfig.spocMessageVariant;
-    }
-
     const prepConfArr = arr => {
       return arr
         ?.split(",")
@@ -904,7 +810,6 @@ export class DiscoveryStreamFeed {
       spocsUrl,
       feedUrl,
       items,
-      sponsoredCollectionsEnabled,
       spocPlacementData,
       spocTopsitesPlacementEnabled,
       spocTopsitesPlacementData,
@@ -925,18 +830,9 @@ export class DiscoveryStreamFeed {
       fourCardLayout: pocketConfig.fourCardLayout,
       newFooterSection: pocketConfig.newFooterSection,
       compactGrid: pocketConfig.compactGrid,
-      // For now essentialReadsHeader and editorsPicksHeader are English only.
-      essentialReadsHeader:
-        this.locale.startsWith("en-") && pocketConfig.essentialReadsHeader,
-      editorsPicksHeader:
-        this.locale.startsWith("en-") && pocketConfig.editorsPicksHeader,
-      onboardingExperience,
       // For now button variants are for experimentation and English only.
       ctaButtonSponsors: this.locale.startsWith("en-") ? ctaButtonSponsors : [],
       ctaButtonVariant: this.locale.startsWith("en-") ? ctaButtonVariant : "",
-      spocMessageVariant: this.locale.startsWith("en-")
-        ? spocMessageVariant
-        : "",
       pocketStoriesHeadlineId: pocketConfig.pocketStoriesHeadlineId,
     });
 
@@ -1189,50 +1085,67 @@ export class DiscoveryStreamFeed {
     };
   }
 
-  updateSponsoredCollectionsPref(collectionEnabled = false) {
-    const currentState =
-      this.store.getState().Prefs.values[PREF_COLLECTIONS_ENABLED];
-
-    // If the current state does not match the new state, update the pref.
-    if (currentState !== collectionEnabled) {
-      this.store.dispatch(
-        ac.SetPref(PREF_COLLECTIONS_ENABLED, collectionEnabled)
-      );
-    }
-  }
-
   // This returns ad placements that contain IAB content.
   // The results are ads that are contextual, and match an IAB category.
   getContextualAdsPlacements() {
     const state = this.store.getState();
-    const placementsArray = state.Prefs.values[
+
+    const billboardEnabled = state.Prefs.values[PREF_BILLBOARD_ENABLED];
+    const billboardPosition = state.Prefs.values[PREF_BILLBOARD_POSITION];
+    const leaderboardEnabled = state.Prefs.values[PREF_LEADERBOARD_ENABLED];
+    const leaderboardPosition = state.Prefs.values[PREF_LEADERBOARD_POSITION];
+
+    function getContextualStringPref(prefName) {
+      return state.Prefs.values[prefName]
+        ?.split(",")
+        .map(s => s.trim())
+        .filter(item => item);
+    }
+
+    function getContextualCountPref(prefName) {
+      return state.Prefs.values[prefName]
+        ?.split(`,`)
+        .map(s => s.trim())
+        .filter(item => item)
+        .map(item => parseInt(item, 10));
+    }
+
+    const placementSpocsArray = getContextualStringPref(
       PREF_CONTEXTUAL_SPOC_PLACEMENTS
-    ]?.split(`,`)
-      .map(s => s.trim())
-      .filter(item => item);
-    const countsArray = state.Prefs.values[PREF_CONTEXTUAL_SPOC_COUNTS]?.split(
-      `,`
-    )
-      .map(s => s.trim())
-      .filter(item => item)
-      .map(item => parseInt(item, 10));
+    );
+    const countsSpocsArray = getContextualCountPref(
+      PREF_CONTEXTUAL_SPOC_COUNTS
+    );
+    const bannerPlacementsArray = getContextualStringPref(
+      PREF_CONTEXTUAL_BANNER_PLACEMENTS
+    );
+    const bannerCountsArray = getContextualCountPref(
+      PREF_CONTEXTUAL_BANNER_COUNTS
+    );
 
     const feeds = state.DiscoveryStream.feeds.data;
+
     const recsFeed = Object.values(feeds).find(
       feed => feed?.data?.sections?.length
     );
 
+    let iabSections = [];
     let iabPlacements = [];
+    let bannerPlacements = [];
 
     // If we don't have recsFeed, it means we are loading for the first time,
     // and don't have any cached data.
     // In this situation, we don't fill iabPlacements,
     // and go with the non IAB default contextual placement prefs.
     if (recsFeed) {
-      // An array of all iab placements, flattened, sorted, and filtered.
-      iabPlacements = recsFeed.data.sections
+      iabSections = recsFeed.data.sections
         .filter(section => section.iab)
-        .sort((a, b) => a.receivedRank - b.receivedRank)
+        .sort((a, b) => a.receivedRank - b.receivedRank);
+
+      // An array of all iab placement, flattened, sorted, and filtered.
+      iabPlacements = iabSections
+        // .filter(section => section.iab)
+        // .sort((a, b) => a.receivedRank - b.receivedRank)
         .reduce((acc, section) => {
           const iabArray = section.layout.responsiveLayouts[0].tiles
             .filter(tile => tile.hasAd)
@@ -1243,11 +1156,31 @@ export class DiscoveryStreamFeed {
         }, []);
     }
 
-    return placementsArray.map((placement, index) => ({
+    const spocPlacements = placementSpocsArray.map((placement, index) => ({
       placement,
-      count: countsArray[index],
+      count: countsSpocsArray[index],
       ...(iabPlacements[index] ? { content: iabPlacements[index] } : {}),
     }));
+
+    if (billboardEnabled) {
+      bannerPlacements = bannerPlacementsArray.map((placement, index) => ({
+        placement,
+        count: bannerCountsArray[index],
+        ...(iabSections[billboardPosition - 2]
+          ? { content: iabSections[billboardPosition - 2].iab }
+          : {}),
+      }));
+    } else if (leaderboardEnabled) {
+      bannerPlacements = bannerPlacementsArray.map((placement, index) => ({
+        placement,
+        count: bannerCountsArray[index],
+        ...(iabSections[leaderboardPosition - 2]
+          ? { content: iabSections[leaderboardPosition - 2].iab }
+          : {}),
+      }));
+    }
+
+    return [...spocPlacements, ...bannerPlacements];
   }
 
   // This returns ad placements that don't contain IAB content.
@@ -1357,6 +1290,8 @@ export class DiscoveryStreamFeed {
       }
 
       if (placements?.length) {
+        const headers = new Headers();
+        headers.append("content-type", "application/json");
         const apiKeyPref = this.config.api_key_pref;
         const apiKey = Services.prefs.getCharPref(apiKeyPref, "");
         const state = this.store.getState();
@@ -1374,7 +1309,30 @@ export class DiscoveryStreamFeed {
           endpoint = `${endpointBaseUrl}v1/ads`;
           unifiedAdsPlacements = this.getAdsPlacements();
           const blockedSponsors =
-            this.store.getState().Prefs.values[PREF_UNIFIED_ADS_BLOCKED_LIST];
+            state.Prefs.values[PREF_UNIFIED_ADS_BLOCKED_LIST];
+          const preFlightConfig =
+            state.Prefs.values?.trainhopConfig?.marsPreFlight || {};
+
+          // We need some basic data that we can pass along to the ohttp request.
+          // We purposefully don't use ohttp on this request. We also expect to
+          // mostly hit the HTTP cache rather than the network with these requests.
+          if (preFlightConfig.enabled) {
+            const preFlight = await this.fetchFromEndpoint(
+              `${endpointBaseUrl}v1/o`,
+              {
+                method: "GET",
+              }
+            );
+
+            if (preFlight) {
+              // If we don't get a normalized_ua, it means it matched the default userAgent.
+              headers.append(
+                "X-User-Agent",
+                preFlight.normalized_ua || lazy.userAgent
+              );
+              headers.append("X-Geoname-ID", preFlight.geoname_id);
+            }
+          }
 
           body = {
             context_id: await lazy.ContextId.request(),
@@ -1383,12 +1341,7 @@ export class DiscoveryStreamFeed {
           };
         }
 
-        const headers = new Headers();
-        const marsOhttpEnabled = Services.prefs.getBoolPref(
-          "browser.newtabpage.activity-stream.unifiedAds.ohttp.enabled",
-          false
-        );
-        headers.append("content-type", "application/json");
+        const marsOhttpEnabled = state.Prefs.values[PREF_UNIFIED_ADS_OHTTP];
 
         let spocsResponse;
         // Logic decision point: Query ads servers in this file or utilize AdsFeed method
@@ -1434,9 +1387,6 @@ export class DiscoveryStreamFeed {
                   override: !spocsResponse.settings.feature_flags.spoc_v2,
                 },
               })
-            );
-            this.updateSponsoredCollectionsPref(
-              spocsResponse.settings.feature_flags.collections
             );
           }
 
@@ -1612,24 +1562,17 @@ export class DiscoveryStreamFeed {
     }
     const headers = new Headers();
     headers.append("content-type", "application/json");
+    const marsOhttpEnabled = state.Prefs.values[PREF_UNIFIED_ADS_OHTTP];
 
-    await this.fetchFromEndpoint(endpoint, {
-      method: "DELETE",
-      headers,
-      body: JSON.stringify(body),
-    });
-  }
-
-  observe(subject, topic, data) {
-    switch (topic) {
-      case "nsPref:changed":
-        // If the Pocket button was turned on or off, we need to update the cards
-        // because cards show menu options for the Pocket button that need to be removed.
-        if (data === PREF_POCKET_BUTTON) {
-          this.configReset();
-        }
-        break;
-    }
+    await this.fetchFromEndpoint(
+      endpoint,
+      {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify(body),
+      },
+      marsOhttpEnabled
+    );
   }
 
   /*
@@ -1670,15 +1613,42 @@ export class DiscoveryStreamFeed {
     const personalizedByType =
       type === "feed" ? recsPersonalized : spocsPersonalized;
     // If this is initialized, we are ready to go.
-    const personalized = this.store.getState().Personalization.initialized;
-
-    const data = (
-      await Promise.all(
-        items.map(item => this.scoreItem(item, personalizedByType))
+    let personalized = this.store.getState().Personalization.initialized;
+    let data = null;
+    if (type === "feed" && this.doLocalInferredRerank) {
+      // make a flag for this
+      const { inferredInterests = {} } =
+        this.store.getState().InferredPersonalization ?? {};
+      const weights = {
+        inferred_norm: Object.entries(inferredInterests).reduce(
+          (acc, [, v]) =>
+            Number.isFinite(v) && !Number.isInteger(v) ? acc + v : acc,
+          0
+        ),
+        local:
+          (this.store.getState().Prefs.values?.inferredPersonalizationConfig
+            ?.local_inferred_weight ?? LOCAL_WEIGHT) / 100,
+        server:
+          (this.store.getState().Prefs.values?.inferredPersonalizationConfig
+            ?.server_inferred_weight ?? SERVER_WEIGHT) / 100,
+      };
+      data = (
+        await Promise.all(
+          items.map(item => scoreItemInferred(item, inferredInterests, weights))
+        )
       )
-    )
-      // Sort by highest scores.
-      .sort(this.sortItem);
+        // Sort by highest scores.
+        .sort(this.sortItem);
+      personalized = true;
+    } else {
+      data = (
+        await Promise.all(
+          items.map(item => this.scoreItem(item, personalizedByType))
+        )
+      )
+        // Sort by highest scores.
+        .sort(this.sortItem);
+    }
 
     return { data, personalized };
   }
@@ -1867,10 +1837,7 @@ export class DiscoveryStreamFeed {
     let isFakespot;
     const selectedFeedPref = prefs[PREF_CONTEXTUAL_CONTENT_SELECTED_FEED];
     // Should we fetch /curated-recommendations over OHTTP
-    const merinoOhttpEnabled = Services.prefs.getBoolPref(
-      "browser.newtabpage.activity-stream.discoverystream.merino-provider.ohttp.enabled",
-      false
-    );
+    const merinoOhttpEnabled = prefs[PREF_MERINO_OHTTP];
     let sections = [];
     const { feeds } = cachedData;
 
@@ -1889,115 +1856,104 @@ export class DiscoveryStreamFeed {
       if (feedResponse) {
         const { settings = {} } = feedResponse;
         let { recommendations } = feedResponse;
-        if (this.isMerino) {
-          recommendations = feedResponse.data.map(item => ({
-            id: item.corpusItemId || item.scheduledCorpusItemId || item.tileId,
-            scheduled_corpus_item_id: item.scheduledCorpusItemId,
-            corpus_item_id: item.corpusItemId,
-            url: item.url,
-            title: item.title,
-            topic: item.topic,
-            features: item.features,
-            excerpt: item.excerpt,
-            publisher: item.publisher,
-            raw_image_src: item.imageUrl,
-            received_rank: item.receivedRank,
-            recommended_at: feedResponse.recommendedAt,
-            icon_src: item.iconUrl,
-            isTimeSensitive: item.isTimeSensitive,
-          }));
-          if (feedResponse.feeds && selectedFeedPref && !sectionsEnabled) {
-            isFakespot = selectedFeedPref === "fakespot";
-            const keyName = isFakespot ? "products" : "recommendations";
-            const selectedFeedResponse = feedResponse.feeds[selectedFeedPref];
-            selectedFeedResponse?.[keyName]?.forEach(item =>
-              recommendations.push({
-                id: isFakespot
-                  ? item.id
-                  : item.corpusItemId ||
+
+        recommendations = feedResponse.data.map(item => ({
+          id: item.corpusItemId || item.scheduledCorpusItemId || item.tileId,
+          scheduled_corpus_item_id: item.scheduledCorpusItemId,
+          corpus_item_id: item.corpusItemId,
+          features: item.features,
+          excerpt: item.excerpt,
+          icon_src: item.iconUrl,
+          isTimeSensitive: item.isTimeSensitive,
+          publisher: item.publisher,
+          raw_image_src: item.imageUrl,
+          received_rank: item.receivedRank,
+          recommended_at: feedResponse.recommendedAt,
+          title: item.title,
+          topic: item.topic,
+          url: item.url,
+        }));
+        if (feedResponse.feeds && selectedFeedPref && !sectionsEnabled) {
+          isFakespot = selectedFeedPref === "fakespot";
+          const keyName = isFakespot ? "products" : "recommendations";
+          const selectedFeedResponse = feedResponse.feeds[selectedFeedPref];
+          selectedFeedResponse?.[keyName]?.forEach(item =>
+            recommendations.push({
+              id: isFakespot
+                ? item.id
+                : item.corpusItemId ||
+                  item.scheduledCorpusItemId ||
+                  item.tileId,
+              scheduled_corpus_item_id: item.scheduledCorpusItemId,
+              corpus_item_id: item.corpusItemId,
+              url: item.url,
+              title: item.title,
+              topic: item.topic,
+              excerpt: item.excerpt,
+              publisher: item.publisher,
+              raw_image_src: item.imageUrl,
+              received_rank: item.receivedRank,
+              recommended_at: feedResponse.recommendedAt,
+              // property to determine if rec is used in ListFeed or not
+              feedName: selectedFeedPref,
+              category: item.category,
+              icon_src: item.iconUrl,
+              isTimeSensitive: item.isTimeSensitive,
+            })
+          );
+
+          const prevTitle = prefs[PREF_CONTEXTUAL_CONTENT_LISTFEED_TITLE];
+
+          const feedTitle = isFakespot
+            ? selectedFeedResponse.headerCopy
+            : selectedFeedResponse.title;
+
+          if (feedTitle && feedTitle !== prevTitle) {
+            this.handleListfeedStrings(selectedFeedResponse, isFakespot);
+          }
+        }
+
+        if (sectionsEnabled) {
+          for (const [sectionKey, sectionData] of Object.entries(
+            feedResponse.feeds
+          )) {
+            if (sectionData) {
+              for (const item of sectionData.recommendations) {
+                recommendations.push({
+                  id:
+                    item.corpusItemId ||
                     item.scheduledCorpusItemId ||
                     item.tileId,
-                scheduled_corpus_item_id: item.scheduledCorpusItemId,
-                corpus_item_id: item.corpusItemId,
-                url: item.url,
-                title: item.title,
-                topic: item.topic,
-                excerpt: item.excerpt,
-                publisher: item.publisher,
-                raw_image_src: item.imageUrl,
-                received_rank: item.receivedRank,
-                recommended_at: feedResponse.recommendedAt,
-                // property to determine if rec is used in ListFeed or not
-                feedName: selectedFeedPref,
-                category: item.category,
-                icon_src: item.iconUrl,
-                isTimeSensitive: item.isTimeSensitive,
-              })
-            );
-
-            const prevTitle = prefs[PREF_CONTEXTUAL_CONTENT_LISTFEED_TITLE];
-
-            const feedTitle = isFakespot
-              ? selectedFeedResponse.headerCopy
-              : selectedFeedResponse.title;
-
-            if (feedTitle && feedTitle !== prevTitle) {
-              this.handleListfeedStrings(selectedFeedResponse, isFakespot);
-            }
-          }
-
-          if (sectionsEnabled) {
-            for (const [sectionKey, sectionData] of Object.entries(
-              feedResponse.feeds
-            )) {
-              if (sectionData) {
-                for (const item of sectionData.recommendations) {
-                  recommendations.push({
-                    id:
-                      item.corpusItemId ||
-                      item.scheduledCorpusItemId ||
-                      item.tileId,
-                    scheduled_corpus_item_id: item.scheduledCorpusItemId,
-                    corpus_item_id: item.corpusItemId,
-                    url: item.url,
-                    title: item.title,
-                    topic: item.topic,
-                    features: item.features,
-                    excerpt: item.excerpt,
-                    publisher: item.publisher,
-                    raw_image_src: item.imageUrl,
-                    received_rank: item.receivedRank,
-                    recommended_at: feedResponse.recommendedAt,
-                    section: sectionKey,
-                    icon_src: item.iconUrl,
-                    isTimeSensitive: item.isTimeSensitive,
-                  });
-                }
-                sections.push({
-                  sectionKey,
-                  title: sectionData.title,
-                  subtitle: sectionData.subtitle || "",
-                  receivedRank: sectionData.receivedFeedRank,
-                  layout: sectionData.layout,
-                  iab: sectionData.iab,
-                  // property if initially shown (with interest picker)
-                  visible: sectionData.isInitiallyVisible,
+                  scheduled_corpus_item_id: item.scheduledCorpusItemId,
+                  corpus_item_id: item.corpusItemId,
+                  url: item.url,
+                  title: item.title,
+                  topic: item.topic,
+                  features: item.features,
+                  excerpt: item.excerpt,
+                  publisher: item.publisher,
+                  raw_image_src: item.imageUrl,
+                  received_rank: item.receivedRank,
+                  recommended_at: feedResponse.recommendedAt,
+                  section: sectionKey,
+                  icon_src: item.iconUrl,
+                  isTimeSensitive: item.isTimeSensitive,
                 });
               }
+              sections.push({
+                sectionKey,
+                title: sectionData.title,
+                subtitle: sectionData.subtitle || "",
+                receivedRank: sectionData.receivedFeedRank,
+                layout: sectionData.layout,
+                iab: sectionData.iab,
+                // property if initially shown (with interest picker)
+                visible: sectionData.isInitiallyVisible,
+              });
             }
           }
-        } else if (this.isBff) {
-          recommendations = feedResponse.data.map(item => ({
-            id: item.tileId,
-            url: item.url,
-            title: item.title,
-            excerpt: item.excerpt,
-            publisher: item.publisher,
-            time_to_read: item.timeToRead,
-            raw_image_src: item.imageUrl,
-            recommendation_id: item.recommendationId,
-          }));
         }
+
         const { data: scoredItems, personalized } = await this.scoreItems(
           recommendations,
           "feed"
@@ -2126,98 +2082,89 @@ export class DiscoveryStreamFeed {
     const inferredPersonalization =
       prefs[PREF_USER_INFERRED_PERSONALIZATION] &&
       prefs[PREF_SYSTEM_INFERRED_PERSONALIZATION];
-    const merinoOhttpEnabled = Services.prefs.getBoolPref(
-      "browser.newtabpage.activity-stream.discoverystream.merino-provider.ohttp.enabled",
-      false
-    );
+    const merinoOhttpEnabled = prefs[PREF_MERINO_OHTTP];
     const headers = new Headers();
-    if (this.isMerino) {
-      const topicSelectionEnabled = prefs[PREF_TOPIC_SELECTION_ENABLED];
-      const topicsString = prefs[PREF_SELECTED_TOPICS];
-      const topics = topicSelectionEnabled
-        ? topicsString
-            .split(",")
-            .map(s => s.trim())
-            .filter(item => item)
-        : [];
+    const topicSelectionEnabled = prefs[PREF_TOPIC_SELECTION_ENABLED];
+    const topicsString = prefs[PREF_SELECTED_TOPICS];
+    const topics = topicSelectionEnabled
+      ? topicsString
+          .split(",")
+          .map(s => s.trim())
+          .filter(item => item)
+      : [];
 
-      // Should we pass the experiment branch and slug to the Merino feed request.
-      const prefMerinoFeedExperiment = Services.prefs.getBoolPref(
-        PREF_MERINO_FEED_EXPERIMENT
-      );
+    // Should we pass the experiment branch and slug to the Merino feed request.
+    const prefMerinoFeedExperiment = Services.prefs.getBoolPref(
+      PREF_MERINO_FEED_EXPERIMENT
+    );
 
-      // convert section to array to match what merino is expecting
-      const sections = Object.entries(sectionPersonalization).map(
-        ([sectionId, data]) => ({
-          sectionId,
-          isFollowed: data.isFollowed,
-          isBlocked: data.isBlocked,
-          ...(data.followedAt && { followedAt: data.followedAt }),
-        })
-      );
+    // convert section to array to match what merino is expecting
+    const sections = Object.entries(sectionPersonalization).map(
+      ([sectionId, data]) => ({
+        sectionId,
+        isFollowed: data.isFollowed,
+        isBlocked: data.isBlocked,
+        ...(data.followedAt && { followedAt: data.followedAt }),
+      })
+    );
 
-      // To display the inline interest picker pass `enableInterestPicker` into the request
-      const interestPickerEnabled = prefs[PREF_INTEREST_PICKER_ENABLED];
+    // To display the inline interest picker pass `enableInterestPicker` into the request
+    const interestPickerEnabled = prefs[PREF_INTEREST_PICKER_ENABLED];
 
-      let inferredInterests = null;
-      if (inferredPersonalization && merinoOhttpEnabled) {
-        inferredInterests =
-          this.store.getState().InferredPersonalization.inferredInterests || {};
-      }
-      const requestMetadata = {
-        utc_offset: lazy.NewTabUtils.getUtcOffset(prefs[PREF_SURFACE_ID]),
-        coarse_os: lazy.NewTabUtils.normalizeOs(),
-        surface_id: prefs[PREF_SURFACE_ID] || "",
-        inferredInterests,
-      };
-
-      headers.append("content-type", "application/json");
-      let body = {
-        ...(prefMerinoFeedExperiment ? this.getExperimentInfo() : {}),
-        ...requestMetadata,
-        locale: this.locale,
-        region: this.region,
-        topics,
-        sections,
-        enableInterestPicker: !!interestPickerEnabled,
-      };
-
-      const sectionsEnabled = prefs[PREF_SECTIONS_ENABLED];
-
-      // Should we pass the feed param to the merino request
-      const contextualContentEnabled = prefs[PREF_CONTEXTUAL_CONTENT_ENABLED];
-      const selectedFeed = prefs[PREF_CONTEXTUAL_CONTENT_SELECTED_FEED];
-      const isFakespot = selectedFeed === "fakespot";
-      const fakespotEnabled = prefs[PREF_FAKESPOT_ENABLED];
-
-      const shouldFetchTBRFeed =
-        (contextualContentEnabled && !isFakespot) ||
-        (contextualContentEnabled && isFakespot && fakespotEnabled);
-
-      if (shouldFetchTBRFeed) {
-        body.feeds = [selectedFeed];
-      }
-      if (sectionsEnabled) {
-        // if sections is enabled, it should override the TBR feed
-        body.feeds = ["sections"];
-      }
-
-      return {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-      };
-    } else if (this.isBff) {
-      const oAuthConsumerKey = Services.prefs.getStringPref(
-        "extensions.pocket.oAuthConsumerKeyBff"
-      );
-      headers.append("consumer_key", oAuthConsumerKey);
-      return {
-        method: "GET",
-        headers,
-      };
+    let inferredInterests = null;
+    if (inferredPersonalization && merinoOhttpEnabled) {
+      const useLaplace =
+        !prefs.inferredPersonalizationConfig?.iv_unary_dp_in_request;
+      inferredInterests =
+        (useLaplace
+          ? this.store.getState().InferredPersonalization.inferredInterests
+          : this.store.getState().InferredPersonalization
+              .coarsePrivateInferredInterests) || {};
     }
-    return {};
+
+    const requestMetadata = {
+      utc_offset: prefs.inferredPersonalizationConfig
+        ?.normalized_time_zone_offset
+        ? lazy.NewTabUtils.getUtcOffset(prefs[PREF_SURFACE_ID])
+        : undefined,
+      inferredInterests,
+    };
+    headers.append("content-type", "application/json");
+    let body = {
+      ...(prefMerinoFeedExperiment ? this.getExperimentInfo() : {}),
+      ...requestMetadata,
+      locale: this.locale,
+      region: this.region,
+      topics,
+      sections,
+      enableInterestPicker: !!interestPickerEnabled,
+    };
+
+    const sectionsEnabled = prefs[PREF_SECTIONS_ENABLED];
+
+    // Should we pass the feed param to the merino request
+    const contextualContentEnabled = prefs[PREF_CONTEXTUAL_CONTENT_ENABLED];
+    const selectedFeed = prefs[PREF_CONTEXTUAL_CONTENT_SELECTED_FEED];
+    const isFakespot = selectedFeed === "fakespot";
+    const fakespotEnabled = prefs[PREF_FAKESPOT_ENABLED];
+
+    const shouldFetchTBRFeed =
+      (contextualContentEnabled && !isFakespot) ||
+      (contextualContentEnabled && isFakespot && fakespotEnabled);
+
+    if (shouldFetchTBRFeed) {
+      body.feeds = [selectedFeed];
+    }
+    if (sectionsEnabled) {
+      // if sections is enabled, it should override the TBR feed
+      body.feeds = ["sections"];
+    }
+
+    return {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    };
   }
 
   /**
@@ -2446,8 +2393,6 @@ export class DiscoveryStreamFeed {
   async resetAllCache() {
     await this.resetContentCache();
     // Reset in-memory caches.
-    this._isBff = undefined;
-    this._isMerino = undefined;
     this._isContextualAds = undefined;
     this._spocsCacheUpdateTime = undefined;
   }
@@ -2638,14 +2583,6 @@ export class DiscoveryStreamFeed {
     }
   }
 
-  onCollectionsChanged() {
-    // Update layout, and reload any off screen tabs.
-    // This does not change any existing open tabs.
-    // It also doesn't update any spoc or rec data, just the layout.
-    const dispatch = action => this.store.dispatch(ac.AlsoToPreloaded(action));
-    this.loadLayout(dispatch, false);
-  }
-
   async retreiveProfileAge() {
     let profileAccessor = await lazy.ProfileAge();
     let profileCreateTime = await profileAccessor.created;
@@ -2700,9 +2637,7 @@ export class DiscoveryStreamFeed {
       case PREF_USER_INFERRED_PERSONALIZATION:
       case PREF_SYSTEM_INFERRED_PERSONALIZATION:
         this._isContextualAds = undefined;
-        break;
-      case PREF_COLLECTIONS_ENABLED:
-        this.onCollectionsChanged();
+        this._doLocalInferredRerank = undefined;
         break;
       case PREF_SELECTED_TOPICS:
         this.store.dispatch(
@@ -2781,7 +2716,6 @@ export class DiscoveryStreamFeed {
         if (this.config.enabled) {
           await this.enable({ updateOpenTabs: true, isStartup: true });
         }
-        Services.prefs.addObserver(PREF_POCKET_BUTTON, this);
         // This function is async but just for devtools,
         // so we don't need to wait for it.
         this.setupDevtoolsState(true /* isStartup */);
@@ -2834,9 +2768,6 @@ export class DiscoveryStreamFeed {
             })
           )
         );
-        break;
-      case at.DISCOVERY_STREAM_POCKET_STATE_INIT:
-        this.setupPocketState(action.meta.fromTarget);
         break;
       case at.DISCOVERY_STREAM_PERSONALIZATION_UPDATED:
         if (this.personalized) {
@@ -3019,7 +2950,6 @@ export class DiscoveryStreamFeed {
         // When this feed is shutting down:
         this.uninitPrefs();
         this._recommendationProvider = null;
-        Services.prefs.removeObserver(PREF_POCKET_BUTTON, this);
         break;
       case at.BLOCK_URL: {
         // If we block a story that also has a flight_id
@@ -3078,22 +3008,17 @@ export class DiscoveryStreamFeed {
      `spocPlacementData` Used to set the spoc content.
      `spocTopsitesPlacementEnabled` Tuns on and off the sponsored topsites placement.
      `spocTopsitesPlacementData` Used to set spoc content for topsites.
-     `sponsoredCollectionsEnabled` Tuns on and off the sponsored collection section.
      `hybridLayout` Changes cards to smaller more compact cards only for specific breakpoints.
      `hideCardBackground` Removes Pocket card background and borders.
      `fourCardLayout` Enable four Pocket cards per row.
      `newFooterSection` Changes the layout of the topics section.
      `compactGrid` Reduce the number of pixels between the Pocket cards.
-     `essentialReadsHeader` Updates the Pocket section header and title to say "Today’s Essential Reads", moves the "Recommended by Pocket" header to the right side.
-     `editorsPicksHeader` Updates the Pocket section header and title to say "Editor’s Picks", if used with essentialReadsHeader, creates a second section 2 rows down for editorsPicks.
-     `onboardingExperience` Show new users some UI explaining Pocket above the Pocket section.
      `ctaButtonSponsors` An array of sponsors we want to show a cta button on the card for.
      `ctaButtonVariant` Sets the variant for the cta sponsor button.
-     `spocMessageVariant` Sets the variant for the sponsor message dialog.
 */
 getHardcodedLayout = ({
   spocsUrl = SPOCS_URL,
-  feedUrl = FEED_URL,
+  feedUrl,
   items = 21,
   spocPositions = [1, 5, 7, 11, 18, 20],
   spocTopsitesPositions = [1],
@@ -3102,18 +3027,13 @@ getHardcodedLayout = ({
   spocTopsitesPlacementData = { ad_types: [3120], zone_ids: [280143] },
   widgetPositions = [],
   widgetData = [],
-  sponsoredCollectionsEnabled = false,
   hybridLayout = false,
   hideCardBackground = false,
   fourCardLayout = false,
   newFooterSection = false,
   compactGrid = false,
-  essentialReadsHeader = false,
-  editorsPicksHeader = false,
-  onboardingExperience = false,
   ctaButtonSponsors = [],
   ctaButtonVariant = "",
-  spocMessageVariant = "",
   pocketStoriesHeadlineId = "newtab-section-header-stories",
 }) => ({
   lastUpdate: Date.now(),
@@ -3149,42 +3069,8 @@ getHardcodedLayout = ({
             : {}),
           properties: {},
         },
-        ...(sponsoredCollectionsEnabled
-          ? [
-              {
-                type: "CollectionCardGrid",
-                properties: {
-                  items: 3,
-                },
-                header: {
-                  title: "",
-                },
-                placement: {
-                  name: "sponsored-collection",
-                  ad_types: [3617],
-                  zone_ids: [217759, 218031],
-                },
-                spocs: {
-                  probability: 1,
-                  positions: [
-                    {
-                      index: 0,
-                    },
-                    {
-                      index: 1,
-                    },
-                    {
-                      index: 2,
-                    },
-                  ],
-                },
-              },
-            ]
-          : []),
         {
           type: "Message",
-          essentialReadsHeader,
-          editorsPicksHeader,
           header: {
             title: {
               id: pocketStoriesHeadlineId,
@@ -3195,9 +3081,6 @@ getHardcodedLayout = ({
             },
             link_url: "",
             icon: "chrome://global/skin/icons/pocket.svg",
-          },
-          properties: {
-            spocMessageVariant,
           },
           styles: {
             ".ds-message": "margin-block-end: -20px",
@@ -3211,12 +3094,8 @@ getHardcodedLayout = ({
             hideCardBackground,
             fourCardLayout,
             compactGrid,
-            essentialReadsHeader,
-            editorsPicksHeader,
-            onboardingExperience,
             ctaButtonSponsors,
             ctaButtonVariant,
-            spocMessageVariant,
           },
           widgets: {
             positions: widgetPositions.map(position => {

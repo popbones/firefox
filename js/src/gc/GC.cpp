@@ -233,6 +233,7 @@
 #include "vm/JitActivation.h"
 #include "vm/JSObject.h"
 #include "vm/JSScript.h"
+#include "vm/Logging.h"
 #include "vm/PropMap.h"
 #include "vm/Realm.h"
 #include "vm/Shape.h"
@@ -393,12 +394,7 @@ void GCRuntime::releaseArena(Arena* arena, const AutoLockGC& lock) {
   MOZ_ASSERT(!arena->onDelayedMarkingList());
   MOZ_ASSERT(TlsGCContext.get()->isFinalizing());
 
-  if (IsBufferAllocKind(arena->getAllocKind())) {
-    size_t usableBytes = ArenaSize - arena->getFirstThingOffset();
-    arena->zone()->mallocHeapSize.removeBytes(usableBytes, true);
-  } else {
-    arena->zone()->gcHeapSize.removeBytes(ArenaSize, true, heapSize);
-  }
+  arena->zone()->gcHeapSize.removeBytes(ArenaSize, true, heapSize);
   if (arena->zone()->isAtomsZone()) {
     arena->freeAtomMarkingBitmapIndex(this, lock);
   }
@@ -786,7 +782,15 @@ static bool ParseZealModeNumericParam(const CharRange& text,
 }
 
 static bool PrintZealHelpAndFail() {
-  fprintf(stderr, "Format: JS_GC_ZEAL=level(;level)*[,N]\n");
+  fprintf(stderr, "Format: JS_GC_ZEAL=mode[;mode2;mode3...][,frequency]\n");
+  fprintf(stderr, "  Examples: JS_GC_ZEAL=2 (mode 2 with default frequency)\n");
+  fprintf(
+      stderr,
+      "            JS_GC_ZEAL=2;7 (modes 2 and 7 with default frequency)\n");
+  fprintf(stderr, "            JS_GC_ZEAL=2,100 (mode 2 with frequency 100)\n");
+  fprintf(stderr,
+          "            JS_GC_ZEAL=2;7,100 (modes 2 and 7, both with frequency "
+          "100)\n");
   fputs(ZealModeHelpText, stderr);
   return false;
 }
@@ -1630,7 +1634,7 @@ bool GCRuntime::addBlackRootsTracer(JSTraceDataOp traceOp, void* data) {
 
 void GCRuntime::removeBlackRootsTracer(JSTraceDataOp traceOp, void* data) {
   // Can be called from finalizers
-  MOZ_ALWAYS_TRUE(EraseCallback(blackRootTracers.ref(), traceOp));
+  MOZ_ALWAYS_TRUE(EraseCallback(blackRootTracers.ref(), traceOp, data));
 }
 
 void GCRuntime::setGrayRootsTracer(JSGrayRootsTracer traceOp, void* data) {
@@ -2845,6 +2849,14 @@ void GCRuntime::purgeSourceURLsForShrinkingGC() {
   }
 }
 
+void GCRuntime::purgePendingWrapperPreservationBuffersForShrinkingGC() {
+  gcstats::AutoPhase ap(stats(),
+                        gcstats::PhaseKind::PURGE_WRAPPER_PRESERVATION);
+  for (GCZonesIter zone(this); !zone.done(); zone.next()) {
+    zone->purgePendingWrapperPreservationBuffer();
+  }
+}
+
 void GCRuntime::unmarkWeakMaps() {
   for (GCZonesIter zone(this); !zone.done(); zone.next()) {
     /* Unmark all weak maps in the zones being collected. */
@@ -3021,6 +3033,11 @@ void GCRuntime::endPreparePhase(JS::GCReason reason) {
       relazifyFunctionsForShrinkingGC();
       purgePropMapTablesForShrinkingGC();
       purgeSourceURLsForShrinkingGC();
+      {
+        AutoGCSession commitSession(this, JS::HeapState::Idle);
+        rt->commitPendingWrapperPreservations();
+      }
+      purgePendingWrapperPreservationBuffersForShrinkingGC();
     }
 
     if (isShutdownGC()) {
@@ -3311,8 +3328,7 @@ IncrementalProgress GCRuntime::markUntilBudgetExhausted(
     MOZ_ASSERT(reportTime);
     MOZ_ASSERT(!isBackgroundMarking());
 
-    ParallelMarker pm(this);
-    if (!pm.mark(sliceBudget)) {
+    if (!ParallelMarker::mark(this, sliceBudget)) {
       return NotFinished;
     }
 
@@ -3678,8 +3694,9 @@ AutoHeapSession::AutoHeapSession(GCRuntime* gc, JS::HeapState heapState)
   MOZ_ASSERT(CurrentThreadCanAccessRuntime(gc->rt));
   MOZ_ASSERT(prevState == JS::HeapState::Idle ||
              (prevState == JS::HeapState::MajorCollecting &&
+              heapState == JS::HeapState::Idle) ||
+             (prevState == JS::HeapState::MajorCollecting &&
               heapState == JS::HeapState::MinorCollecting));
-  MOZ_ASSERT(heapState != JS::HeapState::Idle);
 
   gc->heapState_ = heapState;
 
@@ -3692,10 +3709,11 @@ AutoHeapSession::AutoHeapSession(GCRuntime* gc, JS::HeapState heapState)
   }
 }
 
-AutoHeapSession::~AutoHeapSession() {
-  MOZ_ASSERT(JS::RuntimeHeapIsBusy());
-  gc->heapState_ = prevState;
-}
+AutoHeapSession::~AutoHeapSession() { gc->heapState_ = prevState; }
+
+AutoTraceSession::AutoTraceSession(JSRuntime* rt)
+    : AutoHeapSession(&rt->gc, JS::HeapState::Tracing),
+      JS::AutoCheckCannotGC() {}
 
 static const char* MajorGCStateToLabel(State state) {
   switch (state) {
@@ -3881,15 +3899,6 @@ static bool NeedToCollectNursery(GCRuntime* gc) {
   return !gc->nursery().isEmpty() || !gc->storeBuffer().isEmpty();
 }
 
-#ifdef DEBUG
-static const char* DescribeBudget(const SliceBudget& budget) {
-  constexpr size_t length = 32;
-  static char buffer[length];
-  budget.describe(buffer, length);
-  return buffer;
-}
-#endif
-
 static bool ShouldPauseMutatorWhileWaiting(const SliceBudget& budget,
                                            JS::GCReason reason,
                                            bool budgetWasIncreased) {
@@ -3924,18 +3933,9 @@ void GCRuntime::incrementalSlice(SliceBudget& budget, JS::GCReason reason,
   useZeal = isIncremental && reason == JS::GCReason::DEBUG_GC;
 #endif
 
-#ifdef DEBUG
-  stats().log(
-      "Incremental: %d, lastMarkSlice: %d, useZeal: %d, budget: %s, "
-      "budgetWasIncreased: %d",
-      bool(isIncremental), bool(lastMarkSlice), bool(useZeal),
-      DescribeBudget(budget), budgetWasIncreased);
-#endif
-
   if (useZeal && zealModeControlsYieldPoint()) {
     // Yields between slices occurs at predetermined points in these modes; the
     // budget is not used. |isIncremental| is still true.
-    stats().log("Using unlimited budget for two-slice zeal mode");
     budget = SliceBudget::unlimited();
   }
 
@@ -3980,6 +3980,11 @@ void GCRuntime::incrementalSlice(SliceBudget& budget, JS::GCReason reason,
 
     case State::MarkRoots:
       endPreparePhase(reason);
+
+      {
+        AutoGCSession commitSession(this, JS::HeapState::Idle);
+        rt->commitPendingWrapperPreservations();
+      }
 
       beginMarkPhase(session);
       incrementalState = State::Mark;
@@ -4037,7 +4042,6 @@ void GCRuntime::incrementalSlice(SliceBudget& budget, JS::GCReason reason,
              !(useZeal && hasZealMode(ZealMode::YieldBeforeMarking))) ||
             (useZeal && hasZealMode(ZealMode::YieldBeforeSweeping))) {
           lastMarkSlice = true;
-          stats().log("Yielding before starting sweeping");
           break;
         }
       }
@@ -4117,6 +4121,11 @@ void GCRuntime::incrementalSlice(SliceBudget& budget, JS::GCReason reason,
 
     case State::Compact:
       if (isCompacting) {
+        {
+          AutoGCSession commitSession(this, JS::HeapState::Idle);
+          rt->commitPendingWrapperPreservations();
+        }
+
         if (NeedToCollectNursery(this)) {
           collectNurseryFromMajorGC(reason);
         }
@@ -4692,6 +4701,12 @@ bool GCRuntime::checkIfGCAllowedInCurrentState(JS::GCReason reason) {
     return false;
   }
 
+  // This detects coding errors where we are trying to run a GC when GC is
+  // supposed to be impossible. Do this check here, before any other early
+  // returns that might miss bugs. (Do not do this check first thing, because it
+  // is legal to call GC() if you know GC is suppressed.)
+  rt->mainContextFromOwnThread()->verifyIsSafeToGC();
+
   // Only allow shutdown GCs when we're destroying the runtime. This keeps
   // the GC callback from triggering a nested GC and resetting global state.
   if (rt->isBeingDestroyed() && !isShutdownGC()) {
@@ -4770,7 +4785,8 @@ void GCRuntime::collect(bool nonincrementalByAPI, const SliceBudget& budget,
     return;
   }
 
-  stats().log("GC slice starting in state %s", StateName(incrementalState));
+  JS_LOG(gc, Info, "begin slice for reason %s in state %s",
+         ExplainGCReason(reason), StateName(incrementalState));
 
   AutoStopVerifyingBarriers av(rt, isShutdownGC());
   AutoMaybeLeaveAtomsZone leaveAtomsZone(rt->mainContextFromOwnThread());
@@ -4788,7 +4804,7 @@ void GCRuntime::collect(bool nonincrementalByAPI, const SliceBudget& budget,
     if (cycleResult == IncrementalResult::Abort) {
       MOZ_ASSERT(reason == JS::GCReason::ABORT_GC);
       MOZ_ASSERT(!isIncrementalGCInProgress());
-      stats().log("GC aborted by request");
+      JS_LOG(gc, Info, "aborted by request");
       break;
     }
 
@@ -4831,7 +4847,7 @@ void GCRuntime::collect(bool nonincrementalByAPI, const SliceBudget& budget,
     }
   }
 #endif
-  stats().log("GC slice ending in state %s", StateName(incrementalState));
+  JS_LOG(gc, Info, "end slice in state %s", StateName(incrementalState));
 
   UnscheduleZones(this);
 }

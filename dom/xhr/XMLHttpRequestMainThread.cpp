@@ -10,106 +10,104 @@
 #ifndef XP_WIN
 #  include <unistd.h>
 #endif
-#include "mozilla/AppShutdown.h"
-#include "mozilla/ArrayUtils.h"
-#include "mozilla/BasePrincipal.h"
-#include "mozilla/CheckedInt.h"
-#include "mozilla/Components.h"
-#include "mozilla/dom/AutoSuppressEventHandlingAndSuspend.h"
-#include "mozilla/dom/BlobBinding.h"
-#include "mozilla/dom/BlobURLProtocolHandler.h"
-#include "mozilla/dom/DocGroup.h"
-#include "mozilla/dom/DOMString.h"
-#include "mozilla/dom/File.h"
-#include "mozilla/dom/FileBinding.h"
-#include "mozilla/dom/FileCreatorHelper.h"
-#include "mozilla/dom/FetchUtil.h"
-#include "mozilla/dom/FormData.h"
-#include "mozilla/dom/quota/QuotaCommon.h"
-#include "mozilla/dom/MutableBlobStorage.h"
-#include "mozilla/dom/XMLDocument.h"
-#include "mozilla/dom/URLSearchParams.h"
-#include "mozilla/dom/UserActivation.h"
-#include "mozilla/dom/Promise.h"
-#include "mozilla/dom/PromiseNativeHandler.h"
-#include "mozilla/dom/ReferrerInfo.h"
-#include "mozilla/dom/WorkerError.h"
-#include "mozilla/Encoding.h"
-#include "mozilla/EventDispatcher.h"
-#include "mozilla/EventListenerManager.h"
-#include "mozilla/HoldDropJSObjects.h"
-#include "mozilla/LoadInfo.h"
-#include "mozilla/LoadContext.h"
-#include "mozilla/MemoryReporting.h"
-#include "mozilla/net/ContentRange.h"
-#include "mozilla/PreloaderBase.h"
-#include "mozilla/ScopeExit.h"
-#include "mozilla/SpinEventLoopUntil.h"
-#include "mozilla/StaticPrefs_dom.h"
-#include "mozilla/StaticPrefs_network.h"
-#include "mozilla/StaticPrefs_privacy.h"
-#include "mozilla/dom/ProgressEvent.h"
-#include "nsDataChannel.h"
-#include "nsIBaseChannel.h"
-#include "nsIJARChannel.h"
-#include "nsIJARURI.h"
-#include "nsGlobalWindowInner.h"
-#include "nsReadableUtils.h"
-#include "nsSandboxFlags.h"
-
-#include "nsIContentPolicy.h"
-#include "nsIURI.h"
-#include "nsIURIMutator.h"
-#include "nsILoadGroup.h"
-#include "nsNetUtil.h"
-#include "nsStringStream.h"
-#include "nsIAuthPrompt.h"
-#include "nsIAuthPrompt2.h"
-#include "nsIClassifiedChannel.h"
-#include "nsIClassOfService.h"
-#include "nsIHttpChannel.h"
-#include "nsISupportsPriority.h"
-#include "nsIInterfaceRequestorUtils.h"
-#include "nsStreamUtils.h"
-#include "nsThreadUtils.h"
-#include "nsIUploadChannel.h"
-#include "nsIUploadChannel2.h"
-#include "nsXPCOM.h"
-#include "nsIDOMEventListener.h"
-#include "nsVariant.h"
-#include "nsIScriptError.h"
-#include "nsICachingChannel.h"
-#include "nsICookieJarSettings.h"
-#include "nsContentUtils.h"
-#include "nsCycleCollectionParticipant.h"
-#include "nsError.h"
-#include "nsIPromptFactory.h"
-#include "nsIWindowWatcher.h"
-#include "nsIConsoleService.h"
-#include "nsAsyncRedirectVerifyHelper.h"
-#include "nsIFileChannel.h"
-#include "mozilla/glean/DomMetrics.h"
+#include "GeckoProfiler.h"
+#include "MultipartBlobImpl.h"
+#include "XMLHttpRequestUpload.h"
 #include "js/ArrayBuffer.h"  // JS::{Create,Release}MappedArrayBufferContents,New{,Mapped}ArrayBufferWithContents
 #include "js/JSON.h"         // JS_ParseJSON
 #include "js/MemoryFunctions.h"
 #include "js/RootingAPI.h"  // JS::{{,Mutable}Handle,Rooted}
 #include "js/Value.h"       // JS::{,Undefined}Value
 #include "jsapi.h"          // JS_ClearPendingException
-#include "GeckoProfiler.h"
-#include "mozilla/dom/XMLHttpRequestBinding.h"
+#include "mozilla/AppShutdown.h"
+#include "mozilla/ArrayUtils.h"
 #include "mozilla/Attributes.h"
-#include "MultipartBlobImpl.h"
-#include "nsIPermissionManager.h"
-#include "nsMimeTypes.h"
-#include "nsIHttpChannelInternal.h"
-#include "nsCharSeparatedTokenizer.h"
-#include "nsStreamListenerWrapper.h"
-#include "nsITimedChannel.h"
-#include "nsWrapperCacheInlines.h"
-#include "nsZipArchive.h"
+#include "mozilla/BasePrincipal.h"
+#include "mozilla/CheckedInt.h"
+#include "mozilla/Components.h"
+#include "mozilla/Encoding.h"
+#include "mozilla/EventDispatcher.h"
+#include "mozilla/EventListenerManager.h"
+#include "mozilla/HoldDropJSObjects.h"
+#include "mozilla/LoadContext.h"
+#include "mozilla/LoadInfo.h"
+#include "mozilla/MemoryReporting.h"
 #include "mozilla/Preferences.h"
+#include "mozilla/PreloaderBase.h"
+#include "mozilla/ScopeExit.h"
+#include "mozilla/SpinEventLoopUntil.h"
+#include "mozilla/StaticPrefs_dom.h"
+#include "mozilla/StaticPrefs_network.h"
+#include "mozilla/StaticPrefs_privacy.h"
+#include "mozilla/dom/AutoSuppressEventHandlingAndSuspend.h"
+#include "mozilla/dom/BlobBinding.h"
+#include "mozilla/dom/BlobURLProtocolHandler.h"
+#include "mozilla/dom/DOMString.h"
+#include "mozilla/dom/DocGroup.h"
+#include "mozilla/dom/FetchUtil.h"
+#include "mozilla/dom/File.h"
+#include "mozilla/dom/FileBinding.h"
+#include "mozilla/dom/FileCreatorHelper.h"
+#include "mozilla/dom/FormData.h"
+#include "mozilla/dom/MutableBlobStorage.h"
+#include "mozilla/dom/ProgressEvent.h"
+#include "mozilla/dom/Promise.h"
+#include "mozilla/dom/PromiseNativeHandler.h"
+#include "mozilla/dom/ReferrerInfo.h"
+#include "mozilla/dom/URLSearchParams.h"
+#include "mozilla/dom/UserActivation.h"
+#include "mozilla/dom/WorkerError.h"
+#include "mozilla/dom/XMLDocument.h"
+#include "mozilla/dom/XMLHttpRequestBinding.h"
+#include "mozilla/dom/quota/QuotaCommon.h"
+#include "mozilla/glean/DomMetrics.h"
+#include "mozilla/net/ContentRange.h"
+#include "nsAsyncRedirectVerifyHelper.h"
+#include "nsCharSeparatedTokenizer.h"
+#include "nsContentUtils.h"
+#include "nsCycleCollectionParticipant.h"
+#include "nsDataChannel.h"
+#include "nsError.h"
+#include "nsGlobalWindowInner.h"
+#include "nsIAuthPrompt.h"
+#include "nsIAuthPrompt2.h"
+#include "nsIBaseChannel.h"
+#include "nsICachingChannel.h"
+#include "nsIClassOfService.h"
+#include "nsIClassifiedChannel.h"
+#include "nsIContentPolicy.h"
+#include "nsICookieJarSettings.h"
+#include "nsIDOMEventListener.h"
+#include "nsIFileChannel.h"
+#include "nsIHttpChannel.h"
+#include "nsIHttpChannelInternal.h"
+#include "nsIInterfaceRequestorUtils.h"
+#include "nsIJARChannel.h"
+#include "nsIJARURI.h"
+#include "nsILoadGroup.h"
+#include "nsIPermissionManager.h"
+#include "nsIPromptFactory.h"
+#include "nsIScriptError.h"
+#include "nsISupportsPriority.h"
+#include "nsITimedChannel.h"
+#include "nsIURI.h"
+#include "nsIURIMutator.h"
+#include "nsIUploadChannel.h"
+#include "nsIUploadChannel2.h"
+#include "nsIWindowWatcher.h"
+#include "nsMimeTypes.h"
+#include "nsNetUtil.h"
+#include "nsReadableUtils.h"
+#include "nsSandboxFlags.h"
+#include "nsStreamListenerWrapper.h"
+#include "nsStreamUtils.h"
+#include "nsStringStream.h"
+#include "nsThreadUtils.h"
+#include "nsVariant.h"
+#include "nsWrapperCacheInlines.h"
+#include "nsXPCOM.h"
+#include "nsZipArchive.h"
 #include "private/pprio.h"
-#include "XMLHttpRequestUpload.h"
 
 // Undefine the macro of CreateFile to avoid FileCreatorHelper#CreateFile being
 // replaced by FileCreatorHelper#CreateFileW.
@@ -409,7 +407,6 @@ NS_IMPL_CYCLE_COLLECTION_CLASS(XMLHttpRequestMainThread)
 
 NS_IMPL_CYCLE_COLLECTION_TRAVERSE_BEGIN_INHERITED(XMLHttpRequestMainThread,
                                                   XMLHttpRequestEventTarget)
-  NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mContext)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mChannel)
   NS_IMPL_CYCLE_COLLECTION_TRAVERSE(mResponseXML)
 
@@ -431,7 +428,6 @@ NS_IMPL_CYCLE_COLLECTION_UNLINK_BEGIN_INHERITED(XMLHttpRequestMainThread,
   tmp->mResultJSON.setUndefined();
   tmp->mResponseBlobImpl = nullptr;
 
-  NS_IMPL_CYCLE_COLLECTION_UNLINK(mContext)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mChannel)
   NS_IMPL_CYCLE_COLLECTION_UNLINK(mResponseXML)
 
@@ -2275,7 +2271,6 @@ XMLHttpRequestMainThread::OnStopRequest(nsIRequest* request, nsresult status) {
   }
 
   mXMLParserStreamListener = nullptr;
-  mContext = nullptr;
 
   // If window.stop() or other aborts were issued, handle as an abort
   if (status == NS_BINDING_ABORTED) {
@@ -2764,23 +2759,6 @@ nsresult XMLHttpRequestMainThread::InitiateFetch(
       Unused << httpChannel->SetReferrerInfoWithoutClone(referrerInfo);
     }
 
-    // Some extensions override the http protocol handler and provide their own
-    // implementation. The channels returned from that implementation don't
-    // always seem to implement the nsIUploadChannel2 interface, presumably
-    // because it's a new interface. Eventually we should remove this and simply
-    // require that http channels implement the new interface (see bug 529041).
-    nsCOMPtr<nsIUploadChannel2> uploadChannel2 = do_QueryInterface(httpChannel);
-    if (!uploadChannel2) {
-      nsCOMPtr<nsIConsoleService> consoleService =
-          do_GetService(NS_CONSOLESERVICE_CONTRACTID);
-      if (consoleService) {
-        consoleService->LogStringMessage(
-            u"Http channel implementation doesn't support nsIUploadChannel2. "
-            "An extension has supplied a non-functional http protocol handler. "
-            "This will break behavior and in future releases not work at all.");
-      }
-    }
-
     if (uploadStream) {
       // If necessary, wrap the stream in a buffered stream so as to guarantee
       // support for our upload when calling ExplicitSetUploadStream.
@@ -2795,28 +2773,11 @@ nsresult XMLHttpRequestMainThread::InitiateFetch(
 
       // We want to use a newer version of the upload channel that won't
       // ignore the necessary headers for an empty Content-Type.
-      nsCOMPtr<nsIUploadChannel2> uploadChannel2(
-          do_QueryInterface(httpChannel));
-      // This assertion will fire if buggy extensions are installed
-      NS_ASSERTION(uploadChannel2, "http must support nsIUploadChannel2");
-      if (uploadChannel2) {
-        uploadChannel2->ExplicitSetUploadStream(
-            uploadStream, aUploadContentType, mUploadTotal, mRequestMethod,
-            false);
-      } else {
-        // The http channel doesn't support the new nsIUploadChannel2.
-        // Emulate it as best we can using nsIUploadChannel.
-        if (aUploadContentType.IsEmpty()) {
-          aUploadContentType.AssignLiteral("application/octet-stream");
-        }
-        nsCOMPtr<nsIUploadChannel> uploadChannel =
-            do_QueryInterface(httpChannel);
-        uploadChannel->SetUploadStream(uploadStream, aUploadContentType,
-                                       mUploadTotal);
-        // Reset the method to its original value
-        rv = httpChannel->SetRequestMethod(mRequestMethod);
-        MOZ_ASSERT(NS_SUCCEEDED(rv));
-      }
+      nsCOMPtr<nsIUploadChannel2> uploadChannel(do_QueryInterface(httpChannel));
+      NS_ASSERTION(uploadChannel, "http must support nsIUploadChannel");
+      rv = uploadChannel->ExplicitSetUploadStream(
+          uploadStream, aUploadContentType, mUploadTotal, mRequestMethod,
+          PR_FALSE);
     }
   }
 

@@ -355,6 +355,21 @@ interface CSSCustomPropertyRegisteredEventInit extends EventInit {
     propertyDefinition: InspectorCSSPropertyDefinition;
 }
 
+interface CSSMatrixComponentOptions {
+    is2D?: boolean;
+}
+
+interface CSSNumericType {
+    angle?: number;
+    flex?: number;
+    frequency?: number;
+    length?: number;
+    percent?: number;
+    percentHint?: CSSNumericBaseType;
+    resolution?: number;
+    time?: number;
+}
+
 interface CSSStyleSheetInit {
     baseURL?: string;
     disabled?: boolean;
@@ -1022,6 +1037,7 @@ interface GPUBindGroupLayoutDescriptor extends GPUObjectDescriptorBase {
 interface GPUBindGroupLayoutEntry {
     binding: GPUIndex32;
     buffer?: GPUBufferBindingLayout;
+    externalTexture?: GPUExternalTextureBindingLayout;
     sampler?: GPUSamplerBindingLayout;
     storageTexture?: GPUStorageTextureBindingLayout;
     texture?: GPUTextureBindingLayout;
@@ -1133,6 +1149,14 @@ interface GPUExtent3DDict {
     width: GPUIntegerCoordinate;
 }
 
+interface GPUExternalTextureBindingLayout {
+}
+
+interface GPUExternalTextureDescriptor extends GPUObjectDescriptorBase {
+    colorSpace?: PredefinedColorSpace;
+    source: HTMLVideoElement | VideoFrame;
+}
+
 interface GPUFragmentState extends GPUProgrammableStage {
     targets: GPUColorTargetState[];
 }
@@ -1204,9 +1228,9 @@ interface GPURenderPassColorAttachment {
     clearValue?: GPUColor;
     depthSlice?: GPUIntegerCoordinate;
     loadOp: GPULoadOp;
-    resolveTarget?: GPUTextureView;
+    resolveTarget?: GPUTexture | GPUTextureView;
     storeOp: GPUStoreOp;
-    view: GPUTextureView;
+    view: GPUTexture | GPUTextureView;
 }
 
 interface GPURenderPassDepthStencilAttachment {
@@ -1218,7 +1242,7 @@ interface GPURenderPassDepthStencilAttachment {
     stencilLoadOp?: GPULoadOp;
     stencilReadOnly?: boolean;
     stencilStoreOp?: GPUStoreOp;
-    view: GPUTextureView;
+    view: GPUTexture | GPUTextureView;
 }
 
 interface GPURenderPassDescriptor extends GPUObjectDescriptorBase {
@@ -1627,6 +1651,11 @@ interface InspectorFontFeature {
     tag: string;
 }
 
+interface InspectorNearestColor {
+    colorName: string;
+    exact: boolean;
+}
+
 interface InspectorRGBATuple {
     a?: number;
     b?: number;
@@ -1754,10 +1783,10 @@ interface LibcConstants {
 interface LoadURIOptions {
     baseURI?: URI | null;
     cancelContentJSEpoch?: number;
-    csp?: ContentSecurityPolicy | null;
     hasValidUserGestureActivation?: boolean;
     headers?: InputStream | null;
     loadFlags?: number;
+    policyContainer?: PolicyContainer | null;
     postData?: InputStream | null;
     referrerInfo?: ReferrerInfo | null;
     remoteTypeOverride?: string | null;
@@ -2857,7 +2886,7 @@ interface ProfilerMarkerOptions {
     captureStack?: boolean;
     category?: string;
     innerWindowId?: number;
-    startTime?: DOMHighResTimeStamp;
+    startTime?: number;
 }
 
 interface ProgressEventInit extends EventInit {
@@ -3009,6 +3038,9 @@ interface QueuingStrategy {
 
 interface QueuingStrategyInit {
     highWaterMark: number;
+}
+
+interface RTCAnswerOptions extends RTCOfferAnswerOptions {
 }
 
 interface RTCBandwidthEstimationInternal {
@@ -3794,6 +3826,23 @@ interface SupportsOptions {
 
 interface SvcOutputMetadata {
     temporalLayerId?: number;
+}
+
+interface SynthesizeMouseEventData {
+    button?: number;
+    buttons?: number;
+    clickCount?: number;
+    identifier?: number;
+    inputSource?: number;
+    modifiers?: number;
+    pressure?: number;
+}
+
+interface SynthesizeMouseEventOptions {
+    ignoreRootScrollFrame?: boolean;
+    isDOMEventSynthesized?: boolean;
+    isWidgetEventSynthesized?: boolean;
+    toWindow?: boolean;
 }
 
 interface TCPServerSocketEventInit extends EventInit {
@@ -5400,6 +5449,7 @@ interface BrowsingContext extends LoadContextMixin {
     isAppTab: boolean;
     readonly isDiscarded: boolean;
     readonly isInBFCache: boolean;
+    languageOverride: string;
     mediumOverride: string;
     readonly name: string;
     readonly opener: BrowsingContext | null;
@@ -5503,6 +5553,28 @@ declare var CSSAnimation: {
     isInstance: IsInstance<CSSAnimation>;
 };
 
+interface CSSColor extends CSSColorValue {
+    alpha: CSSNumberish;
+    channels: CSSNumericValue[];
+    colorSpace: CSSKeywordish;
+}
+
+declare var CSSColor: {
+    prototype: CSSColor;
+    new(colorSpace: CSSKeywordish, channels: CSSColorPercent[], alpha?: CSSNumberish): CSSColor;
+    isInstance: IsInstance<CSSColor>;
+};
+
+interface CSSColorValue extends CSSStyleValue {
+}
+
+declare var CSSColorValue: {
+    prototype: CSSColorValue;
+    new(): CSSColorValue;
+    isInstance: IsInstance<CSSColorValue>;
+    parse(cssText: string): CSSColorValue | CSSStyleValue;
+};
+
 interface CSSConditionRule extends CSSGroupingRule {
     readonly conditionText: string;
 }
@@ -5601,6 +5673,41 @@ declare var CSSGroupingRule: {
     isInstance: IsInstance<CSSGroupingRule>;
 };
 
+interface CSSHSL extends CSSColorValue {
+    alpha: CSSColorPercent;
+    h: CSSColorAngle;
+    l: CSSColorPercent;
+    s: CSSColorPercent;
+}
+
+declare var CSSHSL: {
+    prototype: CSSHSL;
+    new(h: CSSColorAngle, s: CSSColorPercent, l: CSSColorPercent, alpha?: CSSColorPercent): CSSHSL;
+    isInstance: IsInstance<CSSHSL>;
+};
+
+interface CSSHWB extends CSSColorValue {
+    alpha: CSSNumberish;
+    b: CSSNumberish;
+    h: CSSNumericValue;
+    w: CSSNumberish;
+}
+
+declare var CSSHWB: {
+    prototype: CSSHWB;
+    new(h: CSSNumericValue, w: CSSNumberish, b: CSSNumberish, alpha?: CSSNumberish): CSSHWB;
+    isInstance: IsInstance<CSSHWB>;
+};
+
+interface CSSImageValue extends CSSStyleValue {
+}
+
+declare var CSSImageValue: {
+    prototype: CSSImageValue;
+    new(): CSSImageValue;
+    isInstance: IsInstance<CSSImageValue>;
+};
+
 interface CSSImportRule extends CSSRule {
     readonly href: string;
     readonly layerName: string | null;
@@ -5642,6 +5749,42 @@ declare var CSSKeyframesRule: {
     isInstance: IsInstance<CSSKeyframesRule>;
 };
 
+interface CSSKeywordValue extends CSSStyleValue {
+    value: string;
+}
+
+declare var CSSKeywordValue: {
+    prototype: CSSKeywordValue;
+    new(value: string): CSSKeywordValue;
+    isInstance: IsInstance<CSSKeywordValue>;
+};
+
+interface CSSLCH extends CSSColorValue {
+    alpha: CSSColorPercent;
+    c: CSSColorPercent;
+    h: CSSColorAngle;
+    l: CSSColorPercent;
+}
+
+declare var CSSLCH: {
+    prototype: CSSLCH;
+    new(l: CSSColorPercent, c: CSSColorPercent, h: CSSColorAngle, alpha?: CSSColorPercent): CSSLCH;
+    isInstance: IsInstance<CSSLCH>;
+};
+
+interface CSSLab extends CSSColorValue {
+    a: CSSColorNumber;
+    alpha: CSSColorPercent;
+    b: CSSColorNumber;
+    l: CSSColorPercent;
+}
+
+declare var CSSLab: {
+    prototype: CSSLab;
+    new(l: CSSColorPercent, a: CSSColorNumber, b: CSSColorNumber, alpha?: CSSColorPercent): CSSLab;
+    isInstance: IsInstance<CSSLab>;
+};
+
 interface CSSLayerBlockRule extends CSSGroupingRule {
     readonly name: string;
 }
@@ -5671,6 +5814,98 @@ declare var CSSMarginRule: {
     prototype: CSSMarginRule;
     new(): CSSMarginRule;
     isInstance: IsInstance<CSSMarginRule>;
+};
+
+interface CSSMathClamp extends CSSMathValue {
+    readonly lower: CSSNumericValue;
+    readonly upper: CSSNumericValue;
+    readonly value: CSSNumericValue;
+}
+
+declare var CSSMathClamp: {
+    prototype: CSSMathClamp;
+    new(lower: CSSNumberish, value: CSSNumberish, upper: CSSNumberish): CSSMathClamp;
+    isInstance: IsInstance<CSSMathClamp>;
+};
+
+interface CSSMathInvert extends CSSMathValue {
+    readonly value: CSSNumericValue;
+}
+
+declare var CSSMathInvert: {
+    prototype: CSSMathInvert;
+    new(arg: CSSNumberish): CSSMathInvert;
+    isInstance: IsInstance<CSSMathInvert>;
+};
+
+interface CSSMathMax extends CSSMathValue {
+    readonly values: CSSNumericArray;
+}
+
+declare var CSSMathMax: {
+    prototype: CSSMathMax;
+    new(...args: CSSNumberish[]): CSSMathMax;
+    isInstance: IsInstance<CSSMathMax>;
+};
+
+interface CSSMathMin extends CSSMathValue {
+    readonly values: CSSNumericArray;
+}
+
+declare var CSSMathMin: {
+    prototype: CSSMathMin;
+    new(...args: CSSNumberish[]): CSSMathMin;
+    isInstance: IsInstance<CSSMathMin>;
+};
+
+interface CSSMathNegate extends CSSMathValue {
+    readonly value: CSSNumericValue;
+}
+
+declare var CSSMathNegate: {
+    prototype: CSSMathNegate;
+    new(arg: CSSNumberish): CSSMathNegate;
+    isInstance: IsInstance<CSSMathNegate>;
+};
+
+interface CSSMathProduct extends CSSMathValue {
+    readonly values: CSSNumericArray;
+}
+
+declare var CSSMathProduct: {
+    prototype: CSSMathProduct;
+    new(...args: CSSNumberish[]): CSSMathProduct;
+    isInstance: IsInstance<CSSMathProduct>;
+};
+
+interface CSSMathSum extends CSSMathValue {
+    readonly values: CSSNumericArray;
+}
+
+declare var CSSMathSum: {
+    prototype: CSSMathSum;
+    new(...args: CSSNumberish[]): CSSMathSum;
+    isInstance: IsInstance<CSSMathSum>;
+};
+
+interface CSSMathValue extends CSSNumericValue {
+    readonly operator: CSSMathOperator;
+}
+
+declare var CSSMathValue: {
+    prototype: CSSMathValue;
+    new(): CSSMathValue;
+    isInstance: IsInstance<CSSMathValue>;
+};
+
+interface CSSMatrixComponent extends CSSTransformComponent {
+    matrix: DOMMatrix;
+}
+
+declare var CSSMatrixComponent: {
+    prototype: CSSMatrixComponent;
+    new(matrix: DOMMatrixReadOnly, options?: CSSMatrixComponentOptions): CSSMatrixComponent;
+    isInstance: IsInstance<CSSMatrixComponent>;
 };
 
 interface CSSMediaRule extends CSSConditionRule {
@@ -5713,6 +5948,64 @@ declare var CSSNestedDeclarations: {
     isInstance: IsInstance<CSSNestedDeclarations>;
 };
 
+interface CSSNumericArray {
+    readonly length: number;
+    forEach(callbackfn: (value: CSSNumericValue, key: number, parent: CSSNumericArray) => void, thisArg?: any): void;
+    [index: number]: CSSNumericValue;
+}
+
+declare var CSSNumericArray: {
+    prototype: CSSNumericArray;
+    new(): CSSNumericArray;
+    isInstance: IsInstance<CSSNumericArray>;
+};
+
+interface CSSNumericValue extends CSSStyleValue {
+    add(...values: CSSNumberish[]): CSSNumericValue;
+    div(...values: CSSNumberish[]): CSSNumericValue;
+    equals(...value: CSSNumberish[]): boolean;
+    max(...values: CSSNumberish[]): CSSNumericValue;
+    min(...values: CSSNumberish[]): CSSNumericValue;
+    mul(...values: CSSNumberish[]): CSSNumericValue;
+    sub(...values: CSSNumberish[]): CSSNumericValue;
+    to(unit: string): CSSUnitValue;
+    toSum(...units: string[]): CSSMathSum;
+    type(): CSSNumericType;
+}
+
+declare var CSSNumericValue: {
+    prototype: CSSNumericValue;
+    new(): CSSNumericValue;
+    isInstance: IsInstance<CSSNumericValue>;
+    parse(cssText: string): CSSNumericValue;
+};
+
+interface CSSOKLCH extends CSSColorValue {
+    alpha: CSSColorPercent;
+    c: CSSColorPercent;
+    h: CSSColorAngle;
+    l: CSSColorPercent;
+}
+
+declare var CSSOKLCH: {
+    prototype: CSSOKLCH;
+    new(l: CSSColorPercent, c: CSSColorPercent, h: CSSColorAngle, alpha?: CSSColorPercent): CSSOKLCH;
+    isInstance: IsInstance<CSSOKLCH>;
+};
+
+interface CSSOKLab extends CSSColorValue {
+    a: CSSColorNumber;
+    alpha: CSSColorPercent;
+    b: CSSColorNumber;
+    l: CSSColorPercent;
+}
+
+declare var CSSOKLab: {
+    prototype: CSSOKLab;
+    new(l: CSSColorPercent, a: CSSColorNumber, b: CSSColorNumber, alpha?: CSSColorPercent): CSSOKLab;
+    isInstance: IsInstance<CSSOKLab>;
+};
+
 interface CSSPageDescriptors {
 }
 
@@ -5725,6 +6018,16 @@ declare var CSSPageRule: {
     prototype: CSSPageRule;
     new(): CSSPageRule;
     isInstance: IsInstance<CSSPageRule>;
+};
+
+interface CSSPerspective extends CSSTransformComponent {
+    length: CSSPerspectiveValue;
+}
+
+declare var CSSPerspective: {
+    prototype: CSSPerspective;
+    new(length: CSSPerspectiveValue): CSSPerspective;
+    isInstance: IsInstance<CSSPerspective>;
 };
 
 interface CSSPositionTryDescriptors {
@@ -5763,6 +6066,33 @@ declare var CSSPseudoElement: {
     prototype: CSSPseudoElement;
     new(): CSSPseudoElement;
     isInstance: IsInstance<CSSPseudoElement>;
+};
+
+interface CSSRGB extends CSSColorValue {
+    alpha: CSSColorPercent;
+    b: CSSColorRGBComp;
+    g: CSSColorRGBComp;
+    r: CSSColorRGBComp;
+}
+
+declare var CSSRGB: {
+    prototype: CSSRGB;
+    new(r: CSSColorRGBComp, g: CSSColorRGBComp, b: CSSColorRGBComp, alpha?: CSSColorPercent): CSSRGB;
+    isInstance: IsInstance<CSSRGB>;
+};
+
+interface CSSRotate extends CSSTransformComponent {
+    angle: CSSNumericValue;
+    x: CSSNumberish;
+    y: CSSNumberish;
+    z: CSSNumberish;
+}
+
+declare var CSSRotate: {
+    prototype: CSSRotate;
+    new(angle: CSSNumericValue): CSSRotate;
+    new(x: CSSNumberish, y: CSSNumberish, z: CSSNumberish, angle: CSSNumericValue): CSSRotate;
+    isInstance: IsInstance<CSSRotate>;
 };
 
 interface CSSRule {
@@ -5816,6 +6146,18 @@ declare var CSSRuleList: {
     isInstance: IsInstance<CSSRuleList>;
 };
 
+interface CSSScale extends CSSTransformComponent {
+    x: CSSNumberish;
+    y: CSSNumberish;
+    z: CSSNumberish;
+}
+
+declare var CSSScale: {
+    prototype: CSSScale;
+    new(x: CSSNumberish, y: CSSNumberish, z?: CSSNumberish): CSSScale;
+    isInstance: IsInstance<CSSScale>;
+};
+
 interface CSSScopeRule extends CSSGroupingRule {
     readonly end: string | null;
     readonly start: string | null;
@@ -5825,6 +6167,37 @@ declare var CSSScopeRule: {
     prototype: CSSScopeRule;
     new(): CSSScopeRule;
     isInstance: IsInstance<CSSScopeRule>;
+};
+
+interface CSSSkew extends CSSTransformComponent {
+    ax: CSSNumericValue;
+    ay: CSSNumericValue;
+}
+
+declare var CSSSkew: {
+    prototype: CSSSkew;
+    new(ax: CSSNumericValue, ay: CSSNumericValue): CSSSkew;
+    isInstance: IsInstance<CSSSkew>;
+};
+
+interface CSSSkewX extends CSSTransformComponent {
+    ax: CSSNumericValue;
+}
+
+declare var CSSSkewX: {
+    prototype: CSSSkewX;
+    new(ax: CSSNumericValue): CSSSkewX;
+    isInstance: IsInstance<CSSSkewX>;
+};
+
+interface CSSSkewY extends CSSTransformComponent {
+    ay: CSSNumericValue;
+}
+
+declare var CSSSkewY: {
+    prototype: CSSSkewY;
+    new(ay: CSSNumericValue): CSSSkewY;
+    isInstance: IsInstance<CSSSkewY>;
 };
 
 interface CSSStartingStyleRule extends CSSGroupingRule {
@@ -5860,6 +6233,8 @@ interface CSSStyleRule extends CSSGroupingRule {
     readonly selectorCount: number;
     selectorText: string;
     readonly style: CSSStyleDeclaration;
+    readonly styleMap: StylePropertyMap;
+    getScopeRootFor(selectorIndex: number, element: Element, pseudo?: string, includeVisitedStyle?: boolean): Element | null;
     getSelectorWarnings(): SelectorWarning[];
     selectorMatchesElement(selectorIndex: number, element: Element, pseudo?: string, includeVisitedStyle?: boolean): boolean;
     selectorSpecificityAt(index: number, desugared?: boolean): number;
@@ -5891,6 +6266,18 @@ declare var CSSStyleSheet: {
     isInstance: IsInstance<CSSStyleSheet>;
 };
 
+interface CSSStyleValue {
+    toString(): string;
+}
+
+declare var CSSStyleValue: {
+    prototype: CSSStyleValue;
+    new(): CSSStyleValue;
+    isInstance: IsInstance<CSSStyleValue>;
+    parse(property: string, cssText: string): CSSStyleValue;
+    parseAll(property: string, cssText: string): CSSStyleValue[];
+};
+
 interface CSSSupportsRule extends CSSConditionRule {
 }
 
@@ -5898,6 +6285,32 @@ declare var CSSSupportsRule: {
     prototype: CSSSupportsRule;
     new(): CSSSupportsRule;
     isInstance: IsInstance<CSSSupportsRule>;
+};
+
+interface CSSTransformComponent {
+    is2D: boolean;
+    toMatrix(): DOMMatrix;
+    toString(): string;
+}
+
+declare var CSSTransformComponent: {
+    prototype: CSSTransformComponent;
+    new(): CSSTransformComponent;
+    isInstance: IsInstance<CSSTransformComponent>;
+};
+
+interface CSSTransformValue extends CSSStyleValue {
+    readonly is2D: boolean;
+    readonly length: number;
+    toMatrix(): DOMMatrix;
+    forEach(callbackfn: (value: CSSTransformComponent, key: number, parent: CSSTransformValue) => void, thisArg?: any): void;
+    [index: number]: CSSTransformComponent;
+}
+
+declare var CSSTransformValue: {
+    prototype: CSSTransformValue;
+    new(transforms: CSSTransformComponent[]): CSSTransformValue;
+    isInstance: IsInstance<CSSTransformValue>;
 };
 
 interface CSSTransition extends Animation {
@@ -5912,6 +6325,52 @@ declare var CSSTransition: {
     prototype: CSSTransition;
     new(): CSSTransition;
     isInstance: IsInstance<CSSTransition>;
+};
+
+interface CSSTranslate extends CSSTransformComponent {
+    x: CSSNumericValue;
+    y: CSSNumericValue;
+    z: CSSNumericValue;
+}
+
+declare var CSSTranslate: {
+    prototype: CSSTranslate;
+    new(x: CSSNumericValue, y: CSSNumericValue, z?: CSSNumericValue): CSSTranslate;
+    isInstance: IsInstance<CSSTranslate>;
+};
+
+interface CSSUnitValue extends CSSNumericValue {
+    readonly unit: string;
+    value: number;
+}
+
+declare var CSSUnitValue: {
+    prototype: CSSUnitValue;
+    new(value: number, unit: string): CSSUnitValue;
+    isInstance: IsInstance<CSSUnitValue>;
+};
+
+interface CSSUnparsedValue extends CSSStyleValue {
+    readonly length: number;
+    forEach(callbackfn: (value: CSSUnparsedSegment, key: number, parent: CSSUnparsedValue) => void, thisArg?: any): void;
+    [index: number]: CSSUnparsedSegment;
+}
+
+declare var CSSUnparsedValue: {
+    prototype: CSSUnparsedValue;
+    new(members: CSSUnparsedSegment[]): CSSUnparsedValue;
+    isInstance: IsInstance<CSSUnparsedValue>;
+};
+
+interface CSSVariableReferenceValue {
+    readonly fallback: CSSUnparsedValue | null;
+    variable: string;
+}
+
+declare var CSSVariableReferenceValue: {
+    prototype: CSSVariableReferenceValue;
+    new(variable: string, fallback?: CSSUnparsedValue | null): CSSVariableReferenceValue;
+    isInstance: IsInstance<CSSVariableReferenceValue>;
 };
 
 interface Cache {
@@ -6505,9 +6964,8 @@ declare var Comment: {
 
 interface CompositionEvent extends UIEvent {
     readonly data: string | null;
-    readonly locale: string;
     readonly ranges: TextClause[];
-    initCompositionEvent(typeArg: string, canBubbleArg?: boolean, cancelableArg?: boolean, viewArg?: Window | null, dataArg?: string | null, localeArg?: string): void;
+    initCompositionEvent(typeArg: string, canBubbleArg?: boolean, cancelableArg?: boolean, viewArg?: Window | null, dataArg?: string | null): void;
 }
 
 declare var CompositionEvent: {
@@ -7140,13 +7598,13 @@ interface DataTransfer {
     effectAllowed: string;
     readonly files: FileList | null;
     readonly items: DataTransferItemList;
-    readonly mozCSP: ContentSecurityPolicy | null;
     mozCursor: string;
     readonly mozItemCount: number;
     mozShowFailAnimation: boolean;
     readonly mozSourceNode: Node | null;
     readonly mozTriggeringPrincipalURISpec: string;
     readonly mozUserCancelled: boolean;
+    readonly policyContainer: PolicyContainer | null;
     readonly sourceTopWindowContext: WindowContext | null;
     readonly types: string[];
     addElement(element: Element): void;
@@ -7348,7 +7806,6 @@ interface Document extends Node, DocumentOrShadowRoot, FontFaceSource, GeometryU
     readonly contentType: string;
     cookie: string;
     readonly cookieJarSettings: nsICookieJarSettings;
-    readonly csp: ContentSecurityPolicy | null;
     readonly cspJSON: string;
     readonly currentScript: Element | null;
     readonly defaultView: WindowProxy | null;
@@ -7406,6 +7863,7 @@ interface Document extends Node, DocumentOrShadowRoot, FontFaceSource, GeometryU
     pausedByDevTools: boolean;
     readonly permDelegateHandler: nsIPermissionDelegateHandler;
     readonly plugins: HTMLCollection;
+    readonly policyContainer: PolicyContainer | null;
     readonly preferredStyleSheetSet: string | null;
     readonly readyState: string;
     readonly referrer: string;
@@ -7420,7 +7878,6 @@ interface Document extends Node, DocumentOrShadowRoot, FontFaceSource, GeometryU
     readonly styleSheetSets: DOMStringList;
     readonly timeline: DocumentTimeline;
     title: string;
-    readonly userHasInteracted: boolean;
     readonly visibilityState: VisibilityState;
     vlinkColor: string;
     addCertException(isTemporary: boolean): Promise<any>;
@@ -7846,6 +8303,7 @@ interface Element extends Node, ARIAMixin, Animatable, ChildNode, GeometryUtils,
     attachShadow(shadowRootInitDict: ShadowRootInit): ShadowRoot;
     checkVisibility(options?: CheckVisibilityOptions): boolean;
     closest(selector: string): Element | null;
+    computedStyleMap(): StylePropertyMapReadOnly;
     getAsFlexContainer(): Flex | null;
     getAttribute(name: string): string | null;
     getAttributeNS(namespace: string | null, localName: string): string | null;
@@ -7920,6 +8378,7 @@ declare var Element: {
 };
 
 interface ElementCSSInlineStyle {
+    readonly attributeStyleMap: StylePropertyMap;
     readonly style: CSSStyleDeclaration;
 }
 
@@ -7943,6 +8402,14 @@ declare var ElementInternals: {
     new(): ElementInternals;
     isInstance: IsInstance<ElementInternals>;
 };
+
+interface ElementOffsetAttributes {
+    readonly offsetHeight: number;
+    readonly offsetLeft: number;
+    readonly offsetParent: Element | null;
+    readonly offsetTop: number;
+    readonly offsetWidth: number;
+}
 
 interface EncodedAudioChunk {
     readonly byteLength: number;
@@ -8185,6 +8652,7 @@ interface File extends Blob {
     readonly mozFullPath: string;
     readonly name: string;
     readonly webkitRelativePath: string;
+    setMozRelativePath(name: string): void;
 }
 
 declare var File: {
@@ -8571,7 +9039,7 @@ declare var FormDataEvent: {
 };
 
 interface FragmentDirective {
-    createTextDirective(range: Range): Promise<string>;
+    createTextDirectiveForRanges(ranges: Range[]): Promise<string>;
     getTextDirectiveRanges(): Range[];
     removeAllTextDirectives(): void;
 }
@@ -8850,6 +9318,7 @@ interface GPUDevice extends EventTarget, GPUObjectBase {
     createShaderModule(descriptor: GPUShaderModuleDescriptor): GPUShaderModule;
     createTexture(descriptor: GPUTextureDescriptor): GPUTexture;
     destroy(): void;
+    importExternalTexture(descriptor: GPUExternalTextureDescriptor): GPUExternalTexture;
     popErrorScope(): Promise<GPUError | null>;
     pushErrorScope(filter: GPUErrorFilter): void;
     addEventListener<K extends keyof GPUDeviceEventMap>(type: K, listener: (this: GPUDevice, ev: GPUDeviceEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
@@ -8867,7 +9336,7 @@ declare var GPUDevice: {
 /** Available only in secure contexts. */
 interface GPUDeviceLostInfo {
     readonly message: string;
-    readonly reason: any;
+    readonly reason: GPUDeviceLostReason;
 }
 
 declare var GPUDeviceLostInfo: {
@@ -9171,7 +9640,6 @@ interface Gamepad {
     readonly axes: number[];
     readonly buttons: GamepadButton[];
     readonly connected: boolean;
-    readonly displayId: number;
     readonly hand: GamepadHand;
     readonly hapticActuators: GamepadHapticActuator[];
     readonly id: string;
@@ -9678,6 +10146,7 @@ interface GlobalEventHandlersEventMap {
     "change": Event;
     "click": Event;
     "close": Event;
+    "command": Event;
     "contentvisibilityautostatechange": Event;
     "contextlost": Event;
     "contextmenu": Event;
@@ -9780,6 +10249,7 @@ interface GlobalEventHandlers {
     onchange: ((this: GlobalEventHandlers, ev: Event) => any) | null;
     onclick: ((this: GlobalEventHandlers, ev: Event) => any) | null;
     onclose: ((this: GlobalEventHandlers, ev: Event) => any) | null;
+    oncommand: ((this: GlobalEventHandlers, ev: Event) => any) | null;
     oncontentvisibilityautostatechange: ((this: GlobalEventHandlers, ev: Event) => any) | null;
     oncontextlost: ((this: GlobalEventHandlers, ev: Event) => any) | null;
     oncontextmenu: ((this: GlobalEventHandlers, ev: Event) => any) | null;
@@ -10290,7 +10760,7 @@ declare var HTMLDocument: {
 interface HTMLElementEventMap extends ElementEventMap, GlobalEventHandlersEventMap, OnErrorEventHandlerForNodesEventMap, TouchEventHandlersEventMap {
 }
 
-interface HTMLElement extends Element, ElementCSSInlineStyle, GlobalEventHandlers, HTMLOrForeignElement, OnErrorEventHandlerForNodes, TouchEventHandlers {
+interface HTMLElement extends Element, ElementCSSInlineStyle, ElementOffsetAttributes, GlobalEventHandlers, HTMLOrForeignElement, OnErrorEventHandlerForNodes, TouchEventHandlers {
     accessKey: string;
     readonly accessKeyLabel: string;
     autocapitalize: string;
@@ -10305,14 +10775,9 @@ interface HTMLElement extends Element, ElementCSSInlineStyle, GlobalEventHandler
     inputMode: string;
     readonly internals: ElementInternals | null;
     readonly isContentEditable: boolean;
-    readonly isFormAssociatedCustomElements: boolean;
+    readonly isFormAssociatedCustomElement: boolean;
     lang: string;
     nonce: string;
-    readonly offsetHeight: number;
-    readonly offsetLeft: number;
-    readonly offsetParent: Element | null;
-    readonly offsetTop: number;
-    readonly offsetWidth: number;
     outerText: string;
     popover: string | null;
     spellcheck: boolean;
@@ -12050,6 +12515,8 @@ declare var IIRFilterNode: {
 
 /** Available only in secure contexts. */
 interface IdentityCredential extends Credential {
+    readonly configURL: string;
+    readonly isAutoSelected: boolean;
     readonly token: string | null;
 }
 
@@ -13616,7 +14083,7 @@ interface MediaKeySessionEventMap {
 }
 
 interface MediaKeySession extends EventTarget {
-    readonly closed: Promise<void>;
+    readonly closed: Promise<MediaKeySessionClosedReason>;
     readonly error: MediaKeyError | null;
     readonly expiration: number;
     readonly keyStatuses: MediaKeyStatusMap;
@@ -14120,6 +14587,7 @@ interface MouseEvent extends UIEvent {
     readonly screenX: number;
     readonly screenY: number;
     readonly shiftKey: boolean;
+    readonly triggerEvent: Event | null;
     readonly x: number;
     readonly y: number;
     clickEventPrevented(): boolean;
@@ -15095,6 +15563,7 @@ interface ParentNode {
     append(...nodes: (Node | string)[]): void;
     getElementsByAttribute(name: string, value: string | null): HTMLCollection;
     getElementsByAttributeNS(namespaceURI: string | null, name: string, value: string | null): HTMLCollection;
+    moveBefore(node: Node, child: Node | null): void;
     prepend(...nodes: (Node | string)[]): void;
     querySelector<K extends keyof HTMLElementTagNameMap>(selectors: K): HTMLElementTagNameMap[K] | null;
     querySelector<K extends keyof SVGElementTagNameMap>(selectors: K): SVGElementTagNameMap[K] | null;
@@ -16363,13 +16832,16 @@ interface RTCPeerConnection extends EventTarget {
     readonly remoteDescription: RTCSessionDescription | null;
     readonly sctp: RTCSctpTransport | null;
     readonly signalingState: RTCSignalingState;
+    addIceCandidate(candidate?: RTCIceCandidateInit | RTCIceCandidate): Promise<void>;
     addIceCandidate(candidate: RTCIceCandidateInit, successCallback: VoidFunction, failureCallback: RTCPeerConnectionErrorCallback): Promise<void>;
     addStream(stream: MediaStream): void;
     addTrack(track: MediaStreamTrack, ...streams: MediaStream[]): RTCRtpSender;
     addTransceiver(trackOrKind: MediaStreamTrack | string, init?: RTCRtpTransceiverInit): RTCRtpTransceiver;
     close(): void;
+    createAnswer(options?: RTCAnswerOptions): Promise<RTCSessionDescriptionInit>;
     createAnswer(successCallback: RTCSessionDescriptionCallback, failureCallback: RTCPeerConnectionErrorCallback): Promise<void>;
     createDataChannel(label: string, dataChannelDict?: RTCDataChannelInit): RTCDataChannel;
+    createOffer(options?: RTCOfferOptions): Promise<RTCSessionDescriptionInit>;
     createOffer(successCallback: RTCSessionDescriptionCallback, failureCallback: RTCPeerConnectionErrorCallback, options?: RTCOfferOptions): Promise<void>;
     getConfiguration(): RTCConfiguration;
     getIdentityAssertion(): Promise<string>;
@@ -16386,7 +16858,9 @@ interface RTCPeerConnection extends EventTarget {
     restartIce(): void;
     setConfiguration(configuration?: RTCConfiguration): void;
     setIdentityProvider(provider: string, options?: RTCIdentityProviderOptions): void;
+    setLocalDescription(description?: RTCLocalSessionDescriptionInit): Promise<void>;
     setLocalDescription(description: RTCLocalSessionDescriptionInit, successCallback: VoidFunction, failureCallback: RTCPeerConnectionErrorCallback): Promise<void>;
+    setRemoteDescription(description: RTCSessionDescriptionInit): Promise<void>;
     setRemoteDescription(description: RTCSessionDescriptionInit, successCallback: VoidFunction, failureCallback: RTCPeerConnectionErrorCallback): Promise<void>;
     addEventListener<K extends keyof RTCPeerConnectionEventMap>(type: K, listener: (this: RTCPeerConnection, ev: RTCPeerConnectionEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
     addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void;
@@ -17796,8 +18270,6 @@ declare var SVGGradientElement: {
 };
 
 interface SVGGraphicsElement extends SVGElement, SVGTests {
-    readonly farthestViewportElement: SVGElement | null;
-    readonly nearestViewportElement: SVGElement | null;
     readonly transform: SVGAnimatedTransformList;
     getBBox(aOptions?: SVGBoundingBoxOptions): SVGRect;
     getCTM(): SVGMatrix | null;
@@ -19453,6 +19925,33 @@ declare var StructuredCloneTester: {
     prototype: StructuredCloneTester;
     new(serializable: boolean, deserializable: boolean): StructuredCloneTester;
     isInstance: IsInstance<StructuredCloneTester>;
+};
+
+interface StylePropertyMap extends StylePropertyMapReadOnly {
+    append(property: string, ...values: (CSSStyleValue | string)[]): void;
+    clear(): void;
+    delete(property: string): void;
+    set(property: string, ...values: (CSSStyleValue | string)[]): void;
+}
+
+declare var StylePropertyMap: {
+    prototype: StylePropertyMap;
+    new(): StylePropertyMap;
+    isInstance: IsInstance<StylePropertyMap>;
+};
+
+interface StylePropertyMapReadOnly {
+    readonly size: number;
+    get(property: string): undefined | CSSStyleValue;
+    getAll(property: string): CSSStyleValue[];
+    has(property: string): boolean;
+    forEach(callbackfn: (value: CSSStyleValue[], key: string, parent: StylePropertyMapReadOnly) => void, thisArg?: any): void;
+}
+
+declare var StylePropertyMapReadOnly: {
+    prototype: StylePropertyMapReadOnly;
+    new(): StylePropertyMapReadOnly;
+    isInstance: IsInstance<StylePropertyMapReadOnly>;
 };
 
 interface StyleSheet {
@@ -23657,6 +24156,7 @@ interface Window extends EventTarget, AnimationFrameProvider, GlobalCrypto, Glob
     shouldReportForServiceWorkerScope(aScope: string): boolean;
     sizeToContent(constraints?: SizeToContentConstraints): void;
     stop(): void;
+    synthesizeMouseEvent(type: string, offsetX: number, offsetY: number, mouseEventData?: SynthesizeMouseEventData, options?: SynthesizeMouseEventOptions): boolean;
     updateCommands(action: string): void;
     readonly STATE_MAXIMIZED: 1;
     readonly STATE_MINIMIZED: 2;
@@ -24455,7 +24955,7 @@ declare var XULCommandEvent: {
 interface XULElementEventMap extends ElementEventMap, GlobalEventHandlersEventMap, OnErrorEventHandlerForNodesEventMap, TouchEventHandlersEventMap {
 }
 
-interface XULElement extends Element, ElementCSSInlineStyle, GlobalEventHandlers, HTMLOrForeignElement, OnErrorEventHandlerForNodes, TouchEventHandlers {
+interface XULElement extends Element, ElementCSSInlineStyle, ElementOffsetAttributes, GlobalEventHandlers, HTMLOrForeignElement, OnErrorEventHandlerForNodes, TouchEventHandlers {
     collapsed: boolean;
     contextMenu: string;
     readonly controllers: XULControllers;
@@ -24580,6 +25080,8 @@ interface XULTreeElement extends XULElement {
     focused: boolean;
     readonly rowHeight: number;
     readonly rowWidth: number;
+    readonly scrollbarMaxPosition: number;
+    readonly scrollbarPosition: number;
     readonly treeBody: Element | null;
     view: MozTreeView | null;
     beginUpdateBatch(): void;
@@ -24625,10 +25127,73 @@ declare namespace AddonManagerPermissions {
 
 declare namespace CSS {
     var highlights: HighlightRegistry;
+    function Hz(value: number): CSSUnitValue;
+    function Q(value: number): CSSUnitValue;
+    function _in(value: number): CSSUnitValue;
+    function cap(value: number): CSSUnitValue;
+    function ch(value: number): CSSUnitValue;
+    function cm(value: number): CSSUnitValue;
+    function cqb(value: number): CSSUnitValue;
+    function cqh(value: number): CSSUnitValue;
+    function cqi(value: number): CSSUnitValue;
+    function cqmax(value: number): CSSUnitValue;
+    function cqmin(value: number): CSSUnitValue;
+    function cqw(value: number): CSSUnitValue;
+    function deg(value: number): CSSUnitValue;
+    function dpcm(value: number): CSSUnitValue;
+    function dpi(value: number): CSSUnitValue;
+    function dppx(value: number): CSSUnitValue;
+    function dvb(value: number): CSSUnitValue;
+    function dvh(value: number): CSSUnitValue;
+    function dvi(value: number): CSSUnitValue;
+    function dvmax(value: number): CSSUnitValue;
+    function dvmin(value: number): CSSUnitValue;
+    function dvw(value: number): CSSUnitValue;
+    function em(value: number): CSSUnitValue;
     function escape(ident: string): string;
+    function ex(value: number): CSSUnitValue;
+    function fr(value: number): CSSUnitValue;
+    function grad(value: number): CSSUnitValue;
+    function ic(value: number): CSSUnitValue;
+    function kHz(value: number): CSSUnitValue;
+    function lh(value: number): CSSUnitValue;
+    function lvb(value: number): CSSUnitValue;
+    function lvh(value: number): CSSUnitValue;
+    function lvi(value: number): CSSUnitValue;
+    function lvmax(value: number): CSSUnitValue;
+    function lvmin(value: number): CSSUnitValue;
+    function lvw(value: number): CSSUnitValue;
+    function mm(value: number): CSSUnitValue;
+    function ms(value: number): CSSUnitValue;
+    function number(value: number): CSSUnitValue;
+    function pc(value: number): CSSUnitValue;
+    function percent(value: number): CSSUnitValue;
+    function pt(value: number): CSSUnitValue;
+    function px(value: number): CSSUnitValue;
+    function rad(value: number): CSSUnitValue;
+    function rcap(value: number): CSSUnitValue;
+    function rch(value: number): CSSUnitValue;
     function registerProperty(definition: PropertyDefinition): void;
+    function rem(value: number): CSSUnitValue;
+    function rex(value: number): CSSUnitValue;
+    function ric(value: number): CSSUnitValue;
+    function rlh(value: number): CSSUnitValue;
+    function s(value: number): CSSUnitValue;
     function supports(property: string, value: string): boolean;
     function supports(conditionText: string): boolean;
+    function svb(value: number): CSSUnitValue;
+    function svh(value: number): CSSUnitValue;
+    function svi(value: number): CSSUnitValue;
+    function svmax(value: number): CSSUnitValue;
+    function svmin(value: number): CSSUnitValue;
+    function svw(value: number): CSSUnitValue;
+    function turn(value: number): CSSUnitValue;
+    function vb(value: number): CSSUnitValue;
+    function vh(value: number): CSSUnitValue;
+    function vi(value: number): CSSUnitValue;
+    function vmax(value: number): CSSUnitValue;
+    function vmin(value: number): CSSUnitValue;
+    function vw(value: number): CSSUnitValue;
 }
 
 declare namespace ChromeUtils {
@@ -24636,7 +25201,7 @@ declare namespace ChromeUtils {
     var domProcessChild: nsIDOMProcessChild | null;
     var recentJSDevError: any;
     function CreateOriginAttributesFromOriginSuffix(suffix: string): OriginAttributesDictionary;
-    function addProfilerMarker(name: string, options?: ProfilerMarkerOptions | DOMHighResTimeStamp, text?: string): void;
+    function addProfilerMarker(name: string, options?: ProfilerMarkerOptions | number, text?: string): void;
     function androidMoveTaskToBack(): void;
     function base64URLDecode(string: string, options: Base64URLDecodeOptions): ArrayBuffer;
     function base64URLEncode(source: BufferSource, options: Base64URLEncodeOptions): string;
@@ -24690,6 +25255,7 @@ declare namespace ChromeUtils {
     function nondeterministicGetWeakSetKeys(aSet: any): any;
     function notifyDevToolsClosed(): void;
     function notifyDevToolsOpened(): void;
+    function now(): number;
     function originAttributesMatchPattern(originAttrs?: OriginAttributesDictionary, pattern?: OriginAttributesPatternDictionary): boolean;
     function originAttributesToSuffix(originAttrs?: OriginAttributesDictionary): string;
     function privateNoteIntentionalCrash(): void;
@@ -24803,6 +25369,7 @@ declare namespace InspectorUtils {
     function getUsedFontFaces(range: Range, maxRanges?: number, skipCollapsedWhitespace?: boolean): InspectorFontFace[];
     function hasPseudoClassLock(element: Element, pseudoClass: string): boolean;
     function hasRulesModifiedByCSSOM(sheet: CSSStyleSheet): boolean;
+    function hsvToRgb(r: number, g: number, b: number): number[] | Float32Array;
     function isCustomElementName(name: string | null, namespaceURI: string | null): boolean;
     function isElementThemed(element: Element): boolean;
     function isIgnorableWhitespace(dataNode: CharacterData): boolean;
@@ -24810,10 +25377,13 @@ declare namespace InspectorUtils {
     function isUsedColorSchemeDark(element: Element): boolean;
     function isValidCSSColor(colorString: string): boolean;
     function parseStyleSheet(sheet: CSSStyleSheet, input: string): void;
+    function relativeLuminance(r: number, g: number, b: number): number;
     function removeContentState(element: Element, state: number, clearActiveDocument?: boolean): boolean;
     function removePseudoClassLock(element: Element, pseudoClass: string): void;
     function replaceBlockRuleBodyTextInStylesheet(styleSheetText: string, line: number, column: number, newBodyText: string): string | null;
     function rgbToColorName(r: number, g: number, b: number): string;
+    function rgbToHsv(r: number, g: number, b: number): number[] | Float32Array;
+    function rgbToNearestColorName(r: number, g: number, b: number): InspectorNearestColor;
     function setContentState(element: Element, state: number): boolean;
     function setDynamicToolbarMaxHeight(aContext: BrowsingContext | null, aHeight: number): void;
     function setVerticalClipping(aContext: BrowsingContext | null, aOffset: number): void;
@@ -25536,6 +26106,7 @@ declare function setScrollMarks(marks: number[], onHorizontalScrollbar?: boolean
 declare function shouldReportForServiceWorkerScope(aScope: string): boolean;
 declare function sizeToContent(constraints?: SizeToContentConstraints): void;
 declare function stop(): void;
+declare function synthesizeMouseEvent(type: string, offsetX: number, offsetY: number, mouseEventData?: SynthesizeMouseEventData, options?: SynthesizeMouseEventOptions): boolean;
 declare function updateCommands(action: string): void;
 declare function toString(): string;
 declare var ownerGlobal: WindowProxy | null;
@@ -25561,6 +26132,7 @@ declare var oncanplaythrough: ((this: Window, ev: Event) => any) | null;
 declare var onchange: ((this: Window, ev: Event) => any) | null;
 declare var onclick: ((this: Window, ev: Event) => any) | null;
 declare var onclose: ((this: Window, ev: Event) => any) | null;
+declare var oncommand: ((this: Window, ev: Event) => any) | null;
 declare var oncontentvisibilityautostatechange: ((this: Window, ev: Event) => any) | null;
 declare var oncontextlost: ((this: Window, ev: Event) => any) | null;
 declare var oncontextmenu: ((this: Window, ev: Event) => any) | null;
@@ -25702,6 +26274,14 @@ type BlobPart = BufferSource | Blob | string;
 type BodyInit = XMLHttpRequestBodyInit;
 type BufferSource = ArrayBufferView | ArrayBuffer;
 type COSEAlgorithmIdentifier = number;
+type CSSColorAngle = CSSNumberish | CSSKeywordish;
+type CSSColorNumber = CSSNumberish | CSSKeywordish;
+type CSSColorPercent = CSSNumberish | CSSKeywordish;
+type CSSColorRGBComp = CSSNumberish | CSSKeywordish;
+type CSSKeywordish = string | CSSKeywordValue;
+type CSSNumberish = number | CSSNumericValue;
+type CSSPerspectiveValue = CSSNumericValue | CSSKeywordish;
+type CSSUnparsedSegment = string | CSSVariableReferenceValue;
 type CanvasImageSource = HTMLOrSVGImageElement | HTMLCanvasElement | HTMLVideoElement | OffscreenCanvas | ImageBitmap | VideoFrame;
 type CanvasSource = HTMLCanvasElement | OffscreenCanvas;
 type ClipboardItemData = Promise<ClipboardItemDataType>;
@@ -25734,7 +26314,7 @@ type GLsizei = number;
 type GLsizeiptr = number;
 type GLuint = number;
 type GLuint64 = number;
-type GPUBindingResource = GPUSampler | GPUTextureView | GPUBufferBinding;
+type GPUBindingResource = GPUSampler | GPUTexture | GPUTextureView | GPUBuffer | GPUBufferBinding | GPUExternalTexture;
 type GPUBufferDynamicOffset = number;
 type GPUBufferUsageFlags = number;
 type GPUColor = number[] | GPUColorDict;
@@ -25797,6 +26377,7 @@ type OnBeforeUnloadEventHandler = OnBeforeUnloadEventHandlerNonNull | null;
 type OnErrorEventHandler = OnErrorEventHandlerNonNull | null;
 type OutputStream = nsIOutputStream;
 type PerformanceEntryList = PerformanceEntry[];
+type PolicyContainer = nsIPolicyContainer;
 type Principal = nsIPrincipal;
 type PublicKeyCredentialClientCapabilities = Record<string, boolean>;
 type RTCRtpTransform = RTCRtpScriptTransform;
@@ -25844,6 +26425,8 @@ type BinaryType = "arraybuffer" | "blob";
 type BiquadFilterType = "allpass" | "bandpass" | "highpass" | "highshelf" | "lowpass" | "lowshelf" | "notch" | "peaking";
 type BitrateMode = "constant" | "variable";
 type CSSBoxType = "border" | "content" | "margin" | "padding";
+type CSSMathOperator = "clamp" | "invert" | "max" | "min" | "negate" | "product" | "sum";
+type CSSNumericBaseType = "angle" | "flex" | "frequency" | "length" | "percent" | "resolution" | "time";
 type CSSStyleSheetParsingMode = "agent" | "author" | "user";
 type CacheStorageNamespace = "chrome" | "content";
 type CallbackDebuggerNotificationPhase = "post" | "pre";
@@ -25905,6 +26488,7 @@ type GPUCanvasAlphaMode = "opaque" | "premultiplied";
 type GPUCompareFunction = "always" | "equal" | "greater" | "greater-equal" | "less" | "less-equal" | "never" | "not-equal";
 type GPUCompilationMessageType = "error" | "info" | "warning";
 type GPUCullMode = "back" | "front" | "none";
+type GPUDeviceLostReason = "destroyed" | "unknown";
 type GPUErrorFilter = "internal" | "out-of-memory" | "validation";
 type GPUFeatureName = "bgra8unorm-storage" | "clip-distances" | "core-features-and-limits" | "depth-clip-control" | "depth32float-stencil8" | "dual-source-blending" | "float32-blendable" | "float32-filterable" | "indirect-first-instance" | "rg11b10ufloat-renderable" | "shader-f16" | "subgroups" | "texture-compression-astc" | "texture-compression-astc-sliced-3d" | "texture-compression-bc" | "texture-compression-bc-sliced-3d" | "texture-compression-etc2" | "timestamp-query";
 type GPUFilterMode = "linear" | "nearest";
@@ -25964,6 +26548,7 @@ type MediaDecodingType = "file" | "media-source";
 type MediaDeviceKind = "audioinput" | "audiooutput" | "videoinput";
 type MediaEncodingType = "record" | "transmission";
 type MediaKeyMessageType = "individualization-request" | "license-release" | "license-renewal" | "license-request";
+type MediaKeySessionClosedReason = "closed-by-application" | "hardware-context-reset" | "internal-error" | "release-acknowledged" | "resource-evicted";
 type MediaKeySessionType = "persistent-license" | "temporary";
 type MediaKeyStatus = "expired" | "internal-error" | "output-downscaled" | "output-restricted" | "released" | "status-pending" | "usable";
 type MediaKeysRequirement = "not-allowed" | "optional" | "required";
@@ -26128,12 +26713,33 @@ interface CSSKeyframesRule {
     [Symbol.iterator](): IterableIterator<CSSKeyframeRule>;
 }
 
+interface CSSNumericArray {
+    [Symbol.iterator](): IterableIterator<CSSNumericValue>;
+    entries(): IterableIterator<[number, CSSNumericValue]>;
+    keys(): IterableIterator<number>;
+    values(): IterableIterator<CSSNumericValue>;
+}
+
 interface CSSRuleList {
     [Symbol.iterator](): IterableIterator<CSSRule>;
 }
 
 interface CSSStyleDeclaration {
     [Symbol.iterator](): IterableIterator<string>;
+}
+
+interface CSSTransformValue {
+    [Symbol.iterator](): IterableIterator<CSSTransformComponent>;
+    entries(): IterableIterator<[number, CSSTransformComponent]>;
+    keys(): IterableIterator<number>;
+    values(): IterableIterator<CSSTransformComponent>;
+}
+
+interface CSSUnparsedValue {
+    [Symbol.iterator](): IterableIterator<CSSUnparsedSegment>;
+    entries(): IterableIterator<[number, CSSUnparsedSegment]>;
+    keys(): IterableIterator<number>;
+    values(): IterableIterator<CSSUnparsedSegment>;
 }
 
 interface Cache {
@@ -26199,6 +26805,10 @@ interface FormData {
     entries(): IterableIterator<[string, FormDataEntryValue]>;
     keys(): IterableIterator<string>;
     values(): IterableIterator<FormDataEntryValue>;
+}
+
+interface FragmentDirective {
+    createTextDirectiveForRanges(ranges: Iterable<Range>): Promise<string>;
 }
 
 interface GPUBindingCommandsMixin {
@@ -26459,6 +27069,13 @@ interface SpeechRecognitionResultList {
     [Symbol.iterator](): IterableIterator<SpeechRecognitionResult>;
 }
 
+interface StylePropertyMapReadOnly {
+    [Symbol.iterator](): IterableIterator<[string, Iterable<CSSStyleValue>]>;
+    entries(): IterableIterator<[string, Iterable<CSSStyleValue>]>;
+    keys(): IterableIterator<string>;
+    values(): IterableIterator<Iterable<CSSStyleValue>>;
+}
+
 interface StyleSheetList {
     [Symbol.iterator](): IterableIterator<CSSStyleSheet>;
 }
@@ -26669,4 +27286,10 @@ interface TestInterfaceAsyncIterableSingle {
 interface TestInterfaceAsyncIterableSingleWithArgs {
     [Symbol.asyncIterator](options?: TestInterfaceAsyncIteratorOptions): AsyncIterableIterator<number>;
     values(options?: TestInterfaceAsyncIteratorOptions): AsyncIterableIterator<number>;
+}
+
+declare namespace CSS {
+  export {
+    _in as in,
+  };
 }

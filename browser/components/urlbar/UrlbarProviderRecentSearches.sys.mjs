@@ -9,15 +9,16 @@
 import {
   UrlbarProvider,
   UrlbarUtils,
-} from "resource:///modules/UrlbarUtils.sys.mjs";
+} from "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs";
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   FormHistory: "resource://gre/modules/FormHistory.sys.mjs",
   SearchUtils: "moz-src:///toolkit/components/search/SearchUtils.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarResult: "resource:///modules/UrlbarResult.sys.mjs",
-  UrlbarSearchUtils: "resource:///modules/UrlbarSearchUtils.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
+  UrlbarResult: "moz-src:///browser/components/urlbar/UrlbarResult.sys.mjs",
+  UrlbarSearchUtils:
+    "moz-src:///browser/components/urlbar/UrlbarSearchUtils.sys.mjs",
 });
 
 // These prefs are relative to the `browser.urlbar` branch.
@@ -29,14 +30,10 @@ const LASTDEFAULTCHANGED_PREF = "recentsearches.lastDefaultChanged";
 /**
  * A provider that returns the Recent Searches performed by the user.
  */
-class ProviderRecentSearches extends UrlbarProvider {
-  constructor(...args) {
-    super(...args);
+export class UrlbarProviderRecentSearches extends UrlbarProvider {
+  constructor() {
+    super();
     Services.obs.addObserver(this, lazy.SearchUtils.TOPIC_ENGINE_MODIFIED);
-  }
-
-  get name() {
-    return "RecentSearches";
   }
 
   /**
@@ -121,10 +118,10 @@ class ProviderRecentSearches extends UrlbarProvider {
     }
 
     for (let result of results) {
-      let res = new lazy.UrlbarResult(
-        UrlbarUtils.RESULT_TYPE.SEARCH,
-        UrlbarUtils.RESULT_SOURCE.HISTORY,
-        {
+      let res = new lazy.UrlbarResult({
+        type: UrlbarUtils.RESULT_TYPE.SEARCH,
+        source: UrlbarUtils.RESULT_SOURCE.HISTORY,
+        payload: {
           engine: engine.name,
           suggestion: result.value,
           isBlockable: true,
@@ -132,8 +129,8 @@ class ProviderRecentSearches extends UrlbarProvider {
           helpUrl:
             Services.urlFormatter.formatURLPref("app.support.baseURL") +
             "awesome-bar-result-menu",
-        }
-      );
+        },
+      });
       addCallback(this, res);
     }
   }
@@ -146,5 +143,3 @@ class ProviderRecentSearches extends UrlbarProvider {
     }
   }
 }
-
-export var UrlbarProviderRecentSearches = new ProviderRecentSearches();

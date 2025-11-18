@@ -5,27 +5,26 @@
 
 #include "Instance.h"
 
+#include <optional>
+#include <string_view>
+
 #include "Adapter.h"
+#include "ipc/WebGPUChild.h"
+#include "ipc/WebGPUTypes.h"
 #include "js/Value.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/ErrorResult.h"
+#include "mozilla/StaticPrefs_dom.h"
+#include "mozilla/dom/Promise.h"
+#include "mozilla/dom/WorkerPrivate.h"
+#include "mozilla/gfx/CanvasManagerChild.h"
 #include "mozilla/gfx/Logging.h"
+#include "mozilla/gfx/gfxVars.h"
+#include "mozilla/webgpu/ffi/wgpu.h"
 #include "nsDebug.h"
 #include "nsIGlobalObject.h"
-#include "ipc/WebGPUChild.h"
-#include "ipc/WebGPUTypes.h"
-#include "mozilla/webgpu/ffi/wgpu.h"
-#include "mozilla/dom/Promise.h"
-#include "mozilla/gfx/CanvasManagerChild.h"
-#include "mozilla/gfx/gfxVars.h"
-#include "mozilla/StaticPrefs_dom.h"
 #include "nsString.h"
 #include "nsStringFwd.h"
-
-#include "mozilla/dom/WorkerPrivate.h"
-
-#include <optional>
-#include <string_view>
 
 namespace mozilla::webgpu {
 
@@ -52,6 +51,11 @@ static inline nsDependentCString ToCString(const std::string_view s) {
   }
 
   return true;
+}
+
+/* static */ bool Instance::ExternalTexturePrefEnabled(JSContext* aCx,
+                                                       JSObject* aObj) {
+  return StaticPrefs::dom_webgpu_external_texture_enabled_AtStartup();
 }
 
 /*static*/
@@ -89,10 +93,6 @@ Instance::Instance(nsIGlobalObject* aOwner)
   }
 }
 
-Instance::~Instance() { Cleanup(); }
-
-void Instance::Cleanup() {}
-
 JSObject* Instance::WrapObject(JSContext* cx,
                                JS::Handle<JSObject*> givenProto) {
   return dom::GPU_Binding::Wrap(cx, this, givenProto);
@@ -117,18 +117,6 @@ already_AddRefed<dom::Promise> Instance::RequestAdapter(
   };
 
 #ifndef EARLY_BETA_OR_EARLIER
-#  ifndef XP_WIN
-  rejectIf(true,
-           "WebGPU is only available on Windows, and in Nightly and Early Beta "
-           "builds on other platforms.");
-#  endif
-
-  // NOTE: Deliberately left after the above check so that we only enter
-  // here if it's removed. Above is a more informative diagnostic, while the
-  // check is still present.
-  //
-  // Follow-up to remove this check:
-  // <https://bugzilla.mozilla.org/show_bug.cgi?id=1942431>
   if (dom::WorkerPrivate* wp = dom::GetCurrentThreadWorkerPrivate()) {
     rejectIf(wp->IsServiceWorker(),
              "WebGPU in service workers is not yet available in Release or "
@@ -148,6 +136,14 @@ already_AddRefed<dom::Promise> Instance::RequestAdapter(
 #  endif
 #endif
 
+  // Check if WebGPU is blocked for this global's domain.
+  {
+    const auto prefLock = mozilla::StaticPrefs::dom_webgpu_blocked_domains();
+    rejectIf(nsContentUtils::IsURIInList(mOwner->GetBaseURI(), *prefLock),
+             "WebGPU is blocked for this domain by the "
+             "`dom.webgpu.blocked-domains` pref.");
+  }
+
   if (rejectionMessage) {
     promise->MaybeRejectWithNotSupportedError(ToCString(*rejectionMessage));
     return promise.forget();
@@ -163,8 +159,8 @@ already_AddRefed<dom::Promise> Instance::RequestAdapter(
     return promise.forget();
   }
 
-  RefPtr<WebGPUChild> bridge = canvasManager->GetWebGPUChild();
-  if (!bridge) {
+  RefPtr<WebGPUChild> child = canvasManager->GetWebGPUChild();
+  if (!child) {
     promise->MaybeRejectWithInvalidStateError("Failed to create WebGPUChild");
     return promise.forget();
   }
@@ -215,15 +211,12 @@ already_AddRefed<dom::Promise> Instance::RequestAdapter(
     power_preference = ffi::WGPUPowerPreference_LowPower;
   }
 
-  RawId adapter_id = ffi::wgpu_client_make_adapter_id(bridge->GetClient());
+  RawId adapter_id = ffi::wgpu_client_request_adapter(
+      child->GetClient(), power_preference, aOptions.mForceFallbackAdapter);
 
-  ffi::wgpu_client_request_adapter(bridge->GetClient(), adapter_id,
-                                   power_preference,
-                                   aOptions.mForceFallbackAdapter);
-
-  auto pending_promise =
-      WebGPUChild::PendingRequestAdapterPromise{RefPtr(promise), RefPtr(this)};
-  bridge->mPendingRequestAdapterPromises.push_back(std::move(pending_promise));
+  auto pending_promise = WebGPUChild::PendingRequestAdapterPromise{
+      RefPtr(promise), RefPtr(this), adapter_id};
+  child->mPendingRequestAdapterPromises.push_back(std::move(pending_promise));
 
   return promise.forget();
 }

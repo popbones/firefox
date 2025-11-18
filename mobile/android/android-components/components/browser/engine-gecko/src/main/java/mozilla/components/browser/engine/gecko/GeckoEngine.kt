@@ -8,7 +8,9 @@ import android.content.Context
 import android.os.Parcelable
 import android.util.AttributeSet
 import android.util.JsonReader
+import androidx.annotation.OptIn
 import androidx.annotation.VisibleForTesting
+import mozilla.components.ExperimentalAndroidComponentsApi
 import mozilla.components.browser.engine.fission.GeckoWebContentIsolationMapper.intoWebContentIsolationStrategy
 import mozilla.components.browser.engine.gecko.activity.GeckoActivityDelegate
 import mozilla.components.browser.engine.gecko.activity.GeckoScreenOrientationDelegate
@@ -21,8 +23,10 @@ import mozilla.components.browser.engine.gecko.mediaquery.from
 import mozilla.components.browser.engine.gecko.mediaquery.toGeckoValue
 import mozilla.components.browser.engine.gecko.preferences.DefaultGeckoPreferenceAccessor
 import mozilla.components.browser.engine.gecko.preferences.GeckoPreferenceAccessor
+import mozilla.components.browser.engine.gecko.preferences.GeckoPreferenceObserverDelegate
 import mozilla.components.browser.engine.gecko.preferences.GeckoPreferencesUtils.intoBrowserPreference
 import mozilla.components.browser.engine.gecko.preferences.GeckoPreferencesUtils.intoGeckoBranch
+import mozilla.components.browser.engine.gecko.preferences.GeckoPreferencesUtils.intoSetGeckoPreference
 import mozilla.components.browser.engine.gecko.profiler.Profiler
 import mozilla.components.browser.engine.gecko.serviceworker.GeckoServiceWorkerDelegate
 import mozilla.components.browser.engine.gecko.translate.DefaultRuntimeTranslationAccessor
@@ -51,8 +55,10 @@ import mozilla.components.concept.engine.fission.WebContentIsolationStrategy
 import mozilla.components.concept.engine.history.HistoryTrackingDelegate
 import mozilla.components.concept.engine.mediaquery.PreferredColorScheme
 import mozilla.components.concept.engine.preferences.Branch
+import mozilla.components.concept.engine.preferences.BrowserPrefObserverDelegate
 import mozilla.components.concept.engine.preferences.BrowserPreference
 import mozilla.components.concept.engine.preferences.BrowserPreferencesRuntime
+import mozilla.components.concept.engine.preferences.SetBrowserPreference
 import mozilla.components.concept.engine.serviceworker.ServiceWorkerDelegate
 import mozilla.components.concept.engine.translate.LanguageModel
 import mozilla.components.concept.engine.translate.LanguageSetting
@@ -79,6 +85,7 @@ import org.mozilla.geckoview.AllowOrDeny
 import org.mozilla.geckoview.ContentBlocking
 import org.mozilla.geckoview.ContentBlockingController
 import org.mozilla.geckoview.ContentBlockingController.Event
+import org.mozilla.geckoview.ExperimentalGeckoViewApi
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoRuntimeSettings
@@ -390,18 +397,17 @@ class GeckoEngine(
             }
 
             override fun onUpdatePrompt(
-                current: org.mozilla.geckoview.WebExtension,
-                updated: org.mozilla.geckoview.WebExtension,
+                extension: org.mozilla.geckoview.WebExtension,
                 newPermissions: Array<out String>,
                 newOrigins: Array<out String>,
+                newDataCollectionPermissions: Array<out String>,
             ): GeckoResult<AllowOrDeny>? {
                 val result = GeckoResult<AllowOrDeny>()
                 webExtensionDelegate.onUpdatePermissionRequest(
-                    GeckoWebExtension(current, runtime),
-                    GeckoWebExtension(updated, runtime),
-                    // We pass both permissions and origins as a single list of
-                    // permissions to be shown to the user.
-                    newPermissions.toList() + newOrigins.toList(),
+                    GeckoWebExtension(extension, runtime),
+                    newPermissions.toList(),
+                    newOrigins.toList(),
+                    newDataCollectionPermissions.toList(),
                 ) { allow ->
                     if (allow) result.complete(AllowOrDeny.ALLOW) else result.complete(AllowOrDeny.DENY)
                 }
@@ -748,6 +754,24 @@ class GeckoEngine(
         runtime.orientationController.delegate = null
     }
 
+    /**
+     * See [BrowserPreferencesRuntime.registerPreferenceObserverDelegate].
+     */
+    @OptIn(ExperimentalGeckoViewApi::class)
+    override fun registerPrefObserverDelegate(prefObserverDelegate: BrowserPrefObserverDelegate) {
+    runtime.preferencesObserverDelegate = GeckoPreferenceObserverDelegate(
+        delegate = prefObserverDelegate,
+    )
+}
+
+    /**
+     * See [BrowserPreferencesRuntime.unregisterPreferenceObserverDelegate].
+     */
+    @OptIn(ExperimentalGeckoViewApi::class)
+    override fun unregisterPrefObserverDelegate() {
+        runtime.preferencesObserverDelegate = null
+    }
+
     override fun registerServiceWorkerDelegate(serviceWorkerDelegate: ServiceWorkerDelegate) {
         runtime.serviceWorkerDelegate = GeckoServiceWorkerDelegate(
             delegate = serviceWorkerDelegate,
@@ -969,8 +993,52 @@ class GeckoEngine(
     }
 
     /**
+     * See [BrowserPreferencesRuntime.registerPrefForObservation].
+     */
+    @OptIn(ExperimentalGeckoViewApi::class)
+    override fun registerPrefForObservation(
+        pref: String,
+        onSuccess: () -> Unit,
+        onError: (Throwable) -> Unit,
+    ) {
+        geckoPreferenceAccessor.registerGeckoPrefForObservation(pref).then(
+            {
+                onSuccess()
+                GeckoResult<Void>()
+            },
+            { throwable ->
+                onError(throwable)
+                GeckoResult<Void>()
+            },
+        )
+    }
+
+    /**
+     * See [BrowserPreferencesRuntime.unregisterPrefForObservation].
+     */
+    @OptIn(ExperimentalGeckoViewApi::class)
+    override fun unregisterPrefForObservation(
+        pref: String,
+        onSuccess: () -> Unit,
+        onError: (Throwable) -> Unit,
+    ) {
+        geckoPreferenceAccessor.unregisterGeckoPrefForObservation(pref).then(
+            {
+                onSuccess()
+                GeckoResult<Void>()
+            },
+            { throwable ->
+                onError(throwable)
+                GeckoResult<Void>()
+            },
+        )
+    }
+
+    /**
      * See [Engine.getBrowserPref].
      */
+    @ExperimentalAndroidComponentsApi
+    @OptIn(ExperimentalGeckoViewApi::class)
     override fun getBrowserPref(
         pref: String,
         onSuccess: (BrowserPreference<*>) -> Unit,
@@ -997,6 +1065,35 @@ class GeckoEngine(
     /**
      * See [Engine.setBrowserPref].
      */
+    @ExperimentalAndroidComponentsApi
+    @OptIn(ExperimentalGeckoViewApi::class)
+    override fun getBrowserPrefs(
+        prefs: List<String>,
+        onSuccess: (List<BrowserPreference<*>>) -> Unit,
+        onError: (Throwable) -> Unit,
+    ) {
+        geckoPreferenceAccessor.getGeckoPrefs(prefs).then(
+            { geckoPrefsResult ->
+                if (geckoPrefsResult != null) {
+                    onSuccess(
+                        geckoPrefsResult.map { pref -> pref.intoBrowserPreference() },
+                    )
+                } else {
+                    onError(Throwable("The browser preferences list was unexpectedly null!"))
+                }
+                GeckoResult<Void>()
+            },
+            { throwable ->
+                onError(throwable)
+                GeckoResult<Void>()
+            },
+        )
+    }
+
+    /**
+     * See [Engine.setBrowserPref].
+     */
+    @ExperimentalAndroidComponentsApi
     override fun setBrowserPref(
         pref: String,
         value: String,
@@ -1019,6 +1116,7 @@ class GeckoEngine(
     /**
      * See [Engine.setBrowserPref].
      */
+    @ExperimentalAndroidComponentsApi
     override fun setBrowserPref(
         pref: String,
         value: Int,
@@ -1041,6 +1139,7 @@ class GeckoEngine(
     /**
      * See [Engine.setBrowserPref].
      */
+    @ExperimentalAndroidComponentsApi
     override fun setBrowserPref(
         pref: String,
         value: Boolean,
@@ -1061,8 +1160,43 @@ class GeckoEngine(
     }
 
     /**
+     * See [Engine.setBrowserPref].
+     */
+    @ExperimentalAndroidComponentsApi
+    @OptIn(ExperimentalGeckoViewApi::class)
+    @Suppress("TooGenericExceptionCaught")
+    override fun setBrowserPrefs(
+        prefs: List<SetBrowserPreference<*>>,
+        onSuccess: (Map<String, Boolean>) -> Unit,
+        onError: (Throwable) -> Unit,
+    ) {
+        try {
+            val geckoPrefs = prefs.map { pref -> pref.intoSetGeckoPreference() }
+            geckoPreferenceAccessor.setGeckoPrefs(geckoPrefs).then(
+                { geckoPrefsResult ->
+                    if (geckoPrefsResult != null) {
+                        onSuccess(
+                            geckoPrefsResult,
+                        )
+                    } else {
+                        onError(Throwable("The browser preferences map was unexpectedly null!"))
+                    }
+                    GeckoResult<Void>()
+                },
+                { throwable ->
+                    onError(throwable)
+                    GeckoResult<Void>()
+                },
+            )
+        } catch (throwable: Throwable) {
+            onError(throwable)
+        }
+    }
+
+    /**
      * See [Engine.clearBrowserUserPref].
      */
+    @ExperimentalAndroidComponentsApi
     override fun clearBrowserUserPref(
         pref: String,
         onSuccess: () -> Unit,
@@ -1157,6 +1291,14 @@ class GeckoEngine(
 
                         if (getBounceTrackingProtectionMode() != policy.bounceTrackingProtectionMode.mode) {
                             setBounceTrackingProtectionMode(policy.bounceTrackingProtectionMode.mode)
+                        }
+
+                        if (allowListBaselineTrackingProtection != value.allowListBaselineTrackingProtection) {
+                            setAllowListBaselineTrackingProtection(value.allowListBaselineTrackingProtection)
+                        }
+
+                        if (allowListConvenienceTrackingProtection != value.allowListConvenienceTrackingProtection) {
+                            setAllowListConvenienceTrackingProtection(value.allowListConvenienceTrackingProtection)
                         }
                     }
 
@@ -1509,6 +1651,10 @@ class GeckoEngine(
         override var bannedPorts: String
             get() = runtime.settings.bannedPorts
             set(value) { runtime.settings.setBannedPorts(value) }
+
+        override var lnaBlockingEnabled: Boolean
+            get() = runtime.settings.lnaBlockingEnabled
+            set(value) { runtime.settings.setLnaBlockingEnabled(value) }
     }.apply {
         defaultSettings?.let {
             this.javascriptEnabled = it.javascriptEnabled
@@ -1555,6 +1701,7 @@ class GeckoEngine(
             this.postQuantumKeyExchangeEnabled = it.postQuantumKeyExchangeEnabled
             this.dohAutoselectEnabled = it.dohAutoselectEnabled
             this.bannedPorts = it.bannedPorts
+            this.lnaBlockingEnabled = it.lnaBlockingEnabled
         }
     }
 

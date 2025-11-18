@@ -41,7 +41,10 @@ const DEFERRED_TASK_INTERVAL_MS = 3000;
 // Maximum time to wait for an idle before the task is executed anyway.
 const DEFERRED_TASK_MAX_IDLE_WAIT_MS = 2 * 60000;
 // Number of entries to update at once.
-const DEFAULT_CHUNK_SIZE = 50;
+const DEFAULT_CHUNK_SIZE = Services.prefs.getIntPref(
+  "places.semanticHistory.defaultBatchChunksize",
+  25
+);
 const ONE_MiB = 1024 * 1024;
 // minimum title length threshold; Usage len(title || description) > MIN_TITLE_LENGTH
 const MIN_TITLE_LENGTH = 4;
@@ -73,7 +76,7 @@ class PlacesSemanticHistoryManager {
    *
    * @param {Object} options - Configuration options.
    * @param {number} [options.embeddingSize=384] - Size of embeddings used for vector operations.
-   * @param {number} [options.rowLimit=600] - Maximum number of rows to process from the database.
+   * @param {number} [options.rowLimit=10000] - Maximum number of rows to process from the database.
    * @param {string} [options.samplingAttrib="frecency"] - Attribute used for sampling rows.
    * @param {number} [options.changeThresholdCount=3] - Threshold of changed rows to trigger updates.
    * @param {number} [options.distanceThreshold=0.6] - Cosine distance threshold to determine similarity.
@@ -81,7 +84,7 @@ class PlacesSemanticHistoryManager {
    */
   constructor({
     embeddingSize = 384,
-    rowLimit = 600,
+    rowLimit = 10000,
     samplingAttrib = "frecency",
     changeThresholdCount = 3,
     distanceThreshold = 0.6,
@@ -344,7 +347,7 @@ class PlacesSemanticHistoryManager {
         }
 
         // Capture updateTask startTime.
-        const updateStartTime = Cu.now();
+        const updateStartTime = ChromeUtils.now();
 
         try {
           lazy.logger.info("Running vector DB update task...");
@@ -364,7 +367,7 @@ class PlacesSemanticHistoryManager {
           }
 
           this.#prevPagesRankChangedCount = pagesRankChangedCount;
-          const startTime = Cu.now();
+          const startTime = ChromeUtils.now();
 
           lazy.logger.info(
             `Changes exceed threshold (${this.#changeThresholdCount}).`
@@ -378,7 +381,7 @@ class PlacesSemanticHistoryManager {
           // We already have startTime for profile markers, so just use it
           // instead of tracking timer within the distribution.
           Glean.places.semanticHistoryFindChunksTime.accumulateSingleSample(
-            Cu.now() - startTime
+            ChromeUtils.now() - startTime
           );
 
           lazy.logger.info(
@@ -431,7 +434,7 @@ class PlacesSemanticHistoryManager {
           lazy.logger.error("Error executing vector DB update task:", error);
         } finally {
           lazy.logger.info("Vector DB update task completed.");
-          const updateEndTime = Cu.now();
+          const updateEndTime = ChromeUtils.now();
           const updateTaskTime = updateEndTime - updateStartTime;
           this.#updateTaskLatency.push(updateTaskTime);
 
@@ -631,7 +634,10 @@ class PlacesSemanticHistoryManager {
               INSERT INTO vec_history (rowid, embedding, embedding_coarse)
               VALUES (:rowid, :vector, vec_quantize_binary(:vector))
               `,
-              { rowid, vector: this.tensorToBindable(tensor) }
+              {
+                rowid,
+                vector: lazy.PlacesUtils.tensorToSQLBindable(tensor),
+              }
             );
           } catch (error) {
             lazy.logger.trace(
@@ -651,7 +657,10 @@ class PlacesSemanticHistoryManager {
               INSERT INTO vec_history (rowid, embedding, embedding_coarse)
               VALUES (:rowid, :vector, vec_quantize_binary(:vector))
               `,
-              { rowid, vector: this.tensorToBindable(tensor) }
+              {
+                rowid,
+                vector: lazy.PlacesUtils.tensorToSQLBindable(tensor),
+              }
             );
           }
 
@@ -725,13 +734,6 @@ class PlacesSemanticHistoryManager {
     lazy.logger.info("PlacesSemanticHistoryManager shut down.");
   }
 
-  tensorToBindable(tensor) {
-    if (!tensor) {
-      throw new Error("tensorToBindable received an undefined tensor");
-    }
-    return new Uint8ClampedArray(new Float32Array(tensor).buffer);
-  }
-
   /**
    * Executes an inference operation using the ML engine.
    *
@@ -746,7 +748,7 @@ class PlacesSemanticHistoryManager {
    *   The result of the engine's inference pipeline.
    */
   async infer(queryContext) {
-    const inferStartTime = Cu.now();
+    const inferStartTime = ChromeUtils.now();
     let results = [];
     await this.embedder.ensureEngine();
     let tensor = await this.embedder.embed(queryContext.searchString);
@@ -802,7 +804,7 @@ class PlacesSemanticHistoryManager {
       ORDER BY distance
       `,
       {
-        vector: this.tensorToBindable(tensor),
+        vector: lazy.PlacesUtils.tensorToSQLBindable(tensor),
         distanceThreshold: this.#distanceThreshold,
       }
     );

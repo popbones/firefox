@@ -4,11 +4,12 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/dom/ContentChild.h"
-#include "mozilla/dom/JSProcessActorBinding.h"
 #include "mozilla/dom/JSProcessActorChild.h"
+
+#include "mozilla/dom/ContentChild.h"
 #include "mozilla/dom/InProcessChild.h"
 #include "mozilla/dom/InProcessParent.h"
+#include "mozilla/dom/JSProcessActorBinding.h"
 
 namespace mozilla::dom {
 
@@ -26,8 +27,8 @@ JSObject* JSProcessActorChild::WrapObject(JSContext* aCx,
 }
 
 void JSProcessActorChild::SendRawMessage(
-    const JSActorMessageMeta& aMeta, Maybe<ipc::StructuredCloneData>&& aData,
-    Maybe<ipc::StructuredCloneData>&& aStack, ErrorResult& aRv) {
+    const JSActorMessageMeta& aMeta, UniquePtr<ipc::StructuredCloneData> aData,
+    UniquePtr<ipc::StructuredCloneData> aStack, ErrorResult& aRv) {
   if (NS_WARN_IF(!CanSend() || !mManager || !mManager->GetCanSend())) {
     aRv.ThrowInvalidStateError("JSProcessActorChild cannot send at the moment");
     return;
@@ -44,9 +45,9 @@ void JSProcessActorChild::SendRawMessage(
   }
 
   // Cross-process case - send data over ContentChild to other side.
-  Maybe<ClonedMessageData> msgData;
+  UniquePtr<ClonedMessageData> msgData;
   if (aData) {
-    msgData.emplace();
+    msgData = MakeUnique<ClonedMessageData>();
     if (NS_WARN_IF(!aData->BuildClonedMessageData(*msgData))) {
       aRv.ThrowDataCloneError(
           nsPrintfCString("JSProcessActorChild serialization error: cannot "
@@ -56,9 +57,9 @@ void JSProcessActorChild::SendRawMessage(
     }
   }
 
-  Maybe<ClonedMessageData> stackData;
+  UniquePtr<ClonedMessageData> stackData;
   if (aStack) {
-    stackData.emplace();
+    stackData = MakeUnique<ClonedMessageData>();
     if (!aStack->BuildClonedMessageData(*stackData)) {
       stackData.reset();
     }

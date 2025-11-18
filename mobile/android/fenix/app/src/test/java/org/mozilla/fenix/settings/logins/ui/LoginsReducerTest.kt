@@ -10,14 +10,14 @@ import org.junit.Test
 class LoginsReducerTest {
     @Test
     fun `WHEN store initializes THEN no changes to state`() {
-        val state = LoginsState()
+        val state = LoginsState.default
 
         assertEquals(state, loginsReducer(state, Init))
     }
 
     @Test
     fun `WHEN logins are loaded THEN they are added to state`() {
-        val state = LoginsState()
+        val state = LoginsState.default
         val items = List(5) {
             LoginItem(
                 guid = "$it",
@@ -43,7 +43,7 @@ class LoginsReducerTest {
 
     @Test
     fun `GIVEN we are on the list logins screen WHEN add login is clicked THEN initialize the add login state`() {
-        val state = LoginsState().copy(
+        val state = LoginsState.default.copy(
             loginsAddLoginState = LoginsAddLoginState(
                 host = "",
                 username = "",
@@ -65,11 +65,11 @@ class LoginsReducerTest {
 
     @Test
     fun `GIVEN there is no substate screen present WHEN back is clicked THEN state is unchanged`() {
-        val state = LoginsState()
+        val state = LoginsState.default
 
         val result = loginsReducer(state, LoginsListBackClicked)
 
-        assertEquals(LoginsState(), result)
+        assertEquals(LoginsState.default, result)
     }
 
     @Test
@@ -84,7 +84,7 @@ class LoginsReducerTest {
             )
         }
 
-        val state = LoginsState().copy(loginItems = items)
+        val state = LoginsState.default.copy(loginItems = items)
 
         val alphabetical = loginsReducer(state, LoginsListSortMenuAction.OrderByNameClicked)
         assertEquals(listOf(items[0], items[1], items[2]), alphabetical.loginItems)
@@ -102,7 +102,7 @@ class LoginsReducerTest {
             )
         }
 
-        val state = LoginsState().copy(loginItems = items)
+        val state = LoginsState.default.copy(loginItems = items)
 
         val newest = loginsReducer(state, LoginsListSortMenuAction.OrderByLastUsedClicked)
         assertEquals(listOf(items[2], items[1], items[0]), newest.loginItems)
@@ -119,13 +119,23 @@ class LoginsReducerTest {
                 timeLastUsed = System.currentTimeMillis(),
             )
         }
+        val itemsList = items.toMutableList()
+        itemsList.add(
+            LoginItem(
+                guid = "7",
+                url = "7 uri",
+                username = "user7-url",
+                password = "pass7",
+                timeLastUsed = System.currentTimeMillis(),
+            ),
+        )
 
-        val state = LoginsState().copy(loginItems = items)
+        val state = LoginsState.default.copy(loginItems = itemsList)
 
-        val filterUrl = loginsReducer(state, SearchLogins("url", items))
+        val filterUrl = loginsReducer(state, SearchLogins("url", itemsList))
         assertEquals("url", filterUrl.searchText)
-        assertEquals(4, filterUrl.loginItems.size)
-        assertEquals(listOf(items[0], items[2], items[4], items[6]), filterUrl.loginItems)
+        assertEquals(5, filterUrl.loginItems.size)
+        assertEquals(listOf(itemsList[0], itemsList[2], itemsList[4], itemsList[6], itemsList[7]), filterUrl.loginItems)
     }
 
     @Test
@@ -140,7 +150,7 @@ class LoginsReducerTest {
             )
         }
 
-        val state = LoginsState().copy(loginItems = items)
+        val state = LoginsState.default.copy(loginItems = items)
         val result = loginsReducer(state, LoginClicked(items[1]))
         val expectedState = state.copy(loginsLoginDetailState = LoginsLoginDetailState(items[1]))
 
@@ -150,7 +160,7 @@ class LoginsReducerTest {
 
     @Test
     fun `WHEN login is clicked THEN it is added to state`() {
-        val state = LoginsState()
+        val state = LoginsState.default
         val loginItem = LoginItem(
             guid = "guid123",
             url = "url123",
@@ -182,13 +192,41 @@ class LoginsReducerTest {
             )
         }
 
-        val state = LoginsState().copy(loginItems = items)
+        val state = LoginsState.default.copy(loginItems = items)
         loginsReducer(state, LoginClicked(items[1]))
 
         val resultListStateAfterBackClick = loginsReducer(state, LoginsListBackClicked)
         val expectedListStateAfterBackClick = state.copy(loginsLoginDetailState = null)
 
         assertEquals(resultListStateAfterBackClick, expectedListStateAfterBackClick)
+    }
+
+    @Test
+    fun `GIVEN we are on the login details screen WHEN the delete item from the 3 dot menu is tapped THEN show the deletion dialog`() {
+        val items = List(7) {
+            LoginItem(
+                guid = "$it",
+                url = if (it % 2 == 0) "$it url" else "$it uri",
+                username = "user$it",
+                password = "pass$it",
+                timeLastUsed = System.currentTimeMillis(),
+            )
+        }
+
+        val state = LoginsState.default.copy(
+            loginItems = items,
+            loginsLoginDetailState = LoginsLoginDetailState(items[1]),
+        )
+
+        val resultDeletionDialogStateAfterDeleteClick =
+            loginsReducer(state, DetailLoginMenuAction.DeleteLoginMenuItemClicked(items[1]))
+        val expectedDeletionDialogStateAfterDeleteClick =
+            state.copy(loginDeletionDialogState = LoginDeletionDialogState.Presenting(items[1].guid))
+
+        assertEquals(
+            resultDeletionDialogStateAfterDeleteClick,
+            expectedDeletionDialogStateAfterDeleteClick,
+        )
     }
 
     @Test
@@ -203,7 +241,7 @@ class LoginsReducerTest {
             )
         }
 
-        val state = LoginsState().copy(loginItems = items)
+        val state = LoginsState.default.copy(loginItems = items)
         loginsReducer(state, AddLoginAction.InitAdd)
 
         val resultListStateAfterBackClick = loginsReducer(state, AddLoginBackClicked)
@@ -218,7 +256,7 @@ class LoginsReducerTest {
         val username = "user1234"
         val password = "pass1234"
 
-        val state = LoginsState().copy(
+        val state = LoginsState.default.copy(
             loginsAddLoginState = LoginsAddLoginState(
                 host = host,
                 username = username,
@@ -248,7 +286,7 @@ class LoginsReducerTest {
         val username = "user1234"
         val password = "pass1234"
 
-        val state = LoginsState().copy(
+        val state = LoginsState.default.copy(
             loginItems = listOf(
                 LoginItem(
                     guid = guid,
@@ -280,5 +318,341 @@ class LoginsReducerTest {
             resultAddStateForDuplicateLogin.newLoginState,
             expectedAddStateForDuplicateLogin.newLoginState,
         )
+    }
+
+    @Test
+    fun `GIVEN we are on the edit login screen WHEN the back button is clicked THEN go back to login details screen`() {
+        val items = List(7) {
+            LoginItem(
+                guid = "$it",
+                url = if (it % 2 == 0) "$it url" else "$it uri",
+                username = "user$it",
+                password = "pass$it",
+                timeLastUsed = System.currentTimeMillis(),
+            )
+        }
+
+        val state = LoginsState.default.copy(
+            loginItems = items,
+            loginsLoginDetailState = LoginsLoginDetailState(items[1]),
+            loginsEditLoginState = LoginsEditLoginState(
+                login = items[1],
+                newUsername = "newUsername",
+                newPassword = "newPassword",
+                isPasswordVisible = true,
+            ),
+        )
+
+        val resultListStateAfterBackClick = loginsReducer(state, EditLoginBackClicked)
+        val expectedListStateAfterBackClick = state.copy(loginsEditLoginState = null)
+
+        assertEquals(resultListStateAfterBackClick, expectedListStateAfterBackClick)
+    }
+
+    @Test
+    fun `GIVEN we are on the edit login screen WHEN the save button is clicked THEN go back to details login and reflect the changed state`() {
+        val items = List(7) {
+            LoginItem(
+                guid = "$it",
+                url = if (it % 2 == 0) "$it url" else "$it uri",
+                username = "user$it",
+                password = "pass$it",
+                timeLastUsed = System.currentTimeMillis(),
+            )
+        }
+
+        val loginsEditState = LoginsEditLoginState(
+            login = items[1],
+            newUsername = "newUsername",
+            newPassword = "newPassword",
+            isPasswordVisible = true,
+        )
+        val state = LoginsState.default.copy(
+            loginItems = items,
+            loginsLoginDetailState = LoginsLoginDetailState(items[1]),
+            loginsEditLoginState = loginsEditState,
+        )
+
+        val resultListStateAfterBackClick =
+            loginsReducer(state, EditLoginAction.SaveEditClicked(items[1]))
+        val expectedListStateAfterSaveClick = state.copy(
+            loginsEditLoginState = loginsEditState.copy(
+                newUsername = "newUsername",
+                newPassword = "newPassword",
+                isPasswordVisible = true,
+            ),
+        )
+
+        assertEquals(resultListStateAfterBackClick, expectedListStateAfterSaveClick)
+    }
+
+    @Test
+    fun `GIVEN we are on the edit login screen and the password is visible WHEN the hide password button is clicked THEN reflect the changed state`() {
+        val items = List(7) {
+            LoginItem(
+                guid = "$it",
+                url = if (it % 2 == 0) "$it url" else "$it uri",
+                username = "user$it",
+                password = "pass$it",
+                timeLastUsed = System.currentTimeMillis(),
+            )
+        }
+
+        val loginsEditState = LoginsEditLoginState(
+            login = items[1],
+            newUsername = "newUsername",
+            newPassword = "newPassword",
+            isPasswordVisible = true,
+        )
+        val state = LoginsState.default.copy(
+            loginItems = items,
+            loginsLoginDetailState = LoginsLoginDetailState(items[1]),
+            loginsEditLoginState = loginsEditState,
+        )
+
+        val resultListStateAfterBackClick =
+            loginsReducer(state, EditLoginAction.PasswordVisibilityChanged(false))
+        val expectedListStateAfterSaveClick = state.copy(
+            loginsEditLoginState = loginsEditState.copy(
+                newUsername = "newUsername",
+                newPassword = "newPassword",
+                isPasswordVisible = false,
+            ),
+        )
+
+        assertEquals(resultListStateAfterBackClick, expectedListStateAfterSaveClick)
+    }
+
+    @Test
+    fun `GIVEN we are on the edit login screen and the password is hidden WHEN the show password button is clicked THEN reflect the changed state`() {
+        val items = List(7) {
+            LoginItem(
+                guid = "$it",
+                url = if (it % 2 == 0) "$it url" else "$it uri",
+                username = "user$it",
+                password = "pass$it",
+                timeLastUsed = System.currentTimeMillis(),
+            )
+        }
+
+        val loginsEditState = LoginsEditLoginState(
+            login = items[1],
+            newUsername = "newUsername",
+            newPassword = "newPassword",
+            isPasswordVisible = false,
+        )
+        val state = LoginsState.default.copy(
+            loginItems = items,
+            loginsLoginDetailState = LoginsLoginDetailState(items[1]),
+            loginsEditLoginState = loginsEditState,
+        )
+
+        val resultListStateAfterBackClick =
+            loginsReducer(state, EditLoginAction.PasswordVisibilityChanged(true))
+        val expectedListStateAfterSaveClick = state.copy(
+            loginsEditLoginState = loginsEditState.copy(
+                newUsername = "newUsername",
+                newPassword = "newPassword",
+                isPasswordVisible = true,
+            ),
+        )
+
+        assertEquals(resultListStateAfterBackClick, expectedListStateAfterSaveClick)
+    }
+
+    @Test
+    fun `GIVEN a logins screen WHEN the biometric authentication becomes authorized THEN reflect that into the state`() {
+        val state = LoginsState.default.copy(
+            biometricAuthenticationState = BiometricAuthenticationState.Authorized,
+        )
+        val result = loginsReducer(
+            state,
+            action = BiometricAuthenticationAction.AuthenticationSucceeded,
+        )
+        assertEquals(
+            BiometricAuthenticationState.Authorized,
+            result.biometricAuthenticationState,
+        )
+    }
+
+    @Test
+    fun `GIVEN a logins screen WHEN the biometric authentication dialog should be shown THEN reflect that into the state`() {
+        val state = LoginsState.default.copy(
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(shouldShow = true),
+        )
+        val result = loginsReducer(
+            state,
+            action = BiometricAuthenticationDialogAction(shouldShowDialog = true),
+        )
+        assertEquals(
+            BiometricAuthenticationDialogState(shouldShow = true),
+            result.biometricAuthenticationDialogState,
+        )
+    }
+
+    @Test
+    fun `GIVEN we are on the add login screen and the biometric authentication dialog should be shown WHEN the back button is clicked THEN go back to login list state and show the dialog`() {
+        val items = List(7) {
+            LoginItem(
+                guid = "$it",
+                url = if (it % 2 == 0) "$it url" else "$it uri",
+                username = "user$it",
+                password = "pass$it",
+                timeLastUsed = System.currentTimeMillis(),
+            )
+        }
+
+        val state = LoginsState.default.copy(
+            loginItems = items,
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(shouldShow = true),
+        )
+        loginsReducer(state, AddLoginAction.InitAdd)
+
+        val resultListStateAfterBackClick = loginsReducer(state, AddLoginBackClicked)
+        val expectedListStateAfterBackClick = state.copy(loginsAddLoginState = null)
+
+        assertEquals(resultListStateAfterBackClick, expectedListStateAfterBackClick)
+        assertEquals(
+            resultListStateAfterBackClick.biometricAuthenticationDialogState,
+            expectedListStateAfterBackClick.biometricAuthenticationDialogState,
+        )
+    }
+
+    @Test
+    fun `WHEN on login details screen and the biometric auth dialog should not be shown THEN this will be reflected in the state`() {
+        val state = LoginsState.default.copy(
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(shouldShow = false),
+        )
+        val loginItem = LoginItem(
+            guid = "guid123",
+            url = "url123",
+            username = "user123",
+            password = "pass123",
+            timeLastUsed = System.currentTimeMillis(),
+        )
+
+        val result = loginsReducer(
+            state,
+            LoginClicked(item = loginItem),
+        )
+
+        val expected = state.copy(
+            loginsLoginDetailState = LoginsLoginDetailState(loginItem),
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(shouldShow = false),
+        )
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `GIVEN we are on the list logins screen, biometric auth is not authorized and the biometric dialog should be shown WHEN add login is clicked THEN reflect all these in the state`() {
+        val state = LoginsState.default.copy(
+            loginsAddLoginState = LoginsAddLoginState(
+                host = "",
+                username = "",
+                password = "",
+            ),
+            biometricAuthenticationState = BiometricAuthenticationState.NonAuthorized,
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(shouldShow = true),
+        )
+
+        val result = loginsReducer(state, AddLoginAction.InitAdd)
+
+        assertEquals(
+            LoginsAddLoginState(
+                host = "",
+                username = "",
+                password = "",
+            ),
+            result.loginsAddLoginState,
+        )
+        assertEquals(
+            BiometricAuthenticationState.NonAuthorized,
+            result.biometricAuthenticationState,
+        )
+        assertEquals(
+            BiometricAuthenticationDialogState(true),
+            result.biometricAuthenticationDialogState,
+        )
+    }
+
+    @Test
+    fun `WHEN on logins list screen, biometric auth is not authorized and the pin verification starts THEN this will be reflected in the state`() {
+        val state = LoginsState.default.copy(
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(shouldShow = true),
+            pinVerificationState = PinVerificationState.Inert,
+        )
+
+        val result = loginsReducer(
+            state,
+            action = PinVerificationAction.Start,
+        )
+        assertEquals(
+            PinVerificationState.Started,
+            result.pinVerificationState,
+        )
+        assertEquals(
+            BiometricAuthenticationDialogState(true),
+            result.biometricAuthenticationDialogState,
+        )
+    }
+
+    @Test
+    fun `WHEN on logins list screen, the pin verification starts after already being started THEN this will be reflected in the state`() {
+        val state = LoginsState.default.copy(
+            pinVerificationState = PinVerificationState.Started,
+        )
+
+        val result = loginsReducer(
+            state,
+            action = PinVerificationAction.Duplicate,
+        )
+        assertEquals(
+            PinVerificationState.Duplicated,
+            result.pinVerificationState,
+        )
+    }
+
+    @Test
+    fun `WHEN on logins list screen and the pin verification succeeded THEN this will be reflected in the state`() {
+        val state = LoginsState.default.copy(
+            biometricAuthenticationState = BiometricAuthenticationState.InProgress,
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(true),
+            pinVerificationState = PinVerificationState.Started,
+        )
+
+        val result = loginsReducer(
+            state,
+            action = PinVerificationAction.Succeeded,
+        )
+
+        val expected = state.copy(
+            biometricAuthenticationState = BiometricAuthenticationState.Authorized,
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(false),
+            pinVerificationState = PinVerificationState.Inert,
+        )
+
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `WHEN on logins list screen and the pin verification failed THEN this will be reflected in the state`() {
+        val state = LoginsState.default.copy(
+            biometricAuthenticationState = BiometricAuthenticationState.InProgress,
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(true),
+            pinVerificationState = PinVerificationState.Started,
+        )
+
+        val result = loginsReducer(
+            state,
+            action = PinVerificationAction.Failed,
+        )
+
+        val expected = state.copy(
+            biometricAuthenticationState = BiometricAuthenticationState.NonAuthorized,
+            biometricAuthenticationDialogState = BiometricAuthenticationDialogState(true),
+            pinVerificationState = PinVerificationState.Inert,
+        )
+
+        assertEquals(expected, result)
     }
 }

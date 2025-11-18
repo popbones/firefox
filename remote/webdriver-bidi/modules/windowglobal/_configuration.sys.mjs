@@ -18,15 +18,21 @@ ChromeUtils.defineESModuleGetters(lazy, {
  */
 class _ConfigurationModule extends WindowGlobalBiDiModule {
   #geolocationConfiguration;
+  #localeOverride;
   #preloadScripts;
   #resolveBlockerPromise;
+  #screenOrientationOverride;
+  #timezoneOverride;
   #viewportConfiguration;
 
   constructor(messageHandler) {
     super(messageHandler);
 
-    this.#geolocationConfiguration = null;
+    this.#geolocationConfiguration = undefined;
+    this.#localeOverride = null;
     this.#preloadScripts = new Set();
+    this.#screenOrientationOverride = undefined;
+    this.#timezoneOverride = null;
     this.#viewportConfiguration = new Map();
 
     Services.obs.addObserver(this, "document-element-inserted");
@@ -56,7 +62,10 @@ class _ConfigurationModule extends WindowGlobalBiDiModule {
       if (
         this.#preloadScripts.size === 0 &&
         this.#viewportConfiguration.size === 0 &&
-        this.#geolocationConfiguration === null
+        this.#geolocationConfiguration === undefined &&
+        this.#localeOverride === null &&
+        this.#screenOrientationOverride === undefined &&
+        this.#timezoneOverride === null
       ) {
         this.#onConfigurationComplete(window);
         return;
@@ -77,7 +86,7 @@ class _ConfigurationModule extends WindowGlobalBiDiModule {
       // bug 1958942.
       window.document.documentElement.getBoundingClientRect();
 
-      if (this.#geolocationConfiguration !== null) {
+      if (this.#geolocationConfiguration !== undefined) {
         await this.messageHandler.handleCommand({
           moduleName: "emulation",
           commandName: "_setGeolocationOverride",
@@ -87,6 +96,48 @@ class _ConfigurationModule extends WindowGlobalBiDiModule {
           },
           params: {
             coordinates: this.#geolocationConfiguration,
+          },
+        });
+      }
+
+      if (this.#localeOverride !== null) {
+        await this.messageHandler.forwardCommand({
+          moduleName: "emulation",
+          commandName: "_setLocaleForBrowsingContext",
+          destination: {
+            type: lazy.RootMessageHandler.type,
+          },
+          params: {
+            context: this.messageHandler.context,
+            locale: this.#localeOverride,
+          },
+        });
+      }
+
+      if (this.#timezoneOverride !== null) {
+        await this.messageHandler.forwardCommand({
+          moduleName: "emulation",
+          commandName: "_setTimezoneOverride",
+          destination: {
+            type: lazy.RootMessageHandler.type,
+          },
+          params: {
+            context: this.messageHandler.context,
+            timezone: this.#timezoneOverride,
+          },
+        });
+      }
+
+      if (this.#screenOrientationOverride !== undefined) {
+        await this.messageHandler.forwardCommand({
+          moduleName: "emulation",
+          commandName: "_setEmulatedScreenOrientation",
+          destination: {
+            type: lazy.RootMessageHandler.type,
+          },
+          params: {
+            context: this.messageHandler.context,
+            orientationOverride: this.#screenOrientationOverride,
           },
         });
       }
@@ -144,10 +195,13 @@ class _ConfigurationModule extends WindowGlobalBiDiModule {
       }
     }
 
-    // Geolocation and viewport overrides apply only to top-level traversables.
+    // The following overrides apply only to top-level traversables.
     if (
       (category === "geolocation-override" ||
-        category === "viewport-overrides") &&
+        category === "viewport-overrides" ||
+        category === "locale-override" ||
+        category === "screen-orientation-override" ||
+        category === "timezone-override") &&
       !this.messageHandler.context.parent
     ) {
       for (const { contextDescriptor, value } of sessionData) {
@@ -155,18 +209,35 @@ class _ConfigurationModule extends WindowGlobalBiDiModule {
           continue;
         }
 
-        if (category === "geolocation-override") {
-          this.#geolocationConfiguration = value;
-        } else {
-          if (value.viewport !== undefined) {
-            this.#viewportConfiguration.set("viewport", value.viewport);
+        switch (category) {
+          case "geolocation-override": {
+            this.#geolocationConfiguration = value;
+            break;
           }
+          case "viewport-overrides": {
+            if (value.viewport !== undefined) {
+              this.#viewportConfiguration.set("viewport", value.viewport);
+            }
 
-          if (value.devicePixelRatio !== undefined) {
-            this.#viewportConfiguration.set(
-              "devicePixelRatio",
-              value.devicePixelRatio
-            );
+            if (value.devicePixelRatio !== undefined) {
+              this.#viewportConfiguration.set(
+                "devicePixelRatio",
+                value.devicePixelRatio
+              );
+            }
+            break;
+          }
+          case "locale-override": {
+            this.#localeOverride = value;
+            break;
+          }
+          case "screen-orientation-override": {
+            this.#screenOrientationOverride = value;
+            break;
+          }
+          case "timezone-override": {
+            this.#timezoneOverride = value;
+            break;
           }
         }
       }

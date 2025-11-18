@@ -7,7 +7,11 @@
 /* eslint-env node */
 
 import noBaseDesignTokens from "./no-base-design-tokens.mjs";
+import useBorderRadiusTokens from "./use-border-radius-tokens.mjs";
+import useBorderColorTokens from "./use-border-color-tokens.mjs";
 
 export default {
   "no-base-design-tokens": noBaseDesignTokens,
+  "use-border-radius-tokens": useBorderRadiusTokens,
+  "use-border-color-tokens": useBorderColorTokens,
 };

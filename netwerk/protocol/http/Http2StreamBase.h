@@ -35,10 +35,12 @@ class Http2PushedStream;
 class Http2Decompressor;
 class Http2WebTransportSession;
 
-class Http2StreamBase : public nsAHttpSegmentReader,
+class Http2StreamBase : public nsISupports,
+                        public nsAHttpSegmentReader,
                         public nsAHttpSegmentWriter,
                         public SupportsWeakPtr {
  public:
+  NS_DECL_THREADSAFE_ISUPPORTS
   NS_DECL_NSAHTTPSEGMENTREADER
 
   enum stateType {
@@ -205,9 +207,12 @@ class Http2StreamBase : public nsAHttpSegmentReader,
     }
   }
 
+  bool Closed() const { return mClosed; }
+
  protected:
   virtual ~Http2StreamBase();
-
+  friend class DeleteHttp2StreamBase;
+  void DeleteSelfOnSocketThread();
   virtual void HandleResponseHeaders(nsACString& aHeadersOut,
                                      int32_t httpResponseCode) {}
   virtual nsresult CallToWriteData(uint32_t count, uint32_t* countRead) = 0;
@@ -297,8 +302,10 @@ class Http2StreamBase : public nsAHttpSegmentReader,
   // close by setting this to the max value.
   int64_t mRequestBodyLenRemaining{0};
 
+  bool mClosed{false};
+
  private:
-  friend class mozilla::DefaultDelete<Http2StreamBase>;
+  friend mozilla::DefaultDelete<Http2StreamBase>;
 
   [[nodiscard]] nsresult ParseHttpRequestHeaders(const char*, uint32_t,
                                                  uint32_t*);

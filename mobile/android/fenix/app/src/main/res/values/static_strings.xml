@@ -69,18 +69,16 @@
     <string name="preferences_sync_debug_temporary_auth_error_button_title">Simulate temporary account auth error</string>
     <!-- Button title for simulating an FxA permanent auth error inside the Sync Debug menu -->
     <string name="preferences_sync_debug_permanent_auth_error_button_title">Simulate permanent account auth error</string>
-    <!-- Label for enabling the Compose Homepage -->
-    <string name="preferences_debug_settings_compose_homepage" translatable="false">Enable Compose Homepage</string>
-    <!-- Label for enabling the Compose Bookmarks -->
-    <string name="preferences_debug_settings_compose_bookmarks" translatable="false">Enable Compose Bookmarks</string>
     <!-- Label for enabling the Homepage Search Bar -->
     <string name="preferences_debug_settings_homepage_searchbar" translatable="false">Enable Homepage Search Bar</string>
+    <!-- Label for overriding user specified homepage sections -->
+    <string name="preferences_debug_settings_override_user_specified_homepage_sections" translatable="false">Override user specified homepage sections</string>
     <!-- Label for enabling the Compose Logins -->
     <string name="preferences_debug_settings_compose_logins" translatable="false">Enable Compose Logins</string>
     <!-- Label for enabling Homepage as a New Tab -->
     <string name="preferences_debug_settings_homepage_as_new_tab" translatable="false">Enable Homepage as a New Tab</string>
-    <!-- Label for enabling MARS API integration -->
-    <string name="preferences_debug_settings_mars_api" translatable="false">Enable MARS API integration</string>
+    <!-- Label for enabling Discover more stories -->
+    <string name="preferences_debug_settings_discover_more_stories" translatable="false">Enable Discover More Stories</string>
     <!-- Label for enabling the menu redesign -->
     <string name="preferences_debug_settings_menu_redesign" translatable="false">Enable Menu Redesign</string>
     <!-- Label for enabling Firefox Suggest -->
@@ -89,10 +87,18 @@
     <string name="preferences_debug_settings_composable_toolbar" translatable="false">Enable Composable Toolbar</string>
     <!-- Label for enabling the redesigned toolbar options -->
     <string name="preferences_debug_settings_toolbar_redesign" translatable="false">Enable Redesigned Toolbar Options</string>
+    <!-- Label for enabling the redesigned simple toolbar -->
+    <string name="preferences_debug_settings_simple_toolbar_customization">Enable simple toolbar customization</string>
+    <!-- Label for enabling the redesigned expanded toolbar -->
+    <string name="preferences_debug_settings_expanded_toolbar_customization">Enable expanded toolbar customization</string>
+    <!-- Label for a longer description of the redesigned toolbar depending on the composable toolbar feature -->
+    <string name="preferences_debug_settings_toolbar_redesign_summary" translatable="false">This needs the Composable Toolbar feature enabled</string>
     <!-- Label for toggling Remote Crash Pull -->
     <string name="preferences_crash_pull_never_show_again" translatable="false">Never show Crash Pull</string>
     <!-- Label for enabling the Debug Drawer -->
     <string name="preferences_debug_settings_debug_drawer" translatable="false">Enable Debug Drawer</string>
+    <!-- Label for enabling the Crash Dialog Preview -->
+    <string name="preferences_debug_crash_dialog_preview" translatable="false">Enable New Crash Dialog</string>
     <!-- Label for enabling the microsurvey feature -->
     <string name="preferences_debug_settings_microsurvey_feature" translatable="false">Enable Microsurvey Feature</string>
     <!-- Label for enabling Unified Trust Panel -->
@@ -105,13 +111,29 @@
     <string name="preferences_debug_settings_recent_searches" translatable="false">Enable Recent Searches</string>
     <!-- Label for enabling Shortcut Suggestions -->
     <string name="preferences_debug_settings_shortcuts_suggestions" translatable="false">Enable Shortcut Suggestions</string>
-    
-
+    <!-- Label for enabling Address Sync -->
+    <string name="preferences_debug_settings_address_sync" translatable="false">Enable Address Sync for supported regions</string>
+    <!-- Label for enabling Settings Search-->
+    <string name="preferences_debug_settings_settings_search" translatable="false">Enable Settings Search</string>
     <!-- Label for enabling the DNS over HTTPS settings -->
     <string name="preferences_debug_settings_enable_doh_settings" translatable="false">Enable DNS over HTTPS settings</string>
-    
+
+    <!-- Label for toggling the Tab Manager enhancements -->
+    <string name="preferences_tab_manager_enhancements" translatable="false">Enable Tab Manager enhancements</string>
+
+    <string name="preferences_terms_of_use_accepted" translatable="false">Terms of Use accepted</string>
+    <string name="preferences_terms_of_use_debug_timer" translatable="false">30s ToU timer enabled</string>
+
+    <!-- Label for enabling LNA blocking -->
+    <string name="preferences_debug_settings_enable_lna_blocking" translatable="false">Enable LNA blocking</string>
+
+    <!-- Label for enabling isolated content processes in secret settings. -->
+    <string name="preferences_debug_settings_isolated_process" translatable="false">Enable Isolated Content Process (requires restart)</string>
+
     <!-- A secret menu option in the tabs tray for making a tab inactive for testing. -->
     <string name="inactive_tabs_menu_item">Make inactive</string>
+    <!-- A secret menu option in the tabs tray for making a tab inactive for testing. -->
+    <string name="inactive_tabs_menu_item_2">Make tabs inactive</string>
 
     <!-- Content description (not visible, for screen readers etc.) used to announce [LinkTextView]. -->
     <string name="link_text_view_type_announcement" translatable="false">link</string>
@@ -127,6 +149,9 @@
     <string name="preferences_start_profiler">Start Profiler</string>
     <string name="profiler_stop">Stop Profiler</string>
 
+
+    <string name="profiler_active_notification" translatable="false">Profiler active</string>
+    <string name="profiler_notification_text" translatable="false">Profiling is active. Tap to stop profiler</string>
     <string name="profiler_settings_title">Profiler Settings</string>
     <string name="profiler_filter_firefox">Firefox</string>
     <string name="profiler_running">Profiler is currently running</string>
@@ -169,8 +194,6 @@
     <string name="debug_drawer_cfr_tools_toolbar_cfr_title">Toolbar CFRs</string>
     <!-- The title of the other CFRs section in CFR Tools -->
     <string name="debug_drawer_cfr_tools_other_cfr_title">Other CFRs</string>
-    <!-- The homepage nav toolbar CFR description in CFR Tools -->
-    <string name="debug_drawer_cfr_tools_homepage_nav_toolbar_description" moz:removedIn="140" tools:ignore="UnusedResources">Displayed when the user is on the homepage and sees the new navigation bar for the first time. Note that this CFR must be displayed in order for the Homepage Sync CFR to be shown.</string>
     <!-- The homepage search bar CFR title in CFR Tools -->
     <string name="debug_drawer_cfr_tools_homepage_searchbar_title">Homepage Searchbar</string>
     <!-- The homepage searchbar CFR description in CFR Tools -->
@@ -183,10 +206,6 @@
     <string name="debug_drawer_cfr_tools_tab_auto_close_title">Tab Auto Close</string>
     <!-- The tab auto close banner description in CFR Tools -->
     <string name="debug_drawer_cfr_tools_tab_auto_close_description">Displayed the first time the user has at least 6 normal tabs or 6 private tabs open at once and a CFR has not been shown in at least 3 days.</string>
-    <!-- The navigation buttons CFR title in CFR Tools -->
-    <string name="debug_drawer_cfr_tools_navigation_buttons_title" moz:removedIn="140" tools:ignore="UnusedResources">Navigation Buttons</string>
-    <!-- The navigation buttons CFR description in CFR Tools -->
-    <string name="debug_drawer_cfr_tools_navigation_buttons_description" moz:removedIn="140" tools:ignore="UnusedResources">Displayed the first time the user double taps on the forward or backward navigation buttons within 5 seconds.</string>
     <!-- The open in app CFR title in CFR Tools -->
     <string name="debug_drawer_cfr_tools_open_in_app_title">Open in App</string>
     <!-- The open in app CFR description in CFR Tools -->
@@ -218,4 +237,20 @@
     <string name="glean_debug_tools_send_ping_button_text">Send Ping</string>
     <!-- The send pings toast message. The first parameter is the type of ping -->
     <string name="glean_debug_tools_send_ping_toast_message">Sent %1$s ping</string>
+
+
+    <!-- The title of the debug drawer tab to help debug the crash reporter-->
+    <string name="crash_debug_tools_title">Crash Debug Tools</string>
+    <!-- Button text to trigger a app parent process crash -->
+    <string name="crash_debug_generic_crash_trigger">Trigger Crash Report</string>
+    <!-- Button text to reset crash deferral period (the deferral period is set after clicking close on the dialog to 5 days in the settings) from it's future value to 0 -->
+    <string name="crash_debug_deferral_button">Reset deferral settings</string>
+    <!-- Subtitle warning text for crash button -->
+    <string name="crash_debug_crash_app_warning">This will crash the app to start crash reporting flow. Please also ensure that the crash report option is set to "Ask before sending" in the data collections settings if you want the dialog to pop up.</string>
+    <!-- Subtitle warning text for crash button -->
+    <string name="crash_debug_startup_crash_warning">This will set the flag that a startup crash was detected and crash the app to enter the startup crash flow on next startup.</string>
+    <!-- Button text to set app to crash during next startup -->
+    <string name="crash_debug_crash_on_next_startup">Set startup crash flag and crash app</string>
+    <!-- Timer text for deferral period %s is the timer string -->
+    <string name="crash_debug_deferral_timer">Current deferral period: %s</string>
 </resources>

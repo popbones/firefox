@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "New Tab",
   "description": "",
-  "version": "142.0.0",
+  "version": "145.1.0",
 
   "browser_specific_settings": {
     "gecko": {
@@ -10,6 +10,8 @@
       "strict_min_version": "142.0a1"
     }
   },
+
+  "hidden": true,
 
   "background": {
     "scripts": ["webext-glue/background.js"]

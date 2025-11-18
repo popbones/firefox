@@ -108,16 +108,25 @@
         PictureInPicture: "resource://gre/modules/PictureInPicture.sys.mjs",
         SmartTabGroupingManager:
           "moz-src:///browser/components/tabbrowser/SmartTabGrouping.sys.mjs",
+        SponsorProtection:
+          "moz-src:///browser/components/newtab/SponsorProtection.sys.mjs",
         TabMetrics:
           "moz-src:///browser/components/tabbrowser/TabMetrics.sys.mjs",
         TabStateFlusher:
           "resource:///modules/sessionstore/TabStateFlusher.sys.mjs",
+        TaskbarTabsUtils:
+          "resource:///modules/taskbartabs/TaskbarTabsUtils.sys.mjs",
+        TaskbarTabs: "resource:///modules/taskbartabs/TaskbarTabs.sys.mjs",
         UrlbarProviderOpenTabs:
-          "resource:///modules/UrlbarProviderOpenTabs.sys.mjs",
+          "moz-src:///browser/components/urlbar/UrlbarProviderOpenTabs.sys.mjs",
       });
       ChromeUtils.defineLazyGetter(this, "tabLocalization", () => {
         return new Localization(
-          ["browser/tabbrowser.ftl", "branding/brand.ftl"],
+          [
+            "browser/tabbrowser.ftl",
+            "browser/taskbartabs.ftl",
+            "branding/brand.ftl",
+          ],
           true
         );
       });
@@ -177,6 +186,7 @@
       }
 
       Services.obs.addObserver(this, "contextual-identity-updated");
+      Services.obs.addObserver(this, "intl:app-locales-changed");
 
       document.addEventListener("keydown", this, { mozSystemGroup: true });
       document.addEventListener("keypress", this, { mozSystemGroup: true });
@@ -184,9 +194,12 @@
       window.addEventListener("framefocusrequested", this);
       window.addEventListener("activate", this);
       window.addEventListener("deactivate", this);
+      window.addEventListener("TabGroupCollapse", this);
       window.addEventListener("TabGroupCreateByUser", this);
       window.addEventListener("TabGrouped", this);
       window.addEventListener("TabUngrouped", this);
+      window.addEventListener("TabSplitViewActivate", this);
+      window.addEventListener("TabSplitViewDeactivate", this);
 
       this.tabContainer.init();
       this._setupInitialBrowserAndTab();
@@ -203,8 +216,7 @@
 
       // We take over setting the document title, so remove the l10n id to
       // avoid it being re-translated and overwriting document content if
-      // we ever switch languages at runtime. After a language change, the
-      // window title will update at the next tab or location change.
+      // we ever switch languages at runtime.
       document.querySelector("title").removeAttribute("data-l10n-id");
 
       this._setupEventListeners();
@@ -367,6 +379,24 @@
      */
     _printPreviewBrowsers = new Set();
 
+    /** @type {MozTabSplitViewWrapper} */
+    #activeSplitView = null;
+
+    /**
+     * List of browsers which are currently in an active Split View.
+     *
+     * @type {MozBrowser[]}
+     */
+    get splitViewBrowsers() {
+      const browsers = [];
+      if (this.#activeSplitView) {
+        for (const tab of this.#activeSplitView.tabs) {
+          browsers.push(tab.linkedBrowser);
+        }
+      }
+      return browsers;
+    }
+
     _switcher = null;
 
     _soundPlayingAttrRemovalTimer = 0;
@@ -449,6 +479,13 @@
 
     get selectedBrowser() {
       return this._selectedBrowser;
+    }
+
+    get selectedBrowsers() {
+      const splitViewBrowsers = this.splitViewBrowsers;
+      return splitViewBrowsers.length
+        ? splitViewBrowsers
+        : [this._selectedBrowser];
     }
 
     _setupInitialBrowserAndTab() {
@@ -863,9 +900,13 @@
       }
 
       this.showTab(aTab);
-      this.#handleTabMove(aTab, () =>
-        this.pinnedTabsContainer.appendChild(aTab)
-      );
+      this.#handleTabMove(aTab, () => {
+        let periphery = document.getElementById(
+          "pinned-tabs-container-periphery"
+        );
+        // If periphery is null, append to end
+        this.pinnedTabsContainer.insertBefore(aTab, periphery);
+      });
 
       aTab.setAttribute("pinned", "true");
       this._updateTabBarForPinnedTabs();
@@ -1050,7 +1091,6 @@
       aTab,
       aIconURL = "",
       aOriginalURL = aIconURL,
-      aLoadingPrincipal = null,
       aClearImageFirst = false
     ) {
       let makeString = url => (url instanceof Ci.nsIURI ? url.spec : url);
@@ -1062,7 +1102,6 @@
 
       if (
         aIconURL &&
-        !aLoadingPrincipal &&
         !LOCAL_PROTOCOLS.some(protocol => aIconURL.startsWith(protocol))
       ) {
         console.error(
@@ -1079,15 +1118,9 @@
           aTab.removeAttribute("image");
         }
         if (aIconURL) {
-          if (aLoadingPrincipal) {
-            aTab.setAttribute("iconloadingprincipal", aLoadingPrincipal);
-          } else {
-            aTab.removeAttribute("iconloadingprincipal");
-          }
           aTab.setAttribute("image", aIconURL);
         } else {
           aTab.removeAttribute("image");
-          aTab.removeAttribute("iconloadingprincipal");
         }
         this._tabAttrModified(aTab, ["image"]);
       }
@@ -1118,39 +1151,125 @@
       }
     }
 
-    getWindowTitleForBrowser(aBrowser) {
-      let docElement = document.documentElement;
-      let title = "";
-      let dataSuffix =
-        docElement.getAttribute("privatebrowsingmode") == "temporary"
-          ? "Private"
-          : "Default";
+    #cachedTitleInfo = null;
+    #populateTitleCache() {
+      this.#cachedTitleInfo = {};
+      for (let id of [
+        "mainWindowTitle",
+        "privateWindowTitle",
+        "privateWindowSuffixForContent",
+      ]) {
+        this.#cachedTitleInfo[id] =
+          document.getElementById(id)?.textContent || "";
+      }
+    }
+
+    /**
+     * The current Taskbar Tab associated with this window. This cannot
+     * change after it is first set.
+     *
+     * @type {TaskbarTab|null}
+     */
+    #taskbarTab = null;
+
+    /**
+     * The last title associated with this window, avoiding re-lookup
+     * of the container name and localizations.
+     *
+     * @type {string|null}
+     */
+    #taskbarTabTitle = null;
+
+    /**
+     * The last profile used when determining the Taskbar Tab title. (This
+     * can change, for example if the first profile is made after opening
+     * the Taskbar Tab.)
+     *
+     * @type {string|null}
+     */
+    #taskbarTabTitleLastProfile = null;
+
+    /**
+     * Determines the content of the window title that relates to the Taskbar
+     * Tab. This includes the name of the Taskbar Tab, of the container, and
+     * of the profile.
+     *
+     * If no Taskbar Tab is in use, the profile is added by
+     * getWindowTitleForBrowser and this returns null.
+     *
+     * @returns {string|null} The part of the title that was determined from
+     * the Taskbar Tab, or null if nothing is needed.
+     */
+    #determineTaskbarTabTitle(aProfile) {
+      if (!this._shouldExposeContentTitle) {
+        // The Taskbar Tab and container info expose what site the user's on.
+        return null;
+      }
 
       if (
-        SelectableProfileService?.isEnabled &&
-        SelectableProfileService.currentProfile
+        this.#taskbarTabTitle &&
+        this.#taskbarTabTitleLastProfile == aProfile
       ) {
-        dataSuffix += "WithProfile";
+        return this.#taskbarTabTitle;
       }
-      let defaultTitle = docElement.dataset["title" + dataSuffix].replace(
-        "PROFILENAME",
-        () => SelectableProfileService.currentProfile.name.replace(/\0/g, "")
-      );
 
+      let id = this.TaskbarTabsUtils.getTaskbarTabIdFromWindow(window);
+      if (!id) {
+        return null;
+      }
+
+      if (!this.#taskbarTab) {
+        this.TaskbarTabs.getTaskbarTab(id)
+          .then(tt => {
+            this.#taskbarTab = tt;
+            this.updateTitlebar();
+          })
+          .catch(() => {
+            // The taskbar tab doesn't exist; leave it as-is.
+          });
+        return null;
+      }
+
+      let containerLabel = this.#taskbarTab.userContextId
+        ? ContextualIdentityService.getUserContextLabel(
+            this.#taskbarTab.userContextId
+          )
+        : "";
+
+      let stringName = "taskbar-tab-title-default";
+      if (containerLabel && aProfile) {
+        stringName = "taskbar-tab-title-container-profile";
+      } else if (containerLabel && !aProfile) {
+        stringName = "taskbar-tab-title-container";
+      } else if (!containerLabel && aProfile) {
+        stringName = "taskbar-tab-title-profile";
+      }
+
+      this.#taskbarTabTitle = this.tabLocalization.formatValueSync(stringName, {
+        name: this.#taskbarTab.name,
+        container: containerLabel,
+        profile: aProfile,
+      });
+      return this.#taskbarTabTitle;
+    }
+
+    #determineContentTitle(browser) {
+      let title = "";
       if (
         !this._shouldExposeContentTitle ||
         (PrivateBrowsingUtils.isWindowPrivate(window) &&
           !this._shouldExposeContentTitlePbm)
       ) {
-        return defaultTitle;
+        return title;
       }
 
+      let docElement = document.documentElement;
       // If location bar is hidden and the URL type supports a host,
       // add the scheme and host to the title to prevent spoofing.
       // XXX https://bugzilla.mozilla.org/show_bug.cgi?id=22183#c239
       try {
         if (docElement.getAttribute("chromehidden").includes("location")) {
-          const uri = Services.io.createExposableURI(aBrowser.currentURI);
+          const uri = Services.io.createExposableURI(browser.currentURI);
           let prefix = uri.prePath;
           if (uri.scheme == "about") {
             prefix = uri.spec;
@@ -1173,33 +1292,59 @@
         title += docElement.getAttribute("titlepreface");
       }
 
-      let tab = this.getTabForBrowser(aBrowser);
+      let tab = this.getTabForBrowser(browser);
       if (tab._labelIsContentTitle) {
         // Strip out any null bytes in the content title, since the
         // underlying widget implementations of nsWindow::SetTitle pass
         // null-terminated strings to system APIs.
         title += tab.getAttribute("label").replace(/\0/g, "");
       }
+      return title;
+    }
 
-      if (title) {
-        // We're using a function rather than just using `title` as the
-        // new substring to avoid `$$`, `$'` etc. having a special
-        // meaning to `replace`.
-        // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace#specifying_a_string_as_a_parameter
-        // and the documentation for functions for more info about this.
-        return docElement.dataset["contentTitle" + dataSuffix]
-          .replace("CONTENTTITLE", () => title)
-          .replace(
-            "PROFILENAME",
-            () =>
-              SelectableProfileService?.currentProfile?.name.replace(
-                /\0/g,
-                ""
-              ) ?? ""
-          );
+    getWindowTitleForBrowser(browser) {
+      if (!this.#cachedTitleInfo) {
+        this.#populateTitleCache();
+      }
+      let contentTitle = this.#determineContentTitle(browser);
+      let docElement = document.documentElement;
+      let isTemporaryPrivateWindow =
+        docElement.getAttribute("privatebrowsingmode") == "temporary";
+
+      let profileIdentifier =
+        SelectableProfileService?.isEnabled &&
+        SelectableProfileService.currentProfile?.name.replace(/\0/g, "");
+      // Note that empty/falsy bits get filtered below.
+
+      let taskbarTabTitle = this.#determineTaskbarTabTitle(profileIdentifier);
+      let parts = [contentTitle, taskbarTabTitle ?? profileIdentifier];
+
+      // On macOS PB windows, add the private window suffix if we have a content
+      // title. We'll add the brand name and private window suffix for all other
+      // platforms below.
+      if (
+        AppConstants.platform == "macosx" &&
+        contentTitle &&
+        isTemporaryPrivateWindow
+      ) {
+        parts.push(this.#cachedTitleInfo.privateWindowSuffixForContent);
       }
 
-      return defaultTitle;
+      // Show the brand name if we aren't a Taskbar Tab, since that is done in
+      // #determineTaskbarTabTitle. On macOS we only do this if we don't have a
+      // content title; elsewhere, the brand becomes a suffix in the title bar.
+      if (
+        !taskbarTabTitle &&
+        (!contentTitle || AppConstants.platform != "macosx")
+      ) {
+        parts.push(
+          this.#cachedTitleInfo[
+            isTemporaryPrivateWindow ? "privateWindowTitle" : "mainWindowTitle"
+          ]
+        );
+      }
+
+      return parts.filter(p => !!p).join(" — ");
     }
 
     updateTitlebar() {
@@ -1263,11 +1408,19 @@
       this._updateVisibleNotificationBox(newBrowser);
 
       let oldBrowserPopupsBlocked =
-        oldBrowser.popupBlocker.getBlockedPopupCount();
+        oldBrowser.popupAndRedirectBlocker.getBlockedPopupCount();
       let newBrowserPopupsBlocked =
-        newBrowser.popupBlocker.getBlockedPopupCount();
+        newBrowser.popupAndRedirectBlocker.getBlockedPopupCount();
       if (oldBrowserPopupsBlocked != newBrowserPopupsBlocked) {
-        newBrowser.popupBlocker.updateBlockedPopupsUI();
+        newBrowser.popupAndRedirectBlocker.sendObserverUpdateBlockedPopupsEvent();
+      }
+
+      let oldBrowserRedirectBlocked =
+        oldBrowser.popupAndRedirectBlocker.isRedirectBlocked();
+      let newBrowserRedirectBlocked =
+        newBrowser.popupAndRedirectBlocker.isRedirectBlocked();
+      if (oldBrowserRedirectBlocked != newBrowserRedirectBlocked) {
+        newBrowser.popupAndRedirectBlocker.sendObserverUpdateBlockedRedirectEvent();
       }
 
       // Update the URL bar.
@@ -1859,7 +2012,7 @@
         tabGroup,
         targetTab,
         triggeringPrincipal,
-        csp,
+        policyContainer,
         userContextId,
         fromExternal,
       } = {}
@@ -1932,7 +2085,7 @@
             loadFlags,
             postData: postDatas && postDatas[0],
             triggeringPrincipal,
-            csp,
+            policyContainer,
           });
         } catch (e) {
           // Ignore failure in case a URI is wrong, so we can continue
@@ -1948,7 +2101,7 @@
           userContextId,
           triggeringPrincipal,
           bulkOrderedOpen: multiple,
-          csp,
+          policyContainer,
           fromExternal,
           tabGroup,
         };
@@ -1971,7 +2124,7 @@
           userContextId,
           triggeringPrincipal,
           bulkOrderedOpen: true,
-          csp,
+          policyContainer,
           fromExternal,
           tabGroup,
         };
@@ -2026,11 +2179,16 @@
       // Unhook our progress listener.
       let filter = this._tabFilters.get(tab);
       let listener = this._tabListeners.get(tab);
-      aBrowser.webProgress.removeProgressListener(filter);
-      filter.removeProgressListener(listener);
+      // We should always have a filter, but if we fail to create a content
+      // process when creating a new tab, we can end up here trying to switch
+      // remoteness to load about:tabcrashed, without a filter/listener.
+      if (filter) {
+        aBrowser.webProgress.removeProgressListener(filter);
+        filter.removeProgressListener(listener);
+      }
 
       // We'll be creating a new listener, so destroy the old one.
-      listener.destroy();
+      listener?.destroy();
 
       let oldDroppedLinkHandler = aBrowser.droppedLinkHandler;
       let oldUserTypedValue = aBrowser.userTypedValue;
@@ -2078,6 +2236,12 @@
       // load
       listener = new TabProgressListener(tab, aBrowser, true, false);
       this._tabListeners.set(tab, listener);
+      if (!filter) {
+        filter = Cc[
+          "@mozilla.org/appshell/component/browser-status-filter;1"
+        ].createInstance(Ci.nsIWebProgress);
+        this._tabFilters.set(tab, filter);
+      }
       filter.addProgressListener(listener, Ci.nsIWebProgress.NOTIFY_ALL);
 
       // Restore the progress listener.
@@ -2509,6 +2673,15 @@
         return false;
       }
 
+      // discarding a browser will dismiss any dialogs, so don't
+      // allow this unless we're forcing it.
+      if (
+        !aForceDiscard &&
+        this.getTabDialogBox(browser)._tabDialogManager._dialogs.length
+      ) {
+        return false;
+      }
+
       return true;
     }
 
@@ -2539,6 +2712,10 @@
         this.resetBrowserSharing(browser);
       }
       webrtcUI.forgetStreamsFromBrowserContext(browser.browsingContext);
+
+      // Abort any dialogs since the browser is about to be discarded.
+      let tabDialogBox = this.getTabDialogBox(browser);
+      tabDialogBox.abortAllDialogs();
 
       // Set browser parameters for when browser is restored.  Also remove
       // listeners and set up lazy restore data in SessionStore. This must
@@ -2606,6 +2783,10 @@
 
     /**
      * Loads a tab with a default null principal unless specified
+     *
+     * @param {string} aURI
+     * @param {object} [params]
+     *   Options from `Tabbrowser.addTab`.
      */
     addWebTab(aURI, params = {}) {
       if (!params.triggeringPrincipal) {
@@ -2622,6 +2803,12 @@
       return this.addTab(aURI, params);
     }
 
+    /**
+     * @param {MozTabbrowserTab} tab
+     * @returns {void}
+     *   New tab will be the `Tabbrowser.selectedTab` or the subject of a
+     *   notification on the `browser-open-newtab-start` topic.
+     */
     addAdjacentNewTab(tab) {
       Services.obs.notifyObservers(
         {
@@ -2637,6 +2824,29 @@
         },
         "browser-open-newtab-start"
       );
+    }
+
+    /**
+     * Creates a tab directly after `tab`.
+     *
+     * @param {MozTabbrowserTab} adjacentTab
+     * @param {string} uriString
+     * @param {object} [options]
+     *   Options from `Tabbrowser.addTab`.
+     */
+    addAdjacentTab(adjacentTab, uriString, options = {}) {
+      // If the caller opted out of tab group membership but `tab` is in a
+      // tab group, insert the tab after `tab`'s group. Otherwise, insert the
+      // new tab right after `tab`.
+      const tabIndex =
+        !options.tabGroup && adjacentTab.group
+          ? adjacentTab.group.tabs.at(-1)._tPos + 1
+          : adjacentTab._tPos + 1;
+
+      return this.addTab(uriString, {
+        ...options,
+        tabIndex,
+      });
     }
 
     /**
@@ -2701,7 +2911,7 @@
         tabGroup,
         triggeringPrincipal,
         userContextId,
-        csp,
+        policyContainer,
         skipLoad = createLazyBrowser,
         insertTab = true,
         globalHistoryOptions,
@@ -2891,7 +3101,7 @@
           referrerInfo,
           charset,
           postData,
-          csp,
+          policyContainer,
           globalHistoryOptions,
           triggeringRemoteType,
           schemelessInput,
@@ -2953,6 +3163,114 @@
         element = element.group.tabs[0];
       }
       return element._tPos;
+    }
+
+    /**
+     * @param {string} id
+     * @returns {MozTabSplitViewWrapper}
+     */
+    _createTabSplitView(id) {
+      let splitview = document.createXULElement("tab-split-view-wrapper", {
+        is: "tab-split-view-wrapper",
+      });
+      splitview.splitViewId = id;
+      return splitview;
+    }
+
+    /**
+     * Adds a new tab split view.
+     * @param {object[]} tabs
+     *   The set of tabs to include in the split view.
+     * @param {object} [options]
+     * @param {string} [options.id]
+     *   Optionally assign an ID to the split view. Useful when rebuilding an
+     *   existing splitview e.g. when restoring. A pseudorandom string will be
+     *   generated if not set.
+     * @param {MozTabbrowserTab} [options.insertBefore]
+     *   An optional argument that accepts a single tab, which, if passed, will
+     *   cause the split view to be inserted just before this tab in the tab strip. By
+     *   default, the split view will be created at the end of the tab strip.
+     */
+    addTabSplitView(tabs, { id = null, insertBefore = null } = {}) {
+      if (!tabs?.length) {
+        throw new Error("Cannot create split view with zero tabs");
+      }
+
+      if (!id) {
+        id = `${Date.now()}-${Math.round(Math.random() * 100)}`;
+      }
+      let splitview = this._createTabSplitView(id);
+      this.tabContainer.insertBefore(
+        splitview,
+        insertBefore?.splitview ?? insertBefore
+      );
+      splitview.addTabs(tabs);
+
+      // Bail out if the split view is empty at this point. This can happen if all
+      // provided tabs are pinned and therefore cannot be grouped.
+      if (!splitview.tabs.length) {
+        splitview.remove();
+        return null;
+      }
+
+      return splitview;
+    }
+
+    /**
+     * Removes the split view. This has the effect of closing all the tabs
+     * in the split view.
+     *
+     * @param {MozTabSplitViewWrapper} [splitView]
+     *   The split view to remove.
+     */
+    async removeSplitView(splitView) {
+      this.removeTabs(splitView.tabs);
+      splitView.remove();
+    }
+
+    /**
+     * Removes a tab from a split view wrapper. This also removes the split view wrapper component
+     *
+     * @param {MozTabSplitViewWrapper} [splitView]
+     *   The split view to remove.
+     */
+    unsplitTabs(splitview) {
+      if (!splitview) {
+        return;
+      }
+
+      for (const tab of splitview.tabs) {
+        this.#handleTabMove(tab, () =>
+          gBrowser.tabContainer.insertBefore(tab, splitview.nextElementSibling)
+        );
+      }
+      splitview.remove();
+    }
+
+    /**
+     * Show the list of tabs <browsers> that are part of a split view.
+     *
+     * @param {MozTabbrowserTab[]} tabs
+     */
+    showSplitViewPanels(tabs) {
+      const panels = [];
+      for (const tab of tabs) {
+        this._insertBrowser(tab);
+        tab.linkedBrowser.docShellIsActive = true;
+        panels.push(tab.linkedPanel);
+      }
+      this.tabpanels.splitViewPanels = panels;
+    }
+
+    /**
+     * Hide the list of tabs <browsers> that are part of a split view.
+     *
+     * @param {MozTabbrowserTab[]} tabs
+     */
+    hideSplitViewPanels(tabs) {
+      for (const tab of tabs) {
+        this.tabpanels.removePanelFromSplitView(tab.linkedPanel);
+      }
     }
 
     /**
@@ -3473,7 +3791,7 @@
         referrerInfo,
         charset,
         postData,
-        csp,
+        policyContainer,
         globalHistoryOptions,
         triggeringRemoteType,
         schemelessInput,
@@ -3539,7 +3857,7 @@
             referrerInfo,
             charset,
             postData,
-            csp,
+            policyContainer,
             globalHistoryOptions,
             triggeringRemoteType,
             schemelessInput,
@@ -3987,6 +4305,9 @@
       /** @type {MozTabbrowserTab|undefined} */
       let itemAfter = allItems.at(index);
 
+      if (pinned && !itemAfter?.pinned) {
+        itemAfter = null;
+      }
       // Prevent a flash of unstyled content by setting up the tab content
       // and inherited attributes before appending it (see Bug 1592054):
       tab.initialize();
@@ -4018,7 +4339,10 @@
         this.tabContainer.insertBefore(tab, itemAfter.group);
       } else {
         // Place ungrouped tab before `itemAfter` by default
-        this.tabContainer.insertBefore(tab, itemAfter);
+        const tabContainer = pinned
+          ? this.tabContainer.pinnedTabsContainer
+          : this.tabContainer;
+        tabContainer.insertBefore(tab, itemAfter);
       }
 
       this._updateTabsAfterInsert();
@@ -4965,6 +5289,10 @@
       if (newTab) {
         this.addTrustedTab(BROWSER_NEW_TAB_URL, {
           skipAnimation: true,
+          // In the event that insertAfterCurrent is set and the current tab is
+          // inside a group that is being closed we want to avoid creating the
+          // new tab inside that group.
+          tabIndex: 0,
         });
       } else {
         TabBarVisibility.update();
@@ -5461,6 +5789,10 @@
         }
         modifiedAttrs.push("muted");
       }
+      if (aOtherTab.hasAttribute("discarded")) {
+        aOurTab.toggleAttribute("discarded", true);
+        modifiedAttrs.push("discarded");
+      }
       if (aOtherTab.hasAttribute("undiscardable")) {
         aOurTab.toggleAttribute("undiscardable", true);
         modifiedAttrs.push("undiscardable");
@@ -5905,6 +6237,7 @@
       if (!tabs.includes(selectedTab)) {
         selectedTab = tabs[0];
       }
+
       let win = this.replaceTabWithWindow(selectedTab, aOptions);
       win.addEventListener(
         "before-initial-tab-adopted",
@@ -5919,6 +6252,7 @@
                 continue;
               }
             }
+
             ++tabIndex;
           }
           // Restore tab selection
@@ -6211,6 +6545,32 @@
     /**
      *
      * @param {MozTabbrowserTab} aTab
+     * @param {MozTabSplitViewWrapper} aSplitViewWrapper
+     */
+    moveTabToSplitView(aTab, aSplitViewWrapper) {
+      if (!this.isTab(aTab)) {
+        throw new Error("Can only move a tab into a split view wrapper");
+      }
+      if (aTab.pinned) {
+        return;
+      }
+      if (
+        aTab.splitview &&
+        aTab.splitview.splitViewId === aSplitViewWrapper.splitViewId
+      ) {
+        return;
+      }
+
+      this.#handleTabMove(aTab, () =>
+        aSplitViewWrapper.wrapper.appendChild(aTab)
+      );
+      this.removeFromMultiSelectedTabs(aTab);
+      this.tabContainer._notifyBackgroundTab(aTab);
+    }
+
+    /**
+     *
+     * @param {MozTabbrowserTab} aTab
      * @param {MozTabbrowserTabGroup} aGroup
      * @param {TabMetricsContext} [metricsContext]
      */
@@ -6225,7 +6585,6 @@
         return;
       }
 
-      aGroup.collapsed = false;
       this.#handleTabMove(aTab, () => aGroup.appendChild(aTab), metricsContext);
       this.removeFromMultiSelectedTabs(aTab);
       this.tabContainer._notifyBackgroundTab(aTab);
@@ -6391,6 +6750,9 @@
         createLazyBrowser,
       };
 
+      // We want to explicitly set this param rather than carry it over to
+      // avoid situations like an unpinned tab being dragged between pinned
+      // tabs but not getting pinned as expected.
       let numPinned = this.pinnedTabCount;
       if (index < numPinned || (aTab.pinned && index == numPinned)) {
         params.pinned = true;
@@ -6403,7 +6765,7 @@
       let newTab = this.addWebTab("about:blank", params);
       let newBrowser = this.getBrowserForTab(newTab);
 
-      aTab.container.finishAnimateTabMove();
+      aTab.container.tabDragAndDrop.finishAnimateTabMove();
 
       if (!createLazyBrowser) {
         // Stop the about:blank load.
@@ -7090,6 +7452,10 @@
           debugStringArray.push("[A]");
         }
 
+        if (this.SponsorProtection.isProtectedBrowser(tab.linkedBrowser)) {
+          debugStringArray.push("[S]");
+        }
+
         if (debugStringArray.length) {
           labelArray.push(debugStringArray.join(" "));
         }
@@ -7214,11 +7580,18 @@
         case "visibilitychange": {
           const inactive = document.hidden;
           if (!this._switcher) {
-            this.selectedBrowser.preserveLayers(inactive);
-            this.selectedBrowser.docShellIsActive = !inactive;
+            for (const browser of this.selectedBrowsers) {
+              browser.preserveLayers(inactive);
+              browser.docShellIsActive = !inactive;
+            }
           }
           break;
         }
+        case "TabGroupCollapse":
+          aEvent.target.tabs.forEach(tab => {
+            this.removeFromMultiSelectedTabs(tab);
+          });
+          break;
         case "TabGroupCreateByUser":
           this.tabGroupMenu.openCreateModal(aEvent.target);
           break;
@@ -7267,6 +7640,14 @@
           }
           break;
         }
+        case "TabSplitViewActivate":
+          this.#activeSplitView = aEvent.originalTarget;
+          break;
+        case "TabSplitViewDeactivate":
+          if (this.#activeSplitView === aEvent.originalTarget) {
+            this.#activeSplitView = null;
+          }
+          break;
         case "activate":
         // Intentional fallthrough
         case "deactivate":
@@ -7284,6 +7665,11 @@
               ContextualIdentityService.setTabStyle(tab);
             }
           }
+          break;
+        }
+        case "intl:app-locales-changed": {
+          this.#populateTitleCache();
+          this.updateTitlebar();
           break;
         }
       }
@@ -7346,6 +7732,7 @@
     destroy() {
       this.tabContainer.destroy();
       Services.obs.removeObserver(this, "contextual-identity-updated");
+      Services.obs.removeObserver(this, "intl:app-locales-changed");
 
       for (let tab of this.tabs) {
         let browser = tab.linkedBrowser;
@@ -8608,6 +8995,10 @@
       { loadFlags, globalHistoryOptions }
     ) {
       if (globalHistoryOptions?.triggeringSponsoredURL) {
+        if (globalHistoryOptions.triggeringSource == "newtab") {
+          gBrowser.SponsorProtection.addProtectedBrowser(browser);
+        }
+
         try {
           // Browser may access URL after fixing it up, then store the URL into DB.
           // To match with it, fix the link up explicitly.
@@ -8623,7 +9014,13 @@
             globalHistoryOptions.triggeringSponsoredURLVisitTimeMS ||
             Date.now();
           browser.setAttribute("triggeringSponsoredURLVisitTimeMS", time);
+          browser.setAttribute(
+            "triggeringSource",
+            globalHistoryOptions.triggeringSource
+          );
         } catch (e) {}
+      } else {
+        gBrowser.SponsorProtection.removeProtectedBrowser(browser);
       }
 
       if (globalHistoryOptions?.triggeringSearchEngine) {
@@ -9143,6 +9540,12 @@ var TabContextMenu = {
     contextUnpinSelectedTabs.hidden =
       !this.contextTab.pinned || !this.multiselected;
 
+    // Build Ask Chat items
+    TabContextMenu.GenAI.buildTabMenu(
+      document.getElementById("context_askChat"),
+      this
+    );
+
     // Move Tab items
     let contextMoveTabOptions = document.getElementById(
       "context_moveTabOptions"
@@ -9325,9 +9728,10 @@ var TabContextMenu = {
       document.l10n.setAttributes(item, "tab-context-unnamed-group");
     }
 
-    let iconClass = isSaved ? "tab-group-icon-closed" : "tab-group-icon";
-    item.classList.add("menuitem-iconic");
-    item.classList.add(iconClass);
+    item.classList.add("menuitem-iconic", "tab-group-icon");
+    if (isSaved) {
+      item.classList.add("tab-group-icon-closed");
+    }
 
     item.style.setProperty(
       "--tab-group-color",
@@ -9433,6 +9837,11 @@ var TabContextMenu = {
         triggeringPrincipal,
       });
 
+      Glean.containers.tabAssignedContainer.record({
+        from_container_id: tab.getAttribute("usercontextid"),
+        to_container_id: userContextId,
+      });
+
       if (gBrowser.selectedTab == tab) {
         gBrowser.selectedTab = newTab;
       }
@@ -9495,7 +9904,13 @@ var TabContextMenu = {
   },
 
   addTabsToSavedGroup(groupId) {
-    SessionStore.addTabsToSavedGroup(groupId, this.contextTabs);
+    SessionStore.addTabsToSavedGroup(
+      groupId,
+      this.contextTabs,
+      gBrowser.TabMetrics.userTriggeredContext(
+        gBrowser.TabMetrics.METRIC_SOURCE.TAB_MENU
+      )
+    );
     this.closeContextTabs();
   },
 
@@ -9505,3 +9920,7 @@ var TabContextMenu = {
     }
   },
 };
+
+ChromeUtils.defineESModuleGetters(TabContextMenu, {
+  GenAI: "resource:///modules/GenAI.sys.mjs",
+});

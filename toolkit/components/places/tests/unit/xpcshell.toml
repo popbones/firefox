@@ -1,4 +1,5 @@
 [DEFAULT]
+run-if = ["os != 'android'"]
 head = "head_bookmarks.js"
 firefox-appdir = "browser"
 prefs = ["places.loglevel='All'"]
@@ -141,6 +142,8 @@ prefs = ["places.frecency.pages.alternative.featureGate=true"]
 ["test_frecency_recalc_triggers.js"]
 
 ["test_frecency_recalculator.js"]
+
+["test_frecency_threshold.js"]
 
 ["test_frecency_unvisited_bookmark.js"]
 

@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-use crate::{id, server::Global, RawString};
-use std::{borrow::Cow, ffi, slice};
+use crate::{id, server::Global, FfiSlice, RawString};
+use std::{borrow::Cow, ffi};
 use wgc::{
     command::{
         ComputePassDescriptor, PassTimestampWrites, RenderPassColorAttachment,
@@ -21,14 +21,14 @@ use serde::{Deserialize, Serialize};
 /// like dynamic offsets for [`SetBindGroup`] or string data for
 /// [`InsertDebugMarker`].
 ///
-/// Render passes use `BasePass<RenderCommand>`, whereas compute
-/// passes use `BasePass<ComputeCommand>`.
+/// Render passes use `Pass<RenderCommand>`, whereas compute
+/// passes use `Pass<ComputeCommand>`.
 ///
 /// [`SetBindGroup`]: RenderCommand::SetBindGroup
 /// [`InsertDebugMarker`]: RenderCommand::InsertDebugMarker
 #[doc(hidden)]
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct BasePass<C> {
+pub struct Pass<C> {
     pub label: Option<String>,
 
     /// The stream of commands.
@@ -49,7 +49,7 @@ pub struct BasePass<C> {
 
 #[derive(Deserialize, Serialize)]
 pub struct RecordedRenderPass {
-    base: BasePass<RenderCommand>,
+    base: Pass<RenderCommand>,
     color_attachments: Vec<Option<RenderPassColorAttachment>>,
     depth_stencil_attachment: Option<RenderPassDepthStencilAttachment>,
     timestamp_writes: Option<PassTimestampWrites>,
@@ -65,7 +65,7 @@ impl RecordedRenderPass {
         occlusion_query_set_id: Option<id::QuerySetId>,
     ) -> Self {
         Self {
-            base: BasePass {
+            base: Pass {
                 label,
                 commands: Vec::new(),
                 dynamic_offsets: Vec::new(),
@@ -81,14 +81,14 @@ impl RecordedRenderPass {
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct RecordedComputePass {
-    base: BasePass<ComputeCommand>,
+    base: Pass<ComputeCommand>,
     timestamp_writes: Option<PassTimestampWrites>,
 }
 
 impl RecordedComputePass {
     pub fn new(desc: &ComputePassDescriptor) -> Self {
         Self {
-            base: BasePass {
+            base: Pass {
                 label: desc.label.as_ref().map(|cow| cow.to_string()),
                 commands: Vec::new(),
                 dynamic_offsets: Vec::new(),
@@ -223,25 +223,19 @@ pub enum ComputeCommand {
     EndPipelineStatisticsQuery,
 }
 
-/// # Safety
-///
-/// This function is unsafe as there is no guarantee that the given pointer is
-/// valid for `offset_length` elements.
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_recorded_render_pass_set_bind_group(
     pass: &mut RecordedRenderPass,
     index: u32,
     bind_group_id: Option<id::BindGroupId>,
-    offsets: *const DynamicOffset,
-    offset_length: usize,
+    offsets: FfiSlice<'_, DynamicOffset>,
 ) {
-    pass.base
-        .dynamic_offsets
-        .extend_from_slice(unsafe { slice::from_raw_parts(offsets, offset_length) });
+    let offsets = offsets.as_slice();
+    pass.base.dynamic_offsets.extend_from_slice(offsets);
 
     pass.base.commands.push(RenderCommand::SetBindGroup {
         index,
-        num_dynamic_offsets: offset_length,
+        num_dynamic_offsets: offsets.len(),
         bind_group_id,
     });
 }
@@ -568,43 +562,31 @@ pub extern "C" fn wgpu_recorded_render_pass_end_pipeline_statistics_query(
         .push(RenderCommand::EndPipelineStatisticsQuery);
 }
 
-/// # Safety
-///
-/// This function is unsafe as there is no guarantee that the given pointer is
-/// valid for `render_bundle_ids_length` elements.
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_recorded_render_pass_execute_bundles(
     pass: &mut RecordedRenderPass,
-    render_bundle_ids: *const id::RenderBundleId,
-    render_bundle_ids_length: usize,
+    render_bundles: FfiSlice<'_, id::RenderBundleId>,
 ) {
-    for &bundle_id in unsafe { slice::from_raw_parts(render_bundle_ids, render_bundle_ids_length) }
-    {
+    for &bundle_id in render_bundles.as_slice() {
         pass.base
             .commands
             .push(RenderCommand::ExecuteBundle(bundle_id));
     }
 }
 
-/// # Safety
-///
-/// This function is unsafe as there is no guarantee that the given pointer is
-/// valid for `offset_length` elements.
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_recorded_compute_pass_set_bind_group(
     pass: &mut RecordedComputePass,
     index: u32,
     bind_group_id: Option<id::BindGroupId>,
-    offsets: *const DynamicOffset,
-    offset_length: usize,
+    offsets: FfiSlice<'_, DynamicOffset>,
 ) {
-    pass.base
-        .dynamic_offsets
-        .extend_from_slice(unsafe { slice::from_raw_parts(offsets, offset_length) });
+    let offsets = offsets.as_slice();
+    pass.base.dynamic_offsets.extend_from_slice(offsets);
 
     pass.base.commands.push(ComputeCommand::SetBindGroup {
         index,
-        num_dynamic_offsets: offset_length,
+        num_dynamic_offsets: offsets.len(),
         bind_group_id,
     });
 }
@@ -759,7 +741,7 @@ pub fn replay_render_pass_impl(
     global: &Global,
     src_pass: &RecordedRenderPass,
     dst_pass: &mut wgc::command::RenderPass,
-) -> Result<(), wgc::command::RenderPassError> {
+) -> Result<(), wgc::command::PassStateError> {
     let mut dynamic_offsets = src_pass.base.dynamic_offsets.as_slice();
     let mut dynamic_offsets = |len| {
         let offsets;
@@ -945,6 +927,12 @@ pub fn replay_compute_pass(
     }
     if let Err(err) = replay_compute_pass_impl(global, src_pass, &mut dst_pass) {
         error_buf.init(err, device_id);
+        return;
+    }
+
+    match global.compute_pass_end(&mut dst_pass) {
+        Ok(()) => (),
+        Err(err) => error_buf.init(err, device_id),
     }
 }
 
@@ -952,7 +940,7 @@ fn replay_compute_pass_impl(
     global: &Global,
     src_pass: &RecordedComputePass,
     dst_pass: &mut wgc::command::ComputePass,
-) -> Result<(), wgc::command::ComputePassError> {
+) -> Result<(), wgc::command::PassStateError> {
     let mut dynamic_offsets = src_pass.base.dynamic_offsets.as_slice();
     let mut dynamic_offsets = |len| {
         let offsets;
@@ -1019,5 +1007,5 @@ fn replay_compute_pass_impl(
         }
     }
 
-    global.compute_pass_end(dst_pass)
+    Ok(())
 }

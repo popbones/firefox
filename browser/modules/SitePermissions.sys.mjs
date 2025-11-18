@@ -1207,6 +1207,20 @@ let gPermissions = {
       exactHostMatch: true,
     },
 
+    localhost: {
+      exactHostMatch: true,
+      get disabled() {
+        return !SitePermissions.localNetworkAccessPermissionsEnabled;
+      },
+    },
+
+    "local-network": {
+      exactHostMatch: true,
+      get disabled() {
+        return !SitePermissions.localNetworkAccessPermissionsEnabled;
+      },
+    },
+
     microphone: {
       exactHostMatch: true,
     },
@@ -1230,6 +1244,7 @@ let gPermissions = {
           ? SitePermissions.BLOCK
           : SitePermissions.ALLOW;
       },
+      labelID: "popup2",
       states: [SitePermissions.ALLOW, SitePermissions.BLOCK],
     },
 
@@ -1320,6 +1335,14 @@ XPCOMUtils.defineLazyPreferenceGetter(
   SitePermissions,
   "resistFingerprinting",
   "privacy.resistFingerprinting",
+  false,
+  SitePermissions.invalidatePermissionList.bind(SitePermissions)
+);
+
+XPCOMUtils.defineLazyPreferenceGetter(
+  SitePermissions,
+  "localNetworkAccessPermissionsEnabled",
+  "network.lna.blocking",
   false,
   SitePermissions.invalidatePermissionList.bind(SitePermissions)
 );

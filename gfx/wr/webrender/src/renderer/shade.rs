@@ -18,7 +18,6 @@ use crate::renderer::{
 use crate::profiler::{self, TransactionProfile, ns_to_ms};
 
 use gleam::gl::GlType;
-use time::precise_time_ns;
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
@@ -136,11 +135,11 @@ impl LazilyCompiledShader {
         device: &mut Device,
         flags: ShaderPrecacheFlags,
     ) -> Result<(), ShaderError> {
-        let t0 = precise_time_ns();
+        let t0 = zeitstempel::now();
         let timer_id = Telemetry::start_shaderload_time();
         self.get_internal(device, flags, None)?;
         Telemetry::stop_and_accumulate_shaderload_time(timer_id);
-        let t1 = precise_time_ns();
+        let t1 = zeitstempel::now();
         debug!("[C: {:.1} ms ] Precache {} {:?}",
             (t1 - t0) as f64 / 1000000.0,
             self.name,
@@ -183,7 +182,7 @@ impl LazilyCompiledShader {
         mut profile: Option<&mut TransactionProfile>,
     ) -> Result<&mut Program, ShaderError> {
         if self.program.is_none() {
-            let start_time = precise_time_ns();
+            let start_time = zeitstempel::now();
             let program = match self.kind {
                 ShaderKind::Primitive | ShaderKind::Brush | ShaderKind::Text | ShaderKind::Resolve | ShaderKind::Clear | ShaderKind::Copy => {
                     create_prim_shader(
@@ -231,7 +230,7 @@ impl LazilyCompiledShader {
             self.program = Some(program?);
 
             if let Some(profile) = &mut profile {
-                let end_time = precise_time_ns();
+                let end_time = zeitstempel::now();
                 profile.add(profiler::SHADER_BUILD_TIME, ns_to_ms(end_time - start_time));
             }
         }
@@ -239,7 +238,7 @@ impl LazilyCompiledShader {
         let program = self.program.as_mut().unwrap();
 
         if precache_flags.contains(ShaderPrecacheFlags::FULL_COMPILE) && !program.is_initialized() {
-            let start_time = precise_time_ns();
+            let start_time = zeitstempel::now();
 
             let vertex_format = match self.kind {
                 ShaderKind::Primitive |
@@ -318,7 +317,7 @@ impl LazilyCompiledShader {
             }
 
             if let Some(profile) = &mut profile {
-                let end_time = precise_time_ns();
+                let end_time = zeitstempel::now();
                 profile.add(profiler::SHADER_BUILD_TIME, ns_to_ms(end_time - start_time));
             }
         }
@@ -656,8 +655,9 @@ pub struct Shaders {
 
     ps_split_composite: ShaderHandle,
     ps_quad_textured: ShaderHandle,
-    ps_quad_radial_gradient: ShaderHandle,
-    ps_quad_conic_gradient: ShaderHandle,
+    ps_quad_gradient: ShaderHandle,
+    #[allow(unused)] ps_quad_radial_gradient: ShaderHandle,
+    #[allow(unused)] ps_quad_conic_gradient: ShaderHandle,
     ps_mask: ShaderHandle,
     ps_mask_fast: ShaderHandle,
     ps_clear: ShaderHandle,
@@ -871,17 +871,32 @@ impl Shaders {
             &shader_list,
         )?;
 
+        let ps_quad_gradient = loader.create_shader(
+            ShaderKind::Primitive,
+            "ps_quad_gradient",
+            &[],
+            &shader_list,
+        )?;
+
         let ps_quad_radial_gradient = loader.create_shader(
             ShaderKind::Primitive,
             "ps_quad_radial_gradient",
-            &[],
+            if options.enable_dithering {
+               &[DITHERING_FEATURE]
+            } else {
+               &[]
+            },
             &shader_list,
         )?;
 
         let ps_quad_conic_gradient = loader.create_shader(
             ShaderKind::Primitive,
             "ps_quad_conic_gradient",
-            &[],
+            if options.enable_dithering {
+               &[DITHERING_FEATURE]
+            } else {
+               &[]
+            },
             &shader_list,
         )?;
 
@@ -1022,21 +1037,33 @@ impl Shaders {
         let cs_linear_gradient = loader.create_shader(
             ShaderKind::Cache(VertexArrayKind::LinearGradient),
             "cs_linear_gradient",
-            &[],
+            if options.enable_dithering {
+               &[DITHERING_FEATURE]
+            } else {
+               &[]
+            },
             &shader_list,
         )?;
 
         let cs_radial_gradient = loader.create_shader(
             ShaderKind::Cache(VertexArrayKind::RadialGradient),
             "cs_radial_gradient",
-            &[],
+            if options.enable_dithering {
+               &[DITHERING_FEATURE]
+            } else {
+               &[]
+            },
             &shader_list,
         )?;
 
         let cs_conic_gradient = loader.create_shader(
             ShaderKind::Cache(VertexArrayKind::ConicGradient),
             "cs_conic_gradient",
-            &[],
+            if options.enable_dithering {
+               &[DITHERING_FEATURE]
+            } else {
+               &[]
+            },
             &shader_list,
         )?;
 
@@ -1085,6 +1112,7 @@ impl Shaders {
             ps_text_run,
             ps_text_run_dual_source,
             ps_quad_textured,
+            ps_quad_gradient,
             ps_quad_radial_gradient,
             ps_quad_conic_gradient,
             ps_mask,
@@ -1153,6 +1181,7 @@ impl Shaders {
             PatternKind::ColorOrTexture => self.ps_quad_textured,
             PatternKind::RadialGradient => self.ps_quad_radial_gradient,
             PatternKind::ConicGradient => self.ps_quad_conic_gradient,
+            PatternKind::Gradient => self.ps_quad_gradient,
             PatternKind::Mask => unreachable!(),
         };
         self.loader.get(shader_handle)
@@ -1185,6 +1214,9 @@ impl Shaders {
             }
             BatchKind::Quad(PatternKind::ConicGradient) => {
                 self.ps_quad_conic_gradient
+            }
+            BatchKind::Quad(PatternKind::Gradient) => {
+                self.ps_quad_gradient
             }
             BatchKind::Quad(PatternKind::Mask) => {
                 unreachable!();
@@ -1356,7 +1388,7 @@ impl CompositorShaders {
             yuv_fast_features.push("YUV");
             yuv_fast_features.push("FAST_PATH");
             fast_path_features.push("FAST_PATH");
-    
+
             let index = Self::get_shader_index(*image_buffer_kind);
 
             let feature_string = get_feature_string(

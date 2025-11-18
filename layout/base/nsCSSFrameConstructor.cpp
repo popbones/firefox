@@ -13,21 +13,12 @@
 
 #include "ActiveLayerTracker.h"
 #include "ChildIterator.h"
+#include "RetainedDisplayListBuilder.h"
+#include "RubyUtils.h"
+#include "StickyScrollContainer.h"
 #include "mozilla/AutoRestore.h"
 #include "mozilla/ComputedStyleInlines.h"
 #include "mozilla/DebugOnly.h"
-#include "mozilla/dom/BindContext.h"
-#include "mozilla/dom/BrowsingContext.h"
-#include "mozilla/dom/CharacterData.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/dom/Element.h"
-#include "mozilla/dom/ElementInlines.h"
-#include "mozilla/dom/GeneratedImageContent.h"
-#include "mozilla/dom/HTMLInputElement.h"
-#include "mozilla/dom/HTMLSelectElement.h"
-#include "mozilla/dom/HTMLSharedListElement.h"
-#include "mozilla/dom/HTMLSummaryElement.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/Likely.h"
 #include "mozilla/LinkedList.h"
@@ -39,6 +30,7 @@
 #include "mozilla/ProfilerLabels.h"
 #include "mozilla/ProfilerMarkers.h"
 #include "mozilla/RestyleManager.h"
+#include "mozilla/SVGGradientFrame.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/ScrollContainerFrame.h"
 #include "mozilla/ServoBindings.h"
@@ -46,21 +38,33 @@
 #include "mozilla/StaticPrefs_browser.h"
 #include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/StaticPrefs_mathml.h"
-#include "mozilla/SVGGradientFrame.h"
 #include "mozilla/Unused.h"
+#include "mozilla/dom/BindContext.h"
+#include "mozilla/dom/BrowsingContext.h"
+#include "mozilla/dom/CharacterData.h"
+#include "mozilla/dom/CharacterDataBuffer.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
+#include "mozilla/dom/Element.h"
+#include "mozilla/dom/ElementInlines.h"
+#include "mozilla/dom/GeneratedImageContent.h"
+#include "mozilla/dom/HTMLInputElement.h"
+#include "mozilla/dom/HTMLSelectElement.h"
+#include "mozilla/dom/HTMLSharedListElement.h"
+#include "mozilla/dom/HTMLSummaryElement.h"
 #include "nsAbsoluteContainingBlock.h"
 #include "nsAtom.h"
 #include "nsAutoLayoutPhase.h"
 #include "nsBackdropFrame.h"
 #include "nsBlockFrame.h"
+#include "nsCRT.h"
+#include "nsCSSAnonBoxes.h"
+#include "nsCSSPseudoElements.h"
 #include "nsCanvasFrame.h"
 #include "nsCheckboxRadioFrame.h"
 #include "nsComboboxControlFrame.h"
 #include "nsContainerFrame.h"
 #include "nsContentUtils.h"
-#include "nsCRT.h"
-#include "nsCSSAnonBoxes.h"
-#include "nsCSSPseudoElements.h"
 #include "nsError.h"
 #include "nsFieldSetFrame.h"
 #include "nsFirstLetterFrame.h"
@@ -71,11 +75,11 @@
 #include "nsIAnonymousContentCreator.h"
 #include "nsIFormControl.h"
 #include "nsIFrameInlines.h"
-#include "nsImageFrame.h"
-#include "nsInlineFrame.h"
 #include "nsIObjectLoadingContent.h"
 #include "nsIPopupContainer.h"
 #include "nsIScriptError.h"
+#include "nsImageFrame.h"
+#include "nsInlineFrame.h"
 #include "nsLayoutUtils.h"
 #include "nsListControlFrame.h"
 #include "nsMathMLParts.h"
@@ -93,22 +97,18 @@
 #include "nsRubyTextFrame.h"
 #include "nsStyleConsts.h"
 #include "nsStyleStructInlines.h"
+#include "nsTArray.h"
 #include "nsTableCellFrame.h"
 #include "nsTableColFrame.h"
 #include "nsTableFrame.h"
 #include "nsTableRowFrame.h"
 #include "nsTableRowGroupFrame.h"
 #include "nsTableWrapperFrame.h"
-#include "nsTArray.h"
-#include "nsTextFragment.h"
 #include "nsTextNode.h"
 #include "nsTransitionManager.h"
 #include "nsUnicharUtils.h"
 #include "nsViewManager.h"
 #include "nsXULElement.h"
-#include "RetainedDisplayListBuilder.h"
-#include "RubyUtils.h"
-#include "StickyScrollContainer.h"
 
 #ifdef XP_MACOSX
 #  include "nsIDocShell.h"
@@ -169,11 +169,12 @@ nsIFrame* NS_NewSVGFEUnstyledLeafFrame(PresShell* aPresShell,
 nsIFrame* NS_NewFileControlLabelFrame(PresShell*, ComputedStyle*);
 nsIFrame* NS_NewComboboxLabelFrame(PresShell*, ComputedStyle*);
 nsIFrame* NS_NewMiddleCroppingLabelFrame(PresShell*, ComputedStyle*);
+nsIFrame* NS_NewInputButtonControlFrame(PresShell*, ComputedStyle*);
 
 #include "mozilla/dom/NodeInfo.h"
-#include "prenv.h"
-#include "nsNodeInfoManager.h"
 #include "nsContentCreatorFunctions.h"
+#include "nsNodeInfoManager.h"
+#include "prenv.h"
 
 #ifdef DEBUG
 // Set the environment variable GECKO_FRAMECTOR_DEBUG_FLAGS to one or
@@ -188,12 +189,12 @@ struct FrameCtorDebugFlags {
   bool* on;
 };
 
-static FrameCtorDebugFlags gFlags[] = {
+static FrameCtorDebugFlags gFrameCtorDebugFlags[] = {
     {"content-updates", &gNoisyContentUpdates},
     {"really-noisy-content-updates", &gReallyNoisyContentUpdates},
     {"noisy-inline", &gNoisyInlineConstruction}};
 
-#  define NUM_DEBUG_FLAGS (sizeof(gFlags) / sizeof(gFlags[0]))
+#  define NUM_DEBUG_FLAGS (std::size(gFrameCtorDebugFlags))
 #endif
 
 //------------------------------------------------------------------
@@ -1078,6 +1079,14 @@ void nsFrameConstructorState::ConstructBackdropFrameFor(nsIContent* aContent,
   }
 
   ComputedStyle* parentStyle = nsLayoutUtils::GetStyleFrame(aFrame)->Style();
+  if (parentStyle->GetPseudoType() != PseudoStyleType::NotPseudo) {
+    // ::backdrop only applies to actual elements in the top layer, for now at
+    // least. Prevent creating it for internal pseudos like
+    // ::-moz-snapshot-containing-block.
+    // https://drafts.csswg.org/css-position-4/#backdrop
+    return;
+  }
+
   RefPtr<ComputedStyle> style =
       mPresShell->StyleSet()->ResolvePseudoElementStyle(
           *aContent->AsElement(), PseudoStyleType::backdrop, nullptr,
@@ -1435,8 +1444,8 @@ nsCSSFrameConstructor::nsCSSFrameConstructor(Document* aDocument,
         if (comma) *comma = '\0';
 
         bool found = false;
-        FrameCtorDebugFlags* flag = gFlags;
-        FrameCtorDebugFlags* limit = gFlags + NUM_DEBUG_FLAGS;
+        FrameCtorDebugFlags* flag = gFrameCtorDebugFlags;
+        FrameCtorDebugFlags* limit = gFrameCtorDebugFlags + NUM_DEBUG_FLAGS;
         while (flag < limit) {
           if (nsCRT::strcasecmp(flag->name, flags) == 0) {
             *(flag->on) = true;
@@ -1458,8 +1467,8 @@ nsCSSFrameConstructor::nsCSSFrameConstructor(Document* aDocument,
 
       if (error) {
         printf("Here are the available GECKO_FRAMECTOR_DEBUG_FLAGS:\n");
-        FrameCtorDebugFlags* flag = gFlags;
-        FrameCtorDebugFlags* limit = gFlags + NUM_DEBUG_FLAGS;
+        FrameCtorDebugFlags* flag = gFrameCtorDebugFlags;
+        FrameCtorDebugFlags* limit = gFrameCtorDebugFlags + NUM_DEBUG_FLAGS;
         while (flag < limit) {
           printf("  %s\n", flag->name);
           ++flag;
@@ -3046,8 +3055,7 @@ nsCSSFrameConstructor::FindSelectData(const Element& aElement,
   MOZ_ASSERT(sel);
   if (sel->IsCombobox()) {
     static constexpr FrameConstructionData sComboboxData{
-        ToCreationFunc(NS_NewComboboxControlFrame), 0,
-        PseudoStyleType::buttonContent};
+        ToCreationFunc(NS_NewComboboxControlFrame)};
     return &sComboboxData;
   }
   // FIXME: Can we simplify this to avoid needing ConstructListboxSelectFrame,
@@ -3239,35 +3247,6 @@ nsIFrame* nsCSSFrameConstructor::ConstructFieldSetFrame(
                               std::move(fieldsetKids));
 
   return fieldsetFrame;
-}
-
-// We always obey display for h1, but this is a convenient place for our
-// counters.
-const nsCSSFrameConstructor::FrameConstructionData*
-nsCSSFrameConstructor::FindH1Data(const Element& aElement,
-                                  ComputedStyle& aStyle) {
-  constexpr auto kCounter =
-      UseCounter::eUseCounter_custom_SectioningH1WithNoFontSizeOrMargins;
-  if (aStyle.HasAuthorSpecifiedMarginAndFontSize()) {
-    return nullptr;
-  }
-  auto* doc = aElement.OwnerDoc();
-  if (doc->HasUseCounter(kCounter)) {
-    return nullptr;
-  }
-  for (auto* ancestor = aElement.GetParent(); ancestor;
-       ancestor = ancestor->GetParent()) {
-    if (ancestor->IsAnyOfHTMLElements(nsGkAtoms::section, nsGkAtoms::aside,
-                                      nsGkAtoms::article, nsGkAtoms::nav)) {
-      doc->SetUseCounter(kCounter);
-      nsContentUtils::ReportToConsole(
-          nsIScriptError::warningFlag, "DOM"_ns, doc,
-          nsContentUtils::eDOM_PROPERTIES,
-          "SectioningH1WithNoFontSizeOrMargins",
-          {u"https://developer.mozilla.org/docs/Web/HTML/Element/Heading_Elements#specifying_a_uniform_font_size_for_h1"_ns});
-    }
-  }
-  return nullptr;
 }
 
 const nsCSSFrameConstructor::FrameConstructionData*
@@ -3501,8 +3480,7 @@ nsCSSFrameConstructor::FindHTMLData(const Element& aElement,
             NS_NewFileControlLabelFrame);
         return &sFileLabelData;
       }
-      if (aParentFrame->GetParent() &&
-          aParentFrame->GetParent()->IsComboboxControlFrame()) {
+      if (aParentFrame->IsComboboxControlFrame()) {
         static constexpr FrameConstructionData sComboboxLabelData(
             NS_NewComboboxLabelFrame);
         return &sComboboxLabelData;
@@ -3523,6 +3501,7 @@ nsCSSFrameConstructor::FindHTMLData(const Element& aElement,
       {nsGkAtoms::br,
        {NS_NewBRFrame, FCDATA_IS_LINE_PARTICIPANT | FCDATA_IS_LINE_BREAK}},
       SIMPLE_TAG_CREATE(wbr, NS_NewWBRFrame),
+      SIMPLE_TAG_CHAIN(button, nsCSSFrameConstructor::FindHTMLButtonData),
       SIMPLE_TAG_CHAIN(input, nsCSSFrameConstructor::FindInputData),
       SIMPLE_TAG_CREATE(textarea, NS_NewTextControlFrame),
       SIMPLE_TAG_CHAIN(select, nsCSSFrameConstructor::FindSelectData),
@@ -3532,17 +3511,12 @@ nsCSSFrameConstructor::FindHTMLData(const Element& aElement,
                          &nsCSSFrameConstructor::ConstructFieldSetFrame),
       SIMPLE_TAG_CREATE(frameset, NS_NewHTMLFramesetFrame),
       SIMPLE_TAG_CREATE(iframe, NS_NewSubDocumentFrame),
-      {nsGkAtoms::button,
-       {ToCreationFunc(NS_NewHTMLButtonControlFrame),
-        FCDATA_ALLOW_BLOCK_STYLES | FCDATA_ALLOW_GRID_FLEX_COLUMN,
-        PseudoStyleType::buttonContent}},
       SIMPLE_TAG_CHAIN(canvas, nsCSSFrameConstructor::FindCanvasData),
       SIMPLE_TAG_CREATE(video, NS_NewHTMLVideoFrame),
       SIMPLE_TAG_CREATE(audio, NS_NewHTMLAudioFrame),
       SIMPLE_TAG_CREATE(progress, NS_NewProgressFrame),
       SIMPLE_TAG_CREATE(meter, NS_NewMeterFrame),
       SIMPLE_TAG_CHAIN(details, nsCSSFrameConstructor::FindDetailsData),
-      SIMPLE_TAG_CHAIN(h1, nsCSSFrameConstructor::FindH1Data),
   };
 
   return FindDataByTag(aElement, aStyle, sHTMLData, std::size(sHTMLData));
@@ -3566,6 +3540,38 @@ nsCSSFrameConstructor::FindGeneratedImageData(const Element& aElement,
   static constexpr FrameConstructionData sImgData(
       NS_NewImageFrameForGeneratedContentIndex);
   return &sImgData;
+}
+
+const nsCSSFrameConstructor::FrameConstructionData*
+nsCSSFrameConstructor::FindHTMLButtonData(const Element&,
+                                          ComputedStyle& aStyle) {
+  // Buttons force a (maybe inline) block unless their display is flex or grid.
+  // TODO(emilio): It'd be good to remove this restriction more broadly.
+  // There are some tests that expect block baselines on e.g. a `display: table`
+  // button, but seems like it would be doable.
+  const auto* disp = aStyle.StyleDisplay();
+  const bool respectDisplay = [&] {
+    if (disp->IsInlineFlow()) {
+      // For compat, `display: inline` and co need to create an inline-block.
+      return false;
+    }
+    switch (disp->DisplayInside()) {
+      case StyleDisplayInside::Flex:
+      case StyleDisplayInside::Grid:
+      case StyleDisplayInside::FlowRoot:
+        return true;
+      default:
+        return false;
+    }
+  }();
+  if (respectDisplay) {
+    return nullptr;
+  }
+  static constexpr FrameConstructionData sBlockData[2] = {
+      {&nsCSSFrameConstructor::ConstructNonScrollableBlock},
+      {&nsCSSFrameConstructor::ConstructScrollableBlock},
+  };
+  return &sBlockData[disp->IsScrollableOverflow()];
 }
 
 /* static */
@@ -3633,9 +3639,7 @@ nsCSSFrameConstructor::FindInputData(const Element& aElement,
       SIMPLE_INT_CREATE(FormControlType::InputUrl, NS_NewTextControlFrame),
       SIMPLE_INT_CREATE(FormControlType::InputRange, NS_NewRangeFrame),
       SIMPLE_INT_CREATE(FormControlType::InputPassword, NS_NewTextControlFrame),
-      {int32_t(FormControlType::InputColor),
-       {NS_NewColorControlFrame, 0, PseudoStyleType::buttonContent}},
-
+      SIMPLE_INT_CREATE(FormControlType::InputColor, NS_NewColorControlFrame),
       SIMPLE_INT_CHAIN(FormControlType::InputSearch,
                        nsCSSFrameConstructor::FindSearchControlData),
       SIMPLE_INT_CREATE(FormControlType::InputNumber, NS_NewNumberControlFrame),
@@ -3647,15 +3651,12 @@ nsCSSFrameConstructor::FindInputData(const Element& aElement,
       SIMPLE_INT_CREATE(FormControlType::InputMonth, NS_NewTextControlFrame),
       // TODO: this is temporary until a frame is written: bug 888320
       SIMPLE_INT_CREATE(FormControlType::InputWeek, NS_NewTextControlFrame),
-      {int32_t(FormControlType::InputSubmit),
-       {ToCreationFunc(NS_NewGfxButtonControlFrame), 0,
-        PseudoStyleType::buttonContent}},
-      {int32_t(FormControlType::InputReset),
-       {ToCreationFunc(NS_NewGfxButtonControlFrame), 0,
-        PseudoStyleType::buttonContent}},
-      {int32_t(FormControlType::InputButton),
-       {ToCreationFunc(NS_NewGfxButtonControlFrame), 0,
-        PseudoStyleType::buttonContent}}
+      SIMPLE_INT_CREATE(FormControlType::InputSubmit,
+                        NS_NewInputButtonControlFrame),
+      SIMPLE_INT_CREATE(FormControlType::InputReset,
+                        NS_NewInputButtonControlFrame),
+      SIMPLE_INT_CREATE(FormControlType::InputButton,
+                        NS_NewInputButtonControlFrame),
       // Keeping hidden inputs out of here on purpose for so they get frames by
       // display (in practice, none).
   };
@@ -3759,9 +3760,6 @@ void nsCSSFrameConstructor::ConstructFrameFromItemInternal(
   MOZ_ASSERT(
       !(bits & FCDATA_IS_WRAPPER_ANON_BOX) || (bits & FCDATA_USE_CHILD_ITEMS),
       "Wrapper anon boxes should always have FCDATA_USE_CHILD_ITEMS");
-  MOZ_ASSERT(!(bits & FCDATA_ALLOW_GRID_FLEX_COLUMN) ||
-                 (bits & FCDATA_CREATE_BLOCK_WRAPPER_FOR_ALL_KIDS),
-             "Need the block wrapper bit to create grid/flex/column.");
 
   // Don't create a subdocument frame for iframes if we're creating extra frames
   if (aState.mCreatingExtraFrames &&
@@ -3819,37 +3817,9 @@ void nsCSSFrameConstructor::ConstructFrameFromItemInternal(
       MOZ_ASSERT(containerFrame);
 #endif
       nsContainerFrame* container = static_cast<nsContainerFrame*>(newFrame);
-      nsContainerFrame* innerFrame;
-      if (bits & FCDATA_ALLOW_GRID_FLEX_COLUMN) {
-        switch (display->DisplayInside()) {
-          case StyleDisplayInside::Flex:
-            outerFrame = NS_NewFlexContainerFrame(mPresShell, outerStyle);
-            InitAndRestoreFrame(aState, content, container, outerFrame);
-            innerFrame = outerFrame;
-            break;
-          case StyleDisplayInside::Grid:
-            outerFrame = NS_NewGridContainerFrame(mPresShell, outerStyle);
-            InitAndRestoreFrame(aState, content, container, outerFrame);
-            innerFrame = outerFrame;
-            break;
-          default: {
-            innerFrame = NS_NewBlockFrame(mPresShell, outerStyle);
-            if (outerStyle->StyleColumn()->IsColumnContainerStyle()) {
-              outerFrame = BeginBuildingColumns(aState, content, container,
-                                                innerFrame, outerStyle);
-            } else {
-              // No need to create column container. Initialize innerFrame.
-              InitAndRestoreFrame(aState, content, container, innerFrame);
-              outerFrame = innerFrame;
-            }
-            break;
-          }
-        }
-      } else {
-        innerFrame = NS_NewBlockFrame(mPresShell, outerStyle);
-        InitAndRestoreFrame(aState, content, container, innerFrame);
-        outerFrame = innerFrame;
-      }
+      nsContainerFrame* innerFrame = NS_NewBlockFrame(mPresShell, outerStyle);
+      InitAndRestoreFrame(aState, content, container, innerFrame);
+      outerFrame = innerFrame;
 
       SetInitialSingleChild(container, outerFrame);
 
@@ -3938,34 +3908,10 @@ void nsCSSFrameConstructor::ConstructFrameFromItemInternal(
         childList = std::move(newList);
       }
 
-      if (!(bits & FCDATA_ALLOW_GRID_FLEX_COLUMN) ||
-          !MayNeedToCreateColumnSpanSiblings(newFrameAsContainer, childList)) {
-        // Set the frame's initial child list. Note that MathML depends on this
-        // being called even if childList is empty!
-        newFrameAsContainer->SetInitialChildList(FrameChildListID::Principal,
-                                                 std::move(childList));
-      } else {
-        // Extract any initial non-column-span kids, and put them in inner
-        // frame's child list.
-        nsFrameList initialNonColumnSpanKids =
-            childList.Split([](nsIFrame* f) { return f->IsColumnSpan(); });
-        newFrameAsContainer->SetInitialChildList(
-            FrameChildListID::Principal, std::move(initialNonColumnSpanKids));
-
-        if (childList.NotEmpty()) {
-          nsFrameList columnSpanSiblings = CreateColumnSpanSiblings(
-              aState, newFrameAsContainer, childList,
-              // Column content should never be a absolute/fixed positioned
-              // containing block. Pass nullptr as aPositionedFrame.
-              nullptr);
-
-          MOZ_ASSERT(outerFrame,
-                     "outerFrame should be non-null if multi-column container "
-                     "is created.");
-          FinishBuildingColumns(aState, outerFrame, newFrameAsContainer,
-                                columnSpanSiblings);
-        }
-      }
+      // Set the frame's initial child list. Note that MathML depends on this
+      // being called even if childList is empty!
+      newFrameAsContainer->SetInitialChildList(FrameChildListID::Principal,
+                                               std::move(childList));
     }
   }
 
@@ -4157,9 +4103,6 @@ nsCSSFrameConstructor::FindXULTagData(const Element& aElement,
                        nsCSSFrameConstructor::FindXULLabelOrDescriptionData),
       SIMPLE_TAG_CHAIN(description,
                        nsCSSFrameConstructor::FindXULLabelOrDescriptionData),
-#ifdef XP_MACOSX
-      SIMPLE_TAG_CHAIN(menubar, nsCSSFrameConstructor::FindXULMenubarData),
-#endif /* XP_MACOSX */
       SIMPLE_TAG_CREATE(iframe, NS_NewSubDocumentFrame),
       SIMPLE_TAG_CREATE(editor, NS_NewSubDocumentFrame),
       SIMPLE_TAG_CREATE(browser, NS_NewSubDocumentFrame),
@@ -4197,26 +4140,6 @@ nsCSSFrameConstructor::FindXULLabelOrDescriptionData(const Element& aElement,
       NS_NewMiddleCroppingLabelFrame);
   return &sMiddleCroppingData;
 }
-
-#ifdef XP_MACOSX
-/* static */
-const nsCSSFrameConstructor::FrameConstructionData*
-nsCSSFrameConstructor::FindXULMenubarData(const Element& aElement,
-                                          ComputedStyle&) {
-  if (aElement.OwnerDoc()->IsInChromeDocShell()) {
-    BrowsingContext* bc = aElement.OwnerDoc()->GetBrowsingContext();
-    bool isRoot = bc && !bc->GetParent();
-    if (isRoot) {
-      // This is the root.  Suppress the menubar, since on Mac
-      // window menus are not attached to the window.
-      static constexpr FrameConstructionData sSuppressData = SUPPRESS_FCDATA();
-      return &sSuppressData;
-    }
-  }
-
-  return nullptr;
-}
-#endif /* XP_MACOSX */
 
 already_AddRefed<ComputedStyle>
 nsCSSFrameConstructor::BeginBuildingScrollContainerFrame(
@@ -4613,14 +4536,13 @@ void nsCSSFrameConstructor::FlushAccumulatedBlock(
 
 // Only <math> elements can be floated or positioned.  All other MathML
 // should be in-flow.
-#define SIMPLE_MATHML_CREATE(_tag, _func)             \
-  {                                                   \
-    nsGkAtoms::_tag, {                                \
-      _func, FCDATA_DISALLOW_OUT_OF_FLOW |            \
-                 FCDATA_FORCE_NULL_ABSPOS_CONTAINER | \
-                 FCDATA_WRAP_KIDS_IN_BLOCKS           \
-    }                                                 \
+#define MATHML_DATA(_func)                                                    \
+  FrameConstructionData {                                                     \
+    _func, FCDATA_DISALLOW_OUT_OF_FLOW | FCDATA_FORCE_NULL_ABSPOS_CONTAINER | \
+               FCDATA_WRAP_KIDS_IN_BLOCKS                                     \
   }
+
+#define SIMPLE_MATHML_CREATE(_tag, _func) {nsGkAtoms::_tag, MATHML_DATA(_func)}
 
 /* static */
 const nsCSSFrameConstructor::FrameConstructionData*
@@ -4648,6 +4570,14 @@ nsCSSFrameConstructor::FindMathMLData(const Element& aElement,
         FCDATA_FORCE_NULL_ABSPOS_CONTAINER | FCDATA_IS_LINE_PARTICIPANT |
             FCDATA_WRAP_KIDS_IN_BLOCKS);
     return &sInlineMathData;
+  }
+
+  // Special case for elements with a display value other than none
+  // specified in mathml.css that are not handled by this function.
+  // These shouldn't be rendered as an mrow.
+  if (tag == nsGkAtoms::mtable || tag == nsGkAtoms::mtr ||
+      tag == nsGkAtoms::mlabeledtr || tag == nsGkAtoms::mtd) {
+    return nullptr;
   }
 
   static constexpr FrameConstructionDataByTag sMathMLData[] = {
@@ -4681,7 +4611,18 @@ nsCSSFrameConstructor::FindMathMLData(const Element& aElement,
       SIMPLE_MATHML_CREATE(menclose, NS_NewMathMLmencloseFrame),
       SIMPLE_MATHML_CREATE(semantics, NS_NewMathMLmrowFrame)};
 
-  return FindDataByTag(aElement, aStyle, sMathMLData, std::size(sMathMLData));
+  if (const auto* data = FindDataByTag(aElement, aStyle, sMathMLData,
+                                       std::size(sMathMLData))) {
+    return data;
+  }
+  if (!StaticPrefs::mathml_unknown_mrow_enabled()) {
+    return nullptr;
+  }
+  // Unknown MathML elements render as an mrow, see:
+  // https://w3c.github.io/mathml-core/#ref-for-dfn-unknown-mathml-element-2
+  static constexpr FrameConstructionData sMrowData =
+      MATHML_DATA(NS_NewMathMLmrowFrame);
+  return &sMrowData;
 }
 
 nsContainerFrame* nsCSSFrameConstructor::ConstructFrameWithAnonymousChild(
@@ -5047,10 +4988,6 @@ void nsCSSFrameConstructor::AddFrameConstructionItems(
     ItemFlags aFlags) {
   nsContainerFrame* parentFrame = aInsertion.mParentFrame;
   if (!ShouldCreateItemsForChild(aState, aContent, parentFrame)) {
-    return;
-  }
-  if (MOZ_UNLIKELY(aParentStyle.StyleContent()->mContent.IsNone()) &&
-      StaticPrefs::layout_css_element_content_none_enabled()) {
     return;
   }
 
@@ -9432,14 +9369,6 @@ inline void nsCSSFrameConstructor::ConstructFramesFromItemList(
     nsContainerFrame* aParentFrame, bool aParentIsWrapperAnonBox,
     nsFrameList& aFrameList) {
 #ifdef DEBUG
-  if (aParentFrame->StyleContent()->mContent.IsNone() &&
-      StaticPrefs::layout_css_element_content_none_enabled()) {
-    for (FCItemIterator iter(aItems); !iter.IsDone(); iter.Next()) {
-      MOZ_ASSERT(iter.item().mContent->IsInNativeAnonymousSubtree() ||
-                 iter.item().mComputedStyle->IsPseudoOrAnonBox());
-    }
-  }
-
   // The assertion condition should match the logic in
   // MaybePushFloatContainingBlock().
   MOZ_ASSERT(!(ShouldSuppressFloatingOfDescendants(aParentFrame) ||
@@ -9969,13 +9898,14 @@ void nsCSSFrameConstructor::CheckForFirstLineInsertion(
 
 // Determine how many characters in the text fragment apply to the
 // first letter
-static int32_t FirstLetterCount(const nsTextFragment* aFragment) {
+static int32_t FirstLetterCount(
+    const CharacterDataBuffer* aCharacterDataBuffer) {
   int32_t count = 0;
   int32_t firstLetterLength = 0;
 
-  const uint32_t n = aFragment->GetLength();
+  const uint32_t n = aCharacterDataBuffer->GetLength();
   for (uint32_t i = 0; i < n; i++) {
-    const char16_t ch = aFragment->CharAt(i);
+    const char16_t ch = aCharacterDataBuffer->CharAt(i);
     // FIXME: take content language into account when deciding whitespace.
     if (dom::IsSpaceCharacter(ch)) {
       if (firstLetterLength) {
@@ -10002,7 +9932,7 @@ static int32_t FirstLetterCount(const nsTextFragment* aFragment) {
 
 static bool NeedFirstLetterContinuation(Text* aText) {
   MOZ_ASSERT(aText, "null ptr");
-  int32_t flc = FirstLetterCount(&aText->TextFragment());
+  int32_t flc = FirstLetterCount(&aText->DataBuffer());
   int32_t tl = aText->TextDataLength();
   return flc < tl;
 }

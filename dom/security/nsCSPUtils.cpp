@@ -4,17 +4,26 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "nsCSPUtils.h"
+
+#include "mozilla/Assertions.h"
+#include "mozilla/Components.h"
+#include "mozilla/StaticPrefs_security.h"
+#include "mozilla/dom/CSPDictionariesBinding.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/PolicyContainer.h"
+#include "mozilla/dom/SRIMetadata.h"
+#include "mozilla/dom/TrustedTypesConstants.h"
 #include "nsAboutProtocolUtils.h"
 #include "nsAttrValue.h"
-#include "nsCharSeparatedTokenizer.h"
-#include "nsContentUtils.h"
-#include "nsCSPUtils.h"
-#include "nsDebug.h"
 #include "nsCSPParser.h"
+#include "nsCharSeparatedTokenizer.h"
 #include "nsComponentManagerUtils.h"
+#include "nsContentUtils.h"
+#include "nsDebug.h"
+#include "nsIChannel.h"
 #include "nsIConsoleService.h"
 #include "nsIContentSecurityPolicy.h"
-#include "nsIChannel.h"
 #include "nsICryptoHash.h"
 #include "nsIScriptError.h"
 #include "nsIStringBundle.h"
@@ -24,14 +33,6 @@
 #include "nsSandboxFlags.h"
 #include "nsServiceManagerUtils.h"
 #include "nsWhitespaceTokenizer.h"
-
-#include "mozilla/Assertions.h"
-#include "mozilla/Components.h"
-#include "mozilla/dom/CSPDictionariesBinding.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/SRIMetadata.h"
-#include "mozilla/dom/TrustedTypesConstants.h"
-#include "mozilla/StaticPrefs_security.h"
 
 using namespace mozilla;
 using mozilla::dom::SRIMetadata;
@@ -143,7 +144,8 @@ void CSP_ApplyMetaCSPToDoc(mozilla::dom::Document& aDoc,
     return;
   }
 
-  nsCOMPtr<nsIContentSecurityPolicy> csp = aDoc.GetCsp();
+  nsCOMPtr<nsIContentSecurityPolicy> csp =
+      PolicyContainer::GetCSP(aDoc.GetPolicyContainer());
   if (!csp) {
     MOZ_ASSERT(false, "how come there is no CSP");
     return;
@@ -165,7 +167,12 @@ void CSP_ApplyMetaCSPToDoc(mozilla::dom::Document& aDoc,
       true);  // delivered through the meta tag
   NS_ENSURE_SUCCESS_VOID(rv);
   if (nsPIDOMWindowInner* inner = aDoc.GetInnerWindow()) {
-    inner->SetCsp(csp);
+    if (nsIPolicyContainer* policyContainer = inner->GetPolicyContainer()) {
+      inner->SetPolicyContainer(policyContainer);
+    } else {
+      RefPtr<PolicyContainer> newPolicyContainer = new PolicyContainer();
+      inner->SetPolicyContainer(newPolicyContainer);
+    }
   }
   aDoc.ApplySettingsFromCSP(false);
 }
@@ -1275,11 +1282,6 @@ bool nsCSPDirective::permits(CSPDirective aDirective, nsILoadInfo* aLoadInfo,
 
         nsTArray<SRIMetadata> integritySources =
             ParseSRIMetadata(integrityMetadata);
-        MOZ_ASSERT(
-            integritySources.IsEmpty() == integrityMetadata.IsEmpty(),
-            "The integrity metadata should be only be empty, "
-            "when the parsed string was completely empty, otherwise it should "
-            "include at least one valid hash");
 
         // Step 1.3.2. If integrity sources is "no metadata" or an empty set,
         // skip the remaining substeps.

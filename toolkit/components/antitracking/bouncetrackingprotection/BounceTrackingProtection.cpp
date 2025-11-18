@@ -22,6 +22,7 @@
 #include "mozilla/StaticPrefs_privacy.h"
 #include "mozilla/dom/Promise.h"
 #include "nsDebug.h"
+#include "nsGlobalWindowInner.h"
 #include "nsHashPropertyBag.h"
 #include "nsIClearDataService.h"
 #include "nsIObserverService.h"
@@ -201,7 +202,7 @@ nsresult BounceTrackingProtection::UpdateBounceTrackingPurgeTimer(
             [] { NS_WARNING("RunPurgeBounceTrackers failed"); });
       },
       purgeTimerPeriod * PR_MSEC_PER_SEC, nsITimer::TYPE_REPEATING_SLACK,
-      "mBounceTrackingPurgeTimer");
+      "mBounceTrackingPurgeTimer"_ns);
 }
 
 // static
@@ -293,7 +294,11 @@ nsresult BounceTrackingProtection::RecordStatefulBounces(
   // Assert: navigable’s bounce tracking record is not null.
   const Maybe<BounceTrackingRecord>& record =
       aBounceTrackingState->GetBounceTrackingRecord();
-  NS_ENSURE_TRUE(record, NS_ERROR_FAILURE);
+  if (!record) {
+    MOZ_LOG(gBounceTrackingProtectionLog, LogLevel::Debug,
+            ("GetBounceTrackingRecord returned nothing"));
+    return NS_ERROR_FAILURE;
+  }
 
   // Get the bounce tracker map and the user activation map.
   RefPtr<BounceTrackingStateGlobal> globalState =

@@ -110,12 +110,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">Defnyddiwch gyfrinair</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">Nid nawr</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">Cyfrinair wedi\'i gadw</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">Diweddarwyd y cyfrinair</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">Diweddarwyd yr enw defnyddiwr</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">Ail-anfon data i’r wefan hon?</string>
   <string name="mozac_feature_prompt_repost_message">Gall adnewyddu’r dudalen hon ddyblygu gweithredoedd diweddar, fel anfon taliad neu gofnodi sylw ddwywaith.</string>

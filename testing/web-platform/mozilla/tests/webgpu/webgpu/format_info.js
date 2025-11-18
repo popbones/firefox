@@ -297,7 +297,7 @@ const kRegularTextureFormatInfo = formatTableWithDefaults({
         readWriteStorage: false,
         bytes: 2
       },
-      colorRender: { blend: true, resolve: true, byteCost: 2, alignment: 2 },
+      colorRender: { blend: true, resolve: false, byteCost: 2, alignment: 2 },
       multisample: true,
       feature: 'texture-formats-tier1',
       get bytesPerBlock() {return this.color.bytes;}
@@ -311,7 +311,7 @@ const kRegularTextureFormatInfo = formatTableWithDefaults({
         readWriteStorage: false,
         bytes: 2
       },
-      colorRender: { blend: true, resolve: true, byteCost: 2, alignment: 2 },
+      colorRender: { blend: true, resolve: false, byteCost: 2, alignment: 2 },
       multisample: true,
       feature: 'texture-formats-tier1',
       get bytesPerBlock() {return this.color.bytes;}
@@ -365,7 +365,7 @@ const kRegularTextureFormatInfo = formatTableWithDefaults({
         readWriteStorage: false,
         bytes: 4
       },
-      colorRender: { blend: true, resolve: true, byteCost: 4, alignment: 2 },
+      colorRender: { blend: true, resolve: false, byteCost: 4, alignment: 2 },
       multisample: true,
       feature: 'texture-formats-tier1',
       get bytesPerBlock() {return this.color.bytes;}
@@ -379,7 +379,7 @@ const kRegularTextureFormatInfo = formatTableWithDefaults({
         readWriteStorage: false,
         bytes: 4
       },
-      colorRender: { blend: true, resolve: true, byteCost: 4, alignment: 2 },
+      colorRender: { blend: true, resolve: false, byteCost: 4, alignment: 2 },
       multisample: true,
       feature: 'texture-formats-tier1',
       get bytesPerBlock() {return this.color.bytes;}
@@ -433,7 +433,7 @@ const kRegularTextureFormatInfo = formatTableWithDefaults({
         readWriteStorage: false,
         bytes: 8
       },
-      colorRender: { blend: true, resolve: true, byteCost: 8, alignment: 4 },
+      colorRender: { blend: true, resolve: false, byteCost: 8, alignment: 4 },
       multisample: true,
       feature: 'texture-formats-tier1',
       get bytesPerBlock() {return this.color.bytes;}
@@ -447,7 +447,7 @@ const kRegularTextureFormatInfo = formatTableWithDefaults({
         readWriteStorage: false,
         bytes: 8
       },
-      colorRender: { blend: true, resolve: true, byteCost: 8, alignment: 2 },
+      colorRender: { blend: true, resolve: false, byteCost: 8, alignment: 2 },
       multisample: true,
       feature: 'texture-formats-tier1',
       get bytesPerBlock() {return this.color.bytes;}
@@ -1660,6 +1660,7 @@ export const kAllTextureFormats = keysOf(kAllTextureFormatInfo);
  * * isTextureFormatPossiblyStorageReadable
  * * isTextureFormatPossiblyStorageReadWritable
  * * isTextureFormatPossiblyFilterableAsTextureF32
+ * * isTextureFormatPossiblyUsableWithCopyExternalImageToTexture
  *
  * These are also usable before or during a test
  *
@@ -1680,9 +1681,10 @@ export const kAllTextureFormats = keysOf(kAllTextureFormatInfo);
  * * isTextureFormatResolvable
  * * isTextureFormatBlendable
  * * isTextureFormatMultisampled
- * * isTextureFormatUsableAsStorageFormat
+ * * isTextureFormatUsableAsStorageTexture
  * * isTextureFormatUsableAsReadWriteStorageTexture
  * * isTextureFormatUsableAsStorageFormatInCreateShaderModule
+ * * isTextureFormatUsableWithCopyExternalImageToTexture
  *
  * Per-GPUTextureFormat info.
  */
@@ -1710,8 +1712,35 @@ export const kStencilTextureFormats = kDepthStencilFormats.filter(
   (v) => kTextureFormatInfo[v].stencil
 );
 
-export const kTextureFormatTier1AllowsRenderAttachmentBlendableMultisampleResolve =
-['r8snorm', 'rg8snorm', 'rgba8snorm', 'rg11b10ufloat'];
+export const kTextureFormatTier1AllowsResolve = [
+'r8snorm',
+'rg8snorm',
+'rgba8snorm',
+'rg11b10ufloat'];
+
+
+export const kTextureFormatTier1ThrowsWhenNotEnabled = [
+'r16unorm',
+'r16snorm',
+'rg16unorm',
+'rg16snorm',
+'rgba16unorm',
+'rgba16snorm'];
+
+
+export const kTextureFormatTier1AllowsRenderAttachmentBlendableMultisample =
+[
+'r16unorm',
+'r16snorm',
+'rg16unorm',
+'rg16snorm',
+'rgba16unorm',
+'rgba16snorm',
+'r8snorm',
+'rg8snorm',
+'rgba8snorm',
+'rg11b10ufloat'];
+
 
 export const kTextureFormatsTier1EnablesStorageReadOnlyWriteOnly = [
 'r8unorm',
@@ -1733,6 +1762,24 @@ export const kTextureFormatsTier1EnablesStorageReadOnlyWriteOnly = [
 'rg11b10ufloat'];
 
 
+export const kTextureFormatsTier2EnablesStorageReadWrite = [
+'r8unorm',
+'r8uint',
+'r8sint',
+'rgba8unorm',
+'rgba8uint',
+'rgba8sint',
+'r16uint',
+'r16sint',
+'r16float',
+'rgba16uint',
+'rgba16sint',
+'rgba16float',
+'rgba32uint',
+'rgba32sint',
+'rgba32float'];
+
+
 // Texture formats that may possibly be used as a storage texture.
 // Some may require certain features to be enabled.
 export const kPossibleStorageTextureFormats = [
@@ -1745,7 +1792,9 @@ export const kPossibleStorageTextureFormats = [
 // Texture formats that may possibly be used as a storage texture.
 // Some may require certain features to be enabled.
 export const kPossibleReadWriteStorageTextureFormats = [
-...kPossibleStorageTextureFormats.filter((f) => kTextureFormatInfo[f].color?.readWriteStorage)];
+...kPossibleStorageTextureFormats.filter((f) => kTextureFormatInfo[f].color?.readWriteStorage),
+// these can be used as storage when texture-formats-tier2 is enabled
+...kTextureFormatsTier2EnablesStorageReadWrite];
 
 
 // Texture formats that may possibly be multisampled.
@@ -1780,8 +1829,49 @@ export const kOptionalTextureFormats = kAllTextureFormats.filter(
   (t) => kTextureFormatInfo[t].feature !== undefined
 );
 
-/** Valid GPUTextureFormats for `copyExternalImageToTexture`, by spec. */
-export const kValidTextureFormatsForCopyE2T = [
+/** Formats added from 'texture-formats-tier1' to be usable with `copyExternalImageToTexture`.
+ * DO NOT EXPORT. Use kPossibleValidTextureFormatsForCopyE2T and
+ * filter with `isTextureFormatUsableWithCopyExternalImageToTexture`
+ * or `GPUTest.skipIfTextureFormatNotUsableWithCopyExternalImageToTexture`
+ */
+const kValidTextureFormatsForCopyE2TTier1 = [
+'r16unorm',
+'r16snorm',
+'rg16unorm',
+'rg16snorm',
+'rgba16unorm',
+'rgba16snorm',
+'r8snorm',
+'rg8snorm',
+'rgba8snorm',
+'rg11b10ufloat'];
+
+
+/** Possibly Valid GPUTextureFormats for `copyExternalImageToTexture`, by spec. */
+export const kPossibleValidTextureFormatsForCopyE2T = [
+'r8unorm',
+'r16float',
+'r32float',
+'rg8unorm',
+'rg16float',
+'rg32float',
+'rgba8unorm',
+'rgba8unorm-srgb',
+'bgra8unorm',
+'bgra8unorm-srgb',
+'rgb10a2unorm',
+'rgba16float',
+'rgba32float',
+...kValidTextureFormatsForCopyE2TTier1];
+
+
+/**
+ * Valid GPUTextureFormats for `copyExternalImageToTexture` for core and compat.
+ * DO NOT EXPORT. Use kPossibleValidTextureFormatsForCopyE2T and
+ * filter with `isTextureFormatUsableWithCopyExternalImageToTexture`
+ * or `GPUTest.skipIfTextureFormatNotUsableWithCopyExternalImageToTexture`
+ */
+const kValidTextureFormatsForCopyE2T = [
 'r8unorm',
 'r16float',
 'r32float',
@@ -1796,6 +1886,21 @@ export const kValidTextureFormatsForCopyE2T = [
 'rgba16float',
 'rgba32float'];
 
+
+/**
+ * Returns true if a texture can be used with copyExternalImageToTexture.
+ */
+export function isTextureFormatUsableWithCopyExternalImageToTexture(
+device,
+format)
+{
+  if (device.features.has('texture-formats-tier1')) {
+    if (kValidTextureFormatsForCopyE2TTier1.includes(format)) {
+      return true;
+    }
+  }
+  return kValidTextureFormatsForCopyE2T.includes(format);
+}
 
 //
 // Other related stuff
@@ -2163,16 +2268,22 @@ formats)
   return formats.filter((f) => f === undefined || kTextureFormatInfo[f].feature === feature);
 }
 
-function isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(
-format)
-{
-  return kTextureFormatTier1AllowsRenderAttachmentBlendableMultisampleResolve.includes(
+function isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format) {
+  return kTextureFormatTier1AllowsRenderAttachmentBlendableMultisample.includes(
     format
   );
 }
 
+function isTextureFormatTier1EnablesResolve(format) {
+  return kTextureFormatTier1AllowsResolve.includes(format);
+}
+
 function isTextureFormatTier1EnablesStorageReadOnlyWriteOnly(format) {
   return kTextureFormatsTier1EnablesStorageReadOnlyWriteOnly.includes(format);
+}
+
+function isTextureFormatTier2EnablesStorageReadWrite(format) {
+  return kTextureFormatsTier2EnablesStorageReadWrite.includes(format);
 }
 
 export function canCopyToAspectOfTextureFormat(format, aspect) {
@@ -2281,6 +2392,9 @@ format)
   if (format === 'rg11b10ufloat') {
     return device.features.has('rg11b10ufloat-renderable');
   }
+  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format)) {
+    return device.features.has('texture-formats-tier1');
+  }
   return kTextureFormatInfo[format].colorRender || isDepthOrStencilTextureFormat(format);
 }
 
@@ -2294,7 +2408,7 @@ format)
   if (format === 'rg11b10ufloat') {
     return device.features.has('rg11b10ufloat-renderable');
   }
-  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format)) {
+  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format)) {
     return device.features.has('texture-formats-tier1');
   }
   return !!kAllTextureFormatInfo[format].colorRender;
@@ -2345,7 +2459,7 @@ export function isTextureFormatPossiblyUsableAsRenderAttachment(format) {
   return (
     isDepthOrStencilTextureFormat(format) ||
     !!info.colorRender ||
-    isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format));
+    isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format));
 
 }
 
@@ -2356,8 +2470,7 @@ export function isTextureFormatPossiblyUsableAsRenderAttachment(format) {
 export function isTextureFormatPossiblyUsableAsColorRenderAttachment(format) {
   const info = kTextureFormatInfo[format];
   return (
-    !!info.colorRender ||
-    isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format));
+    !!info.colorRender || isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format));
 
 }
 
@@ -2368,8 +2481,7 @@ export function isTextureFormatPossiblyUsableAsColorRenderAttachment(format) {
 export function isTextureFormatPossiblyMultisampled(format) {
   const info = kTextureFormatInfo[format];
   return (
-    info.multisample ||
-    isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format));
+    info.multisample || isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format));
 
 }
 
@@ -2389,7 +2501,10 @@ export function isTextureFormatPossiblyStorageReadable(format) {
  * The texture may require certain features to be enabled.
  */
 export function isTextureFormatPossiblyStorageReadWritable(format) {
-  return !!kTextureFormatInfo[format].color?.readWriteStorage;
+  return (
+    !!kTextureFormatInfo[format].color?.readWriteStorage ||
+    isTextureFormatTier2EnablesStorageReadWrite(format));
+
 }
 
 export function is16Float(format) {
@@ -2420,13 +2535,13 @@ export const kCompatModeUnsupportedStorageTextureFormats = [
 
 
 /**
- * Return true if the format can be used as a storage texture.
+ * Return true if the format can be used as a write only storage texture.
  * Note: Some formats can be compiled in a shader but can not be used
  * in a pipeline or elsewhere. This function returns whether or not the format
  * can be used in general. If you want to know if the format can used when compiling
  * a shader @see {@link isTextureFormatUsableAsStorageFormatInCreateShaderModule}
  */
-export function isTextureFormatUsableAsStorageFormat(
+function isTextureFormatUsableAsWriteOnlyStorageTexture(
 device,
 format)
 {
@@ -2449,6 +2564,52 @@ format)
 }
 
 /**
+ * Return true if the format can be used with the given access mode
+ * access can be either GPUStorageTextureAccess or WGSL access
+ * Note: Some formats can be compiled in a shader but can not be used
+ * in a pipeline or elsewhere. This function returns whether or not the format
+ * can be used in general. If you want to know if the format can used when compiling
+ * a shader @see {@link isTextureFormatUsableAsStorageFormatInCreateShaderModule}
+ */
+export function isTextureFormatUsableWithStorageAccessMode(
+device,
+format,
+access)
+{
+  switch (access) {
+    case 'read':
+    case 'read-only':
+      return isTextureFormatUsableAsReadOnlyStorageTexture(device, format);
+    case 'write':
+    case 'write-only':
+      return isTextureFormatUsableAsWriteOnlyStorageTexture(device, format);
+    case 'read_write':
+    case 'read-write':
+      return isTextureFormatUsableAsReadWriteStorageTexture(device, format);
+  }
+}
+
+/**
+ * Return true if the format can be used as a read only storage texture.
+ * Note: Some formats can be compiled in a shader but can not be used
+ * in a pipeline or elsewhere. This function returns whether or not the format
+ * can be used in general. If you want to know if the format can used when compiling
+ * a shader @see {@link isTextureFormatUsableAsStorageFormatInCreateShaderModule}
+ */
+function isTextureFormatUsableAsReadOnlyStorageTexture(
+device,
+format)
+{
+  // This is the only storage texture format that isn't readable as a storage format.
+  if (format === 'bgra8unorm') {
+    return false;
+  }
+  // All other formats that can be used as a storage texture can be used as
+  // both read-only and write-only.
+  return isTextureFormatUsableAsWriteOnlyStorageTexture(device, format);
+}
+
+/**
  * Returns true if format can be used with createShaderModule on the device.
  * Some formats may require a feature to be enabled before they can be used
  * as a storage texture. Others, can't be used in a pipeline but can be compiled
@@ -2461,21 +2622,19 @@ export function isTextureFormatUsableAsStorageFormatInCreateShaderModule(
 device,
 format)
 {
-  if (format === 'bgra8unorm') {
-    return true;
-  }
-  const info = kTextureFormatInfo[format];
-  return !!(info.color?.storage || info.depth?.storage || info.stencil?.storage);
+  return kPossibleStorageTextureFormats.includes(
+    format
+  );
 }
 
-export function isTextureFormatUsableAsReadWriteStorageTexture(
+function isTextureFormatUsableAsReadWriteStorageTexture(
 device,
 format)
 {
-  return (
-    isTextureFormatUsableAsStorageFormat(device, format) &&
-    !!kTextureFormatInfo[format].color?.readWriteStorage);
-
+  if (isTextureFormatTier2EnablesStorageReadWrite(format)) {
+    return device.features.has('texture-formats-tier2');
+  }
+  return !!kTextureFormatInfo[format].color?.readWriteStorage;
 }
 
 export function isRegularTextureFormat(format) {
@@ -2531,7 +2690,7 @@ export function isTextureFormatMultisampled(device, format) {
   if (format === 'rg11b10ufloat') {
     return device.features.has('rg11b10ufloat-renderable');
   }
-  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format)) {
+  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisample(format)) {
     return device.features.has('texture-formats-tier1');
   }
   return kAllTextureFormatInfo[format].multisample;
@@ -2545,7 +2704,7 @@ export function isTextureFormatResolvable(device, format) {
   if (format === 'rg11b10ufloat') {
     return device.features.has('rg11b10ufloat-renderable');
   }
-  if (isTextureFormatTier1EnablesRenderAttachmentBlendableMultisampleResolve(format)) {
+  if (isTextureFormatTier1EnablesResolve(format)) {
     return device.features.has('texture-formats-tier1');
   }
   // You can't resolve a non-multisampled format.

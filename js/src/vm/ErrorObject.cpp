@@ -266,7 +266,11 @@ static ErrorObject* CreateErrorObject(JSContext* cx, const CallArgs& args,
   // non-standard fileName and lineNumber arguments when we have an options
   // object argument and the exception type is not SuppressedError.
   bool hasOptions =
+#ifdef ENABLE_EXPLICIT_RESOURCE_MANAGEMENT
       args.get(messageArg + 1).isObject() && exnType != JSEXN_SUPPRESSEDERR;
+#else
+      args.get(messageArg + 1).isObject();
+#endif
 
   Rooted<mozilla::Maybe<Value>> cause(cx, mozilla::Nothing());
   if (hasOptions) {
@@ -1049,24 +1053,13 @@ static bool exn_captureStackTrace(JSContext* cx, unsigned argc, Value* vp) {
     return false;
   }
 
-  // This telemetry to provide feedback for proposal-error-capturestacktrace and
-  // can later be removed (Bug 1970931).
-  cx->runtime()->setUseCounter(cx->global(),
-                               JSUseCounter::ERROR_CAPTURESTACKTRACE);
-
   Rooted<JSObject*> caller(cx, nullptr);
-  if (args.length() > 1) {
-    cx->runtime()->setUseCounter(cx->global(),
-                                 JSUseCounter::ERROR_CAPTURESTACKTRACE_CTOR);
-    if (args[1].isObject() && args[1].toObject().isCallable()) {
-      caller = CheckedUnwrapStatic(&args[1].toObject());
-      if (!caller) {
-        ReportAccessDenied(cx);
-        return false;
-      }
-    } else {
-      cx->runtime()->setUseCounter(
-          cx->global(), JSUseCounter::ERROR_CAPTURESTACKTRACE_UNCALLABLE_CTOR);
+  if (args.length() > 1 && args[1].isObject() &&
+      args[1].toObject().isCallable()) {
+    caller = CheckedUnwrapStatic(&args[1].toObject());
+    if (!caller) {
+      ReportAccessDenied(cx);
+      return false;
     }
   }
 

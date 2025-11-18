@@ -5,16 +5,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "FFmpegDataEncoder.h"
-#include "PlatformEncoderModule.h"
 
 #include <utility>
 
 #include "FFmpegLog.h"
+#include "FFmpegUtils.h"
+#include "PlatformEncoderModule.h"
 #include "libavutil/error.h"
 #include "mozilla/StaticMutex.h"
 #include "mozilla/StaticPrefs_media.h"
-
-#include "FFmpegUtils.h"
 
 namespace mozilla {
 
@@ -202,10 +201,23 @@ RefPtr<MediaDataEncoder::EncodePromise> FFmpegDataEncoder<LIBAV_VER>::Encode(
   MOZ_ASSERT(aSample != nullptr);
 
   FFMPEG_LOG("Encode");
+  return InvokeAsync(
+      mTaskQueue, __func__,
+      [self = RefPtr<FFmpegDataEncoder<LIBAV_VER>>(this),
+       sample = RefPtr<MediaData>(const_cast<MediaData*>(aSample))]() {
+        return self->ProcessEncode({sample});
+      });
+}
+
+RefPtr<MediaDataEncoder::EncodePromise> FFmpegDataEncoder<LIBAV_VER>::Encode(
+    nsTArray<RefPtr<MediaData>>&& aSamples) {
+  MOZ_ASSERT(!aSamples.IsEmpty());
+
+  FFMPEG_LOG("Encode: %zu samples", aSamples.Length());
   return InvokeAsync(mTaskQueue, __func__,
                      [self = RefPtr<FFmpegDataEncoder<LIBAV_VER>>(this),
-                      sample = RefPtr<const MediaData>(aSample)]() {
-                       return self->ProcessEncode(sample);
+                      samples = std::move(aSamples)]() mutable {
+                       return self->ProcessEncode(std::move(samples));
                      });
 }
 
@@ -235,26 +247,28 @@ RefPtr<GenericPromise> FFmpegDataEncoder<LIBAV_VER>::SetBitrate(
   return GenericPromise::CreateAndReject(NS_ERROR_NOT_IMPLEMENTED, __func__);
 }
 
-RefPtr<MediaDataEncoder::EncodePromise>
-FFmpegDataEncoder<LIBAV_VER>::ProcessEncode(RefPtr<const MediaData> aSample) {
+RefPtr<MediaDataEncoder::EncodePromise> FFmpegDataEncoder<
+    LIBAV_VER>::ProcessEncode(nsTArray<RefPtr<MediaData>>&& aSamples) {
   MOZ_ASSERT(mTaskQueue->IsOnCurrentThread());
 
-  FFMPEG_LOG("ProcessEncode");
+  FFMPEG_LOG("ProcessEncode: %zu samples", aSamples.Length());
 
 #if LIBAVCODEC_VERSION_MAJOR < 58
   // TODO(Bug 1868253): implement encode with avcodec_encode_video2().
   MOZ_CRASH("FFmpegDataEncoder needs ffmpeg 58 at least.");
   return EncodePromise::CreateAndReject(NS_ERROR_NOT_IMPLEMENTED, __func__);
 #else
-
-  auto rv = EncodeInputWithModernAPIs(std::move(aSample));
-  if (rv.isErr()) {
-    MediaResult e = rv.unwrapErr();
-    FFMPEG_LOG("%s", e.Description().get());
-    return EncodePromise::CreateAndReject(e, __func__);
+  EncodedData output;
+  for (auto& sample : aSamples) {
+    auto rv = EncodeInputWithModernAPIs(sample);
+    if (rv.isErr()) {
+      MediaResult e = rv.unwrapErr();
+      FFMPEG_LOG("%s", e.Description().get());
+      return EncodePromise::CreateAndReject(e, __func__);
+    }
+    output.AppendElements(rv.unwrap());
   }
-
-  return EncodePromise::CreateAndResolve(rv.unwrap(), __func__);
+  return EncodePromise::CreateAndResolve(std::move(output), __func__);
 #endif
 }
 
@@ -356,8 +370,7 @@ void FFmpegDataEncoder<LIBAV_VER>::ShutdownInternal() {
   DestroyFrame();
 
   if (mCodecContext) {
-    CloseCodecContext();
-    mLib->av_freep(&mCodecContext);
+    ReleaseCodecContext();
     mCodecContext = nullptr;
   }
 }
@@ -400,11 +413,18 @@ int FFmpegDataEncoder<LIBAV_VER>::OpenCodecContext(const AVCodec* aCodec,
   return mLib->avcodec_open2(mCodecContext, aCodec, aOptions);
 }
 
-void FFmpegDataEncoder<LIBAV_VER>::CloseCodecContext() {
-  MOZ_ASSERT(mCodecContext);
-
+void FFmpegDataEncoder<LIBAV_VER>::ReleaseCodecContext() {
   StaticMutexAutoLock mon(sMutex);
+  if (!mCodecContext) {
+    return;
+  }
+
+#if LIBAVCODEC_VERSION_MAJOR < 57
   mLib->avcodec_close(mCodecContext);
+  mLib->av_freep(&mCodecContext);
+#else
+  mLib->avcodec_free_context(&mCodecContext);
+#endif
 }
 
 bool FFmpegDataEncoder<LIBAV_VER>::PrepareFrame() {

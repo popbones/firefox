@@ -19,7 +19,6 @@ import mozilla.components.browser.state.store.BrowserStore
 import mozilla.components.feature.tabs.TabsUseCases
 import mozilla.components.support.test.ext.joinBlocking
 import mozilla.components.support.test.robolectric.testContext
-import mozilla.components.support.test.rule.MainCoroutineRule
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
@@ -30,6 +29,7 @@ import org.mozilla.fenix.GleanMetrics.RecentTabs
 import org.mozilla.fenix.R
 import org.mozilla.fenix.components.AppStore
 import org.mozilla.fenix.helpers.FenixGleanTestRule
+import org.mozilla.fenix.utils.Settings
 import org.robolectric.RobolectricTestRunner
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,14 +37,12 @@ import org.robolectric.RobolectricTestRunner
 class RecentTabControllerTest {
 
     @get:Rule
-    val coroutinesTestRule = MainCoroutineRule()
-
-    @get:Rule
     val gleanTestRule = FenixGleanTestRule(testContext)
 
     private val navController: NavController = mockk(relaxed = true)
     private val selectTabUseCase: TabsUseCases = mockk(relaxed = true)
     private val appStore: AppStore = mockk()
+    private val settings: Settings = mockk(relaxed = true)
 
     private lateinit var store: BrowserStore
 
@@ -60,6 +58,7 @@ class RecentTabControllerTest {
                 selectTabUseCase = selectTabUseCase.selectTab,
                 navController = navController,
                 appStore = appStore,
+                settings = settings,
             ),
         )
     }

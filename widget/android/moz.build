@@ -15,10 +15,9 @@ DIRS += [
     "jni",
 ]
 
-if CONFIG["ENABLE_TESTS"]:
-    DIRS += [
-        "tests",
-    ]
+TEST_DIRS += [
+    "tests",
+]
 
 EXPORTS += [
     "AndroidBridge.h",
@@ -84,7 +83,6 @@ classes_with_WrapForJNI = [
     "WebMessage",
     "WebNotification",
     "WebNotificationAction",
-    "WebNotificationDelegate",
     "WebRequest",
     "WebRequestError",
     "WebResponse",

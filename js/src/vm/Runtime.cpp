@@ -728,6 +728,32 @@ bool JSRuntime::activeGCInAtomsZone() {
          zone->wasGCStarted();
 }
 
+void JSRuntime::commitPendingWrapperPreservations() {
+  for (NonAtomZonesIter zone(this); !zone.done(); zone.next()) {
+    commitPendingWrapperPreservations(zone);
+  }
+}
+
+void JSRuntime::commitPendingWrapperPreservations(JS::Zone* zone) {
+  for (JSObject* wrapper : zone->slurpPendingWrapperPreservations()) {
+    JS::Value objectWrapperSlot =
+        JS::GetReservedSlot(wrapper, JS_OBJECT_WRAPPER_SLOT);
+    // This mirrors logic in MaybePreserveDOMWrapper, and should be kept in
+    // sync with that.
+    if (objectWrapperSlot.isUndefined() || !objectWrapperSlot.toPrivate()) {
+      continue;
+    }
+
+    if (IsWrapper(wrapper)) {
+      wrapper = UncheckedUnwrap(wrapper);
+    }
+
+    Rooted<JSObject*> rooted(mainContextFromOwnThread(), wrapper);
+    bool success = preserveWrapperCallback(mainContextFromOwnThread(), rooted);
+    MOZ_RELEASE_ASSERT(success);
+  }
+}
+
 void JSRuntime::incrementNumDebuggeeRealms() {
   if (numDebuggeeRealms_ == 0) {
     jitRuntime()->baselineInterpreter().toggleDebuggerInstrumentation(true);
@@ -849,17 +875,5 @@ void JSRuntime::ensureRealmIsRecordingAllocations(
     // Ensure the probability is up to date with the current combination of
     // debuggers and runtime profiling.
     global->realm()->chooseAllocationSamplingProbability();
-  }
-}
-
-void js::HasSeenObjectEmulateUndefinedFuse::popFuse(JSContext* cx) {
-  js::InvalidatingRuntimeFuse::popFuse(cx);
-  MOZ_ASSERT(cx->global());
-  cx->runtime()->setUseCounter(cx->global(), JSUseCounter::ISHTMLDDA_FUSE);
-}
-
-void js::HasSeenArrayExceedsInt32LengthFuse::popFuse(JSContext* cx) {
-  if (intact()) {
-    js::InvalidatingRuntimeFuse::popFuse(cx);
   }
 }

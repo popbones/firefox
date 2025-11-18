@@ -5,7 +5,9 @@
 /* import-globals-from mochitest-e10s-utils.js */
 
 // Test timeout (seconds)
-var gTimeoutSeconds = 45;
+var gTimeoutSeconds = Services.prefs.getIntPref(
+  "testing.browserTestHarness.timeout"
+);
 var gConfig;
 
 var { AppConstants } = ChromeUtils.importESModule(
@@ -95,16 +97,10 @@ function testInit() {
 
   if (gConfig.testRoot == "browser") {
     // Make sure to launch the test harness for the first opened window only
-    var prefs = Services.prefs;
-    if (prefs.prefHasUserValue("testing.browserTestHarness.running")) {
+    if (Services.prefs.prefHasUserValue("testing.browserTestHarness.running")) {
       return;
     }
-
-    prefs.setBoolPref("testing.browserTestHarness.running", true);
-
-    if (prefs.prefHasUserValue("testing.browserTestHarness.timeout")) {
-      gTimeoutSeconds = prefs.getIntPref("testing.browserTestHarness.timeout");
-    }
+    Services.prefs.setBoolPref("testing.browserTestHarness.running", true);
 
     var sstring = Cc["@mozilla.org/supports-string;1"].createInstance(
       Ci.nsISupportsString
@@ -146,11 +142,11 @@ function testInit() {
   if (gConfig.e10s) {
     e10s_init();
 
-    let processCount = prefs.getIntPref("dom.ipc.processCount", 1);
+    let processCount = Services.prefs.getIntPref("dom.ipc.processCount", 1);
     if (processCount > 1) {
       // Currently starting a content process is slow, to aviod timeouts, let's
       // keep alive content processes.
-      prefs.setIntPref("dom.ipc.keepProcessesAlive.web", processCount);
+      Services.prefs.setIntPref("dom.ipc.keepProcessesAlive.web", processCount);
     }
 
     Services.mm.loadFrameScript(
@@ -439,57 +435,69 @@ Tester.prototype = {
         ? "Found an unexpected {elt} at the end of test run"
         : "Found an unexpected {elt}";
 
-    // Remove stale tabs
-    if (
-      this.currentTest &&
-      window.gBrowser &&
-      AppConstants.MOZ_APP_NAME != "thunderbird" &&
-      gBrowser.tabs.length > 1
-    ) {
-      let lastURI = "";
-      let lastURIcount = 0;
-      while (gBrowser.tabs.length > 1) {
-        let lastTab = gBrowser.tabs[gBrowser.tabs.length - 1];
-        if (!lastTab.closing) {
-          // Report the stale tab as an error only when they're not closing.
-          // Tests can finish without waiting for the closing tabs.
-          if (lastURI != lastTab.linkedBrowser.currentURI.spec) {
-            lastURI = lastTab.linkedBrowser.currentURI.spec;
-          } else {
-            lastURIcount++;
-            if (lastURIcount >= 3) {
-              this.currentTest.addResult(
-                new testResult({
-                  name: "terminating browser early - unable to close tabs; skipping remaining tests in folder",
-                  allowFailure: this.currentTest.allowFailure,
-                })
-              );
-              this.finish();
+    // Clean up the Firefox window.
+    // But not the Thunderbird window, it doesn't have these things!
+    if (AppConstants.MOZ_APP_NAME != "thunderbird") {
+      // Remove stale tabs
+      if (this.currentTest && window.gBrowser && gBrowser.tabs.length > 1) {
+        let lastURI = "";
+        let lastURIcount = 0;
+        while (gBrowser.tabs.length > 1) {
+          let lastTab = gBrowser.tabs[gBrowser.tabs.length - 1];
+          if (!lastTab.closing) {
+            // Report the stale tab as an error only when they're not closing.
+            // Tests can finish without waiting for the closing tabs.
+            if (lastURI != lastTab.linkedBrowser.currentURI.spec) {
+              lastURI = lastTab.linkedBrowser.currentURI.spec;
+            } else {
+              lastURIcount++;
+              if (lastURIcount >= 3) {
+                this.currentTest.addResult(
+                  new testResult({
+                    name: "terminating browser early - unable to close tabs; skipping remaining tests in folder",
+                    allowFailure: this.currentTest.allowFailure,
+                  })
+                );
+                this.finish();
+              }
             }
+            this.currentTest.addResult(
+              new testResult({
+                name:
+                  baseMsg.replace("{elt}", "tab") +
+                  ": " +
+                  lastTab.linkedBrowser.currentURI.spec,
+                allowFailure: this.currentTest.allowFailure,
+              })
+            );
           }
-          this.currentTest.addResult(
-            new testResult({
-              name:
-                baseMsg.replace("{elt}", "tab") +
-                ": " +
-                lastTab.linkedBrowser.currentURI.spec,
-              allowFailure: this.currentTest.allowFailure,
-            })
-          );
+          gBrowser.removeTab(lastTab);
         }
-        gBrowser.removeTab(lastTab);
       }
-    }
 
-    // Replace the last tab with a fresh one
-    if (window.gBrowser && AppConstants.MOZ_APP_NAME != "thunderbird") {
-      gBrowser.addTab("about:blank", {
-        skipAnimation: true,
-        triggeringPrincipal:
-          Services.scriptSecurityManager.getSystemPrincipal(),
-      });
-      gBrowser.removeTab(gBrowser.selectedTab, { skipPermitUnload: true });
-      gBrowser.stop();
+      // Replace the last tab with a fresh one
+      if (window.gBrowser) {
+        gBrowser.addTab("about:blank", {
+          skipAnimation: true,
+          triggeringPrincipal:
+            Services.scriptSecurityManager.getSystemPrincipal(),
+        });
+        gBrowser.removeTab(gBrowser.selectedTab, { skipPermitUnload: true });
+        gBrowser.stop();
+      }
+
+      // Tests shouldn't leave sidebars open
+      this.structuredLogger.info("checking for open sidebars");
+      const sidebarContainer = document.getElementById("sidebar-box");
+      if (!sidebarContainer.hidden) {
+        window.SidebarController.hide({ dismissPanel: true });
+        this.currentTest.addResult(
+          new testResult({
+            name: baseMsg.replace("{elt}", "open sidebar"),
+            allowFailure: this.currentTest.allowFailure,
+          })
+        );
+      }
     }
 
     // Remove stale windows
@@ -665,6 +673,12 @@ Tester.prototype = {
         continue;
       }
 
+      // Same as ScrollFrameActivityTracker and the other expiration trackers
+      // ignored above.
+      if (name == "PopupExpirationTracker") {
+        continue;
+      }
+
       // Ignore nsHttpConnectionMgr timers which show up on browser mochitests
       // running with http3. See Bug 1829841.
       if (name == "nsHttpConnectionMgr") {
@@ -719,15 +733,6 @@ Tester.prototype = {
   },
 
   async checkPreferencesAfterTest() {
-    // This supports the --compare-preferences flag for browser tests.
-    // The implementation for plain mochitests is at
-    // https://searchfox.org/mozilla-central/rev/c25dbe453ff9ca10f2c6bdfb873893c515a29826/testing/mochitest/tests/SimpleTest/TestRunner.js#990-1012
-    if (!gConfig.comparePrefs) {
-      // Although the plain mochitest version of this logic resets preferences
-      // unconditionally, we do not, to minimize impact on the many existing
-      // tests. We only report failures when --compare-preferences is set.
-      return;
-    }
     if (!this._ignorePrefs) {
       const ignorePrefsFile = `chrome://mochikit/content/${gConfig.ignorePrefsFile}`;
       try {
@@ -745,10 +750,85 @@ Tester.prototype = {
     const failures = await window.SpecialPowers.comparePrefsToBaseline(
       this._ignorePrefs
     );
+
+    let testPath = this.currentTest.path;
+    if (testPath.startsWith("chrome://mochitests/content/browser/")) {
+      testPath = testPath.replace("chrome://mochitests/content/browser/", "");
+    }
+    let changedPrefs = [];
     for (let p of failures) {
       this.structuredLogger.error(
-        `TEST-UNEXPECTED-FAIL | ${this.currentTest.path} | changed preference: ${p}`
+        // We only report unexpected failures when --compare-preferences is set.
+        `TEST-${gConfig.comparePrefs ? "UN" : ""}EXPECTED-FAIL | ${testPath} | changed preference: ${p}`
       );
+      changedPrefs.push(p);
+    }
+
+    if (changedPrefs.length && Services.env.exists("MOZ_UPLOAD_DIR")) {
+      let modifiedPrefsPath = PathUtils.join(
+        Services.env.get("MOZ_UPLOAD_DIR"),
+        "modifiedPrefs.json"
+      );
+
+      if (!this._modifiedPrefs) {
+        try {
+          this._modifiedPrefs = JSON.parse(
+            await IOUtils.readUTF8(modifiedPrefsPath)
+          );
+        } catch (e) {
+          this._modifiedPrefs = {};
+        }
+      }
+
+      this._modifiedPrefs[testPath] = changedPrefs;
+      await IOUtils.writeJSON(modifiedPrefsPath, this._modifiedPrefs);
+    }
+  },
+
+  async notifyProfilerOfTestEnd() {
+    // Note the test run time
+    let name = this.currentTest.path;
+    name = name.slice(name.lastIndexOf("/") + 1);
+    ChromeUtils.addProfilerMarker(
+      "browser-test",
+      { category: "Test", startTime: this.lastStartTimestamp },
+      name
+    );
+
+    // See if we should upload a profile of a failing test.
+    if (this.currentTest.failCount) {
+      // If MOZ_PROFILER_SHUTDOWN is set, the profiler got started from --profiler
+      // and a profile will be shown even if there's no test failure.
+      if (
+        Services.env.exists("MOZ_UPLOAD_DIR") &&
+        !Services.env.exists("MOZ_PROFILER_SHUTDOWN") &&
+        Services.profiler.IsActive()
+      ) {
+        let filename = `profile_${name}.json`;
+        let path = Services.env.get("MOZ_UPLOAD_DIR");
+        let profilePath = PathUtils.join(path, filename);
+        try {
+          const { profile } =
+            await Services.profiler.getProfileDataAsGzippedArrayBuffer();
+          await IOUtils.write(profilePath, new Uint8Array(profile));
+          this.currentTest.addResult(
+            new testResult({
+              name:
+                "Found unexpected failures during the test; profile uploaded in " +
+                filename,
+            })
+          );
+        } catch (e) {
+          // If the profile is large, we may encounter out of memory errors.
+          this.currentTest.addResult(
+            new testResult({
+              name:
+                "Found unexpected failures during the test; failed to upload profile: " +
+                e,
+            })
+          );
+        }
+      }
     }
   },
 
@@ -1006,51 +1086,9 @@ Tester.prototype = {
         );
       }
 
-      // Note the test run time
-      let name = this.currentTest.path;
-      name = name.slice(name.lastIndexOf("/") + 1);
-      ChromeUtils.addProfilerMarker(
-        "browser-test",
-        { category: "Test", startTime: this.lastStartTimestamp },
-        name
-      );
+      this.PromiseTestUtils.assertNoUncaughtRejections();
 
-      // See if we should upload a profile of a failing test.
-      if (this.currentTest.failCount) {
-        // If MOZ_PROFILER_SHUTDOWN is set, the profiler got started from --profiler
-        // and a profile will be shown even if there's no test failure.
-        if (
-          Services.env.exists("MOZ_UPLOAD_DIR") &&
-          !Services.env.exists("MOZ_PROFILER_SHUTDOWN") &&
-          Services.profiler.IsActive()
-        ) {
-          let filename = `profile_${name}.json`;
-          let path = Services.env.get("MOZ_UPLOAD_DIR");
-          let profilePath = PathUtils.join(path, filename);
-          try {
-            const { profile } =
-              await Services.profiler.getProfileDataAsGzippedArrayBuffer();
-            await IOUtils.write(profilePath, new Uint8Array(profile));
-            this.currentTest.addResult(
-              new testResult({
-                name:
-                  "Found unexpected failures during the test; profile uploaded in " +
-                  filename,
-              })
-            );
-          } catch (e) {
-            // If the profile is large, we may encounter out of memory errors.
-            this.currentTest.addResult(
-              new testResult({
-                name:
-                  "Found unexpected failures during the test; failed to upload profile: " +
-                  e,
-              })
-            );
-          }
-        }
-      }
-
+      await this.notifyProfilerOfTestEnd();
       let time = Date.now() - this.lastStartTime;
 
       this.structuredLogger.testEnd(
@@ -1200,7 +1238,9 @@ Tester.prototype = {
     let currentScope = currentTest.scope;
     let desc = isSetup ? "setup" : "test";
     currentScope.SimpleTest.info(`Entering ${desc} ${task.name}`);
-    let startTimestamp = performance.now();
+    // This newtab train-hop compatibility shim can be removed once Firefox 144
+    // makes it to the release channel.
+    let startTimestamp = ChromeUtils.now?.() || performance.now();
     let controller = new AbortController();
     currentScope.__signal = controller.signal;
     if (isSetup) {
@@ -1267,22 +1307,35 @@ Tester.prototype = {
     // Allow for a task to be skipped; we need only use the structured logger
     // for this, whilst deactivating log buffering to ensure that messages
     // are always printed to stdout.
-    let skipTask = task => {
+    let skipTask = (task, reason) => {
       let logger = this.structuredLogger;
       logger.deactivateBuffering();
       logger.testStatus(this.currentTest.path, task.name, "SKIP");
-      logger.warning("Skipping test " + task.name);
+      let message = "Skipping test " + task.name;
+      if (reason) {
+        message += ` because the following conditions were met: (${reason})`;
+      }
+      logger.warning(message);
       logger.activateBuffering();
     };
 
     let task;
     while ((task = currentScope.__tasks.shift())) {
+      let reason;
+      let shouldSkip = false;
       if (
         task.__skipMe ||
         (currentScope.__runOnlyThisTask &&
           task != currentScope.__runOnlyThisTask)
       ) {
-        skipTask(task);
+        shouldSkip = true;
+      } else if (typeof task.__skip_if === "function" && task.__skip_if()) {
+        shouldSkip = true;
+        reason = task.__skip_if.toSource().replace(/\(\)\s*=>\s*/, "");
+      }
+
+      if (shouldSkip) {
+        skipTask(task, reason);
         continue;
       }
       await this.handleTask(task, currentTest, this.PromiseTestUtils);
@@ -1353,6 +1406,12 @@ Tester.prototype = {
 
     this.ContentTask.setTestScope(currentScope);
 
+    // Import Mochia methods in the test scope
+    Services.scriptloader.loadSubScript(
+      "resource://testing-common/Mochia.js",
+      scope
+    );
+
     // Allow Assert.sys.mjs methods to be tacked to the current scope.
     scope.export_assertions = function () {
       for (let func in this.Assert) {
@@ -1410,7 +1469,9 @@ Tester.prototype = {
 
     // Import the test script.
     try {
-      this.lastStartTimestamp = performance.now();
+      // This newtab train-hop compatibility shim can be removed once Firefox 144
+      // makes it to the release channel.
+      this.lastStartTimestamp = ChromeUtils.now?.() || performance.now();
       this.TestUtils.promiseTestFinished = new Promise(resolve => {
         this.resolveFinishTestPromise = resolve;
       });
@@ -1461,7 +1522,7 @@ Tester.prototype = {
       var waitUntilAtLeast = timeoutExpires - 1000;
       this.currentTest.scope.__waitTimer =
         this.SimpleTest._originalSetTimeout.apply(window, [
-          function timeoutFn() {
+          async function timeoutFn() {
             // We sometimes get woken up long before the gTimeoutSeconds
             // have elapsed (when running in chaos mode for example). This
             // code ensures that we don't wrongly time out in that case.
@@ -1521,6 +1582,7 @@ Tester.prototype = {
             if (gConfig.timeoutAsPass) {
               self.nextTest();
             } else {
+              await self.notifyProfilerOfTestEnd();
               self.finish();
             }
           },
@@ -1958,13 +2020,29 @@ testScope.prototype = {
    *
    *   is(result, "foo");
    * });
+   *
+   * add_task({
+   *   skip_if: () => !AppConstants.DEBUG,
+   * },
+   * async function test_debug_only() {
+   *   ok(true, "Test ran in a debug build");
+   * });
    */
-  add_task(aFunction) {
+  add_task(properties, func = properties) {
     if (!this.__tasks) {
       this.waitForExplicitFinish();
       this.__tasks = [];
     }
-    let bound = decorateTaskFn.call(this, aFunction);
+
+    let bound = decorateTaskFn.call(this, func);
+
+    if (
+      typeof properties === "object" &&
+      typeof properties.skip_if === "function"
+    ) {
+      bound.__skip_if = properties.skip_if;
+    }
+
     this.__tasks.push(bound);
     return bound;
   },
@@ -1988,11 +2066,3 @@ testScope.prototype = {
     return this.__signal;
   },
 };
-
-/* import-globals-from ../modules/Mochia.js */
-Services.scriptloader.loadSubScript(
-  "resource://testing-common/Mochia.js",
-  this
-);
-
-Mochia(testScope);

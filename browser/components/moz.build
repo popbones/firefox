@@ -44,6 +44,7 @@ DIRS += [
     "ipprotection",
     "messagepreview",
     "migration",
+    "mozcachedohttp",
     "newtab",
     "originattributes",
     "pagedata",
@@ -59,6 +60,7 @@ DIRS += [
     "resistfingerprinting",
     "screenshots",
     "search",
+    "security",
     "sessionstore",
     "shell",
     "sidebar",
@@ -71,6 +73,7 @@ DIRS += [
     "translations",
     "uitour",
     "urlbar",
+    "webrtc",
 ]
 
 DIRS += ["build"]

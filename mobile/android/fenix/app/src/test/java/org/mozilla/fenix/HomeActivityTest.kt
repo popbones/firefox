@@ -12,10 +12,6 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
-import mozilla.components.browser.state.state.BrowserState
-import mozilla.components.browser.state.state.createTab
-import mozilla.components.browser.state.store.BrowserStore
-import mozilla.components.service.pocket.PocketStoriesService
 import mozilla.components.support.test.robolectric.testContext
 import mozilla.components.support.utils.toSafeIntent
 import org.junit.Assert.assertEquals
@@ -32,7 +28,6 @@ import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.browser.browsingmode.BrowsingModeManager
 import org.mozilla.fenix.components.AppStore
 import org.mozilla.fenix.components.appstate.AppAction
-import org.mozilla.fenix.components.usecases.FenixBrowserUseCases
 import org.mozilla.fenix.ext.components
 import org.mozilla.fenix.ext.getIntentSource
 import org.mozilla.fenix.ext.settings
@@ -49,18 +44,15 @@ class HomeActivityTest {
     private lateinit var activity: HomeActivity
     private lateinit var appStore: AppStore
     private lateinit var settings: Settings
-    private lateinit var fenixBrowserUseCases: FenixBrowserUseCases
 
     @Before
     fun setup() {
         activity = spyk(HomeActivity())
         settings = mockk(relaxed = true)
         appStore = mockk(relaxed = true)
-        fenixBrowserUseCases = mockk(relaxed = true)
 
         every { testContext.settings() } returns settings
         every { testContext.components.appStore } returns appStore
-        every { activity.components.useCases.fenixBrowserUseCases } returns fenixBrowserUseCases
     }
 
     private fun assertNoPromptWasShown() {
@@ -171,22 +163,6 @@ class HomeActivityTest {
     }
 
     @Test
-    fun `WHEN Pocket sponsored stories profile is migrated to MARS API THEN delete the old Pocket profile`() {
-        val pocketStoriesService: PocketStoriesService = mockk(relaxed = true)
-        every { testContext.settings() } returns Settings(testContext)
-        every { activity.applicationContext } returns testContext
-        testContext.settings().hasPocketSponsoredStoriesProfileMigrated = false
-
-        activity.migratePocketSponsoredStoriesProfile(pocketStoriesService)
-
-        assertTrue(testContext.settings().hasPocketSponsoredStoriesProfileMigrated)
-
-        verify {
-            pocketStoriesService.deleteProfile()
-        }
-    }
-
-    @Test
     fun `GIVEN all conditions met WHEN maybeShowSetAsDefaultBrowserPrompt is called THEN dispatch action and record metrics`() {
         every { activity.applicationContext } returns testContext
         every { testContext.components.strictMode } returns TestStrictModeManager()
@@ -234,56 +210,5 @@ class HomeActivityTest {
             isTheCorrectBuildVersion = true,
         )
         assertNoPromptWasShown()
-    }
-
-    @Test
-    fun `GIVEN homepage as a new tab is disabled WHEN addPrivateHomepageTabIfNecessary is called THEN do nothing`() {
-        every { activity.components.settings.enableHomepageAsNewTab } returns false
-
-        activity.addPrivateHomepageTabIfNecessary(mode = BrowsingMode.Private)
-
-        verify(exactly = 0) {
-            fenixBrowserUseCases.addNewHomepageTab(private = false)
-        }
-
-        activity.addPrivateHomepageTabIfNecessary(mode = BrowsingMode.Normal)
-
-        verify(exactly = 0) {
-            fenixBrowserUseCases.addNewHomepageTab(private = false)
-        }
-    }
-
-    @Test
-    fun `GIVEN homepage as a new tab is enabled and no private tabs WHEN addPrivateHomepageTabIfNecessary is called THEN add a private homepage tab`() {
-        every { activity.components.settings.enableHomepageAsNewTab } returns true
-
-        val store = BrowserStore(BrowserState())
-        every { activity.components.core.store } returns store
-
-        activity.addPrivateHomepageTabIfNecessary(mode = BrowsingMode.Private)
-
-        verify {
-            fenixBrowserUseCases.addNewHomepageTab(private = true)
-        }
-
-        activity.addPrivateHomepageTabIfNecessary(mode = BrowsingMode.Normal)
-
-        verify(exactly = 0) {
-            fenixBrowserUseCases.addNewHomepageTab(private = false)
-        }
-    }
-
-    @Test
-    fun `GIVEN homepage as a new tab is enabled and private tabs exist WHEN addPrivateHomepageTabIfNecessary is called THEN do nothing`() {
-        every { activity.components.settings.enableHomepageAsNewTab } returns true
-
-        val store = BrowserStore(BrowserState(tabs = listOf(createTab(url = "https://mozilla.org", private = true))))
-        every { activity.components.core.store } returns store
-
-        activity.addPrivateHomepageTabIfNecessary(mode = BrowsingMode.Private)
-
-        verify(exactly = 0) {
-            fenixBrowserUseCases.addNewHomepageTab(private = true)
-        }
     }
 }

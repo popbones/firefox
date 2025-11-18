@@ -287,13 +287,9 @@ nsresult InterceptedHttpChannel::RedirectForResponseURL(
   nsCOMPtr<nsILoadInfo> redirectLoadInfo =
       CloneLoadInfoForRedirect(aResponseURI, flags);
 
-  ExtContentPolicyType contentPolicyType =
-      redirectLoadInfo->GetExternalContentPolicyType();
-
-  rv = newChannel->Init(aResponseURI, mCaps,
-                        static_cast<nsProxyInfo*>(mProxyInfo.get()),
-                        mProxyResolveFlags, mProxyURI, mChannelId,
-                        contentPolicyType, redirectLoadInfo);
+  rv = newChannel->Init(
+      aResponseURI, mCaps, static_cast<nsProxyInfo*>(mProxyInfo.get()),
+      mProxyResolveFlags, mProxyURI, mChannelId, redirectLoadInfo);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Normally we don't propagate the LoadInfo's service worker tainting
@@ -1518,6 +1514,14 @@ NS_IMETHODIMP
 InterceptedHttpChannel::SetCacheKey(uint32_t key) {
   if (mSynthesizedCacheInfo) {
     return mSynthesizedCacheInfo->SetCacheKey(key);
+  }
+  return NS_ERROR_NOT_AVAILABLE;
+}
+
+NS_IMETHODIMP
+InterceptedHttpChannel::GetCacheDisposition(CacheDisposition* aDisposition) {
+  if (mSynthesizedCacheInfo) {
+    return mSynthesizedCacheInfo->GetCacheDisposition(aDisposition);
   }
   return NS_ERROR_NOT_AVAILABLE;
 }

@@ -20,6 +20,10 @@
 namespace mozilla {
 class DeclarationBlock;
 struct MutationClosureData;
+
+namespace dom {
+class StylePropertyMap;
+}
 }  // namespace mozilla
 
 // IID for nsStyledElement interface
@@ -48,7 +52,9 @@ class nsStyledElement : public nsStyledElementBase {
       mozilla::MutationClosureData& aData) override;
   virtual nsresult BindToTree(BindContext& aContext, nsINode& aParent) override;
 
-  nsICSSDeclaration* Style();
+  nsDOMCSSDeclaration* Style();
+
+  mozilla::dom::StylePropertyMap* AttributeStyleMap();
 
   NS_INLINE_DECL_STATIC_IID(NS_STYLED_ELEMENT_IID)
   NS_IMPL_FROMNODE_HELPER(nsStyledElement, IsStyledElement());
@@ -56,7 +62,7 @@ class nsStyledElement : public nsStyledElementBase {
   bool IsStyledElement() const final { return true; }
 
  protected:
-  nsICSSDeclaration* GetExistingStyle();
+  nsDOMCSSDeclaration* GetExistingStyle();
 
   /**
    * Parse a style attr value into a CSS rulestruct (or, if there is no

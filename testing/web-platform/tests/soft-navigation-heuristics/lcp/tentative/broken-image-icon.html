@@ -36,7 +36,6 @@ Notes:
     const helper = new SoftNavigationTestHelper(t);
     const lcpEntries = await helper.getBufferedPerformanceEntriesWithTimeout(
       /*type=*/ "largest-contentful-paint",
-      /*includeSoftNavigationObservations=*/ false,
       /*minNumEntries=*/ 1,
     );
     assert_equals(lcpEntries.length, 1);
@@ -44,13 +43,11 @@ Notes:
 
     const promise = Promise.all([
       SoftNavigationTestHelper.getPerformanceEntries(
-        /*type=*/ "largest-contentful-paint",
-        /*includeSoftNavigationObservations=*/ true,
+        /*type=*/ "interaction-contentful-paint",
         /*minNumEntries=*/ 1,
       ),
       SoftNavigationTestHelper.getPerformanceEntries(
         /*type=*/ "soft-navigation",
-        /*includeSoftNavigationObservations=*/ true,
         /*minNumEntries=*/ 1,
       ),
     ]);

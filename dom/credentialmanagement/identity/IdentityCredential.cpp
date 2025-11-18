@@ -4,11 +4,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "mozilla/dom/IdentityCredential.h"
+
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/Fetch.h"
-#include "mozilla/dom/IdentityCredential.h"
-#include "mozilla/dom/WebIdentityHandler.h"
 #include "mozilla/dom/Promise.h"
+#include "mozilla/dom/WebIdentityHandler.h"
+#include "nsGlobalWindowInner.h"
 #include "nsIGlobalObject.h"
 #include "nsIIdentityCredentialStorageService.h"
 #include "nsNetUtil.h"
@@ -35,6 +37,8 @@ void IdentityCredential::CopyValuesFrom(const IPCIdentityCredential& aOther) {
   if (aOther.token().isSome()) {
     this->mToken = aOther.token().value();
   }
+  this->mIsAutoSelected = aOther.isAutoSelected();
+  this->mConfigURL = aOther.configURL();
 }
 
 IPCIdentityCredential IdentityCredential::MakeIPCIdentityCredential() const {
@@ -43,6 +47,8 @@ IPCIdentityCredential IdentityCredential::MakeIPCIdentityCredential() const {
   if (!this->mToken.IsEmpty()) {
     result.token() = Some(this->mToken);
   }
+  result.isAutoSelected() = mIsAutoSelected;
+  result.configURL() = mConfigURL;
   return result;
 }
 
@@ -51,6 +57,13 @@ void IdentityCredential::GetToken(nsACString& aToken) const {
 }
 void IdentityCredential::SetToken(const nsACString& aToken) {
   mToken.Assign(aToken);
+}
+bool IdentityCredential::IsAutoSelected() const { return mIsAutoSelected; }
+void IdentityCredential::GetConfigURL(nsACString& aConfigURL) const {
+  aConfigURL.Assign(mConfigURL);
+}
+void IdentityCredential::SetConfigURL(const nsACString& aConfigURL) {
+  mConfigURL.Assign(aConfigURL);
 }
 
 // static

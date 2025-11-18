@@ -412,6 +412,7 @@ class DesktopUnittest(TestingMixin, MercurialScript, MozbaseMixin, CodeCoverageM
                 "download-and-extract",
                 "create-virtualenv",
                 "start-pulseaudio",
+                "unlock-keyring",
                 "install",
                 "stage-files",
                 "run-tests",
@@ -1028,6 +1029,23 @@ class DesktopUnittest(TestingMixin, MercurialScript, MozbaseMixin, CodeCoverageM
             extract_dirs=extract_dirs, suite_categories=target_categories
         )
 
+    def unlock_keyring(self):
+        if os.environ.get("NEED_GNOME_KEYRING") == "true":
+            self.log("replacing and unlocking gnome-keyring-daemon")
+            import subprocess
+
+            subprocess.run(
+                [
+                    "gnome-keyring-daemon",
+                    "-r",
+                    "-d",
+                    "--unlock",
+                    "--components=secrets",
+                ],
+                check=True,
+                input=b"\n",
+            )
+
     def start_pulseaudio(self):
         command = []
         # Implies that underlying system is Linux.
@@ -1297,18 +1315,12 @@ class DesktopUnittest(TestingMixin, MercurialScript, MozbaseMixin, CodeCoverageM
 
         def do_gnome_video_recording(suite_name, upload_dir, ev):
             import os
-            import subprocess
 
             import dbus
 
             target_file = os.path.join(
                 upload_dir,
                 f"video_{suite_name}.webm",
-            )
-
-            tmp_file = os.path.join(
-                upload_dir,
-                f"video_{suite_name}_tmp.webm",
             )
 
             self.info(f"Recording suite {suite_name} to {target_file}")
@@ -1321,38 +1333,21 @@ class DesktopUnittest(TestingMixin, MercurialScript, MozbaseMixin, CodeCoverageM
                 "Screencast",
                 signature="sa{sv}",
                 args=[
-                    tmp_file,
+                    target_file,
                     {"draw-cursor": True, "framerate": 35},
                 ],
             )
 
             ev.wait()
 
-            # Use ffmpeg to add duration headers in the screen recording.
-            try:
-                subprocess.run(
-                    [
-                        "ffmpeg",
-                        "-i",
-                        tmp_file,
-                        "-vcodec",
-                        "copy",
-                        "-acodec",
-                        "copy",
-                        target_file,
-                    ],
-                    check=True,
-                )
-                # If subprocess.run did not raise CalledProcessError, remove
-                # the temporary file.
-                os.remove(tmp_file)
-            except subprocess.CalledProcessError as e:
-                self.error(
-                    f"Error occurred while running ffmpeg: {e.stderr} ({e.returncode})"
-                )
-                # If subprocess.run failed, rename the temporary file to the
-                # expected target file name.
-                os.rename(tmp_file, target_file)
+            session_bus.call_blocking(
+                "org.gnome.Shell.Screencast",
+                "/org/gnome/Shell/Screencast",
+                "org.gnome.Shell.Screencast",
+                "StopScreencast",
+                signature="",
+                args=[],
+            )
 
         def do_macos_video_recording(suite_name, upload_dir, ev):
             import os
@@ -1505,18 +1500,24 @@ class DesktopUnittest(TestingMixin, MercurialScript, MozbaseMixin, CodeCoverageM
                     final_cmd = copy.copy(cmd)
                     final_cmd.extend(per_test_args)
 
-                    # Bug 1714406: In test-verify of xpcshell tests on Windows, repeated
-                    # self-tests can trigger https://bugs.python.org/issue37380,
-                    # for python < 3.7; avoid by running xpcshell self-tests only once
-                    # per test-verify run.
-                    if (
-                        (self.verify_enabled or self.per_test_coverage)
-                        and sys.platform.startswith("win")
-                        and sys.version_info < (3, 7)
-                        and "--self-test" in final_cmd
-                    ):
-                        xpcshell_selftests += 1
-                        if xpcshell_selftests > 1:
+                    # Run xpcshell self-tests only once per test-verify run or only in chunk 1.
+                    if "--self-test" in final_cmd:
+                        should_remove_selftest = False
+
+                        # Remove self-test for test-verify runs after the first one
+                        if self.verify_enabled or self.per_test_coverage:
+                            xpcshell_selftests += 1
+                            if xpcshell_selftests > 1:
+                                should_remove_selftest = True
+
+                        # Remove self-test for chunked runs when not in chunk 1
+                        if (
+                            self.config.get("this_chunk")
+                            and int(self.config["this_chunk"]) != 1
+                        ):
+                            should_remove_selftest = True
+
+                        if should_remove_selftest:
                             final_cmd.remove("--self-test")
 
                     final_env = copy.copy(env)

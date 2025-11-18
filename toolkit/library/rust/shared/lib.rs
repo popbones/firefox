@@ -5,7 +5,6 @@
 extern crate geckoservo;
 
 extern crate abridged_certs;
-extern crate app_services_logger;
 #[cfg(feature = "cubeb-remoting")]
 extern crate audioipc2_client;
 #[cfg(feature = "cubeb-remoting")]
@@ -100,13 +99,14 @@ extern crate osclientcerts;
 #[cfg(not(target_os = "android"))]
 extern crate gkrust_uniffi_components;
 
-#[cfg(feature = "uniffi_fixtures")]
+#[cfg(all(feature = "uniffi_fixtures", not(target_os = "android")))]
 extern crate uniffi_bindgen_gecko_js_test_fixtures;
 
 #[cfg(not(target_os = "android"))]
 extern crate viaduct;
 
 extern crate gecko_logger;
+extern crate gecko_tracing;
 
 #[cfg(feature = "oxidized_breakpad")]
 extern crate rust_minidump_writer_linux;
@@ -137,11 +137,14 @@ extern crate oblivious_http;
 
 extern crate mime_guess_ffi;
 
+extern crate uritemplate_glue;
 extern crate urlpattern;
 extern crate urlpattern_glue;
 
 #[cfg(feature = "libz-rs-sys")]
 extern crate libz_rs_sys;
+
+extern crate gecko_trace;
 
 extern crate log;
 use log::info;
@@ -154,6 +157,8 @@ use gecko_logger::GeckoLogger;
 pub extern "C" fn GkRust_Init() {
     // Initialize logging.
     let _ = GeckoLogger::init();
+    // Initialize tracing.
+    gecko_tracing::initialize_tracing();
 }
 
 #[no_mangle]

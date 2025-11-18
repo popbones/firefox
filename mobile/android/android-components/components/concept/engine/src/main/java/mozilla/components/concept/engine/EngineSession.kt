@@ -390,7 +390,6 @@ abstract class EngineSession(
      * Represents a safe browsing policy, which is indicates with type of site should be alerted
      * to user as possible harmful.
      */
-    @Suppress("MagicNumber")
     enum class SafeBrowsingPolicy(val id: Int) {
         NONE(0),
 
@@ -435,6 +434,8 @@ abstract class EngineSession(
         val strictSocialTrackingProtection: Boolean? = null,
         val cookiePurging: Boolean = false,
         val bounceTrackingProtectionMode: BounceTrackingProtectionMode = BounceTrackingProtectionMode.DISABLED,
+        val allowListBaselineTrackingProtection: Boolean = true,
+        val allowListConvenienceTrackingProtection: Boolean = true,
     ) {
 
         /**
@@ -480,7 +481,6 @@ abstract class EngineSession(
             ACCEPT_FIRST_PARTY_AND_ISOLATE_OTHERS(5),
         }
 
-        @Suppress("MagicNumber")
         enum class TrackingCategory(val id: Int) {
 
             NONE(0),
@@ -556,13 +556,26 @@ abstract class EngineSession(
              * Strict policy.
              * Combining the [TrackingCategory.STRICT] plus a cookiePolicy of [ACCEPT_FIRST_PARTY_AND_ISOLATE_OTHERS].
              * This is the strictest setting and may cause issues on some web sites.
+             *
+             * The [allowListBaselineTrackingProtection] and [allowListConvenienceTrackingProtection]
+             * parameters allow users to control allowlist configurations in the strict preset,
+             * without switching to a less restrictive policy.
+             *
+             * @param allowListBaselineTrackingProtection indicates if the baseline exceptions are applied
+             * @param allowListConvenienceTrackingProtection indicates if the convenience exceptions are applied
+             *
              */
-            fun strict() = TrackingProtectionPolicyForSessionTypes(
+            fun strict(
+                allowListBaselineTrackingProtection: Boolean = true,
+                allowListConvenienceTrackingProtection: Boolean = false,
+                ) = TrackingProtectionPolicyForSessionTypes(
                 trackingCategory = arrayOf(TrackingCategory.STRICT),
                 cookiePolicy = ACCEPT_FIRST_PARTY_AND_ISOLATE_OTHERS,
                 strictSocialTrackingProtection = true,
                 cookiePurging = true,
                 bounceTrackingProtectionMode = BounceTrackingProtectionMode.ENABLED,
+                allowListBaselineTrackingProtection = allowListBaselineTrackingProtection,
+                allowListConvenienceTrackingProtection = allowListConvenienceTrackingProtection,
             )
 
             /**
@@ -577,6 +590,8 @@ abstract class EngineSession(
                 strictSocialTrackingProtection = false,
                 cookiePurging = true,
                 bounceTrackingProtectionMode = BounceTrackingProtectionMode.ENABLED_STANDBY,
+                allowListBaselineTrackingProtection = true,
+                allowListConvenienceTrackingProtection = true,
             )
 
             /**
@@ -592,6 +607,10 @@ abstract class EngineSession(
              *  @param cookiePurging Whether or not to automatically purge tracking cookies. This will
              *  purge cookies from tracking sites that do not have recent user interaction provided.
              *  @param bounceTrackingProtectionMode the bounce tracking protection mode to use.
+             *  @param allowListBaselineTrackingProtection indicates if the baseline tracking
+             *  protection exceptions are applied
+             *  @param allowListConvenienceTrackingProtection indicates if the convenience tracking
+             *  protection exceptions are applied
              */
             fun select(
                 trackingCategories: Array<TrackingCategory> = arrayOf(TrackingCategory.RECOMMENDED),
@@ -601,6 +620,8 @@ abstract class EngineSession(
                 cookiePurging: Boolean = false,
                 bounceTrackingProtectionMode: BounceTrackingProtectionMode =
                     BounceTrackingProtectionMode.ENABLED_STANDBY,
+                allowListBaselineTrackingProtection: Boolean = true,
+                allowListConvenienceTrackingProtection: Boolean = false,
             ) = TrackingProtectionPolicyForSessionTypes(
                 trackingCategory = trackingCategories,
                 cookiePolicy = cookiePolicy,
@@ -608,6 +629,8 @@ abstract class EngineSession(
                 strictSocialTrackingProtection = strictSocialTrackingProtection,
                 cookiePurging = cookiePurging,
                 bounceTrackingProtectionMode = bounceTrackingProtectionMode,
+                allowListBaselineTrackingProtection = allowListBaselineTrackingProtection,
+                allowListConvenienceTrackingProtection = allowListConvenienceTrackingProtection,
             )
         }
 
@@ -674,7 +697,6 @@ abstract class EngineSession(
     /**
      * Represents settings options for bounce tracking protection.
      */
-    @Suppress("MagicNumber")
     enum class BounceTrackingProtectionMode(val mode: Int) {
         /**
          * Fully disabled.
@@ -721,6 +743,8 @@ abstract class EngineSession(
         strictSocialTrackingProtection: Boolean? = null,
         cookiePurging: Boolean = false,
         bounceTrackingProtectionMode: BounceTrackingProtectionMode = BounceTrackingProtectionMode.DISABLED,
+        allowListBaselineTrackingProtection: Boolean = true,
+        allowListConvenienceTrackingProtection: Boolean = true,
     ) : TrackingProtectionPolicy(
         trackingCategories = trackingCategory,
         cookiePolicy = cookiePolicy,
@@ -728,6 +752,8 @@ abstract class EngineSession(
         strictSocialTrackingProtection = strictSocialTrackingProtection,
         cookiePurging = cookiePurging,
         bounceTrackingProtectionMode = bounceTrackingProtectionMode,
+        allowListBaselineTrackingProtection = allowListBaselineTrackingProtection,
+        allowListConvenienceTrackingProtection = allowListConvenienceTrackingProtection,
     ) {
         /**
          * Marks this policy to be used for private sessions only.
@@ -741,6 +767,8 @@ abstract class EngineSession(
             strictSocialTrackingProtection = false,
             cookiePurging = cookiePurging,
             bounceTrackingProtectionMode = bounceTrackingProtectionMode,
+            allowListBaselineTrackingProtection = allowListBaselineTrackingProtection,
+            allowListConvenienceTrackingProtection = allowListConvenienceTrackingProtection,
         )
 
         /**
@@ -755,6 +783,8 @@ abstract class EngineSession(
             strictSocialTrackingProtection = strictSocialTrackingProtection,
             cookiePurging = cookiePurging,
             bounceTrackingProtectionMode = bounceTrackingProtectionMode,
+            allowListBaselineTrackingProtection = allowListBaselineTrackingProtection,
+            allowListConvenienceTrackingProtection = allowListConvenienceTrackingProtection,
         )
     }
 
@@ -774,6 +804,12 @@ abstract class EngineSession(
             const val LOAD_FLAGS_BYPASS_LOAD_URI_DELEGATE: Int = 1 shl 7
             const val ALLOW_ADDITIONAL_HEADERS: Int = 1 shl 15
             const val ALLOW_JAVASCRIPT_URL: Int = 1 shl 16
+
+            const val APP_LINK_LAUNCH_TYPE_COLD: Int = 1 shl 8
+            const val APP_LINK_LAUNCH_TYPE_WARM: Int = 1 shl 9
+            const val APP_LINK_LAUNCH_TYPE_HOT: Int = 1 shl 10
+            const val APP_LINK_LAUNCH_TYPE_UNKNOWN: Int = 0
+
             internal const val ALL = BYPASS_CACHE + BYPASS_PROXY + EXTERNAL + ALLOW_POPUPS +
                 BYPASS_CLASSIFIER + LOAD_FLAGS_FORCE_ALLOW_DATA_URI + LOAD_FLAGS_REPLACE_HISTORY +
                 LOAD_FLAGS_BYPASS_LOAD_URI_DELEGATE + ALLOW_ADDITIONAL_HEADERS + ALLOW_JAVASCRIPT_URL
@@ -912,6 +948,20 @@ abstract class EngineSession(
      * false otherwise.
      */
     abstract fun restoreState(state: EngineSessionState): Boolean
+
+    /**
+     * Flushes the session state of the engine session.
+     *
+     * This method triggers an asynchronous flush of the current
+     * session state. The most recent state is not returned directly
+     * by this call. Instead, the updated session state will be
+     * delivered asynchronously through the observer callbacks:
+     *
+     * [EngineSession.Observer.onStateUpdated]
+     *
+     * [EngineSession.Observer.onHistoryStateChanged]
+     */
+    abstract fun flushSessionState()
 
     /**
      * Updates the tracking protection [policy] for this engine session.

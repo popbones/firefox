@@ -10,21 +10,22 @@
 #define nsComputedDOMStyle_h__
 
 #include "mozilla/Attributes.h"
+#include "mozilla/ComputedStyle.h"
 #include "mozilla/PseudoStyleType.h"
 #include "mozilla/StyleColorInlines.h"
 #include "mozilla/UniquePtr.h"
-#include "nsCOMPtr.h"
-#include "nsContentUtils.h"
-#include "nscore.h"
-#include "nsDOMCSSDeclaration.h"
-#include "mozilla/ComputedStyle.h"
-#include "nsIWeakReferenceUtils.h"
+#include "mozilla/WritingModes.h"
 #include "mozilla/gfx/Types.h"
-#include "nsCoord.h"
+#include "nsCOMPtr.h"
 #include "nsColor.h"
+#include "nsContentUtils.h"
+#include "nsCoord.h"
+#include "nsDOMCSSDeclaration.h"
+#include "nsIWeakReferenceUtils.h"
 #include "nsStubMutationObserver.h"
 #include "nsStyleStruct.h"
-#include "mozilla/WritingModes.h"
+#include "nsStyleStructList.h"
+#include "nscore.h"
 
 // XXX Avoid including this here by moving function bodies to the cpp file
 #include "mozilla/dom/Element.h"
@@ -175,12 +176,12 @@ class nsComputedDOMStyle final : public nsDOMCSSDeclaration,
       const Element*, const PseudoStyleRequest&, mozilla::PresShell*,
       StyleType);
 
-#define STYLE_STRUCT(name_)                    \
+#define COMPUTED_STYLE_ACCESSOR(name_)         \
   const nsStyle##name_* Style##name_() const { \
     return mComputedStyle->Style##name_();     \
   }
-#include "nsStyleStructList.h"
-#undef STYLE_STRUCT
+  FOR_EACH_STYLE_STRUCT(COMPUTED_STYLE_ACCESSOR, COMPUTED_STYLE_ACCESSOR)
+#undef COMPUTED_STYLE_ACCESSOR
 
   /**
    * A method to get a percentage base for a percentage value.  Returns true

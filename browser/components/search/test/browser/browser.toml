@@ -42,6 +42,15 @@ support-files = ["test.html", "test_windows1252.html"]
 ["browser_contentContextMenu.js"]
 support-files = ["browser_contentContextMenu.xhtml"]
 
+["browser_contentContextMenu_visualSearch.js"]
+support-files = [
+  "browser_contentContextMenu.xhtml",
+  "ctxmenu-image.png",
+  "firebird.png",
+  "firebird.png^headers^",
+  "search-glass.svg",
+]
+
 ["browser_contentSearch.js"]
 support-files = [
   "contentSearchBadImage.xml",
@@ -62,6 +71,9 @@ support-files = [
 ["browser_contextSearchTabPosition.js"]
 
 ["browser_contextmenu.js"]
+skip-if = [
+  "os == 'win' && os_version == '11.26100' && processor == 'x86_64' && debug", # Bug 1937944
+]
 
 ["browser_contextmenu_whereToOpenLink.js"]
 
@@ -106,11 +118,13 @@ support-files = ["trendingSuggestionEngine.sjs"]
 
 ["browser_searchbar_keyboard_navigation.js"]
 skip-if = [
-  "os == 'win' && debug",  # Bug 1792718
+  "os == 'win' && debug", # Bug 1792718
   "os == 'linux' && asan", # Bug 1792718
-  "debug",                 # Bug 1792718
-  "tsan",                  # Bug 1792718
+  "debug", # Bug 1792718
+  "tsan", # Bug 1792718
 ]
+
+["browser_searchbar_ohttpSessions.js"]
 
 ["browser_searchbar_openpopup.js"]
 

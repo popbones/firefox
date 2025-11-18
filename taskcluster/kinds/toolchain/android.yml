@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
 task-defaults:
-    worker-type: b-linux-gcp
+    worker-type: b-linux-amd
     worker:
         docker-image: {in-tree: android-build}
         max-run-time: 1800
@@ -193,7 +193,7 @@ linux64-jdk-repack:
         toolchain-artifact: project/gecko/jdk/jdk-linux.tar.zst
         toolchain-alias: linux64-jdk
         toolchain-env:
-            JAVA_HOME: "/builds/worker/fetches/jdk/jdk-17.0.15+6"
+            JAVA_HOME: "/builds/worker/fetches/jdk/jdk-17.0.16+8"
 
 linux64-android-sdk-linux-repack:
     description: "Android SDK (Linux) repack toolchain build"

@@ -22,6 +22,7 @@
 # do ok(true, "Type not supported") and stop the test.
 
 [DEFAULT]
+skip-if = ["isolated_process"] # Bug 1709948
 subsuite = "media"
 tags = "mtg capturestream"
 support-files = [
@@ -723,8 +724,6 @@ scheme = "https"
 tags = "mtg"
 
 ["test_streams_srcObject.html"]
-skip-if = [
-  "os == 'mac' && debug", # Bug 1756880 - temp due to high frequency shutdown hang
-]
+skip-if = ["os == 'mac' && debug"] # Bug 1756880 - temp due to high frequency shutdown hang
 
 ["test_streams_tracks.html"]

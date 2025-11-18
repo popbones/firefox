@@ -1,14 +1,20 @@
 .. _mozilla_projects_nss_releases:
 
-Releases
-========
+Release Notes
+=============
 
 .. toctree::
    :maxdepth: 0
    :glob:
    :hidden:
 
+   nss_3_116.rst
+   nss_3_115_1.rst
+   nss_3_115.rst
+   nss_3_114_1.rst
+   nss_3_114.rst
    nss_3_113.rst
+   nss_3_112_1.rst
    nss_3_112.rst
    nss_3_111.rst
    nss_3_110.rst
@@ -87,30 +93,33 @@ Releases
 
 .. note::
 
-   **NSS 3.112** is the latest version of NSS.
-   Complete release notes are available here: :ref:`mozilla_projects_nss_nss_3_112_release_notes`
+   **NSS 3.116** is the latest version of NSS.
+   Complete release notes are available here: :ref:`mozilla_projects_nss_nss_3_116_release_notes`
 
-   **NSS 3.101.4 (ESR)** is the latest ESR version of NSS.
-   Complete release notes are available here: :ref:`mozilla_projects_nss_nss_3_101_4_release_notes`
+   **NSS 3.112.1 (ESR)** is the latest ESR version of NSS.
+   Complete release notes are available here: :ref:`mozilla_projects_nss_nss_3_112_1_release_notes`
 
 .. container::
 
-   Changes in 3.112 included in this release:
+   Changes in 3.116 included in this release:
 
-   - Bug 1963792 - Fix alias for mac workers on try.
-   - Bug 1966786 - ensure all options can be configured with SSL_OptionSet and SSL_OptionSetDefault.
-   - Bug 1931930 - ABI/API break in ssl certificate processing
-   - Bug 1955971 - remove unnecessary assertion in sec_asn1d_init_state_based_on_template.
-   - Bug 1965754 - update taskgraph to v14.2.1.
-   - Bug 1964358 - Workflow for automation of the release on GitHub when pushing a tag
-   - Bug 1952860 - fix faulty assertions in SEC_ASN1DecoderUpdate
-   - Bug 1934877 - Renegotiations should use a fresh ECH GREASE buffer.
-   - Bug 1951396 - update taskgraph to v14.1.1
-   - Bug 1962503 - Partial fix for ACVP build CI job
-   - Bug 1961827 - Initialize find in sftk_searchDatabase.
-   - Bug 1963121 - Add clang-18 to extra builds.
-   - Bug 1963044 - Fault tolerant git fetch for fuzzing.
-   - Bug 1962556 - Tolerate intermittent failures in ssl_policy_pkix_ocsp.
-   - Bug 1962770 - fix compiler warnings when DEBUG_ASN1D_STATES or CMSDEBUG are set.
-   - Bug 1961835 - fix content type tag check in NSS_CMSMessage_ContainsCertsOrCrls.
-   - Bug 1963102 - Remove Cryptofuzz CI version check
+   - Bug 1983308 - disable DSA in NSS script tests.
+   - Bug 1983308 - Disabling of some algorithms: generic cert.sh.
+   - Bug 1981046 - Need to update to new mechanisms.
+   - Bug 1983320 - Add ML-DSA public key printing support in NSS command-line utilities.
+   - Bug 1986802 - note embedded scts before revocation checks are performed.
+   - Bug 1983320 - Add support for ML-DSA keys and mechanisms in PKCS#11 interface.
+   - Bug 1983320 - Add support for ML-DSA key type and public key structure.
+   - Bug 1983320 - Enable ML-DSA integration via OIDs support and SECMOD flag.
+   - Bug 1983308 - disable kyber.
+   - Bug 1965329 - Implement PKCS #11 v3.2 PQ functions (use verify signature).
+   - Bug 1983308 - Disable dsa - gtests.
+   - Bug 1983313 - make group and scheme support in test tools generic.
+   - Bug 1983770 - Create GH workflow to automatically close PRs.
+   - Bug 1983308 - Disable dsa - base code.
+   - Bug 1983308 - Disabling of some algorithms: remove dsa from pk11_mode.
+   - Bug 1983308 - Disable seed and RC2 bug fixes.
+   - Bug 1982742 - restore support for finding certificates by decoded serial number.
+   - Bug 1984165 - avoid CKR_BUFFER_TO_SMALL error in trust lookups.
+   - Bug 1983399 - lib/softtoken/{sdb.c,sftkdbti.h}: Align sftkdb_known_attributes_size type.
+   - Bug 1965329 - Use PKCS #11 v3.2 KEM mechanisms and functions.

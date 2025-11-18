@@ -8,7 +8,7 @@
 # documentation and how to modify this file.
 repo: mozilla-central
 created_at: '2021-10-14T12:50:40.073465'
-updated_at: '2025-06-27T16:47:27.695787+00:00'
+updated_at: '2025-09-17T20:16:14.295054+00:00'
 export:
   path: ./docs/mots/index.rst
   format: rst
@@ -50,6 +50,10 @@ people:
     bmo_id: 693303
     name: Alex Hochheiden
     nick: ahochheiden
+  - &aleiserson
+    bmo_id: 713407
+    name: Andy Leiserson
+    nick: aleiserson
   - &allstarschh
     bmo_id: 434670
     name: Yoshi Cheng-Hao Huang
@@ -121,8 +125,7 @@ people:
     bmo_id: 683100
     name: Ben Dean-Kawamura
     nick: bdk
-  - &benbangert
-    bmo_id: 424312
+  - bmo_id: 424312
     name: Ben Bangert
     nick: benbangert
   - &beth
@@ -611,10 +614,18 @@ people:
     bmo_id: 701257
     name: James Teow
     nick: jteow
+  - &jthomas
+    bmo_id: 421957
+    name: Jason Thomas
+    nick: jthomas
   - &jules
     bmo_id: 699161
     name: Jules Simplicio
     nick: jules
+  - &Julian
+    bmo_id: 656418
+    name: Julian Gaibler
+    nick: Julian
   - &jwatt
     bmo_id: 32767
     name: Jonathan Watt
@@ -958,10 +969,6 @@ people:
     bmo_id: 703413
     name: Stephanie Cunnane
     nick: scunnane
-  - &sefeng
-    bmo_id: 625922
-    name: Sean Feng
-    nick: sefeng
   - &serg
     bmo_id: 691597
     name: Sergey Galich
@@ -1017,6 +1024,10 @@ people:
   - bmo_id: 468136
     name: Dan Gohman
     nick: sunfish
+  - &sunil
+    bmo_id: 711499
+    name: Sunil Mayya
+    nick: sunil
   - &Sylvestre
     bmo_id: 495955
     name: Sylvestre Ledru
@@ -1143,13 +1154,14 @@ modules:
       - README.txt
     meta:
       owners_emeritus:
+        - Ben Bangert
         - Brendan Eich
         - Kate Hudson
     owners:
       - *bholley
       - *overholt
+      - *jthomas
       - *mossop
-      - *benbangert
       - *nalexander
       - *nika
     peers: []
@@ -1630,6 +1642,7 @@ modules:
         - Ehsan Akhgari
         - Axel Hecht
         - Eric Rahm
+        - Sean Feng
       url: http://developer.mozilla.org/en/docs/DOM
       components:
         - Core::DOM
@@ -1649,7 +1662,7 @@ modules:
       - *asuth
       - *edgar
       - *saschanaz
-      - *sefeng
+      - *tschuster
     machine_name: core_document_object_model
 
   - name: 'Core: DOM File'
@@ -2400,6 +2413,7 @@ modules:
     peers:
       - *kershaw
       - *jesup
+      - *sunil
     machine_name: core_necko
 
   - name: 'Core: NodeJS usage, tools, and style'
@@ -2848,6 +2862,7 @@ modules:
     description: Policy management for third-party Rust dependencies
     includes:
       - supply-chain/**/*
+      - .cargo/audit.toml
     meta:
       peers_emeritus:
         - Aria Beingessner
@@ -2890,8 +2905,7 @@ modules:
       - netwerk/protocol/http/**/*
     meta:
       group: dev-platform
-      url:
-        https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/User-Agent/Firefox
+      url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/User-Agent/Firefox
       components:
         - 'Core::Networking: HTTP'
     owners:
@@ -2998,6 +3012,7 @@ modules:
       - dom/webidl/WebGPU.webidl
       - dom/webgpu/**/*
       - gfx/wgpu_bindings/**/*
+      - taskcluster/kinds/toolchain-dxc-upload/kind.yml
       - third_party/rust/naga/**/*
       - third_party/rust/wgpu-*/**/*
       - testing/web-platform/tests/webgpu/**/*
@@ -3021,6 +3036,7 @@ modules:
       - *jgilbert
       - *nical
       - *teoxoy
+      - *aleiserson
     machine_name: core_webgpu_graphics_submodule
 
   - name: 'Core: WebRTC'
@@ -3512,10 +3528,10 @@ modules:
         owners:
           - *dao
         peers:
-          - *cmkm
           - *emilio
           - *hjones
           - *itielyn8
+          - *Julian
           - *jules
           - *kcochrane
           - *sfoster
@@ -3854,14 +3870,20 @@ modules:
         includes:
           - browser/components/preferences/**/*
           - browser/themes/*/preferences
-          - toolkit/mozapps/preferences
+          - toolkit/components/aboutconfig/*
+          - toolkit/content/preferencesBindings.js
+          - toolkit/content/preferences/*
+          - toolkit/mozapps/preferences/*
         meta:
           owners_emeritus:
             - Jared Wein
             - *mossop
           peers_emeritus:
             - Tim Nguyen
-          review_group: preferences-reviewers
+          components:
+            - Firefox::Settings UI
+            - Toolkit::Preferences
+          review_group: settings-reviewers
         owners:
           - *mstriemer
         peers:
@@ -4597,5 +4619,5 @@ modules:
         - Ryan Tilder
       group: dev-platform
 hashes:
-  config: b82815c501d9c31048631d65c5335b91909705b7
-  export: 4d4cf8a0d842107995cb25f5657e843a5348134e
+  config: f4f4e890cf9118fd024b7944c7faf03147919273
+  export: c939e52f8a48999348561a32cc762b15856c70bc

@@ -32,7 +32,6 @@ describe("DiscoveryStreamFeed", () => {
   let fetchStub;
   let clock;
   let fakeNewTabUtils;
-  let fakePktApi;
   let globals;
 
   const setPref = (name, value) => {
@@ -45,6 +44,48 @@ describe("DiscoveryStreamFeed", () => {
     };
     feed.store.dispatch(action);
     feed.onAction(action);
+  };
+
+  const stubOutFetchFromEndpointWithRealisticData = () => {
+    sandbox.stub(feed, "fetchFromEndpoint").resolves({
+      recommendedAt: 1755834072383,
+      surfaceId: "NEW_TAB_EN_US",
+      data: [
+        {
+          corpusItemId: "decaf-c0ff33",
+          scheduledCorpusItemId: "matcha-latte-ff33c1",
+          excerpt: "excerpt",
+          iconUrl: "iconUrl",
+          imageUrl: "imageUrl",
+          isTimeSensitive: true,
+          publisher: "publisher",
+          receivedRank: 0,
+          tileId: 12345,
+          title: "title",
+          topic: "topic",
+          url: "url",
+          features: {},
+        },
+        {
+          corpusItemId: "decaf-c0ff34",
+          scheduledCorpusItemId: "matcha-latte-ff33c2",
+          excerpt: "excerpt",
+          iconUrl: "iconUrl",
+          imageUrl: "imageUrl",
+          isTimeSensitive: true,
+          publisher: "publisher",
+          receivedRank: 0,
+          tileId: 12346,
+          title: "title",
+          topic: "topic",
+          url: "url",
+          features: {},
+        },
+      ],
+      settings: {
+        recsExpireTime: 1,
+      },
+    });
   };
 
   beforeEach(() => {
@@ -110,7 +151,6 @@ describe("DiscoveryStreamFeed", () => {
         isBlocked: () => false,
       },
       getUtcOffset: () => 0,
-      normalizeOs: () => "",
     };
     globals.set("NewTabUtils", fakeNewTabUtils);
     globals.set("ClientEnvironmentBase", {
@@ -121,13 +161,6 @@ describe("DiscoveryStreamFeed", () => {
       getOHTTPConfig: () => {},
       ohttpRequest: () => {},
     });
-
-    fakePktApi = {
-      isUserLoggedIn: () => false,
-      getRecentSavesCache: () => null,
-      getRecentSaves: () => null,
-    };
-    globals.set("pktApi", fakePktApi);
   });
 
   afterEach(() => {
@@ -204,31 +237,6 @@ describe("DiscoveryStreamFeed", () => {
 
       assert.equal(response, "hi");
     });
-    it("should replace urls with $apiKey", async () => {
-      sandbox.stub(global.Services.prefs, "getCharPref").returns("replaced");
-
-      await feed.fetchFromEndpoint(
-        "https://getpocket.cdn.mozilla.net/dummy?consumer_key=$apiKey"
-      );
-
-      assert.calledWithMatch(
-        fetchStub,
-        "https://getpocket.cdn.mozilla.net/dummy?consumer_key=replaced",
-        { credentials: "omit" }
-      );
-    });
-    it("should replace locales with $locale", async () => {
-      feed.locale = "replaced";
-      await feed.fetchFromEndpoint(
-        "https://getpocket.cdn.mozilla.net/dummy?locale_lang=$locale"
-      );
-
-      assert.calledWithMatch(
-        fetchStub,
-        "https://getpocket.cdn.mozilla.net/dummy?locale_lang=replaced",
-        { credentials: "omit" }
-      );
-    });
     it("should allow POST and with other options", async () => {
       await feed.fetchFromEndpoint("https://getpocket.cdn.mozilla.net/dummy", {
         method: "POST",
@@ -289,63 +297,6 @@ describe("DiscoveryStreamFeed", () => {
         "https://relay.url",
         fakeOhttpConfig,
         DUMMY_ENDPOINT
-      );
-    });
-  });
-
-  describe("#setupPocketState", () => {
-    it("should setup logged in state and recent saves with cache", async () => {
-      fakePktApi.isUserLoggedIn = () => true;
-      fakePktApi.getRecentSavesCache = () => [1, 2, 3];
-      sandbox.spy(feed.store, "dispatch");
-      await feed.setupPocketState({});
-      assert.calledTwice(feed.store.dispatch);
-      assert.calledWith(
-        feed.store.dispatch.firstCall,
-        ac.OnlyToOneContent(
-          {
-            type: at.DISCOVERY_STREAM_POCKET_STATE_SET,
-            data: { isUserLoggedIn: true },
-          },
-          {}
-        )
-      );
-      assert.calledWith(
-        feed.store.dispatch.secondCall,
-        ac.OnlyToOneContent(
-          {
-            type: at.DISCOVERY_STREAM_RECENT_SAVES,
-            data: { recentSaves: [1, 2, 3] },
-          },
-          {}
-        )
-      );
-    });
-    it("should setup logged in state and recent saves without cache", async () => {
-      fakePktApi.isUserLoggedIn = () => true;
-      fakePktApi.getRecentSaves = ({ success }) => success([1, 2, 3]);
-      sandbox.spy(feed.store, "dispatch");
-      await feed.setupPocketState({});
-      assert.calledTwice(feed.store.dispatch);
-      assert.calledWith(
-        feed.store.dispatch.firstCall,
-        ac.OnlyToOneContent(
-          {
-            type: at.DISCOVERY_STREAM_POCKET_STATE_SET,
-            data: { isUserLoggedIn: true },
-          },
-          {}
-        )
-      );
-      assert.calledWith(
-        feed.store.dispatch.secondCall,
-        ac.OnlyToOneContent(
-          {
-            type: at.DISCOVERY_STREAM_RECENT_SAVES,
-            data: { recentSaves: [1, 2, 3] },
-          },
-          {}
-        )
       );
     });
   });
@@ -806,26 +757,15 @@ describe("DiscoveryStreamFeed", () => {
       sandbox
         .stub(feed, "scoreItems")
         .callsFake(val => ({ data: val, filtered: [], personalized: false }));
-      sandbox.stub(feed, "fetchFromEndpoint").resolves({
-        recommendations: ["data"],
-        settings: {
-          recsExpireTime: 1,
-        },
-      });
+      stubOutFetchFromEndpointWithRealisticData();
 
       const feedResp = await feed.getComponentFeed("foo.com");
-
-      assert.equal(feedResp.data.recommendations, "data");
+      assert.equal(feedResp.data.recommendations.length, 2);
     });
     it("should fetch fresh feed data if cache is old", async () => {
       const fakeCache = { feeds: { "foo.com": { lastUpdated: Date.now() } } };
       sandbox.stub(feed.cache, "get").returns(Promise.resolve(fakeCache));
-      sandbox.stub(feed, "fetchFromEndpoint").resolves({
-        recommendations: ["data"],
-        settings: {
-          recsExpireTime: 1,
-        },
-      });
+      stubOutFetchFromEndpointWithRealisticData();
       sandbox.stub(feed, "rotate").callsFake(val => val);
       sandbox
         .stub(feed, "scoreItems")
@@ -834,7 +774,7 @@ describe("DiscoveryStreamFeed", () => {
 
       const feedResp = await feed.getComponentFeed("foo.com");
 
-      assert.equal(feedResp.data.recommendations, "data");
+      assert.equal(feedResp.data.recommendations.length, 2);
     });
     it("should return feed data from cache if it is fresh", async () => {
       const fakeCache = {
@@ -1075,6 +1015,50 @@ describe("DiscoveryStreamFeed", () => {
           items: [{ id: "data", score: 1, fetchTimestamp: 0 }],
         },
       });
+    });
+    it("should fetch MARS pre flight info", async () => {
+      sandbox
+        .stub(feed, "fetchFromEndpoint")
+        .withArgs("unifiedAdEndpoint/v1/o", { method: "GET" })
+        .resolves({
+          normalized_ua: "normalized_ua",
+          geoname_id: "geoname_id",
+        });
+
+      feed.store = createStore(combineReducers(reducers), {
+        Prefs: {
+          values: {
+            "unifiedAds.endpoint": "unifiedAdEndpoint/",
+            "unifiedAds.blockedAds": "",
+            "unifiedAds.spocs.enabled": true,
+            "discoverystream.placements.spocs": "newtab_stories_1",
+            "discoverystream.placements.spocs.counts": "1",
+            trainhopConfig: {
+              marsPreFlight: { enabled: true },
+            },
+          },
+        },
+      });
+
+      await feed.loadSpocs(feed.store.dispatch);
+
+      assert.equal(
+        feed.fetchFromEndpoint.firstCall.args[0],
+        "unifiedAdEndpoint/v1/o"
+      );
+      assert.equal(feed.fetchFromEndpoint.firstCall.args[1].method, "GET");
+      assert.equal(
+        feed.fetchFromEndpoint.secondCall.args[0],
+        "unifiedAdEndpoint/v1/ads"
+      );
+      assert.equal(
+        feed.fetchFromEndpoint.secondCall.args[1].headers.get("X-User-Agent"),
+        "normalized_ua"
+      );
+      assert.equal(
+        feed.fetchFromEndpoint.secondCall.args[1].headers.get("X-Geoname-ID"),
+        "geoname_id"
+      );
     });
     describe("test SOV behaviour", () => {
       beforeEach(() => {
@@ -2164,15 +2148,11 @@ describe("DiscoveryStreamFeed", () => {
           branch: "branchId",
           isRollout: false,
         });
-      global.Services.prefs.getBoolPref
-        .withArgs("extensions.pocket.enabled")
-        .returns(true);
       feed.store.getState = () => ({
         Prefs: {
           values: {
             region: "CA",
             pocketConfig: {
-              recentSavesEnabled: true,
               hideDescriptions: false,
               hideDescriptionsRegions: "US,CA,GB",
               compactImages: true,
@@ -2181,8 +2161,6 @@ describe("DiscoveryStreamFeed", () => {
               titleLines: "1",
               descLines: "1",
               readTime: true,
-              saveToPocketCard: false,
-              saveToPocketCardRegions: "US,CA,GB",
             },
           },
         },
@@ -2194,9 +2172,6 @@ describe("DiscoveryStreamFeed", () => {
         utmContent: "branchId",
       });
       assert.deepEqual(feed.store.dispatch.secondCall.args[0].data, {
-        recentSavesEnabled: true,
-        pocketButtonEnabled: true,
-        saveToPocketCard: true,
         hideDescriptions: true,
         compactImages: true,
         imageGradient: true,
@@ -2490,17 +2465,6 @@ describe("DiscoveryStreamFeed", () => {
     });
   });
 
-  describe("#onAction: DISCOVERY_STREAM_POCKET_STATE_INIT", async () => {
-    it("should call setupPocketState", async () => {
-      sandbox.spy(feed, "setupPocketState");
-      feed.onAction({
-        type: at.DISCOVERY_STREAM_POCKET_STATE_INIT,
-        meta: { fromTarget: {} },
-      });
-      assert.calledOnce(feed.setupPocketState);
-    });
-  });
-
   describe("#onAction: DISCOVERY_STREAM_CONFIG_RESET", async () => {
     it("should call configReset", async () => {
       sandbox.spy(feed, "configReset");
@@ -2645,16 +2609,6 @@ describe("DiscoveryStreamFeed", () => {
 
       assert.calledOnce(feed.onPrefChange);
     });
-    it("should fire onCollectionsChanged when collections pref changes", async () => {
-      sandbox.stub(feed, "onCollectionsChanged").returns(Promise.resolve());
-
-      await feed.onAction({
-        type: at.PREF_CHANGED,
-        data: { name: "discoverystream.sponsored-collections.enabled" },
-      });
-
-      assert.calledOnce(feed.onCollectionsChanged);
-    });
     it("should re enable stories when top stories is turned on", async () => {
       sandbox.stub(feed, "refreshAll").returns(Promise.resolve());
       feed.loaded = true;
@@ -2728,16 +2682,6 @@ describe("DiscoveryStreamFeed", () => {
 
       await feed.onAction({ type: at.SYSTEM_TICK });
       assert.calledWith(feed.refreshAll, { updateOpenTabs: false });
-    });
-  });
-
-  describe("#onCollectionsChanged", () => {
-    it("should call loadLayout when Pocket config changes", async () => {
-      sandbox.stub(feed, "loadLayout").callsFake(dispatch => dispatch("foo"));
-      sandbox.stub(feed.store, "dispatch");
-      await feed.onCollectionsChanged();
-      assert.calledOnce(feed.loadLayout);
-      assert.calledWith(feed.store.dispatch, ac.AlsoToPreloaded("foo"));
     });
   });
 
@@ -3094,12 +3038,7 @@ describe("DiscoveryStreamFeed", () => {
         };
         sandbox.stub(feed.cache, "get").resolves(fakeCache);
         clock.tick(THIRTY_MINUTES + 1);
-        sandbox.stub(feed, "fetchFromEndpoint").resolves({
-          recommendations: ["data"],
-          settings: {
-            recsExpireTime: 1,
-          },
-        });
+        stubOutFetchFromEndpointWithRealisticData();
 
         await feed.refreshAll({ isStartup: true });
 
@@ -3475,14 +3414,6 @@ describe("DiscoveryStreamFeed", () => {
     });
   });
 
-  describe("#observe", () => {
-    it("should call configReset on Pocket button pref change", async () => {
-      sandbox.stub(feed, "configReset").returns();
-      feed.observe(null, "nsPref:changed", "extensions.pocket.enabled");
-      assert.calledOnce(feed.configReset);
-    });
-  });
-
   describe("#scoreItem", () => {
     it("should call calculateItemRelevanceScore with recommendationProvider with initial score", async () => {
       const item = {
@@ -3531,51 +3462,25 @@ describe("DiscoveryStreamFeed", () => {
 
   describe("new proxy feed", () => {
     beforeEach(() => {
-      feed.store = createStore(combineReducers(reducers), {
-        Prefs: {
-          values: {
-            pocketConfig: { regionBffConfig: "DE" },
-          },
-        },
-      });
       sandbox.stub(global.Region, "home").get(() => "DE");
       sandbox.stub(global.Services.prefs, "getStringPref");
+
       global.Services.prefs.getStringPref
-        .withArgs("extensions.pocket.bffApi")
-        .returns("bffApi");
-      global.Services.prefs.getStringPref
-        .withArgs("extensions.pocket.oAuthConsumerKeyBff")
-        .returns("oAuthConsumerKeyBff");
+        .withArgs(
+          "browser.newtabpage.activity-stream.discoverystream.merino-provider.endpoint"
+        )
+        .returns("merinoEndpoint");
     });
-    it("should return true with isBff", async () => {
-      assert.isUndefined(feed._isBff);
-      assert.isTrue(feed.isBff);
-      assert.isTrue(feed._isBff);
-    });
+
     it("should update to new feed url", async () => {
       await feed.loadLayout(feed.store.dispatch);
       const { layout } = feed.store.getState().DiscoveryStream;
       assert.equal(
         layout[0].components[2].feed.url,
-        "https://bffApi/desktop/v1/recommendations?locale=$locale&region=$region&count=30"
+        "https://merinoEndpoint/api/v1/curated-recommendations"
       );
     });
-    it("should update the new feed url with pocketFeedParameters", async () => {
-      globals.set("NimbusFeatures", {
-        pocketNewtab: {
-          getVariable: sandbox.stub(),
-        },
-      });
-      global.NimbusFeatures.pocketNewtab.getVariable
-        .withArgs("pocketFeedParameters")
-        .returns("&enableRankingByRegion=1");
-      await feed.loadLayout(feed.store.dispatch);
-      const { layout } = feed.store.getState().DiscoveryStream;
-      assert.equal(
-        layout[0].components[2].feed.url,
-        "https://bffApi/desktop/v1/recommendations?locale=$locale&region=$region&count=30&enableRankingByRegion=1"
-      );
-    });
+
     it("should fetch proper data from getComponentFeed", async () => {
       const fakeCache = {};
       sandbox.stub(feed.cache, "get").returns(Promise.resolve(fakeCache));
@@ -3584,50 +3489,320 @@ describe("DiscoveryStreamFeed", () => {
         .stub(feed, "scoreItems")
         .callsFake(val => ({ data: val, filtered: [], personalized: false }));
       sandbox.stub(feed, "fetchFromEndpoint").resolves({
+        recommendedAt: 1755834072383,
+        surfaceId: "NEW_TAB_EN_US",
         data: [
           {
-            recommendationId: "decaf-c0ff33",
-            tileId: 1234,
-            url: "url",
-            title: "title",
+            corpusItemId: "decaf-c0ff33",
+            scheduledCorpusItemId: "matcha-latte-ff33c1",
             excerpt: "excerpt",
-            publisher: "publisher",
-            timeToRead: "timeToRead",
+            iconUrl: "iconUrl",
             imageUrl: "imageUrl",
+            isTimeSensitive: true,
+            publisher: "publisher",
+            receivedRank: 0,
+            tileId: 12345,
+            title: "title",
+            topic: "topic",
+            url: "url",
+            features: {},
           },
         ],
       });
 
       const feedData = await feed.getComponentFeed("url");
-      assert.deepEqual(feedData, {
+      const expectedData = {
         lastUpdated: 0,
         personalized: false,
         data: {
           settings: {},
           sections: [],
           interestPicker: {},
-          surfaceId: "",
           recommendations: [
             {
-              id: 1234,
-              url: "url",
-              title: "title",
+              id: "decaf-c0ff33",
+              corpus_item_id: "decaf-c0ff33",
+              scheduled_corpus_item_id: "matcha-latte-ff33c1",
               excerpt: "excerpt",
+              icon_src: "iconUrl",
+              isTimeSensitive: true,
               publisher: "publisher",
-              time_to_read: "timeToRead",
               raw_image_src: "imageUrl",
-              recommendation_id: "decaf-c0ff33",
+              received_rank: 0,
+              recommended_at: 1755834072383,
+              title: "title",
+              topic: "topic",
+              url: "url",
+              features: {},
             },
           ],
+          surfaceId: "NEW_TAB_EN_US",
           status: "success",
         },
+      };
+
+      assert.deepEqual(feedData, expectedData);
+    });
+  });
+
+  describe("#getContextualAdsPlacements", () => {
+    let prefs;
+
+    beforeEach(() => {
+      prefs = {
+        "discoverystream.placements.contextualSpocs":
+          "newtab_stories_1, newtab_stories_2, newtab_stories_3",
+        "discoverystream.placements.contextualSpocs.counts": "1, 1, 1",
+        "discoverystream.placements.contextualBanners": "",
+        "discoverystream.placements.contextualBanners.counts": "",
+        "newtabAdSize.leaderboard": false,
+        "newtabAdSize.billboard": false,
+        "newtabAdSize.leaderboard.position": 3,
+        "newtabAdSize.billboard.position": 3,
+      };
+    });
+
+    it("should only return SPOC placements", async () => {
+      feed.store.getState = () => ({
+        Prefs: {
+          values: prefs,
+        },
+        DiscoveryStream: {
+          feeds: {
+            data: {
+              "https://merino.services.mozilla.com/api/v1/curated-recommendations":
+                {
+                  data: {
+                    sections: [
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["386"] },
+                        receivedRank: 0,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["52"] },
+                        receivedRank: 1,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["464"] },
+                        receivedRank: 1,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                    ],
+                  },
+                },
+            },
+          },
+        },
       });
-      assert.equal(feed.fetchFromEndpoint.firstCall.args[0], "url");
-      assert.equal(feed.fetchFromEndpoint.firstCall.args[1].method, "GET");
-      assert.equal(
-        feed.fetchFromEndpoint.firstCall.args[1].headers.get("consumer_key"),
-        "oAuthConsumerKeyBff"
-      );
+
+      const placements = feed.getContextualAdsPlacements();
+
+      assert.deepEqual(placements, [
+        {
+          placement: "newtab_stories_1",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["386"],
+          },
+        },
+        {
+          placement: "newtab_stories_2",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["52"],
+          },
+        },
+        {
+          placement: "newtab_stories_3",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["464"],
+          },
+        },
+      ]);
+    });
+
+    it("should return SPOC placements AND banner placements when leaderboard is enabled", async () => {
+      // Updating the prefs object keys to have the banner values ready for the test
+      prefs["discoverystream.placements.contextualBanners"] =
+        "newtab_leaderboard";
+      prefs["discoverystream.placements.contextualBanners.counts"] = "1";
+      prefs["newtabAdSize.leaderboard"] = true;
+      prefs["newtabAdSize.leaderboard.position"] = 2;
+
+      feed.store.getState = () => ({
+        Prefs: {
+          values: prefs,
+        },
+        DiscoveryStream: {
+          feeds: {
+            data: {
+              "https://merino.services.mozilla.com/api/v1/curated-recommendations":
+                {
+                  data: {
+                    sections: [
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["386"] },
+                        receivedRank: 0,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["52"] },
+                        receivedRank: 1,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["464"] },
+                        receivedRank: 1,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                    ],
+                  },
+                },
+            },
+          },
+        },
+      });
+
+      const placements = feed.getContextualAdsPlacements();
+
+      assert.deepEqual(placements, [
+        {
+          placement: "newtab_stories_1",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["386"],
+          },
+        },
+        {
+          placement: "newtab_stories_2",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["52"],
+          },
+        },
+        {
+          placement: "newtab_stories_3",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["464"],
+          },
+        },
+        {
+          placement: "newtab_leaderboard",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["386"],
+          },
+        },
+      ]);
+    });
+
+    it("should return SPOC placements AND banner placements when billboard is enabled", async () => {
+      // Updating the prefs object keys to have the banner values ready for the test
+      prefs["discoverystream.placements.contextualBanners"] =
+        "newtab_billboard";
+      prefs["discoverystream.placements.contextualBanners.counts"] = "1";
+      prefs["newtabAdSize.billboard"] = true;
+      prefs["newtabAdSize.billboard.position"] = 2;
+
+      feed.store.getState = () => ({
+        Prefs: {
+          values: prefs,
+        },
+        DiscoveryStream: {
+          feeds: {
+            data: {
+              "https://merino.services.mozilla.com/api/v1/curated-recommendations":
+                {
+                  data: {
+                    sections: [
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["386"] },
+                        receivedRank: 0,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["52"] },
+                        receivedRank: 1,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                      {
+                        iab: { taxonomy: "IAB-3.0", categories: ["464"] },
+                        receivedRank: 1,
+                        layout: {
+                          responsiveLayouts: [{ tiles: [{ hasAd: true }] }],
+                        },
+                      },
+                    ],
+                  },
+                },
+            },
+          },
+        },
+      });
+
+      const placements = feed.getContextualAdsPlacements();
+
+      assert.deepEqual(placements, [
+        {
+          placement: "newtab_stories_1",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["386"],
+          },
+        },
+        {
+          placement: "newtab_stories_2",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["52"],
+          },
+        },
+        {
+          placement: "newtab_stories_3",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["464"],
+          },
+        },
+        {
+          placement: "newtab_billboard",
+          count: 1,
+          content: {
+            taxonomy: "IAB-3.0",
+            categories: ["386"],
+          },
+        },
+      ]);
     });
   });
 });

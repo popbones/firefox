@@ -6,9 +6,11 @@ package mozilla.components.compose.browser.toolbar.store
 
 import mozilla.components.compose.browser.toolbar.store.BrowserDisplayToolbarAction.BrowserActionsEndUpdated
 import mozilla.components.compose.browser.toolbar.store.BrowserDisplayToolbarAction.BrowserActionsStartUpdated
+import mozilla.components.compose.browser.toolbar.store.BrowserDisplayToolbarAction.NavigationActionsUpdated
 import mozilla.components.compose.browser.toolbar.store.BrowserDisplayToolbarAction.PageActionsEndUpdated
 import mozilla.components.compose.browser.toolbar.store.BrowserDisplayToolbarAction.PageActionsStartUpdated
 import mozilla.components.compose.browser.toolbar.store.BrowserDisplayToolbarAction.PageOriginUpdated
+import mozilla.components.compose.browser.toolbar.store.BrowserEditToolbarAction.SearchAborted
 import mozilla.components.compose.browser.toolbar.store.BrowserEditToolbarAction.UrlSuggestionAutocompleted
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarInteraction.BrowserToolbarEvent
 import mozilla.components.lib.state.Middleware
@@ -17,7 +19,7 @@ import mozilla.components.lib.state.UiStore
 /**
  * [UiStore] for maintaining the state of the browser toolbar.
  */
-class BrowserToolbarStore(
+open class BrowserToolbarStore(
     initialState: BrowserToolbarState = BrowserToolbarState(),
     middleware: List<Middleware<BrowserToolbarState, BrowserToolbarAction>> = emptyList(),
 ) : UiStore<BrowserToolbarState, BrowserToolbarAction>(
@@ -32,17 +34,20 @@ class BrowserToolbarStore(
                 mode = initialState.mode,
                 displayState = initialState.displayState,
                 editState = initialState.editState,
+                gravity = initialState.gravity,
             ),
         )
     }
 }
 
+@Suppress("LongMethod")
 private fun reduce(state: BrowserToolbarState, action: BrowserToolbarAction): BrowserToolbarState {
     return when (action) {
         is BrowserToolbarAction.Init -> BrowserToolbarState(
             mode = action.mode,
             displayState = action.displayState,
             editState = action.editState,
+            gravity = action.gravity,
         )
 
         is BrowserToolbarAction.ToggleEditMode -> state.copy(
@@ -50,6 +55,10 @@ private fun reduce(state: BrowserToolbarState, action: BrowserToolbarAction): Br
             editState = state.editState.copy(
                 query = if (action.editMode) state.editState.query else "",
             ),
+        )
+
+        is BrowserToolbarAction.ToolbarGravityUpdated -> state.copy(
+            gravity = action.gravity,
         )
 
         is BrowserToolbarAction.CommitUrl -> state
@@ -84,10 +93,22 @@ private fun reduce(state: BrowserToolbarState, action: BrowserToolbarAction): Br
             ),
         )
 
+        is NavigationActionsUpdated -> state.copy(
+            displayState = state.displayState.copy(
+                navigationActions = action.actions,
+            ),
+        )
+
         is BrowserEditToolbarAction.SearchQueryUpdated -> state.copy(
             editState = state.editState.copy(
                 query = action.query,
-                showQueryAsPreselected = action.showAsPreselected,
+                isQueryPrefilled = action.isQueryPrefilled,
+            ),
+        )
+
+        is BrowserEditToolbarAction.PrivateModeUpdated -> state.copy(
+            editState = state.editState.copy(
+                isQueryPrivate = action.inPrivateMode,
             ),
         )
 
@@ -115,6 +136,9 @@ private fun reduce(state: BrowserToolbarState, action: BrowserToolbarAction): Br
             ),
         )
 
+        is EnvironmentRehydrated,
+        is EnvironmentCleared,
+        is SearchAborted,
         is UrlSuggestionAutocompleted,
         is BrowserToolbarEvent,
             -> {
@@ -122,5 +146,8 @@ private fun reduce(state: BrowserToolbarState, action: BrowserToolbarAction): Br
             // Expected to be handled in middlewares set by integrators.
             state
         }
+
+        is BrowserEditToolbarAction.HintUpdated ->
+            state.copy(editState = state.editState.copy(hint = action.hint))
     }
 }

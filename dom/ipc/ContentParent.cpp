@@ -4,74 +4,64 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/AppShutdown.h"
-#include "mozilla/DebugOnly.h"
-
-#include "base/basictypes.h"
-
 #include "ContentParent.h"
-#include "mozilla/ipc/ProcessUtils.h"
-#include "mozilla/CmdLineAndEnvUtils.h"
-#include "BrowserParent.h"
 
-#include "chrome/common/process_watcher.h"
-#include "mozilla/Result.h"
-#include "mozilla/Services.h"
-#include "mozilla/XREAppData.h"
-#include "nsComponentManagerUtils.h"
-#include "nsIBrowserDOMWindow.h"
-#include "nsIPrivateAttributionService.h"
-
-#include "GMPServiceParent.h"
-#include "HandlerServiceParent.h"
-#include "IHistory.h"
-#include <cstdint>
 #include <map>
 #include <utility>
 
+#include "BrowserParent.h"
 #include "ContentProcessManager.h"
+#include "GMPServiceParent.h"
 #include "GeckoProfiler.h"
 #include "Geolocation.h"
 #include "GfxInfoBase.h"
+#include "HandlerServiceParent.h"
+#include "IHistory.h"
 #include "MMPrinter.h"
 #include "PreallocatedProcessManager.h"
 #include "ProcessPriorityManager.h"
 #include "ProfilerParent.h"
 #include "SandboxHal.h"
 #include "SourceSurfaceRawData.h"
-#include "mozilla/ipc/URIUtils.h"
+#include "base/basictypes.h"
+#include "chrome/common/process_watcher.h"
 #include "gfxPlatform.h"
 #include "gfxPlatformFontList.h"
-#include "nsDNSService2.h"
-#include "nsPIDNSService.h"
 #include "mozilla/AntiTrackingUtils.h"
 #include "mozilla/AppShutdown.h"
 #include "mozilla/AutoRestore.h"
-#include "mozilla/ClipboardContentAnalysisParent.h"
 #include "mozilla/BasePrincipal.h"
 #include "mozilla/Casting.h"
 #include "mozilla/ClearOnShutdown.h"
+#include "mozilla/ClipboardContentAnalysisParent.h"
 #include "mozilla/ClipboardReadRequestParent.h"
 #include "mozilla/ClipboardWriteRequestParent.h"
+#include "mozilla/CmdLineAndEnvUtils.h"
+#include "mozilla/Components.h"
 #include "mozilla/ContentBlockingUserInteraction.h"
+#include "mozilla/DebugOnly.h"
 #include "mozilla/FOGIPC.h"
-#include "mozilla/GlobalStyleSheetCache.h"
 #include "mozilla/GeckoArgs.h"
+#include "mozilla/GeckoTrace.h"
+#include "mozilla/GlobalStyleSheetCache.h"
 #include "mozilla/HangDetails.h"
 #include "mozilla/LookAndFeel.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/NullPrincipal.h"
+#include "mozilla/PageloadEvent.h"
 #include "mozilla/Preferences.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/ProcessHangMonitor.h"
 #include "mozilla/ProcessHangMonitorIPC.h"
 #include "mozilla/ProfilerLabels.h"
 #include "mozilla/ProfilerMarkers.h"
-#include "mozilla/RecursiveMutex.h"
 #include "mozilla/RDDProcessManager.h"
+#include "mozilla/RecursiveMutex.h"
+#include "mozilla/RemoteLazyInputStreamParent.h"
+#include "mozilla/Result.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/ScriptPreloader.h"
-#include "mozilla/Components.h"
+#include "mozilla/Services.h"
 #include "mozilla/Sprintf.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/StaticPrefs_fission.h"
@@ -83,13 +73,13 @@
 #include "mozilla/StyleSheet.h"
 #include "mozilla/StyleSheetInlines.h"
 #include "mozilla/TaskController.h"
-#include "mozilla/glean/DomMetrics.h"
-#include "mozilla/glean/IpcMetrics.h"
 #include "mozilla/Telemetry.h"
+#include "mozilla/TelemetryComms.h"
 #include "mozilla/TelemetryIPC.h"
 #include "mozilla/ThreadSafety.h"
 #include "mozilla/Unused.h"
 #include "mozilla/WebBrowserPersistDocumentParent.h"
+#include "mozilla/XREAppData.h"
 #include "mozilla/devtools/HeapSnapshotTempFileHelperParent.h"
 #include "mozilla/dom/BlobURLProtocolHandler.h"
 #include "mozilla/dom/BrowserHost.h"
@@ -114,9 +104,8 @@
 #include "mozilla/dom/JSProcessActorBinding.h"
 #include "mozilla/dom/LocalStorageCommon.h"
 #include "mozilla/dom/MediaController.h"
-#include "mozilla/dom/MemoryReportRequest.h"
 #include "mozilla/dom/MediaStatusManager.h"
-#include "mozilla/dom/notification/NotificationUtils.h"
+#include "mozilla/dom/MemoryReportRequest.h"
 #include "mozilla/dom/PContentPermissionRequestParent.h"
 #include "mozilla/dom/PCycleCollectWithLogsParent.h"
 #include "mozilla/dom/ParentProcessMessageManager.h"
@@ -131,11 +120,12 @@
 #include "mozilla/dom/SessionHistoryEntry.h"
 #include "mozilla/dom/SessionStorageManager.h"
 #include "mozilla/dom/StorageIPC.h"
-#include "mozilla/dom/UserActivation.h"
 #include "mozilla/dom/URLClassifierParent.h"
+#include "mozilla/dom/UserActivation.h"
 #include "mozilla/dom/WindowGlobalParent.h"
 #include "mozilla/dom/ipc/SharedMap.h"
 #include "mozilla/dom/ipc/StructuredCloneData.h"
+#include "mozilla/dom/notification/NotificationUtils.h"
 #include "mozilla/dom/nsMixedContentBlocker.h"
 #include "mozilla/dom/power/PowerManagerService.h"
 #include "mozilla/dom/quota/QuotaManagerService.h"
@@ -143,7 +133,9 @@
 #include "mozilla/extensions/StreamFilterParent.h"
 #include "mozilla/gfx/GPUProcessManager.h"
 #include "mozilla/gfx/gfxVars.h"
+#include "mozilla/glean/DomMetrics.h"
 #include "mozilla/glean/GleanPings.h"
+#include "mozilla/glean/IpcMetrics.h"
 #include "mozilla/hal_sandbox/PHalParent.h"
 #include "mozilla/intl/L10nRegistry.h"
 #include "mozilla/intl/LocaleService.h"
@@ -154,8 +146,10 @@
 #include "mozilla/ipc/Endpoint.h"
 #include "mozilla/ipc/FileDescriptorUtils.h"
 #include "mozilla/ipc/IPCStreamUtils.h"
+#include "mozilla/ipc/ProcessUtils.h"
 #include "mozilla/ipc/SharedMemoryHandle.h"
 #include "mozilla/ipc/TestShellParent.h"
+#include "mozilla/ipc/URIUtils.h"
 #include "mozilla/layers/CompositorThread.h"
 #include "mozilla/layers/ImageBridgeParent.h"
 #include "mozilla/layers/LayerTreeOwnerTracker.h"
@@ -163,15 +157,13 @@
 #include "mozilla/loader/ScriptCacheActors.h"
 #include "mozilla/media/MediaParent.h"
 #include "mozilla/mozSpellChecker.h"
+#include "mozilla/net/CookieKey.h"
 #include "mozilla/net/CookieServiceParent.h"
 #include "mozilla/net/NeckoMessageUtils.h"
 #include "mozilla/net/NeckoParent.h"
 #include "mozilla/net/PCookieServiceParent.h"
-#include "mozilla/net/CookieKey.h"
-#include "mozilla/net/UrlClassifierFeatureFactory.h"
 #include "mozilla/net/TRRService.h"
-#include "mozilla/TelemetryComms.h"
-#include "mozilla/RemoteLazyInputStreamParent.h"
+#include "mozilla/net/UrlClassifierFeatureFactory.h"
 #include "mozilla/widget/RemoteLookAndFeel.h"
 #include "mozilla/widget/ScreenManager.h"
 #include "mozilla/widget/TextRecognition.h"
@@ -179,12 +171,14 @@
 #include "nsAppRunner.h"
 #include "nsCExternalHandlerService.h"
 #include "nsCOMPtr.h"
+#include "nsCRT.h"
 #include "nsChromeRegistryChrome.h"
+#include "nsComponentManagerUtils.h"
 #include "nsConsoleMessage.h"
 #include "nsConsoleService.h"
 #include "nsContentPermissionHelper.h"
 #include "nsContentUtils.h"
-#include "nsCRT.h"
+#include "nsDNSService2.h"
 #include "nsDebugImpl.h"
 #include "nsDirectoryServiceDefs.h"
 #include "nsDocShell.h"
@@ -199,12 +193,14 @@
 #include "nsIAppWindow.h"
 #include "nsIAsyncInputStream.h"
 #include "nsIBidiKeyboard.h"
+#include "nsIBrowserDOMWindow.h"
 #include "nsICaptivePortalService.h"
 #include "nsICertOverrideService.h"
 #include "nsIClipboard.h"
 #include "nsIContentAnalysis.h"
 #include "nsIContentSecurityPolicy.h"
 #include "nsICookie.h"
+#include "nsICookieNotification.h"
 #include "nsICrashService.h"
 #include "nsICycleCollectorListener.h"
 #include "nsIDocShell.h"
@@ -212,7 +208,6 @@
 #include "nsIDragService.h"
 #include "nsIExternalProtocolService.h"
 #include "nsIGfxInfo.h"
-#include "nsIUserIdleService.h"
 #include "nsIInterfaceRequestorUtils.h"
 #include "nsILocalStorageManager.h"
 #include "nsIMemoryInfoDumper.h"
@@ -220,6 +215,7 @@
 #include "nsINetworkLinkService.h"
 #include "nsIObserverService.h"
 #include "nsIParentChannel.h"
+#include "nsIPrivateAttributionService.h"
 #include "nsIScriptError.h"
 #include "nsIScriptSecurityManager.h"
 #include "nsIServiceWorkerManager.h"
@@ -227,16 +223,19 @@
 #include "nsIStringBundle.h"
 #include "nsITimer.h"
 #include "nsIURL.h"
+#include "nsIUserIdleService.h"
 #include "nsIWebBrowserChrome.h"
 #include "nsIX509Cert.h"
 #include "nsIXULRuntime.h"
-#include "nsICookieNotification.h"
+#include "nsPIDNSService.h"
 #if defined(MOZ_WIDGET_GTK) || defined(XP_WIN)
 #  include "nsIconChannel.h"
 #endif
+#include "nsFrameLoaderOwner.h"
 #include "nsMemoryInfoDumper.h"
 #include "nsMemoryReporterManager.h"
 #include "nsOpenURIInFrameParams.h"
+#include "nsOpenWindowInfo.h"
 #include "nsPIWindowWatcher.h"
 #include "nsQueryObject.h"
 #include "nsReadableUtils.h"
@@ -253,16 +252,14 @@
 #include "prio.h"
 #include "private/pprio.h"
 #include "xpcpublic.h"
-#include "nsOpenWindowInfo.h"
-#include "nsFrameLoaderOwner.h"
 
 #ifdef MOZ_WEBRTC
 #  include "jsapi/WebrtcGlobalParent.h"
 #endif
 
 #if defined(XP_MACOSX)
-#  include "nsMacUtilsImpl.h"
 #  include "mozilla/AvailableMemoryWatcher.h"
+#  include "nsMacUtilsImpl.h"
 #endif
 
 #if defined(ANDROID) || defined(LINUX)
@@ -287,12 +284,12 @@
 
 #ifdef MOZ_WIDGET_GTK
 #  include <gdk/gdk.h>
+
 #  include "mozilla/WidgetUtilsGtk.h"
 #endif
 
-#include "mozilla/RemoteSpellCheckEngineParent.h"
-
 #include "Crypto.h"
+#include "mozilla/RemoteSpellCheckEngineParent.h"
 
 #ifdef MOZ_WEBSPEECH
 #  include "mozilla/dom/SpeechSynthesisParent.h"
@@ -301,9 +298,9 @@
 #if defined(MOZ_SANDBOX)
 #  include "mozilla/SandboxSettings.h"
 #  if defined(XP_LINUX)
-#    include "mozilla/SandboxInfo.h"
 #    include "mozilla/SandboxBroker.h"
 #    include "mozilla/SandboxBrokerPolicyFactory.h"
+#    include "mozilla/SandboxInfo.h"
 #  endif
 #  if defined(XP_MACOSX)
 #    include "mozilla/Sandbox.h"
@@ -328,8 +325,8 @@
 #endif
 
 #include "mozilla/RemoteDecodeUtils.h"
-#include "nsIToolkitProfileService.h"
 #include "nsIToolkitProfile.h"
+#include "nsIToolkitProfileService.h"
 
 #ifdef MOZ_WMF_CDM
 #  include "mozilla/EMEUtils.h"
@@ -1534,7 +1531,10 @@ void ContentParent::BroadcastMediaCodecsSupportedUpdate(
   // Generate + save FULL support string for display in about:support
   supportString.Truncate();
   media::MCSInfo::GetMediaCodecsSupportedString(supportString, fullSupport);
-  gfx::gfxVars::SetCodecSupportInfo(supportString);
+
+  if (nsCOMPtr<nsIGfxInfo> gfxInfo = components::GfxInfo::Service()) {
+    gfxInfo->SetCodecSupportInfo(supportString);
+  }
 }
 
 const nsACString& ContentParent::GetRemoteType() const { return mRemoteType; }
@@ -1658,10 +1658,7 @@ bool ContentParent::ShutDownProcess(ShutDownMethod aMethod) {
           SetMainThreadQoSPriority(nsIThread::QOS_PRIORITY_NORMAL);
         }
 
-        // Send a high priority announcement first. If this fails, SendShutdown
-        // will also fail.
-        Unused << SendShutdownConfirmedHP();
-        // Send the definite message with normal priority.
+        // Send the shutdown message with normal priority.
         if (SendShutdown()) {
           MaybeLogBlockShutdownDiagnostics(
               this, "ShutDownProcess: Sent shutdown message.", __FILE__,
@@ -2185,7 +2182,7 @@ void ContentParent::MaybeBeginShutDown(bool aImmediate,
             self->MaybeBeginShutDown(/* aImmediate */ true);
             return true;
           },
-          "ContentParent::IdleMaybeBeginShutdown", startDelay, maxDelay,
+          "ContentParent::IdleMaybeBeginShutdown"_ns, startDelay, maxDelay,
           /* aMinimumUsefulBudget */ TimeDuration::FromMilliseconds(3),
           /* aRepeating */ false, [] { return false; });
     }
@@ -2217,10 +2214,11 @@ void ContentParent::StartSendShutdownTimer() {
 
   uint32_t timeoutSecs = StaticPrefs::dom_ipc_tabs_shutdownTimeoutSecs();
   if (timeoutSecs > 0) {
-    NS_NewTimerWithFuncCallback(getter_AddRefs(mSendShutdownTimer),
-                                ContentParent::SendShutdownTimerCallback, this,
-                                timeoutSecs * 1000, nsITimer::TYPE_ONE_SHOT,
-                                "dom::ContentParent::StartSendShutdownTimer");
+    NS_NewTimerWithFuncCallback(
+        getter_AddRefs(mSendShutdownTimer),
+        ContentParent::SendShutdownTimerCallback, this, timeoutSecs * 1000,
+        nsITimer::TYPE_ONE_SHOT,
+        "dom::ContentParent::StartSendShutdownTimer"_ns);
     MOZ_ASSERT(mSendShutdownTimer);
   }
 }
@@ -2235,7 +2233,7 @@ void ContentParent::StartForceKillTimer() {
     NS_NewTimerWithFuncCallback(getter_AddRefs(mForceKillTimer),
                                 ContentParent::ForceKillTimerCallback, this,
                                 timeoutSecs * 1000, nsITimer::TYPE_ONE_SHOT,
-                                "dom::ContentParent::StartForceKillTimer");
+                                "dom::ContentParent::StartForceKillTimer"_ns);
     MOZ_ASSERT(mForceKillTimer);
   }
 }
@@ -2740,7 +2738,7 @@ bool ContentParent::InitInternal(ProcessPriority aInitialPriority) {
       clipboard->IsClipboardTypeSupported(nsIClipboard::kSelectionCache);
 
   // Let's copy the domain policy from the parent to the child (if it's active).
-  StructuredCloneData initialData;
+  auto initialData = MakeUnique<StructuredCloneData>();
   nsIScriptSecurityManager* ssm = nsContentUtils::GetSecurityManager();
   if (ssm) {
     ssm->CloneDomainPolicy(&xpcomInit.domainPolicy());
@@ -2760,7 +2758,7 @@ bool ContentParent::InitInternal(ProcessPriority aInitialPriority) {
         MOZ_CRASH();
       }
 
-      initialData.Write(jsapi.cx(), init, rv);
+      initialData->Write(jsapi.cx(), init, rv);
       if (NS_WARN_IF(rv.Failed())) {
         MOZ_CRASH();
       }
@@ -3137,7 +3135,7 @@ void ContentParent::SetInputPriorityEventEnabled(bool aEnabled) {
   Unused << SendResumeInputEventQueue();
 }
 
-void ContentParent::OnVarChanged(const GfxVarUpdate& aVar) {
+void ContentParent::OnVarChanged(const nsTArray<GfxVarUpdate>& aVar) {
   if (!CanSend()) {
     return;
   }
@@ -3935,21 +3933,19 @@ ContentParent::Observe(nsISupports* aSubject, const char* aTopic,
   return NS_OK;
 }
 
-void ContentParent::UpdateNetworkLinkType() {
+uint32_t ContentParent::UpdateNetworkLinkType() {
+  uint32_t linkType = nsINetworkLinkService::LINK_TYPE_UNKNOWN;
   nsresult rv;
   nsCOMPtr<nsINetworkLinkService> nls =
       do_GetService(NS_NETWORK_LINK_SERVICE_CONTRACTID, &rv);
-  if (NS_FAILED(rv)) {
-    return;
+  if (NS_SUCCEEDED(rv)) {
+    rv = nls->GetLinkType(&linkType);
+    if (NS_SUCCEEDED(rv)) {
+      Unused << SendNetworkLinkTypeChange(linkType);
+    }
   }
 
-  uint32_t linkType = nsINetworkLinkService::LINK_TYPE_UNKNOWN;
-  rv = nls->GetLinkType(&linkType);
-  if (NS_FAILED(rv)) {
-    return;
-  }
-
-  Unused << SendNetworkLinkTypeChange(linkType);
+  return linkType;
 }
 
 NS_IMETHODIMP
@@ -4660,7 +4656,7 @@ mozilla::ipc::IPCResult ContentParent::RecvExtProtocolChannelConnectParent(
 
 mozilla::ipc::IPCResult ContentParent::RecvSyncMessage(
     const nsAString& aMsg, const ClonedMessageData& aData,
-    nsTArray<StructuredCloneData>* aRetvals) {
+    nsTArray<UniquePtr<StructuredCloneData>>* aRetvals) {
   AUTO_PROFILER_LABEL_DYNAMIC_LOSSY_NSSTRING("ContentParent::RecvSyncMessage",
                                              OTHER, aMsg);
   MMPrinter::Print("ContentParent::RecvSyncMessage", aMsg, aData);
@@ -5146,7 +5142,7 @@ mozilla::ipc::IPCResult ContentParent::CommonCreateWindow(
     nsresult& aResult, nsCOMPtr<nsIRemoteTab>& aNewRemoteTab,
     bool* aWindowIsNew, int32_t& aOpenLocation,
     nsIPrincipal* aTriggeringPrincipal, nsIReferrerInfo* aReferrerInfo,
-    bool aLoadURI, nsIContentSecurityPolicy* aCsp,
+    bool aLoadURI, nsIPolicyContainer* aPolicyContainer,
     const OriginAttributes& aOriginAttributes, bool aUserActivation,
     bool aTextDirectiveUserActivation) {
   // The content process should never be in charge of computing whether or
@@ -5271,7 +5267,7 @@ mozilla::ipc::IPCResult ContentParent::CommonCreateWindow(
     params->SetReferrerInfo(aReferrerInfo);
     MOZ_ASSERT(aTriggeringPrincipal, "need a valid triggeringPrincipal");
     params->SetTriggeringPrincipal(aTriggeringPrincipal);
-    params->SetCsp(aCsp);
+    params->SetPolicyContainer(aPolicyContainer);
 
     RefPtr<Element> el;
 
@@ -5375,7 +5371,7 @@ mozilla::ipc::IPCResult ContentParent::CommonCreateWindow(
     RefPtr<BrowsingContext> bc;
     aResult = newBrowserDOMWin->OpenURI(
         aURIToLoad, openInfo, nsIBrowserDOMWindow::OPEN_CURRENTWINDOW,
-        nsIBrowserDOMWindow::OPEN_NEW, aTriggeringPrincipal, aCsp,
+        nsIBrowserDOMWindow::OPEN_NEW, aTriggeringPrincipal, aPolicyContainer,
         getter_AddRefs(bc));
   }
 
@@ -5389,7 +5385,7 @@ mozilla::ipc::IPCResult ContentParent::RecvCreateWindow(
     const bool& aForWindowDotPrint, const bool& aIsTopLevelCreatedByWebContent,
     nsIURI* aURIToLoad, const nsACString& aFeatures,
     const UserActivation::Modifiers& aModifiers,
-    nsIPrincipal* aTriggeringPrincipal, nsIContentSecurityPolicy* aCsp,
+    nsIPrincipal* aTriggeringPrincipal, nsIPolicyContainer* aPolicyContainer,
     nsIReferrerInfo* aReferrerInfo, const OriginAttributes& aOriginAttributes,
     bool aUserActivation, bool aTextDirectiveUserActivation,
     CreateWindowResolver&& aResolve) {
@@ -5477,8 +5473,8 @@ mozilla::ipc::IPCResult ContentParent::RecvCreateWindow(
       aForPrinting, aForWindowDotPrint, aIsTopLevelCreatedByWebContent,
       aURIToLoad, aFeatures, aModifiers, newTab, VoidString(), rv, newRemoteTab,
       &cwi.windowOpened(), openLocation, aTriggeringPrincipal, aReferrerInfo,
-      /* aLoadUri = */ false, aCsp, aOriginAttributes, aUserActivation,
-      aTextDirectiveUserActivation);
+      /* aLoadUri = */ false, aPolicyContainer, aOriginAttributes,
+      aUserActivation, aTextDirectiveUserActivation);
   if (!ipcResult) {
     return ipcResult;
   }
@@ -5516,7 +5512,7 @@ mozilla::ipc::IPCResult ContentParent::RecvCreateWindowInDifferentProcess(
     const bool& aIsTopLevelCreatedByWebContent, nsIURI* aURIToLoad,
     const nsACString& aFeatures, const UserActivation::Modifiers& aModifiers,
     const nsAString& aName, nsIPrincipal* aTriggeringPrincipal,
-    nsIContentSecurityPolicy* aCsp, nsIReferrerInfo* aReferrerInfo,
+    nsIPolicyContainer* aPolicyContainer, nsIReferrerInfo* aReferrerInfo,
     const OriginAttributes& aOriginAttributes, bool aUserActivation,
     bool aTextDirectiveUserActivation) {
   MOZ_DIAGNOSTIC_ASSERT(!nsContentUtils::IsSpecialName(aName));
@@ -5564,8 +5560,8 @@ mozilla::ipc::IPCResult ContentParent::RecvCreateWindowInDifferentProcess(
       aURIToLoad, aFeatures, aModifiers,
       /* aNextRemoteBrowser = */ nullptr, aName, rv, newRemoteTab, &windowIsNew,
       openLocation, aTriggeringPrincipal, aReferrerInfo,
-      /* aLoadUri = */ true, aCsp, aOriginAttributes, aUserActivation,
-      aTextDirectiveUserActivation);
+      /* aLoadUri = */ true, aPolicyContainer, aOriginAttributes,
+      aUserActivation, aTextDirectiveUserActivation);
   if (!ipcResult) {
     return ipcResult;
   }
@@ -6258,10 +6254,62 @@ static bool WebdriverRunning() {
   return false;
 }
 
+void ContentParent::RecordAndroidAppLinkTelemetry(
+    mozilla::performance::pageload_event::PageloadEventData* aPageloadData,
+    const TimeStamp& aNavStartTime, uint64_t aAndroidAppLinkLoadIdentifier) {
+  MOZ_ASSERT(aPageloadData);
+  int32_t appLinkLaunchType =
+      GetAndroidAppLinkLaunchType(aAndroidAppLinkLoadIdentifier);
+  if (appLinkLaunchType < 0) {
+    return;
+  }
+  ClearAndroidAppLinkLaunchType(aAndroidAppLinkLoadIdentifier);
+
+  aPageloadData->set_androidAppLinkLaunchType(appLinkLaunchType);
+
+  //  ProcessStart to navigationStart is only meaningful for cold applink
+  //  launches
+  if (appLinkLaunchType !=
+      1 /* mozilla::dom::LoadURIConstants::APPLINK_COLD */) {
+    return;
+  }
+
+  const TimeStamp parentProcessCreationTime = TimeStamp::ProcessCreation();
+  if (parentProcessCreationTime.IsNull() || aNavStartTime.IsNull()) {
+    return;
+  }
+
+  const TimeDuration delta = aNavStartTime - parentProcessCreationTime;
+  if (delta.IsZero()) {
+    return;
+  }
+
+  aPageloadData->set_androidAppLinkToNavigationStart(
+      static_cast<uint32_t>(delta.ToMilliseconds()));
+
+  if (profiler_thread_is_being_profiled_for_markers()) {
+    PROFILER_MARKER_FMT("Applink Startup", NETWORK,
+                        MarkerOptions(MarkerTiming::Interval(
+                            parentProcessCreationTime, aNavStartTime)),
+                        "ContentParent::RecordAndroidAppLinkTelemetry - Parent "
+                        "Process Start To "
+                        "Navigation Start for appLinkLaunchType {}",
+                        appLinkLaunchType);
+  }
+}
+
 mozilla::ipc::IPCResult ContentParent::RecvRecordPageLoadEvent(
-    mozilla::glean::perf::PageLoadExtra&& aPageLoadEventExtra) {
+    mozilla::performance::pageload_event::PageloadEventData&&
+        aPageloadEventData,
+    const TimeStamp& aNavigationStartTime,
+    uint64_t aAndroidAppLinkLaunchTypeIdentifier) {
   // Check whether a webdriver is running.
-  aPageLoadEventExtra.usingWebdriver = mozilla::Some(WebdriverRunning());
+  aPageloadEventData.set_usingWebdriver(WebdriverRunning());
+
+#if defined(ANDROID)
+  // Get network link type iff android.
+  aPageloadEventData.set_networkType(UpdateNetworkLinkType());
+#endif
 
 #if defined(XP_WIN)
   // The "hasSSD" property is only set on Windows during the first
@@ -6275,19 +6323,48 @@ mozilla::ipc::IPCResult ContentParent::RecvRecordPageLoadEvent(
   bool hasSSD;
   rv = infoService->GetPropertyAsBool(u"hasSSD"_ns, &hasSSD);
   if (NS_SUCCEEDED(rv)) {
-    aPageLoadEventExtra.hasSsd = Some(hasSSD);
+    aPageloadEventData.set_hasSsd(hasSSD);
   }
 #endif
-  mozilla::glean::perf::page_load.Record(mozilla::Some(aPageLoadEventExtra));
 
-  // Send the PageLoadPing after every 30 page loads, or on startup.
-  if (++sPageLoadEventCounter >= 30) {
-    Unused << NS_WARN_IF(NS_FAILED(NS_DispatchToMainThreadQueue(
+#ifdef ANDROID
+  RecordAndroidAppLinkTelemetry(&aPageloadEventData, aNavigationStartTime,
+                                aAndroidAppLinkLaunchTypeIdentifier);
+#endif
+
+  // If the etld information exists, then we need to send it using a special
+  // page load event ping that is sent via ohttp and stripped of any information
+  // that can be used to fingerprint the client.  Otherwise, use the regular
+  // pageload event ping.
+  if (aPageloadEventData.HasDomain()) {
+    // If the event is a page_load_domain event, then immediately send it.
+    mozilla::glean::perf::PageLoadDomainExtra extra =
+        aPageloadEventData.ToPageLoadDomainExtra();
+    mozilla::glean::perf::page_load_domain.Record(mozilla::Some(extra));
+
+    // The etld events must be sent by themselves for privacy preserving
+    // reasons.
+    NS_SUCCEEDED(NS_DispatchToMainThreadQueue(
         NS_NewRunnableFunction(
-            "PageLoadPingIdleTask",
-            [] { mozilla::glean_pings::Pageload.Submit("threshold"_ns); }),
-        EventQueuePriority::Idle)));
-    sPageLoadEventCounter = 0;
+            "PageloadBaseDomainPingIdleTask",
+            [] {
+              mozilla::glean_pings::PageloadBaseDomain.Submit("pageload"_ns);
+            }),
+        EventQueuePriority::Idle));
+  } else {
+    mozilla::glean::perf::PageLoadExtra extra =
+        aPageloadEventData.ToPageLoadExtra();
+    mozilla::glean::perf::page_load.Record(mozilla::Some(extra));
+
+    // Send the PageLoadPing after every 10 page loads, or on startup.
+    if (++sPageLoadEventCounter >= 10) {
+      NS_SUCCEEDED(NS_DispatchToMainThreadQueue(
+          NS_NewRunnableFunction(
+              "PageLoadPingIdleTask",
+              [] { mozilla::glean_pings::Pageload.Submit("threshold"_ns); }),
+          EventQueuePriority::Idle));
+      sPageLoadEventCounter = 0;
+    }
   }
   return IPC_OK();
 }
@@ -7515,13 +7592,7 @@ mozilla::ipc::IPCResult ContentParent::RecvHistoryCommit(
     const MaybeDiscarded<BrowsingContext>& aContext, const uint64_t& aLoadID,
     const nsID& aChangeID, const uint32_t& aLoadType,
     const bool& aCloneEntryChildren, const bool& aChannelExpired,
-    const uint32_t& aCacheKey, nsIPrincipal* aPartitionedPrincipal) {
-  if (!ValidatePrincipal(aPartitionedPrincipal,
-                         {ValidatePrincipalOptions::AllowNullPtr,
-                          ValidatePrincipalOptions::AllowSystem})) {
-    LogAndAssertFailedPrincipalValidationInfo(aPartitionedPrincipal, __func__);
-  }
-
+    const uint32_t& aCacheKey) {
   if (!aContext.IsDiscarded()) {
     CanonicalBrowsingContext* canonical = aContext.get_canonical();
     if (!canonical) {
@@ -7530,7 +7601,7 @@ mozilla::ipc::IPCResult ContentParent::RecvHistoryCommit(
     }
     canonical->SessionHistoryCommit(aLoadID, aChangeID, aLoadType,
                                     aCloneEntryChildren, aChannelExpired,
-                                    aCacheKey, aPartitionedPrincipal);
+                                    aCacheKey);
   }
   return IPC_OK();
 }
@@ -7538,12 +7609,25 @@ mozilla::ipc::IPCResult ContentParent::RecvHistoryCommit(
 mozilla::ipc::IPCResult ContentParent::RecvHistoryGo(
     const MaybeDiscarded<BrowsingContext>& aContext, int32_t aOffset,
     uint64_t aHistoryEpoch, bool aRequireUserInteraction, bool aUserActivation,
-    HistoryGoResolver&& aResolveRequestedIndex) {
+    bool aCheckForCancelation, HistoryGoResolver&& aResolveRequestedIndex) {
   if (!aContext.IsNullOrDiscarded()) {
     RefPtr<CanonicalBrowsingContext> canonical = aContext.get_canonical();
-    aResolveRequestedIndex(
-        canonical->HistoryGo(aOffset, aHistoryEpoch, aRequireUserInteraction,
-                             aUserActivation, Some(ChildID())));
+    aResolveRequestedIndex(canonical->HistoryGo(
+        aOffset, aHistoryEpoch, aRequireUserInteraction, aUserActivation,
+        aCheckForCancelation, Some(ChildID())));
+  }
+  return IPC_OK();
+}
+
+mozilla::ipc::IPCResult ContentParent::RecvNavigationTraverse(
+    const MaybeDiscarded<BrowsingContext>& aContext, const nsID& aKey,
+    uint64_t aHistoryEpoch, bool aUserActivation, bool aCheckForCancelation,
+    NavigationTraverseResolver&& aResolver) {
+  if (!aContext.IsNullOrDiscarded()) {
+    RefPtr<CanonicalBrowsingContext> canonical = aContext.get_canonical();
+    canonical->NavigationTraverse(aKey, aHistoryEpoch, aUserActivation,
+                                  aCheckForCancelation, Some(ChildID()),
+                                  aResolver);
   }
   return IPC_OK();
 }
@@ -7678,18 +7762,6 @@ ContentParent::RecvGetLoadingSessionHistoryInfoFromParent(
   Maybe<LoadingSessionHistoryInfo> info;
   aContext.get_canonical()->GetLoadingSessionHistoryInfoFromParent(info);
   aResolver(info);
-
-  return IPC_OK();
-}
-
-mozilla::ipc::IPCResult ContentParent::RecvGetContiguousSessionHistoryInfos(
-    const MaybeDiscarded<BrowsingContext>& aContext,
-    GetContiguousSessionHistoryInfosResolver&& aResolver) {
-  if (aContext.IsNullOrDiscarded()) {
-    return IPC_OK();
-  }
-
-  aResolver(aContext.get_canonical()->GetContiguousSessionHistoryInfos());
 
   return IPC_OK();
 }
@@ -7848,16 +7920,16 @@ void ContentParent::StartRemoteWorkerService() {
 }
 
 IPCResult ContentParent::RecvRawMessage(
-    const JSActorMessageMeta& aMeta, const Maybe<ClonedMessageData>& aData,
-    const Maybe<ClonedMessageData>& aStack) {
-  Maybe<StructuredCloneData> data;
+    const JSActorMessageMeta& aMeta, const UniquePtr<ClonedMessageData>& aData,
+    const UniquePtr<ClonedMessageData>& aStack) {
+  UniquePtr<StructuredCloneData> data;
   if (aData) {
-    data.emplace();
+    data = MakeUnique<StructuredCloneData>();
     data->BorrowFromClonedMessageData(*aData);
   }
-  Maybe<StructuredCloneData> stack;
+  UniquePtr<StructuredCloneData> stack;
   if (aStack) {
-    stack.emplace();
+    stack = MakeUnique<StructuredCloneData>();
     stack->BorrowFromClonedMessageData(*aStack);
   }
   MMPrinter::Print("ContentParent::RecvRawMessage", aMeta.actorName(),
@@ -7908,6 +7980,11 @@ already_AddRefed<JSActor> ContentParent::InitJSActor(
 
 IPCResult ContentParent::RecvFOGData(ByteBuf&& buf) {
   glean::FOGData(std::move(buf));
+  return IPC_OK();
+}
+
+mozilla::ipc::IPCResult ContentParent::RecvGeckoTraceExport(ByteBuf&& aBuf) {
+  recv_gecko_trace_export(aBuf.mData, aBuf.mLen);
   return IPC_OK();
 }
 
@@ -8016,6 +8093,23 @@ ThreadsafeContentParentHandle::TryAddKeepAlive(uint64_t aBrowserId) {
   ++mKeepAlivesPerBrowserId.LookupOrInsert(aBrowserId, 0);
   return UniqueThreadsafeContentParentKeepAlive{do_AddRef(this).take(),
                                                 {.mBrowserId = aBrowserId}};
+}
+
+void ContentParent::SetAndroidAppLinkLaunchType(uint64_t aLoadIdentifier,
+                                                int32_t aAppLinkLaunchType) {
+  mAndroidLoadIdentifierToAppLinkLaunchType.InsertOrUpdate(aLoadIdentifier,
+                                                           aAppLinkLaunchType);
+}
+
+int32_t ContentParent::GetAndroidAppLinkLaunchType(uint64_t aLoadIdentifier) {
+  int32_t appLinkLaunchType = -1;
+  Unused << mAndroidLoadIdentifierToAppLinkLaunchType.Get(aLoadIdentifier,
+                                                          &appLinkLaunchType);
+  return appLinkLaunchType;
+}
+
+void ContentParent::ClearAndroidAppLinkLaunchType(uint64_t aLoadIdentifier) {
+  mAndroidLoadIdentifierToAppLinkLaunchType.Remove(aLoadIdentifier);
 }
 
 }  // namespace dom

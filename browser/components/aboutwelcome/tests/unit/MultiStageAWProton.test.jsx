@@ -1094,4 +1094,105 @@ describe("MultiStageAboutWelcomeProton module", () => {
       );
     });
   });
+
+  describe("Custom content tiles container styles", () => {
+    const SCREEN_PROP = {
+      content: {
+        title: "test title",
+        contentTilesContainer: {
+          style: {
+            flexDirection: "row",
+            marginBlock: "16px",
+            // disallowed style
+            backgroundColor: "blue",
+          },
+        },
+        tiles: [
+          {
+            type: "multiselect",
+            title: {
+              raw: "Text 1",
+            },
+            data: [
+              {
+                id: "checkbox-1",
+                defaultValue: false,
+                label: {
+                  raw: "Checkbox",
+                },
+              },
+            ],
+          },
+          {
+            type: "multiselect",
+            title: {
+              raw: "Text 2",
+            },
+            data: [
+              {
+                id: "checkbox-1",
+                defaultValue: false,
+                label: {
+                  raw: "Checkbox",
+                },
+              },
+            ],
+          },
+        ],
+      },
+      setScreenMultiSelects: sinon.stub(),
+      setActiveMultiSelect: sinon.stub(),
+    };
+
+    it("should render container with custom styles", async () => {
+      const wrapper = mount(
+        <MultiStageProtonScreen {...SCREEN_PROP} activeMultiSelect={{}} />
+      );
+      assert.ok(wrapper.exists());
+      const expectedStyles = "flex-direction: row; margin-block: 16px;";
+      assert.strictEqual(
+        wrapper.find("#content-tiles-container").getDOMNode().style.cssText,
+        expectedStyles
+      );
+    });
+  });
+
+  describe("Multiple secondary_top buttons", () => {
+    const SCREEN_PROPS = {
+      content: {
+        title: "test title",
+        tiles: {
+          type: "migration-wizard",
+        },
+        secondary_button_top: [
+          {
+            label: {
+              raw: "test button 1",
+            },
+            action: {
+              navigate: true,
+            },
+          },
+          {
+            label: {
+              raw: "test button 2",
+            },
+            action: {
+              navigate: true,
+            },
+          },
+        ],
+      },
+      setScreenMultiSelects: sinon.stub(),
+      setActiveMultiSelect: sinon.stub(),
+    };
+
+    it("should render both buttons in a container", async () => {
+      const wrapper = mount(<MultiStageProtonScreen {...SCREEN_PROPS} />);
+      assert.ok(wrapper.exists());
+      assert.isTrue(wrapper.find(".secondary-buttons-top-container").exists());
+      assert.isTrue(wrapper.find("#secondary_button_0").exists());
+      assert.isTrue(wrapper.find("#secondary_button_1").exists());
+    });
+  });
 });

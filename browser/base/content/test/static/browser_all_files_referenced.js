@@ -119,6 +119,17 @@ var gExceptionPaths = [
   "resource://builtin-addons/newtab/",
   "resource://newtab/",
   "chrome://newtab/",
+
+  // UniFFI test files.
+  "moz-src:///toolkit/components/uniffi-bindgen-gecko-js/tests/generated/",
+
+  // Used for Market suggestions on the urlbar. This is specified from Remote
+  // Settings.
+  "chrome://browser/skin/illustrations/market-opt-in.svg",
+
+  // Used for Yelp realtime suggestions on the urlbar. This is specified from
+  // Remote Settings.
+  "chrome://browser/skin/illustrations/yelpRealtime-opt-in.svg",
 ];
 
 // These are not part of the omni.ja file, so we find them only when running
@@ -171,9 +182,6 @@ var allowlist = [
     isFromDevTools: true,
   },
 
-  // used by devtools/client/memory/index.xhtml
-  { file: "chrome://global/content/third_party/d3/d3.js" },
-
   // SpiderMonkey parser API, currently unused in browser/ and toolkit/
   { file: "resource://gre/modules/reflect.sys.mjs" },
 
@@ -192,7 +200,6 @@ var allowlist = [
   { file: "resource://gre/greprefs.js" },
 
   // layout/mathml/nsMathMLChar.cpp
-  { file: "resource://gre/res/fonts/mathfontSTIXGeneral.properties" },
   { file: "resource://gre/res/fonts/mathfontUnicode.properties" },
 
   // toolkit/mozapps/extensions/AddonContentPolicy.cpp
@@ -243,17 +250,15 @@ var allowlist = [
   { file: "resource://pdf.js/web/debugger.mjs" },
   { file: "resource://pdf.js/web/debugger.css" },
 
+  // File from the ipp-activator add-on
+  { file: "resource://builtin-addons/ipp-activator/breakages/tab.json" },
+
   // Starting from here, files in the allowlist are bugs that need fixing.
   // Bug 1339424 (wontfix?)
   {
     file: "chrome://browser/locale/taskbar.properties",
     platforms: ["linux", "macosx"],
   },
-  // Bug 1344267
-  { file: "chrome://remote/content/marionette/test_dialog.properties" },
-  { file: "chrome://remote/content/marionette/test_dialog.xhtml" },
-  { file: "chrome://remote/content/marionette/test_xul.xhtml" },
-  { file: "chrome://remote/content/marionette/test.xhtml" },
   // Bug 1348559
   { file: "chrome://pippki/content/resetpassword.xhtml" },
   // Bug 1337345
@@ -329,6 +334,12 @@ var allowlist = [
 
   // A QA and dev debug tool.
   { file: "chrome://browser/content/places/interactionsViewer.html" },
+
+  // Bug 1984409: We're doing backups to cloud-synced locations first. We'll do local backups eventually,
+  // and this file will be needed for that.
+  {
+    file: "resource://app/modules/backup/CookiesBackupResource.sys.mjs",
+  },
 ];
 
 if (AppConstants.NIGHTLY_BUILD) {

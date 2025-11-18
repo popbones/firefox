@@ -719,6 +719,7 @@ class nsCSSFrameConstructor final : public nsFrameManager {
      This can be used with or without FCDATA_FUNC_IS_FULL_CTOR.
      The child items might still need table pseudo processing. */
 #define FCDATA_USE_CHILD_ITEMS 0x10000
+  // 0x200000 is free
   /* If FCDATA_CREATE_BLOCK_WRAPPER_FOR_ALL_KIDS is set, then create a
      block formatting context wrapper around the kids of this frame
      using the FrameConstructionData's mPseudoAtom for its anonymous
@@ -727,13 +728,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   /* If FCDATA_IS_SVG_TEXT is set, then this text frame is a descendant of
      an SVG text frame. */
 #define FCDATA_IS_SVG_TEXT 0x80000
-  /**
-   * If FCDATA_ALLOW_GRID_FLEX_COLUMN is set, then we should create a
-   * grid/flex/column container instead of a block wrapper when the styles says
-   * so. This bit is meaningful only if FCDATA_CREATE_BLOCK_WRAPPER_FOR_ALL_KIDS
-   * is also set.
-   */
-#define FCDATA_ALLOW_GRID_FLEX_COLUMN 0x200000
   /**
    * Whether the kids of this FrameConstructionData should be flagged as having
    * a wrapper anon box parent.  This should only be set if
@@ -1138,7 +1132,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
           mIsAllInline(false),
           mIsBlock(false),
           mIsPopup(false),
-          mIsLineParticipant(false),
           mIsRenderedLegend(false) {
       MOZ_COUNT_CTOR(FrameConstructionItem);
     }
@@ -1209,8 +1202,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
     // Whether construction from this item will create a popup that needs to
     // go into the global popup items.
     bool mIsPopup : 1;
-    // Whether this item should be treated as a line participant
-    bool mIsLineParticipant : 1;
     // Whether this item is the rendered legend of a <fieldset>
     bool mIsRenderedLegend : 1;
 
@@ -1434,6 +1425,8 @@ class nsCSSFrameConstructor final : public nsFrameManager {
                                                      ComputedStyle&);
   static const FrameConstructionData* FindImgData(const Element&,
                                                   ComputedStyle&);
+  static const FrameConstructionData* FindHTMLButtonData(const Element&,
+                                                         ComputedStyle&);
   static const FrameConstructionData* FindGeneratedImageData(const Element&,
                                                              ComputedStyle&);
   static const FrameConstructionData* FindImgControlData(const Element&,
@@ -1451,8 +1444,6 @@ class nsCSSFrameConstructor final : public nsFrameManager {
   // restriction (based on old spec-text) and we're planning to remove it.
   static const FrameConstructionData* FindDetailsData(const Element&,
                                                       ComputedStyle&);
-  static const FrameConstructionData* FindH1Data(const Element&,
-                                                 ComputedStyle&);
 
   /* Construct a frame from the given FrameConstructionItem.  This function
      will handle adding the frame to frame lists, processing children, setting

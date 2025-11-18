@@ -180,20 +180,7 @@ extern "C" {
   void ffi_error_support_rust_future_cancel_void(uint64_t);
   void ffi_error_support_rust_future_complete_void(uint64_t, RustCallStatus*);
   void ffi_error_support_rust_future_free_void(uint64_t);
-  typedef void (*CallbackInterfaceErrorsupportApplicationErrorReporterMethod0)(uint64_t, RustBuffer, RustBuffer, void*, RustCallStatus*);
-  typedef void (*CallbackInterfaceErrorsupportApplicationErrorReporterMethod1)(uint64_t, RustBuffer, RustBuffer, uint32_t, uint32_t, void*, RustCallStatus*);
-  typedef void (*CallbackInterfaceFreeErrorsupport_ApplicationErrorReporter)(uint64_t);
-  struct VTableCallbackInterfaceErrorsupportApplicationErrorReporter {
-    CallbackInterfaceErrorsupportApplicationErrorReporterMethod0 report_error;
-    CallbackInterfaceErrorsupportApplicationErrorReporterMethod1 report_breadcrumb;
-    CallbackInterfaceFreeErrorsupport_ApplicationErrorReporter uniffi_free;
-  };
-  void uniffi_error_support_fn_init_callback_vtable_applicationerrorreporter(VTableCallbackInterfaceErrorsupportApplicationErrorReporter*);
-  void uniffi_error_support_fn_func_set_application_error_reporter(uint64_t, RustCallStatus*);
-  void uniffi_error_support_fn_func_unset_application_error_reporter(RustCallStatus*);
   uint32_t ffi_error_support_uniffi_contract_version();
-  uint16_t uniffi_error_support_checksum_func_set_application_error_reporter();
-  uint16_t uniffi_error_support_checksum_func_unset_application_error_reporter();
   RustBuffer ffi_filter_adult_rustbuffer_alloc(uint64_t, RustCallStatus*);
   RustBuffer ffi_filter_adult_rustbuffer_from_bytes(ForeignBytes, RustCallStatus*);
   void ffi_filter_adult_rustbuffer_free(RustBuffer, RustCallStatus*);
@@ -783,6 +770,155 @@ extern "C" {
   uint16_t uniffi_tabs_checksum_method_tabsstore_new_remote_command_store();
   uint16_t uniffi_tabs_checksum_method_tabsstore_register_with_sync_manager();
   uint16_t uniffi_tabs_checksum_method_tabsstore_set_local_tabs();
+  RustBuffer ffi_tracing_support_rustbuffer_alloc(uint64_t, RustCallStatus*);
+  RustBuffer ffi_tracing_support_rustbuffer_from_bytes(ForeignBytes, RustCallStatus*);
+  void ffi_tracing_support_rustbuffer_free(RustBuffer, RustCallStatus*);
+  RustBuffer ffi_tracing_support_rustbuffer_reserve(RustBuffer, uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_poll_u8(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_u8(uint64_t);
+  uint8_t ffi_tracing_support_rust_future_complete_u8(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_u8(uint64_t);
+  void ffi_tracing_support_rust_future_poll_i8(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_i8(uint64_t);
+  int8_t ffi_tracing_support_rust_future_complete_i8(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_i8(uint64_t);
+  void ffi_tracing_support_rust_future_poll_u16(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_u16(uint64_t);
+  uint16_t ffi_tracing_support_rust_future_complete_u16(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_u16(uint64_t);
+  void ffi_tracing_support_rust_future_poll_i16(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_i16(uint64_t);
+  int16_t ffi_tracing_support_rust_future_complete_i16(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_i16(uint64_t);
+  void ffi_tracing_support_rust_future_poll_u32(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_u32(uint64_t);
+  uint32_t ffi_tracing_support_rust_future_complete_u32(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_u32(uint64_t);
+  void ffi_tracing_support_rust_future_poll_i32(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_i32(uint64_t);
+  int32_t ffi_tracing_support_rust_future_complete_i32(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_i32(uint64_t);
+  void ffi_tracing_support_rust_future_poll_u64(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_u64(uint64_t);
+  uint64_t ffi_tracing_support_rust_future_complete_u64(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_u64(uint64_t);
+  void ffi_tracing_support_rust_future_poll_i64(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_i64(uint64_t);
+  int64_t ffi_tracing_support_rust_future_complete_i64(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_i64(uint64_t);
+  void ffi_tracing_support_rust_future_poll_f32(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_f32(uint64_t);
+  float ffi_tracing_support_rust_future_complete_f32(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_f32(uint64_t);
+  void ffi_tracing_support_rust_future_poll_f64(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_f64(uint64_t);
+  double ffi_tracing_support_rust_future_complete_f64(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_f64(uint64_t);
+  void ffi_tracing_support_rust_future_poll_pointer(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_pointer(uint64_t);
+  void* ffi_tracing_support_rust_future_complete_pointer(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_pointer(uint64_t);
+  void ffi_tracing_support_rust_future_poll_rust_buffer(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_rust_buffer(uint64_t);
+  RustBuffer ffi_tracing_support_rust_future_complete_rust_buffer(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_rust_buffer(uint64_t);
+  void ffi_tracing_support_rust_future_poll_void(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_tracing_support_rust_future_cancel_void(uint64_t);
+  void ffi_tracing_support_rust_future_complete_void(uint64_t, RustCallStatus*);
+  void ffi_tracing_support_rust_future_free_void(uint64_t);
+  typedef void (*CallbackInterfaceTracingEventSinkMethod0)(uint64_t, RustBuffer, void*, RustCallStatus*);
+  typedef void (*CallbackInterfaceFreeTracing_EventSink)(uint64_t);
+  struct VTableCallbackInterfaceTracingEventSink {
+    CallbackInterfaceTracingEventSinkMethod0 on_event;
+    CallbackInterfaceFreeTracing_EventSink uniffi_free;
+  };
+  void uniffi_tracing_support_fn_init_callback_vtable_eventsink(VTableCallbackInterfaceTracingEventSink*);
+  void uniffi_tracing_support_fn_func_register_event_sink(RustBuffer, RustBuffer, uint64_t, RustCallStatus*);
+  void uniffi_tracing_support_fn_func_register_min_level_event_sink(RustBuffer, uint64_t, RustCallStatus*);
+  void uniffi_tracing_support_fn_func_unregister_event_sink(RustBuffer, RustCallStatus*);
+  void uniffi_tracing_support_fn_func_unregister_min_level_event_sink(RustCallStatus*);
+  uint32_t ffi_tracing_support_uniffi_contract_version();
+  uint16_t uniffi_tracing_support_checksum_func_register_event_sink();
+  uint16_t uniffi_tracing_support_checksum_func_register_min_level_event_sink();
+  uint16_t uniffi_tracing_support_checksum_func_unregister_event_sink();
+  uint16_t uniffi_tracing_support_checksum_func_unregister_min_level_event_sink();
+  RustBuffer ffi_viaduct_rustbuffer_alloc(uint64_t, RustCallStatus*);
+  RustBuffer ffi_viaduct_rustbuffer_from_bytes(ForeignBytes, RustCallStatus*);
+  void ffi_viaduct_rustbuffer_free(RustBuffer, RustCallStatus*);
+  RustBuffer ffi_viaduct_rustbuffer_reserve(RustBuffer, uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_poll_u8(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_u8(uint64_t);
+  uint8_t ffi_viaduct_rust_future_complete_u8(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_u8(uint64_t);
+  void ffi_viaduct_rust_future_poll_i8(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_i8(uint64_t);
+  int8_t ffi_viaduct_rust_future_complete_i8(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_i8(uint64_t);
+  void ffi_viaduct_rust_future_poll_u16(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_u16(uint64_t);
+  uint16_t ffi_viaduct_rust_future_complete_u16(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_u16(uint64_t);
+  void ffi_viaduct_rust_future_poll_i16(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_i16(uint64_t);
+  int16_t ffi_viaduct_rust_future_complete_i16(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_i16(uint64_t);
+  void ffi_viaduct_rust_future_poll_u32(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_u32(uint64_t);
+  uint32_t ffi_viaduct_rust_future_complete_u32(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_u32(uint64_t);
+  void ffi_viaduct_rust_future_poll_i32(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_i32(uint64_t);
+  int32_t ffi_viaduct_rust_future_complete_i32(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_i32(uint64_t);
+  void ffi_viaduct_rust_future_poll_u64(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_u64(uint64_t);
+  uint64_t ffi_viaduct_rust_future_complete_u64(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_u64(uint64_t);
+  void ffi_viaduct_rust_future_poll_i64(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_i64(uint64_t);
+  int64_t ffi_viaduct_rust_future_complete_i64(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_i64(uint64_t);
+  void ffi_viaduct_rust_future_poll_f32(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_f32(uint64_t);
+  float ffi_viaduct_rust_future_complete_f32(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_f32(uint64_t);
+  void ffi_viaduct_rust_future_poll_f64(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_f64(uint64_t);
+  double ffi_viaduct_rust_future_complete_f64(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_f64(uint64_t);
+  void ffi_viaduct_rust_future_poll_pointer(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_pointer(uint64_t);
+  void* ffi_viaduct_rust_future_complete_pointer(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_pointer(uint64_t);
+  void ffi_viaduct_rust_future_poll_rust_buffer(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_rust_buffer(uint64_t);
+  RustBuffer ffi_viaduct_rust_future_complete_rust_buffer(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_rust_buffer(uint64_t);
+  void ffi_viaduct_rust_future_poll_void(uint64_t, RustFutureContinuationCallback, uint64_t);
+  void ffi_viaduct_rust_future_cancel_void(uint64_t);
+  void ffi_viaduct_rust_future_complete_void(uint64_t, RustCallStatus*);
+  void ffi_viaduct_rust_future_free_void(uint64_t);
+  void* uniffi_viaduct_fn_clone_backend(void*, RustCallStatus*);
+  void uniffi_viaduct_fn_free_backend(void*, RustCallStatus*);
+  struct ForeignFutureResultRustBuffer {
+    RustBuffer return_value;
+    RustCallStatus call_status;
+  };
+  typedef void (*ForeignFutureCompleterust_buffer)(uint64_t, ForeignFutureResultRustBuffer);
+  typedef void (*CallbackInterfaceViaductBackendMethod0)(uint64_t, RustBuffer, RustBuffer, ForeignFutureCompleterust_buffer, uint64_t, ForeignFuture*);
+  typedef void (*CallbackInterfaceFreeViaduct_Backend)(uint64_t);
+  struct VTableCallbackInterfaceViaductBackend {
+    CallbackInterfaceViaductBackendMethod0 send_request;
+    CallbackInterfaceFreeViaduct_Backend uniffi_free;
+  };
+  void uniffi_viaduct_fn_init_callback_vtable_backend(VTableCallbackInterfaceViaductBackend*);
+  void uniffi_viaduct_fn_func_allow_android_emulator_loopback(RustCallStatus*);
+  void uniffi_viaduct_fn_func_init_backend(void*, RustCallStatus*);
+  uint64_t uniffi_viaduct_fn_method_backend_send_request(void*, RustBuffer, RustBuffer);
+  uint32_t ffi_viaduct_uniffi_contract_version();
+  uint16_t uniffi_viaduct_checksum_func_allow_android_emulator_loopback();
+  uint16_t uniffi_viaduct_checksum_func_init_backend();
+  uint16_t uniffi_viaduct_checksum_method_backend_send_request();
   RustBuffer ffi_webext_storage_rustbuffer_alloc(uint64_t, RustCallStatus*);
   RustBuffer ffi_webext_storage_rustbuffer_from_bytes(ForeignBytes, RustCallStatus*);
   void ffi_webext_storage_rustbuffer_free(RustBuffer, RustCallStatus*);
@@ -862,6 +998,7 @@ extern "C" {
   void uniffi_webext_storage_fn_method_webextstoragestore_close(void*, RustCallStatus*);
   RustBuffer uniffi_webext_storage_fn_method_webextstoragestore_get(void*, RustBuffer, RustBuffer, RustCallStatus*);
   uint64_t uniffi_webext_storage_fn_method_webextstoragestore_get_bytes_in_use(void*, RustBuffer, RustBuffer, RustCallStatus*);
+  RustBuffer uniffi_webext_storage_fn_method_webextstoragestore_get_keys(void*, RustBuffer, RustCallStatus*);
   RustBuffer uniffi_webext_storage_fn_method_webextstoragestore_get_synced_changes(void*, RustCallStatus*);
   RustBuffer uniffi_webext_storage_fn_method_webextstoragestore_remove(void*, RustBuffer, RustBuffer, RustCallStatus*);
   RustBuffer uniffi_webext_storage_fn_method_webextstoragestore_set(void*, RustBuffer, RustBuffer, RustCallStatus*);
@@ -885,6 +1022,7 @@ extern "C" {
   uint16_t uniffi_webext_storage_checksum_method_webextstoragestore_close();
   uint16_t uniffi_webext_storage_checksum_method_webextstoragestore_get();
   uint16_t uniffi_webext_storage_checksum_method_webextstoragestore_get_bytes_in_use();
+  uint16_t uniffi_webext_storage_checksum_method_webextstoragestore_get_keys();
   uint16_t uniffi_webext_storage_checksum_method_webextstoragestore_get_synced_changes();
   uint16_t uniffi_webext_storage_checksum_method_webextstoragestore_remove();
   uint16_t uniffi_webext_storage_checksum_method_webextstoragestore_set();
@@ -968,11 +1106,6 @@ extern "C" {
   typedef void (*ForeignFutureCompleteu32)(uint64_t, ForeignFutureResultU32);
   typedef void (*CallbackInterfaceUniffiBindingsTestsAsyncTestTraitInterfaceMethod1)(uint64_t, ForeignFutureCompleteu32, uint64_t, ForeignFuture*);
   typedef void (*CallbackInterfaceUniffiBindingsTestsAsyncTestTraitInterfaceMethod2)(uint64_t, uint32_t, ForeignFutureCompletevoid, uint64_t, ForeignFuture*);
-  struct ForeignFutureResultRustBuffer {
-    RustBuffer return_value;
-    RustCallStatus call_status;
-  };
-  typedef void (*ForeignFutureCompleterust_buffer)(uint64_t, ForeignFutureResultRustBuffer);
   typedef void (*CallbackInterfaceUniffiBindingsTestsAsyncTestTraitInterfaceMethod3)(uint64_t, RustBuffer, ForeignFutureCompleterust_buffer, uint64_t, ForeignFuture*);
   typedef void (*CallbackInterfaceFreeUniffiBindingsTests_AsyncTestTraitInterface)(uint64_t);
   struct VTableCallbackInterfaceUniffiBindingsTestsAsyncTestTraitInterface {
@@ -2280,6 +2413,125 @@ class FfiValueObjectHandleTabsTabsStore {
     FreeHandle();
   }
 };
+const static mozilla::uniffi::UniFFIPointerType kViaductBackendPointerType {
+  "viaduct::Backend"_ns,
+  uniffi_viaduct_fn_clone_backend,
+  uniffi_viaduct_fn_free_backend,
+};
+// Forward declare the free function, which is defined later on in `CallbackInterfaces.cpp`
+extern "C" void callback_free_viaduct_backend(uint64_t uniffiHandle);
+
+// Trait interface FFI value class.  This is a hybrid between the one for interfaces and callback
+// interface version
+class FfiValueObjectHandleViaductBackend {
+ private:
+  // Did we lower a callback interface, rather than lift an object interface?
+  // This is weird, but it's a needed work until something like
+  // https://github.com/mozilla/uniffi-rs/pull/1823 lands.
+  bool mLoweredCallbackInterface = false;
+  // The raw FFI value is a pointer.
+  // For callback interfaces, the uint64_t handle gets casted to a pointer.  Callback interface
+  // handles are incremented by one at a time, so even on a 32-bit system this
+  // shouldn't overflow.
+  void* mValue = nullptr;
+
+ public:
+  FfiValueObjectHandleViaductBackend() = default;
+  explicit FfiValueObjectHandleViaductBackend(void* aValue) : mValue(aValue) {}
+
+  // Delete copy constructor and assignment as this type is non-copyable.
+  FfiValueObjectHandleViaductBackend(const FfiValueObjectHandleViaductBackend&) = delete;
+  FfiValueObjectHandleViaductBackend& operator=(const FfiValueObjectHandleViaductBackend&) = delete;
+
+  FfiValueObjectHandleViaductBackend& operator=(FfiValueObjectHandleViaductBackend&& aOther) {
+    FreeHandle();
+    mValue = aOther.mValue;
+    mLoweredCallbackInterface = aOther.mLoweredCallbackInterface;
+    aOther.mValue = nullptr;
+    aOther.mLoweredCallbackInterface = false;
+    return *this;
+  }
+
+  // Lower treats `aValue` as a callback interface
+  void Lower(const dom::OwningUniFFIScaffoldingValue& aValue,
+             ErrorResult& aError) {
+    if (!aValue.IsDouble()) {
+      aError.ThrowTypeError("Bad argument type"_ns);
+      return;
+    }
+    double floatValue = aValue.GetAsDouble();
+    uint64_t intValue = static_cast<uint64_t>(floatValue);
+    if (intValue != floatValue) {
+      aError.ThrowTypeError("Not an integer"_ns);
+      return;
+    }
+    FreeHandle();
+    mValue = reinterpret_cast<void *>(intValue);
+    mLoweredCallbackInterface = true;
+  }
+
+  // LowerReceiver is used for method receivers.  It treats `aValue` as an object pointer.
+  void LowerReciever(const dom::OwningUniFFIScaffoldingValue& aValue,
+             ErrorResult& aError) {
+    if (!aValue.IsUniFFIPointer()) {
+      aError.ThrowTypeError("Expected UniFFI pointer argument"_ns);
+      return;
+    }
+    dom::UniFFIPointer& value = aValue.GetAsUniFFIPointer();
+    if (!value.IsSamePtrType(&kViaductBackendPointerType)) {
+      aError.ThrowTypeError("Incorrect UniFFI pointer type"_ns);
+      return;
+    }
+    FreeHandle();
+    mValue = value.ClonePtr();
+    mLoweredCallbackInterface = false;
+  }
+
+  // Lift treats `aDest` as a regular interface
+  void Lift(JSContext* aContext, dom::OwningUniFFIScaffoldingValue* aDest,
+            ErrorResult& aError) {
+    aDest->SetAsUniFFIPointer() =
+        dom::UniFFIPointer::Create(mValue, &kViaductBackendPointerType);
+    mValue = nullptr;
+    mLoweredCallbackInterface = false;
+  }
+
+  void* IntoRust() {
+    auto temp = mValue;
+    mValue = nullptr;
+    mLoweredCallbackInterface = false;
+    return temp;
+  }
+
+  static FfiValueObjectHandleViaductBackend FromRust(void* aValue) {
+    return FfiValueObjectHandleViaductBackend(aValue);
+  }
+
+  void FreeHandle() {
+    // This behavior depends on if we lowered a callback interface handle or lifted an interface
+    // pointer.
+    if (mLoweredCallbackInterface && reinterpret_cast<uintptr_t>(mValue) != 0) {
+                                     printf("FREEING CB %p\n", mValue);
+        callback_free_viaduct_backend(reinterpret_cast<uintptr_t>(mValue));
+        mValue = reinterpret_cast<void *>(0);
+    } else if (!mLoweredCallbackInterface && mValue != nullptr) {
+                                     printf("FREEING interface %p\n", mValue);
+      RustCallStatus callStatus{};
+      (uniffi_viaduct_fn_free_backend)(mValue, &callStatus);
+      // No need to check `RustCallStatus`, it's only part of the API to match
+      // other FFI calls.  The free function can never fail.
+    }
+    mValue = nullptr;
+    mLoweredCallbackInterface = false;
+  }
+
+  ~FfiValueObjectHandleViaductBackend() {
+    // If the pointer is non-null, this means Lift/IntoRust was never called
+    // because there was some failure along the way. Free the pointer to avoid a
+    // leak
+    FreeHandle();
+  }
+};
 const static mozilla::uniffi::UniFFIPointerType kWebextstorageWebExtStorageBridgedEnginePointerType {
   "webextstorage::WebExtStorageBridgedEngine"_ns,
   uniffi_webext_storage_fn_clone_webextstoragebridgedengine,
@@ -2970,32 +3222,36 @@ Maybe<already_AddRefed<UniFFIPointer>> ReadPointer(const GlobalObject& aGlobal, 
       break;
     }
     case 13: {
-      type = &kWebextstorageWebExtStorageBridgedEnginePointerType;
+      type = &kViaductBackendPointerType;
       break;
     }
     case 14: {
+      type = &kWebextstorageWebExtStorageBridgedEnginePointerType;
+      break;
+    }
+    case 15: {
       type = &kWebextstorageWebExtStorageStorePointerType;
       break;
     }
 
 #ifdef MOZ_UNIFFI_FIXTURES
-    case 15: {
+    case 16: {
       type = &kUniffiBindingsTestsTestInterfacePointerType;
       break;
     }
-    case 16: {
+    case 17: {
       type = &kUniffiBindingsTestsAsyncInterfacePointerType;
       break;
     }
-    case 17: {
+    case 18: {
       type = &kUniffiBindingsTestsAsyncTestTraitInterfacePointerType;
       break;
     }
-    case 18: {
+    case 19: {
       type = &kUniffiBindingsTestsComplexMethodsPointerType;
       break;
     }
-    case 19: {
+    case 20: {
       type = &kUniffiBindingsTestsTestTraitInterfacePointerType;
       break;
     }
@@ -3059,32 +3315,36 @@ bool WritePointer(const GlobalObject& aGlobal, uint64_t aId, const UniFFIPointer
       break;
     }
     case 13: {
-      type = &kWebextstorageWebExtStorageBridgedEnginePointerType;
+      type = &kViaductBackendPointerType;
       break;
     }
     case 14: {
+      type = &kWebextstorageWebExtStorageBridgedEnginePointerType;
+      break;
+    }
+    case 15: {
       type = &kWebextstorageWebExtStorageStorePointerType;
       break;
     }
 
 #ifdef MOZ_UNIFFI_FIXTURES
-    case 15: {
+    case 16: {
       type = &kUniffiBindingsTestsTestInterfacePointerType;
       break;
     }
-    case 16: {
+    case 17: {
       type = &kUniffiBindingsTestsAsyncInterfacePointerType;
       break;
     }
-    case 17: {
+    case 18: {
       type = &kUniffiBindingsTestsAsyncTestTraitInterfacePointerType;
       break;
     }
-    case 18: {
+    case 19: {
       type = &kUniffiBindingsTestsComplexMethodsPointerType;
       break;
     }
-    case 19: {
+    case 20: {
       type = &kUniffiBindingsTestsTestTraitInterfacePointerType;
       break;
     }
@@ -3171,11 +3431,11 @@ class FfiValueCallbackInterfacecontext_id_ContextIdCallback {
 };
 
 // Forward declare the free function, which is defined later on in `CallbackInterfaces.cpp`
-extern "C" void callback_free_errorsupport_application_error_reporter(uint64_t uniffiHandle);
+extern "C" void callback_free_tracing_event_sink(uint64_t uniffiHandle);
 
 // FfiValue class for these callback interface handles.  This works like the
 // `FfiValueInt<uint64_t>`, except it has extra code to cleanup the callback handles.
-class FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter {
+class FfiValueCallbackInterfacetracing_EventSink {
  private:
   // Was this value lowered?  If so, that means we own the handle and are responsible for cleaning
   // it up if we don't pass it to Rust because other values failed to lower
@@ -3183,8 +3443,8 @@ class FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter {
   uint64_t mValue = 0;
 
  public:
-  FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter() = default;
-  explicit FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter(uint64_t aValue) : mValue(aValue) {}
+  FfiValueCallbackInterfacetracing_EventSink() = default;
+  explicit FfiValueCallbackInterfacetracing_EventSink(uint64_t aValue) : mValue(aValue) {}
 
   void Lower(const dom::OwningUniFFIScaffoldingValue& aValue,
              ErrorResult& aError) {
@@ -3218,19 +3478,19 @@ class FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter {
     return handle;
   }
 
-  static FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter FromRust(uint64_t aValue) { return FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter(aValue); };
+  static FfiValueCallbackInterfacetracing_EventSink FromRust(uint64_t aValue) { return FfiValueCallbackInterfacetracing_EventSink(aValue); };
 
   void ReleaseHandleIfSet() {
     // A non-zero value indicates that we own a callback handle that was never passed to Rust or
     // lifted to JS and needs to be freed.
     if (mValue != 0 && mLowered) {
-        callback_free_errorsupport_application_error_reporter(mValue);
+        callback_free_tracing_event_sink(mValue);
         mValue = 0;
         mLowered = false;
     }
   }
 
-  ~FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter() {
+  ~FfiValueCallbackInterfacetracing_EventSink() {
     ReleaseHandleIfSet();
   }
 };
@@ -3573,50 +3833,6 @@ public:
   void MakeRustCall(RustCallStatus* aOutStatus) override {
     uniffi_context_id_fn_method_contextidcomponent_unset_callback(
       mUniffiPtr.IntoRust(),
-      aOutStatus
-    );
-  }
-
-  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
-  }
-};
-class ScaffoldingCallHandlerUniffiErrorSupportFnFuncSetApplicationErrorReporter : public UniffiSyncCallHandler {
-private:
-  // LowerRustArgs stores the resulting arguments in these fields
-  FfiValueCallbackInterfaceerrorsupport_ApplicationErrorReporter mErrorReporter{};
-
-  // MakeRustCall stores the result of the call in these fields
-
-public:
-  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
-    mErrorReporter.Lower(aArgs[0], aError);
-    if (aError.Failed()) {
-      return;
-    }
-  }
-
-  void MakeRustCall(RustCallStatus* aOutStatus) override {
-    uniffi_error_support_fn_func_set_application_error_reporter(
-      mErrorReporter.IntoRust(),
-      aOutStatus
-    );
-  }
-
-  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
-  }
-};
-class ScaffoldingCallHandlerUniffiErrorSupportFnFuncUnsetApplicationErrorReporter : public UniffiSyncCallHandler {
-private:
-  // LowerRustArgs stores the resulting arguments in these fields
-
-  // MakeRustCall stores the result of the call in these fields
-
-public:
-  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
-  }
-
-  void MakeRustCall(RustCallStatus* aOutStatus) override {
-    uniffi_error_support_fn_func_unset_application_error_reporter(
       aOutStatus
     );
   }
@@ -6528,6 +6744,215 @@ public:
   virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
   }
 };
+class ScaffoldingCallHandlerUniffiTracingSupportFnFuncRegisterEventSink : public UniffiSyncCallHandler {
+private:
+  // LowerRustArgs stores the resulting arguments in these fields
+  FfiValueRustBuffer mTarget{};
+  FfiValueRustBuffer mLevel{};
+  FfiValueCallbackInterfacetracing_EventSink mSink{};
+
+  // MakeRustCall stores the result of the call in these fields
+
+public:
+  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
+    mTarget.Lower(aArgs[0], aError);
+    if (aError.Failed()) {
+      return;
+    }
+    mLevel.Lower(aArgs[1], aError);
+    if (aError.Failed()) {
+      return;
+    }
+    mSink.Lower(aArgs[2], aError);
+    if (aError.Failed()) {
+      return;
+    }
+  }
+
+  void MakeRustCall(RustCallStatus* aOutStatus) override {
+    uniffi_tracing_support_fn_func_register_event_sink(
+      mTarget.IntoRust(),
+      mLevel.IntoRust(),
+      mSink.IntoRust(),
+      aOutStatus
+    );
+  }
+
+  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
+  }
+};
+class ScaffoldingCallHandlerUniffiTracingSupportFnFuncRegisterMinLevelEventSink : public UniffiSyncCallHandler {
+private:
+  // LowerRustArgs stores the resulting arguments in these fields
+  FfiValueRustBuffer mLevel{};
+  FfiValueCallbackInterfacetracing_EventSink mSink{};
+
+  // MakeRustCall stores the result of the call in these fields
+
+public:
+  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
+    mLevel.Lower(aArgs[0], aError);
+    if (aError.Failed()) {
+      return;
+    }
+    mSink.Lower(aArgs[1], aError);
+    if (aError.Failed()) {
+      return;
+    }
+  }
+
+  void MakeRustCall(RustCallStatus* aOutStatus) override {
+    uniffi_tracing_support_fn_func_register_min_level_event_sink(
+      mLevel.IntoRust(),
+      mSink.IntoRust(),
+      aOutStatus
+    );
+  }
+
+  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
+  }
+};
+class ScaffoldingCallHandlerUniffiTracingSupportFnFuncUnregisterEventSink : public UniffiSyncCallHandler {
+private:
+  // LowerRustArgs stores the resulting arguments in these fields
+  FfiValueRustBuffer mTarget{};
+
+  // MakeRustCall stores the result of the call in these fields
+
+public:
+  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
+    mTarget.Lower(aArgs[0], aError);
+    if (aError.Failed()) {
+      return;
+    }
+  }
+
+  void MakeRustCall(RustCallStatus* aOutStatus) override {
+    uniffi_tracing_support_fn_func_unregister_event_sink(
+      mTarget.IntoRust(),
+      aOutStatus
+    );
+  }
+
+  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
+  }
+};
+class ScaffoldingCallHandlerUniffiTracingSupportFnFuncUnregisterMinLevelEventSink : public UniffiSyncCallHandler {
+private:
+  // LowerRustArgs stores the resulting arguments in these fields
+
+  // MakeRustCall stores the result of the call in these fields
+
+public:
+  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
+  }
+
+  void MakeRustCall(RustCallStatus* aOutStatus) override {
+    uniffi_tracing_support_fn_func_unregister_min_level_event_sink(
+      aOutStatus
+    );
+  }
+
+  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
+  }
+};
+class ScaffoldingCallHandlerUniffiViaductFnFuncAllowAndroidEmulatorLoopback : public UniffiSyncCallHandler {
+private:
+  // LowerRustArgs stores the resulting arguments in these fields
+
+  // MakeRustCall stores the result of the call in these fields
+
+public:
+  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
+  }
+
+  void MakeRustCall(RustCallStatus* aOutStatus) override {
+    uniffi_viaduct_fn_func_allow_android_emulator_loopback(
+      aOutStatus
+    );
+  }
+
+  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
+  }
+};
+class ScaffoldingCallHandlerUniffiViaductFnFuncInitBackend : public UniffiSyncCallHandler {
+private:
+  // LowerRustArgs stores the resulting arguments in these fields
+  FfiValueObjectHandleViaductBackend mBackend{};
+
+  // MakeRustCall stores the result of the call in these fields
+
+public:
+  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
+    mBackend.Lower(aArgs[0], aError);
+    if (aError.Failed()) {
+      return;
+    }
+  }
+
+  void MakeRustCall(RustCallStatus* aOutStatus) override {
+    uniffi_viaduct_fn_func_init_backend(
+      mBackend.IntoRust(),
+      aOutStatus
+    );
+  }
+
+  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
+  }
+};
+class ScaffoldingCallHandlerUniffiViaductFnMethodBackendSendRequest : public UniffiAsyncCallHandler {
+public:
+  ScaffoldingCallHandlerUniffiViaductFnMethodBackendSendRequest() : UniffiAsyncCallHandler(
+        ffi_viaduct_rust_future_poll_rust_buffer,
+        ffi_viaduct_rust_future_free_rust_buffer
+    ) { }
+
+private:
+  // Complete stores the result of the call in mUniffiReturnValue
+  FfiValueRustBuffer mUniffiReturnValue{};
+
+protected:
+  // Convert a sequence of JS arguments and call the scaffolding function.
+  // Always called on the main thread since async Rust calls don't block, they
+  // return a future.
+  void LowerArgsAndMakeRustCall(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
+    FfiValueObjectHandleViaductBackend mUniffiPtr{};
+    mUniffiPtr.LowerReciever(aArgs[0], aError);
+    if (aError.Failed()) {
+      return;
+    }
+    FfiValueRustBuffer mRequest{};
+    mRequest.Lower(aArgs[1], aError);
+    if (aError.Failed()) {
+      return;
+    }
+    FfiValueRustBuffer mSettings{};
+    mSettings.Lower(aArgs[2], aError);
+    if (aError.Failed()) {
+      return;
+    }
+
+    mFutureHandle = uniffi_viaduct_fn_method_backend_send_request(
+      mUniffiPtr.IntoRust(),
+      mRequest.IntoRust(),
+      mSettings.IntoRust()
+    );
+  }
+
+  void CallCompleteFn(RustCallStatus* aOutStatus) override {
+    mUniffiReturnValue = FfiValueRustBuffer::FromRust(
+      ffi_viaduct_rust_future_complete_rust_buffer(mFutureHandle, aOutStatus));
+  }
+
+public:
+  void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
+    mUniffiReturnValue.Lift(
+      aCx,
+      &aDest.Construct(),
+      aError
+    );
+  }
+};
 class ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineApply : public UniffiSyncCallHandler {
 private:
   // LowerRustArgs stores the resulting arguments in these fields
@@ -7136,6 +7561,45 @@ public:
         mUniffiPtr.IntoRust(),
         mExtId.IntoRust(),
         mKeys.IntoRust(),
+        aOutStatus
+      )
+    );
+  }
+
+  virtual void LiftSuccessfulCallResult(JSContext* aCx, dom::Optional<dom::OwningUniFFIScaffoldingValue>& aDest, ErrorResult& aError) override {
+    mUniffiReturnValue.Lift(
+      aCx,
+      &aDest.Construct(),
+      aError
+    );
+  }
+};
+class ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreGetKeys : public UniffiSyncCallHandler {
+private:
+  // LowerRustArgs stores the resulting arguments in these fields
+  FfiValueObjectHandleWebextstorageWebExtStorageStore mUniffiPtr{};
+  FfiValueRustBuffer mExtId{};
+
+  // MakeRustCall stores the result of the call in these fields
+  FfiValueRustBuffer mUniffiReturnValue{};
+
+public:
+  void LowerRustArgs(const dom::Sequence<dom::OwningUniFFIScaffoldingValue>& aArgs, ErrorResult& aError) override {
+    mUniffiPtr.LowerReciever(aArgs[0], aError);
+    if (aError.Failed()) {
+      return;
+    }
+    mExtId.Lower(aArgs[1], aError);
+    if (aError.Failed()) {
+      return;
+    }
+  }
+
+  void MakeRustCall(RustCallStatus* aOutStatus) override {
+    mUniffiReturnValue = FfiValueRustBuffer::FromRust(
+      uniffi_webext_storage_fn_method_webextstoragestore_get_keys(
+        mUniffiPtr.IntoRust(),
+        mExtId.IntoRust(),
         aOutStatus
       )
     );
@@ -10452,512 +10916,527 @@ UniquePtr<UniffiSyncCallHandler> GetSyncCallHandler(uint64_t aId) {
       return MakeUnique<ScaffoldingCallHandlerUniffiContextIdFnMethodContextidcomponentUnsetCallback>();
     }
     case 5: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiErrorSupportFnFuncSetApplicationErrorReporter>();
-    }
-    case 6: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiErrorSupportFnFuncUnsetApplicationErrorReporter>();
-    }
-    case 7: {
       return MakeUnique<ScaffoldingCallHandlerUniffiFilterAdultFnConstructorFilteradultcomponentNew>();
     }
-    case 8: {
+    case 6: {
       return MakeUnique<ScaffoldingCallHandlerUniffiFilterAdultFnMethodFilteradultcomponentContains>();
     }
-    case 9: {
+    case 7: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnFuncScore>();
     }
-    case 10: {
+    case 8: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnConstructorRelevancystoreNew>();
     }
-    case 11: {
+    case 9: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreBanditInit>();
     }
-    case 12: {
+    case 10: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreBanditSelect>();
     }
-    case 13: {
+    case 11: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreBanditUpdate>();
     }
-    case 14: {
+    case 12: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreClose>();
     }
-    case 15: {
+    case 13: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreEnsureInterestDataPopulated>();
     }
-    case 16: {
+    case 14: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreGetBanditData>();
     }
-    case 17: {
+    case 15: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreIngest>();
     }
-    case 18: {
+    case 16: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreInterrupt>();
     }
-    case 19: {
+    case 17: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRelevancyFnMethodRelevancystoreUserInterestVector>();
     }
-    case 20: {
+    case 18: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnConstructorRemotesettingsNew>();
     }
-    case 21: {
+    case 19: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsDownloadAttachmentToPath>();
     }
-    case 22: {
+    case 20: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsGetRecords>();
     }
-    case 23: {
+    case 21: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsGetRecordsSince>();
     }
-    case 24: {
+    case 22: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsclientCollectionName>();
     }
-    case 25: {
+    case 23: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsclientGetAttachment>();
     }
-    case 26: {
+    case 24: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsclientGetRecords>();
     }
-    case 27: {
+    case 25: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsclientGetRecordsMap>();
     }
-    case 28: {
+    case 26: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsclientShutdown>();
     }
-    case 29: {
+    case 27: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsclientSync>();
     }
-    case 30: {
+    case 28: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnConstructorRemotesettingsserviceNew>();
     }
-    case 31: {
+    case 29: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsserviceMakeClient>();
     }
-    case 32: {
+    case 30: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsserviceSync>();
     }
-    case 33: {
+    case 31: {
       return MakeUnique<ScaffoldingCallHandlerUniffiRemoteSettingsFnMethodRemotesettingsserviceUpdateConfig>();
     }
-    case 34: {
+    case 32: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSearchFnConstructorSearchengineselectorNew>();
     }
-    case 35: {
+    case 33: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSearchFnMethodSearchengineselectorClearSearchConfig>();
     }
-    case 36: {
+    case 34: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSearchFnMethodSearchengineselectorFilterEngineConfiguration>();
     }
-    case 37: {
+    case 35: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSearchFnMethodSearchengineselectorSetConfigOverrides>();
     }
-    case 38: {
+    case 36: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSearchFnMethodSearchengineselectorSetSearchConfig>();
     }
-    case 39: {
+    case 37: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSearchFnMethodSearchengineselectorUseRemoteSettingsServer>();
     }
-    case 40: {
+    case 38: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnFuncRawSuggestionUrlMatches>();
     }
-    case 41: {
+    case 39: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnConstructorSuggeststoreNew>();
     }
-    case 42: {
+    case 40: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreAnyDismissedSuggestions>();
     }
-    case 43: {
+    case 41: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreClear>();
     }
-    case 44: {
+    case 42: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreClearDismissedSuggestions>();
     }
-    case 45: {
+    case 43: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreDismissByKey>();
     }
-    case 46: {
+    case 44: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreDismissBySuggestion>();
     }
-    case 47: {
+    case 45: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreDismissSuggestion>();
     }
-    case 48: {
+    case 46: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreFetchGeonameAlternates>();
     }
-    case 49: {
+    case 47: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreFetchGeonames>();
     }
-    case 50: {
+    case 48: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreFetchGlobalConfig>();
     }
-    case 51: {
+    case 49: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreFetchProviderConfig>();
     }
-    case 52: {
+    case 50: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreIngest>();
     }
-    case 53: {
+    case 51: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreInterrupt>();
     }
-    case 54: {
+    case 52: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreIsDismissedByKey>();
     }
-    case 55: {
+    case 53: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreIsDismissedBySuggestion>();
     }
-    case 56: {
+    case 54: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreQuery>();
     }
-    case 57: {
+    case 55: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststoreQueryWithMetrics>();
     }
-    case 58: {
+    case 56: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnConstructorSuggeststorebuilderNew>();
     }
-    case 59: {
+    case 57: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststorebuilderBuild>();
     }
-    case 60: {
+    case 58: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststorebuilderCachePath>();
     }
-    case 61: {
+    case 59: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststorebuilderDataPath>();
     }
-    case 62: {
+    case 60: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststorebuilderLoadExtension>();
     }
-    case 63: {
+    case 61: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststorebuilderRemoteSettingsBucketName>();
     }
-    case 64: {
+    case 62: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststorebuilderRemoteSettingsServer>();
     }
-    case 65: {
+    case 63: {
       return MakeUnique<ScaffoldingCallHandlerUniffiSuggestFnMethodSuggeststorebuilderRemoteSettingsService>();
     }
-    case 66: {
+    case 64: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodRemotecommandstoreAddRemoteCommand>();
     }
-    case 67: {
+    case 65: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodRemotecommandstoreAddRemoteCommandAt>();
     }
-    case 68: {
+    case 66: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodRemotecommandstoreGetUnsentCommands>();
     }
-    case 69: {
+    case 67: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodRemotecommandstoreRemoveRemoteCommand>();
     }
-    case 70: {
+    case 68: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodRemotecommandstoreSetPendingCommandSent>();
     }
-    case 71: {
+    case 69: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineApply>();
     }
-    case 72: {
+    case 70: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineEnsureCurrentSyncId>();
     }
-    case 73: {
+    case 71: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineLastSync>();
     }
-    case 74: {
+    case 72: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedenginePrepareForSync>();
     }
-    case 75: {
+    case 73: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineReset>();
     }
-    case 76: {
+    case 74: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineResetSyncId>();
     }
-    case 77: {
+    case 75: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineSetLastSync>();
     }
-    case 78: {
+    case 76: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineSetUploaded>();
     }
-    case 79: {
+    case 77: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineStoreIncoming>();
     }
-    case 80: {
+    case 78: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineSyncFinished>();
     }
-    case 81: {
+    case 79: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineSyncId>();
     }
-    case 82: {
+    case 80: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineSyncStarted>();
     }
-    case 83: {
+    case 81: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsbridgedengineWipe>();
     }
-    case 84: {
+    case 82: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnConstructorTabsstoreNew>();
     }
-    case 85: {
+    case 83: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsstoreBridgedEngine>();
     }
-    case 86: {
+    case 84: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsstoreCloseConnection>();
     }
-    case 87: {
+    case 85: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsstoreGetAll>();
     }
-    case 88: {
+    case 86: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsstoreNewRemoteCommandStore>();
     }
-    case 89: {
+    case 87: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsstoreRegisterWithSyncManager>();
     }
-    case 90: {
+    case 88: {
       return MakeUnique<ScaffoldingCallHandlerUniffiTabsFnMethodTabsstoreSetLocalTabs>();
     }
+    case 89: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiTracingSupportFnFuncRegisterEventSink>();
+    }
+    case 90: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiTracingSupportFnFuncRegisterMinLevelEventSink>();
+    }
     case 91: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineApply>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiTracingSupportFnFuncUnregisterEventSink>();
     }
     case 92: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineEnsureCurrentSyncId>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiTracingSupportFnFuncUnregisterMinLevelEventSink>();
     }
     case 93: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineLastSync>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiViaductFnFuncAllowAndroidEmulatorLoopback>();
     }
     case 94: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedenginePrepareForSync>();
-    }
-    case 95: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineReset>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiViaductFnFuncInitBackend>();
     }
     case 96: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineResetSyncId>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineApply>();
     }
     case 97: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSetLastSync>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineEnsureCurrentSyncId>();
     }
     case 98: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSetUploaded>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineLastSync>();
     }
     case 99: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineStoreIncoming>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedenginePrepareForSync>();
     }
     case 100: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSyncFinished>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineReset>();
     }
     case 101: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSyncId>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineResetSyncId>();
     }
     case 102: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSyncStarted>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSetLastSync>();
     }
     case 103: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineWipe>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSetUploaded>();
     }
     case 104: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnConstructorWebextstoragestoreNew>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineStoreIncoming>();
     }
     case 105: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreBridgedEngine>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSyncFinished>();
     }
     case 106: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreClear>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSyncId>();
     }
     case 107: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreClose>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineSyncStarted>();
     }
     case 108: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreGet>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragebridgedengineWipe>();
     }
     case 109: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreGetBytesInUse>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnConstructorWebextstoragestoreNew>();
     }
     case 110: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreGetSyncedChanges>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreBridgedEngine>();
     }
     case 111: {
-      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreRemove>();
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreClear>();
     }
     case 112: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreClose>();
+    }
+    case 113: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreGet>();
+    }
+    case 114: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreGetBytesInUse>();
+    }
+    case 115: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreGetKeys>();
+    }
+    case 116: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreGetSyncedChanges>();
+    }
+    case 117: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreRemove>();
+    }
+    case 118: {
       return MakeUnique<ScaffoldingCallHandlerUniffiWebextStorageFnMethodWebextstoragestoreSet>();
     }
 
 #ifdef MOZ_UNIFFI_FIXTURES
-    case 128: {
+    case 134: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncCloneInterface>();
     }
-    case 129: {
+    case 135: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncCreateAsyncTestTraitInterface>();
     }
-    case 130: {
+    case 136: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncCreateTestTraitInterface>();
     }
-    case 131: {
+    case 137: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncFuncWithDefault>();
     }
-    case 132: {
+    case 138: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncFuncWithError>();
     }
-    case 133: {
+    case 139: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncFuncWithFlatError>();
     }
-    case 134: {
+    case 140: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncFuncWithMultiWordArg>();
     }
-    case 135: {
+    case 141: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncGetCustomTypesDemo>();
     }
-    case 144: {
+    case 150: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestCallbackInterfaceGetValue>();
     }
-    case 145: {
+    case 151: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestCallbackInterfaceNoop>();
     }
-    case 146: {
+    case 152: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestCallbackInterfaceSetValue>();
     }
-    case 147: {
+    case 153: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestCallbackInterfaceThrowIfEqual>();
     }
-    case 148: {
+    case 154: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestTraitInterfaceGetValue>();
     }
-    case 149: {
+    case 155: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestTraitInterfaceNoop>();
     }
-    case 150: {
+    case 156: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestTraitInterfaceSetValue>();
     }
-    case 151: {
+    case 157: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestTraitInterfaceThrowIfEqual>();
     }
-    case 152: {
+    case 158: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripBool>();
     }
-    case 153: {
+    case 159: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripComplexCompound>();
     }
-    case 154: {
+    case 160: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripComplexEnum>();
     }
-    case 155: {
+    case 161: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripComplexRec>();
     }
-    case 156: {
+    case 162: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripCustomType>();
     }
-    case 157: {
+    case 163: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripEnumNoData>();
     }
-    case 158: {
+    case 164: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripEnumWithData>();
     }
-    case 159: {
+    case 165: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripF32>();
     }
-    case 160: {
+    case 166: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripF64>();
     }
-    case 161: {
+    case 167: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripHashMap>();
     }
-    case 162: {
+    case 168: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripI16>();
     }
-    case 163: {
+    case 169: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripI32>();
     }
-    case 164: {
+    case 170: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripI64>();
     }
-    case 165: {
+    case 171: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripI8>();
     }
-    case 166: {
+    case 172: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripOption>();
     }
-    case 167: {
+    case 173: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripSimpleRec>();
     }
-    case 168: {
+    case 174: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripString>();
     }
-    case 169: {
+    case 175: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripTimeIntervalMs>();
     }
-    case 170: {
+    case 176: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripTimeIntervalSecDbl>();
     }
-    case 171: {
+    case 177: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripTimeIntervalSecFlt>();
     }
-    case 172: {
+    case 178: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripU16>();
     }
-    case 173: {
+    case 179: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripU32>();
     }
-    case 174: {
+    case 180: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripU64>();
     }
-    case 175: {
+    case 181: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripU8>();
     }
-    case 176: {
+    case 182: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripUrl>();
     }
-    case 177: {
+    case 183: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncRoundtripVec>();
     }
-    case 178: {
+    case 184: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncSumWithManyTypes>();
     }
-    case 179: {
+    case 185: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncSwapTestInterfaces>();
     }
-    case 180: {
+    case 186: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncTestFunc>();
     }
-    case 181: {
+    case 187: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnConstructorTestinterfaceNew>();
     }
-    case 182: {
+    case 188: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodTestinterfaceGetValue>();
     }
-    case 183: {
+    case 189: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodTestinterfaceRefCount>();
     }
-    case 184: {
+    case 190: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnConstructorAsyncinterfaceNew>();
     }
-    case 190: {
+    case 196: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnConstructorComplexmethodsNew>();
     }
-    case 191: {
+    case 197: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodComplexmethodsMethodWithDefault>();
     }
-    case 192: {
+    case 198: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodComplexmethodsMethodWithMultiWordArg>();
     }
-    case 193: {
+    case 199: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodTesttraitinterfaceNoop>();
     }
-    case 194: {
+    case 200: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodTesttraitinterfaceGetValue>();
     }
-    case 195: {
+    case 201: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodTesttraitinterfaceSetValue>();
     }
-    case 196: {
+    case 202: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodTesttraitinterfaceThrowIfEqual>();
     }
-    case 197: {
+    case 203: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsCollisionFnFuncInvokeCollisionCallback>();
     }
-    case 198: {
+    case 204: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsExternalTypesFnFuncRoundtripExtCustomType>();
     }
-    case 199: {
+    case 205: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsExternalTypesFnFuncRoundtripExtEnum>();
     }
-    case 200: {
+    case 206: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsExternalTypesFnFuncRoundtripExtInterface>();
     }
-    case 201: {
+    case 207: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsExternalTypesFnFuncRoundtripExtRecord>();
     }
 #endif /* MOZ_UNIFFI_FIXTURES */
@@ -10970,90 +11449,93 @@ UniquePtr<UniffiSyncCallHandler> GetSyncCallHandler(uint64_t aId) {
 UniquePtr<UniffiAsyncCallHandler> GetAsyncCallHandler(uint64_t aId) {
   switch (aId) {
 
+    case 95: {
+      return MakeUnique<ScaffoldingCallHandlerUniffiViaductFnMethodBackendSendRequest>();
+    }
 
 #ifdef MOZ_UNIFFI_FIXTURES
-    case 113: {
+    case 119: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripF32>();
     }
-    case 114: {
+    case 120: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripF64>();
     }
-    case 115: {
+    case 121: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripI16>();
     }
-    case 116: {
+    case 122: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripI32>();
     }
-    case 117: {
+    case 123: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripI64>();
     }
-    case 118: {
+    case 124: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripI8>();
     }
-    case 119: {
+    case 125: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripMap>();
     }
-    case 120: {
+    case 126: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripObj>();
     }
-    case 121: {
+    case 127: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripString>();
     }
-    case 122: {
+    case 128: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripU16>();
     }
-    case 123: {
+    case 129: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripU32>();
     }
-    case 124: {
+    case 130: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripU64>();
     }
-    case 125: {
+    case 131: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripU8>();
     }
-    case 126: {
+    case 132: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncRoundtripVec>();
     }
-    case 127: {
+    case 133: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncAsyncThrowError>();
     }
-    case 136: {
+    case 142: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeAsyncTestTraitInterfaceGetValue>();
     }
-    case 137: {
+    case 143: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeAsyncTestTraitInterfaceNoop>();
     }
-    case 138: {
+    case 144: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeAsyncTestTraitInterfaceSetValue>();
     }
-    case 139: {
+    case 145: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeAsyncTestTraitInterfaceThrowIfEqual>();
     }
-    case 140: {
+    case 146: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestAsyncCallbackInterfaceGetValue>();
     }
-    case 141: {
+    case 147: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestAsyncCallbackInterfaceNoop>();
     }
-    case 142: {
+    case 148: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestAsyncCallbackInterfaceSetValue>();
     }
-    case 143: {
+    case 149: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnFuncInvokeTestAsyncCallbackInterfaceThrowIfEqual>();
     }
-    case 185: {
+    case 191: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodAsyncinterfaceName>();
     }
-    case 186: {
+    case 192: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodAsynctesttraitinterfaceNoop>();
     }
-    case 187: {
+    case 193: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodAsynctesttraitinterfaceGetValue>();
     }
-    case 188: {
+    case 194: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodAsynctesttraitinterfaceSetValue>();
     }
-    case 189: {
+    case 195: {
       return MakeUnique<ScaffoldingCallHandlerUniffiUniffiBindingsTestsFnMethodAsynctesttraitinterfaceThrowIfEqual>();
     }
 #endif /* MOZ_UNIFFI_FIXTURES */
@@ -11069,139 +11551,168 @@ UniquePtr<UniffiAsyncCallHandler> GetAsyncCallHandler(uint64_t aId) {
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 
+/**
+  * Handle callback interface return values for a single return type
+  */
+class CallbackLowerReturnVoid {
+public:
+  /**
+    * Lower return values
+    *
+    * This inputs a UniFFIScaffoldingCallResult from JS and converts it to
+    * something that can be passed to Rust.
+    *
+    * - On success, it returns the FFI return value
+    * - On error, it updates the `RustCallStatus` struct and returns a default FFI value.
+    */
+  static void
+  Lower(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+              RustCallStatus* aOutCallStatus,
+              ErrorResult& aRv) {
+    aOutCallStatus->code = RUST_CALL_INTERNAL_ERROR;
+    switch (aCallResult.mCode) {
+      case UniFFIScaffoldingCallCode::Success: {
+        aOutCallStatus->code = RUST_CALL_SUCCESS;
+        break;
+      }
+
+      case UniFFIScaffoldingCallCode::Error: {
+        if (!aCallResult.mData.WasPassed()) {
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnVoid] No data passed"));
+          break;
+        }
+        FfiValueRustBuffer errorBuf;
+        errorBuf.Lower(aCallResult.mData.Value(), aRv);
+        if (aRv.Failed()) {
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnVoid] Failed to lower error buffer"));
+          break;
+        }
+
+        aOutCallStatus->error_buf = errorBuf.IntoRust();
+        aOutCallStatus->code = RUST_CALL_ERROR;
+        break;
+      }
+
+      default: {
+        break;
+      }
+    }
+
+    }
+};
+
+/**
+  * Handle callback interface return values for a single return type
+  */
+class CallbackLowerReturnRustBuffer {
+public:
+  /**
+    * Lower return values
+    *
+    * This inputs a UniFFIScaffoldingCallResult from JS and converts it to
+    * something that can be passed to Rust.
+    *
+    * - On success, it returns the FFI return value
+    * - On error, it updates the `RustCallStatus` struct and returns a default FFI value.
+    */
+  static RustBuffer
+  Lower(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+              RustCallStatus* aOutCallStatus,
+              ErrorResult& aRv) {
+    aOutCallStatus->code = RUST_CALL_INTERNAL_ERROR;
+    FfiValueRustBuffer returnValue;
+    switch (aCallResult.mCode) {
+      case UniFFIScaffoldingCallCode::Success: {
+        if (!aCallResult.mData.WasPassed()) {
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnRustBuffer] No data passed"));
+          break;
+        }
+        returnValue.Lower(aCallResult.mData.Value(), aRv);
+        if (aRv.Failed()) {
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnRustBuffer] Failed to lower return value"));
+          break;
+        }
+        aOutCallStatus->code = RUST_CALL_SUCCESS;
+        break;
+      }
+
+      case UniFFIScaffoldingCallCode::Error: {
+        if (!aCallResult.mData.WasPassed()) {
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnRustBuffer] No data passed"));
+          break;
+        }
+        FfiValueRustBuffer errorBuf;
+        errorBuf.Lower(aCallResult.mData.Value(), aRv);
+        if (aRv.Failed()) {
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnRustBuffer] Failed to lower error buffer"));
+          break;
+        }
+
+        aOutCallStatus->error_buf = errorBuf.IntoRust();
+        aOutCallStatus->code = RUST_CALL_ERROR;
+        break;
+      }
+
+      default: {
+        break;
+      }
+    }
+
+    return returnValue.IntoRust();
+    }
+};
+
 #ifdef MOZ_UNIFFI_FIXTURES
 
-class AsyncCallbackMethodHandlerBaseVoid : public AsyncCallbackMethodHandlerBase {
+/**
+  * Handle callback interface return values for a single return type
+  */
+class CallbackLowerReturnUInt32 {
 public:
-  AsyncCallbackMethodHandlerBaseVoid(
-    const char* aUniffiMethodName,
-    uint64_t aUniffiHandle,
-    ForeignFutureCompletevoid aUniffiCompleteCallback,
-    uint64_t aUniffiCallbackData
-  )
-    : AsyncCallbackMethodHandlerBase(aUniffiMethodName, aUniffiHandle),
-      mUniffiCompleteCallback(aUniffiCompleteCallback),
-      mUniffiCallbackData(aUniffiCallbackData) {}
-
-private:
-  ForeignFutureCompletevoid mUniffiCompleteCallback;
-  uint64_t mUniffiCallbackData;
-
-public:
-  // Invoke the callback method using a JS handler
-  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
-                    ErrorResult& aRv) override {
-    if (!mUniffiCompleteCallback) {
-      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
-      return;
-    }
-
-    ForeignFutureResultVoid result{};
-    result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+  /**
+    * Lower return values
+    *
+    * This inputs a UniFFIScaffoldingCallResult from JS and converts it to
+    * something that can be passed to Rust.
+    *
+    * - On success, it returns the FFI return value
+    * - On error, it updates the `RustCallStatus` struct and returns a default FFI value.
+    */
+  static uint32_t
+  Lower(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+              RustCallStatus* aOutCallStatus,
+              ErrorResult& aRv) {
+    aOutCallStatus->code = RUST_CALL_INTERNAL_ERROR;
+    FfiValueInt<uint32_t> returnValue;
     switch (aCallResult.mCode) {
       case UniFFIScaffoldingCallCode::Success: {
-        
-        result.call_status.code = RUST_CALL_SUCCESS;
-        break;
-      }
-
-      case UniFFIScaffoldingCallCode::Error: {
         if (!aCallResult.mData.WasPassed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseVoid] No data passed"));
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnUInt32] No data passed"));
           break;
         }
-        FfiValueRustBuffer errorBuf;
-        errorBuf.Lower(aCallResult.mData.Value(), aRv);
-        if (aRv.Failed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseVoid] Failed to lower error buffer"));
-          break;
-        }
-
-        result.call_status.error_buf = errorBuf.IntoRust();
-        result.call_status.code = RUST_CALL_ERROR;
-        break;
-      }
-
-      default: {
-        break;
-      }
-    }
-    mUniffiCompleteCallback(mUniffiCallbackData, result);
-    mUniffiCompleteCallback = nullptr;
-  }
-
-protected:
-  ~AsyncCallbackMethodHandlerBaseVoid() {
-    if (mUniffiCompleteCallback) {
-      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseVoid] promise never completed"));
-      ForeignFutureResultVoid result{};
-      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
-      mUniffiCompleteCallback(mUniffiCallbackData, result);
-    }
-  }
-};
-
-class AsyncCallbackMethodHandlerBaseUInt32 : public AsyncCallbackMethodHandlerBase {
-public:
-  AsyncCallbackMethodHandlerBaseUInt32(
-    const char* aUniffiMethodName,
-    uint64_t aUniffiHandle,
-    ForeignFutureCompleteu32 aUniffiCompleteCallback,
-    uint64_t aUniffiCallbackData
-  )
-    : AsyncCallbackMethodHandlerBase(aUniffiMethodName, aUniffiHandle),
-      mUniffiCompleteCallback(aUniffiCompleteCallback),
-      mUniffiCallbackData(aUniffiCallbackData) {}
-
-private:
-  ForeignFutureCompleteu32 mUniffiCompleteCallback;
-  uint64_t mUniffiCallbackData;
-
-public:
-  // Invoke the callback method using a JS handler
-  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
-                    ErrorResult& aRv) override {
-    if (!mUniffiCompleteCallback) {
-      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
-      return;
-    }
-
-    ForeignFutureResultU32 result{};
-    result.call_status.code = RUST_CALL_INTERNAL_ERROR;
-    switch (aCallResult.mCode) {
-      case UniFFIScaffoldingCallCode::Success: {
-        
-        if (!aCallResult.mData.WasPassed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseUInt32] No data passed"));
-          break;
-        }
-        FfiValueInt<uint32_t> returnValue;
         returnValue.Lower(aCallResult.mData.Value(), aRv);
         if (aRv.Failed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseUInt32] Failed to lower return value"));
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnUInt32] Failed to lower return value"));
           break;
         }
-
-        result.return_value = returnValue.IntoRust();
-        
-        result.call_status.code = RUST_CALL_SUCCESS;
+        aOutCallStatus->code = RUST_CALL_SUCCESS;
         break;
       }
 
       case UniFFIScaffoldingCallCode::Error: {
         if (!aCallResult.mData.WasPassed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseUInt32] No data passed"));
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnUInt32] No data passed"));
           break;
         }
         FfiValueRustBuffer errorBuf;
         errorBuf.Lower(aCallResult.mData.Value(), aRv);
         if (aRv.Failed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseUInt32] Failed to lower error buffer"));
+          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnUInt32] Failed to lower error buffer"));
           break;
         }
 
-        result.call_status.error_buf = errorBuf.IntoRust();
-        result.call_status.code = RUST_CALL_ERROR;
+        aOutCallStatus->error_buf = errorBuf.IntoRust();
+        aOutCallStatus->code = RUST_CALL_ERROR;
         break;
       }
 
@@ -11209,109 +11720,25 @@ public:
         break;
       }
     }
-    mUniffiCompleteCallback(mUniffiCallbackData, result);
-    mUniffiCompleteCallback = nullptr;
-  }
 
-protected:
-  ~AsyncCallbackMethodHandlerBaseUInt32() {
-    if (mUniffiCompleteCallback) {
-      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseUInt32] promise never completed"));
-      ForeignFutureResultU32 result{};
-      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
-      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    return returnValue.IntoRust();
     }
-  }
-};
-
-class AsyncCallbackMethodHandlerBaseRustBuffer : public AsyncCallbackMethodHandlerBase {
-public:
-  AsyncCallbackMethodHandlerBaseRustBuffer(
-    const char* aUniffiMethodName,
-    uint64_t aUniffiHandle,
-    ForeignFutureCompleterust_buffer aUniffiCompleteCallback,
-    uint64_t aUniffiCallbackData
-  )
-    : AsyncCallbackMethodHandlerBase(aUniffiMethodName, aUniffiHandle),
-      mUniffiCompleteCallback(aUniffiCompleteCallback),
-      mUniffiCallbackData(aUniffiCallbackData) {}
-
-private:
-  ForeignFutureCompleterust_buffer mUniffiCompleteCallback;
-  uint64_t mUniffiCallbackData;
-
-public:
-  // Invoke the callback method using a JS handler
-  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
-                    ErrorResult& aRv) override {
-    if (!mUniffiCompleteCallback) {
-      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
-      return;
-    }
-
-    ForeignFutureResultRustBuffer result{};
-    result.call_status.code = RUST_CALL_INTERNAL_ERROR;
-    switch (aCallResult.mCode) {
-      case UniFFIScaffoldingCallCode::Success: {
-        
-        if (!aCallResult.mData.WasPassed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseRustBuffer] No data passed"));
-          break;
-        }
-        FfiValueRustBuffer returnValue;
-        returnValue.Lower(aCallResult.mData.Value(), aRv);
-        if (aRv.Failed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseRustBuffer] Failed to lower return value"));
-          break;
-        }
-
-        result.return_value = returnValue.IntoRust();
-        
-        result.call_status.code = RUST_CALL_SUCCESS;
-        break;
-      }
-
-      case UniFFIScaffoldingCallCode::Error: {
-        if (!aCallResult.mData.WasPassed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseRustBuffer] No data passed"));
-          break;
-        }
-        FfiValueRustBuffer errorBuf;
-        errorBuf.Lower(aCallResult.mData.Value(), aRv);
-        if (aRv.Failed()) {
-          MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseRustBuffer] Failed to lower error buffer"));
-          break;
-        }
-
-        result.call_status.error_buf = errorBuf.IntoRust();
-        result.call_status.code = RUST_CALL_ERROR;
-        break;
-      }
-
-      default: {
-        break;
-      }
-    }
-    mUniffiCompleteCallback(mUniffiCallbackData, result);
-    mUniffiCompleteCallback = nullptr;
-  }
-
-protected:
-  ~AsyncCallbackMethodHandlerBaseRustBuffer() {
-    if (mUniffiCompleteCallback) {
-      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[AsyncCallbackMethodHandlerBaseRustBuffer] promise never completed"));
-      ForeignFutureResultRustBuffer result{};
-      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
-      mUniffiCompleteCallback(mUniffiCallbackData, result);
-    }
-  }
 };
 #endif /* MOZ_UNIFFI_FIXTURES */
 
 // Callback interface method handlers, vtables, etc.
 
 static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerContextIdContextIdCallback;
-
+/**
+ * Callback method handler subclass for callback_interface_context_id_context_id_callback_persist
+ *
+ * This is like the handler for an async function except:
+ *
+ * - It doesn't input the complete callback function/data
+ * - It doesn't override HandleReturn and returns `nullptr` from MakeCall.
+ *   This means ScheduleAsyncCall will schedule `MakeCall` and not do anything
+ *   with the result, which is what we want.
+ */
 class CallbackInterfaceMethodContextIdContextIdCallbackPersist final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
@@ -11322,50 +11749,39 @@ public:
   CallbackInterfaceMethodContextIdContextIdCallbackPersist(
       uint64_t aUniffiHandle,
       RustBuffer aContextId,
-      int64_t aCreationDate)
-    : AsyncCallbackMethodHandlerBase(
-        "ContextIdCallback.callback_interface_context_id_context_id_callback_persist",
-        aUniffiHandle
-    ), mContextId(FfiValueRustBuffer::FromRust(aContextId)), mCreationDate(FfiValueInt<int64_t>::FromRust(aCreationDate))
-  {
-  }
+      int64_t aCreationDate
+  ) : AsyncCallbackMethodHandlerBase ("ContextIdCallback.callback_interface_context_id_context_id_callback_persist", aUniffiHandle),
+      mContextId(FfiValueRustBuffer::FromRust(aContextId)),
+      mCreationDate(FfiValueInt<int64_t>::FromRust(aCreationDate)){ }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(2, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
-
-    // Convert each argument
-    mContextId.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
+    mContextId.Lift(aCx, &uniffiArgs[0], aError);
     if (aError.Failed()) {
       return nullptr;
     }
-    mCreationDate.Lift(
-      aCx,
-      &uniffiArgs[1],
-      aError);
+    mCreationDate.Lift(aCx, &uniffiArgs[1], aError);
     if (aError.Failed()) {
       return nullptr;
     }
 
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 0, uniffiArgs, aError);
-    
     return nullptr;
   }
 };
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+/**
+ * callback_interface_context_id_context_id_callback_persist -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_context_id_context_id_callback_persist(
   uint64_t aUniffiHandle,
   RustBuffer aContextId,
@@ -11376,8 +11792,16 @@ extern "C" void callback_interface_context_id_context_id_callback_persist(
   UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodContextIdContextIdCallbackPersist>(aUniffiHandle, aContextId, aCreationDate);
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerContextIdContextIdCallback);
 }
-
-
+/**
+ * Callback method handler subclass for callback_interface_context_id_context_id_callback_rotated
+ *
+ * This is like the handler for an async function except:
+ *
+ * - It doesn't input the complete callback function/data
+ * - It doesn't override HandleReturn and returns `nullptr` from MakeCall.
+ *   This means ScheduleAsyncCall will schedule `MakeCall` and not do anything
+ *   with the result, which is what we want.
+ */
 class CallbackInterfaceMethodContextIdContextIdCallbackRotated final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
@@ -11386,43 +11810,34 @@ private:
 public:
   CallbackInterfaceMethodContextIdContextIdCallbackRotated(
       uint64_t aUniffiHandle,
-      RustBuffer aOldContextId)
-    : AsyncCallbackMethodHandlerBase(
-        "ContextIdCallback.callback_interface_context_id_context_id_callback_rotated",
-        aUniffiHandle
-    ), mOldContextId(FfiValueRustBuffer::FromRust(aOldContextId))
-  {
-  }
+      RustBuffer aOldContextId
+  ) : AsyncCallbackMethodHandlerBase ("ContextIdCallback.callback_interface_context_id_context_id_callback_rotated", aUniffiHandle),
+      mOldContextId(FfiValueRustBuffer::FromRust(aOldContextId)){ }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
-
-    // Convert each argument
-    mOldContextId.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
+    mOldContextId.Lift(aCx, &uniffiArgs[0], aError);
     if (aError.Failed()) {
       return nullptr;
     }
 
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 1, uniffiArgs, aError);
-    
     return nullptr;
   }
 };
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+/**
+ * callback_interface_context_id_context_id_callback_rotated -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_context_id_context_id_callback_rotated(
   uint64_t aUniffiHandle,
   RustBuffer aOldContextId,
@@ -11432,7 +11847,6 @@ extern "C" void callback_interface_context_id_context_id_callback_rotated(
   UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodContextIdContextIdCallbackRotated>(aUniffiHandle, aOldContextId);
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerContextIdContextIdCallback);
 }
-
 
 extern "C" void callback_free_context_id_context_id_callback(uint64_t uniffiHandle) {
    // Callback object handles are keys in a map stored in the JS handler. To
@@ -11447,213 +11861,252 @@ static VTableCallbackInterfaceContextIdContextIdCallback kUniffiVtableContextIdC
   callback_interface_context_id_context_id_callback_rotated,
   callback_free_context_id_context_id_callback
 };
-static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerErrorsupportApplicationErrorReporter;
-
-class CallbackInterfaceMethodErrorsupportApplicationErrorReporterReportError final : public AsyncCallbackMethodHandlerBase {
+static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerTracingEventSink;
+/**
+ * Callback method handler subclass for callback_interface_tracing_event_sink_on_event
+ *
+ * This is like the handler for an async function except:
+ *
+ * - It doesn't input the complete callback function/data
+ * - It doesn't override HandleReturn and returns `nullptr` from MakeCall.
+ *   This means ScheduleAsyncCall will schedule `MakeCall` and not do anything
+ *   with the result, which is what we want.
+ */
+class CallbackInterfaceMethodTracingEventSinkOnEvent final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
-  FfiValueRustBuffer mTypeName{};
-  FfiValueRustBuffer mMessage{};
+  FfiValueRustBuffer mEvent{};
 
 public:
-  CallbackInterfaceMethodErrorsupportApplicationErrorReporterReportError(
+  CallbackInterfaceMethodTracingEventSinkOnEvent(
       uint64_t aUniffiHandle,
-      RustBuffer aTypeName,
-      RustBuffer aMessage)
-    : AsyncCallbackMethodHandlerBase(
-        "ApplicationErrorReporter.callback_interface_errorsupport_application_error_reporter_report_error",
-        aUniffiHandle
-    ), mTypeName(FfiValueRustBuffer::FromRust(aTypeName)), mMessage(FfiValueRustBuffer::FromRust(aMessage))
-  {
-  }
+      RustBuffer aEvent
+  ) : AsyncCallbackMethodHandlerBase ("EventSink.callback_interface_tracing_event_sink_on_event", aUniffiHandle),
+      mEvent(FfiValueRustBuffer::FromRust(aEvent)){ }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(2, mozilla::fallible)) {
+    if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
-
-    // Convert each argument
-    mTypeName.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
-    if (aError.Failed()) {
-      return nullptr;
-    }
-    mMessage.Lift(
-      aCx,
-      &uniffiArgs[1],
-      aError);
+    mEvent.Lift(aCx, &uniffiArgs[0], aError);
     if (aError.Failed()) {
       return nullptr;
     }
 
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 0, uniffiArgs, aError);
-    
     return nullptr;
   }
 };
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
-extern "C" void callback_interface_errorsupport_application_error_reporter_report_error(
+/**
+ * callback_interface_tracing_event_sink_on_event -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
+extern "C" void callback_interface_tracing_event_sink_on_event(
   uint64_t aUniffiHandle,
-  RustBuffer aTypeName,
-  RustBuffer aMessage,
+  RustBuffer aEvent,
   void* aUniffiOutReturn,
   RustCallStatus* uniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodErrorsupportApplicationErrorReporterReportError>(aUniffiHandle, aTypeName, aMessage);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerErrorsupportApplicationErrorReporter);
+  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodTracingEventSinkOnEvent>(aUniffiHandle, aEvent);
+  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerTracingEventSink);
 }
 
+extern "C" void callback_free_tracing_event_sink(uint64_t uniffiHandle) {
+   // Callback object handles are keys in a map stored in the JS handler. To
+   // handle the free call, schedule a fire-and-forget JS call to remove the key.
+   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(
+      MakeUnique<CallbackFreeHandler>("EventSink.uniffi_free", uniffiHandle),
+      &gUniffiCallbackHandlerTracingEventSink);
+}
 
-class CallbackInterfaceMethodErrorsupportApplicationErrorReporterReportBreadcrumb final : public AsyncCallbackMethodHandlerBase {
+static VTableCallbackInterfaceTracingEventSink kUniffiVtableTracingEventSink {
+  callback_interface_tracing_event_sink_on_event,
+  callback_free_tracing_event_sink
+};
+static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerViaductBackend;
+/**
+ * Callback method handler subclass for callback_interface_viaduct_backend_send_request
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodViaductBackendSendRequest final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
-  FfiValueRustBuffer mMessage{};
-  FfiValueRustBuffer mModule{};
-  FfiValueInt<uint32_t> mLine{};
-  FfiValueInt<uint32_t> mColumn{};
+  FfiValueRustBuffer mRequest{};
+  FfiValueRustBuffer mSettings{};
+  ForeignFutureCompleterust_buffer mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
-  CallbackInterfaceMethodErrorsupportApplicationErrorReporterReportBreadcrumb(
+  CallbackInterfaceMethodViaductBackendSendRequest(
       uint64_t aUniffiHandle,
-      RustBuffer aMessage,
-      RustBuffer aModule,
-      uint32_t aLine,
-      uint32_t aColumn)
-    : AsyncCallbackMethodHandlerBase(
-        "ApplicationErrorReporter.callback_interface_errorsupport_application_error_reporter_report_breadcrumb",
-        aUniffiHandle
-    ), mMessage(FfiValueRustBuffer::FromRust(aMessage)), mModule(FfiValueRustBuffer::FromRust(aModule)), mLine(FfiValueInt<uint32_t>::FromRust(aLine)), mColumn(FfiValueInt<uint32_t>::FromRust(aColumn))
-  {
-  }
+      RustBuffer aRequest,
+      RustBuffer aSettings,
+      ForeignFutureCompleterust_buffer aUniffiCompleteCallback,
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("Backend.callback_interface_viaduct_backend_send_request", aUniffiHandle),
+      mRequest(FfiValueRustBuffer::FromRust(aRequest)),
+      mSettings(FfiValueRustBuffer::FromRust(aSettings)),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(4, mozilla::fallible)) {
+    if (!uniffiArgs.AppendElements(2, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
-
-    // Convert each argument
-    mMessage.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
+    mRequest.Lift(aCx, &uniffiArgs[0], aError);
     if (aError.Failed()) {
       return nullptr;
     }
-    mModule.Lift(
-      aCx,
-      &uniffiArgs[1],
-      aError);
-    if (aError.Failed()) {
-      return nullptr;
-    }
-    mLine.Lift(
-      aCx,
-      &uniffiArgs[2],
-      aError);
-    if (aError.Failed()) {
-      return nullptr;
-    }
-    mColumn.Lift(
-      aCx,
-      &uniffiArgs[3],
-      aError);
+    mSettings.Lift(aCx, &uniffiArgs[1], aError);
     if (aError.Failed()) {
       return nullptr;
     }
 
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 1, uniffiArgs, aError);
-    
-    return nullptr;
+    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 0, uniffiArgs, aError);
+    return result.forget();
+  }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultRustBuffer result{};
+    result.return_value  = CallbackLowerReturnRustBuffer::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodViaductBackendSendRequest() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnRustBuffer] promise never completed"));
+      ForeignFutureResultRustBuffer result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
   }
 };
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
-extern "C" void callback_interface_errorsupport_application_error_reporter_report_breadcrumb(
+/**
+ * callback_interface_viaduct_backend_send_request -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
+extern "C" void callback_interface_viaduct_backend_send_request(
   uint64_t aUniffiHandle,
-  RustBuffer aMessage,
-  RustBuffer aModule,
-  uint32_t aLine,
-  uint32_t aColumn,
-  void* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustBuffer aRequest,
+  RustBuffer aSettings,
+  ForeignFutureCompleterust_buffer aUniffiForeignFutureCallback,
+  uint64_t aUniffiForeignFutureCallbackData,
+  // This can be used to detected when the future is dropped from the Rust side and cancel the
+  // async task on the foreign side.  However, there's no way to do that in JS, so we just ignore
+  // it.
+  ForeignFuture *aUniffiOutForeignFuture
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodErrorsupportApplicationErrorReporterReportBreadcrumb>(aUniffiHandle, aMessage, aModule, aLine, aColumn);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerErrorsupportApplicationErrorReporter);
+  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodViaductBackendSendRequest>(
+        aUniffiHandle,
+        aRequest,
+        aSettings,
+        aUniffiForeignFutureCallback,
+        aUniffiForeignFutureCallbackData);
+  // Now that everything is set up, schedule the call in the JS main thread.
+  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerViaductBackend);
 }
 
-
-extern "C" void callback_free_errorsupport_application_error_reporter(uint64_t uniffiHandle) {
+extern "C" void callback_free_viaduct_backend(uint64_t uniffiHandle) {
    // Callback object handles are keys in a map stored in the JS handler. To
    // handle the free call, schedule a fire-and-forget JS call to remove the key.
    AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(
-      MakeUnique<CallbackFreeHandler>("ApplicationErrorReporter.uniffi_free", uniffiHandle),
-      &gUniffiCallbackHandlerErrorsupportApplicationErrorReporter);
+      MakeUnique<CallbackFreeHandler>("Backend.uniffi_free", uniffiHandle),
+      &gUniffiCallbackHandlerViaductBackend);
 }
 
-static VTableCallbackInterfaceErrorsupportApplicationErrorReporter kUniffiVtableErrorsupportApplicationErrorReporter {
-  callback_interface_errorsupport_application_error_reporter_report_error,
-  callback_interface_errorsupport_application_error_reporter_report_breadcrumb,
-  callback_free_errorsupport_application_error_reporter
+static VTableCallbackInterfaceViaductBackend kUniffiVtableViaductBackend {
+  callback_interface_viaduct_backend_send_request,
+  callback_free_viaduct_backend
 };
 
 #ifdef MOZ_UNIFFI_FIXTURES
 static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerUniffiBindingsTestsTestAsyncCallbackInterface;
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceNoop final : public AsyncCallbackMethodHandlerBaseVoid {
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_test_async_callback_interface_noop
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceNoop final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
+  ForeignFutureCompletevoid mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceNoop(
       uint64_t aUniffiHandle,
       ForeignFutureCompletevoid aUniffiCompleteCallback,
-      uint64_t aUniffiCallbackData)
-    : AsyncCallbackMethodHandlerBaseVoid(
-        "TestAsyncCallbackInterface.callback_interface_uniffi_bindings_tests_test_async_callback_interface_noop",
-        aUniffiHandle,
-        aUniffiCompleteCallback,
-        aUniffiCallbackData
-    )
-  {
-  }
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("TestAsyncCallbackInterface.callback_interface_uniffi_bindings_tests_test_async_callback_interface_noop", aUniffiHandle),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
 
-    // Convert each argument
-
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 0, uniffiArgs, aError);
     return result.forget();
   }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultVoid result{};
+    CallbackLowerReturnVoid::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceNoop() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnVoid] promise never completed"));
+      ForeignFutureResultVoid result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
+  }
 };
 
+/**
+ * callback_interface_uniffi_bindings_tests_test_async_callback_interface_noop -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_async_callback_interface_noop(
   uint64_t aUniffiHandle,
   ForeignFutureCompletevoid aUniffiForeignFutureCallback,
@@ -11670,43 +12123,69 @@ extern "C" void callback_interface_uniffi_bindings_tests_test_async_callback_int
   // Now that everything is set up, schedule the call in the JS main thread.
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestAsyncCallbackInterface);
 }
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceGetValue final : public AsyncCallbackMethodHandlerBaseUInt32 {
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_test_async_callback_interface_get_value
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceGetValue final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
+  ForeignFutureCompleteu32 mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceGetValue(
       uint64_t aUniffiHandle,
       ForeignFutureCompleteu32 aUniffiCompleteCallback,
-      uint64_t aUniffiCallbackData)
-    : AsyncCallbackMethodHandlerBaseUInt32(
-        "TestAsyncCallbackInterface.callback_interface_uniffi_bindings_tests_test_async_callback_interface_get_value",
-        aUniffiHandle,
-        aUniffiCompleteCallback,
-        aUniffiCallbackData
-    )
-  {
-  }
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("TestAsyncCallbackInterface.callback_interface_uniffi_bindings_tests_test_async_callback_interface_get_value", aUniffiHandle),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
 
-    // Convert each argument
-
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 1, uniffiArgs, aError);
     return result.forget();
   }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultU32 result{};
+    result.return_value  = CallbackLowerReturnUInt32::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceGetValue() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnUInt32] promise never completed"));
+      ForeignFutureResultU32 result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
+  }
 };
 
+/**
+ * callback_interface_uniffi_bindings_tests_test_async_callback_interface_get_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_async_callback_interface_get_value(
   uint64_t aUniffiHandle,
   ForeignFutureCompleteu32 aUniffiForeignFutureCallback,
@@ -11723,43 +12202,40 @@ extern "C" void callback_interface_uniffi_bindings_tests_test_async_callback_int
   // Now that everything is set up, schedule the call in the JS main thread.
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestAsyncCallbackInterface);
 }
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceSetValue final : public AsyncCallbackMethodHandlerBaseVoid {
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_test_async_callback_interface_set_value
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceSetValue final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
   FfiValueInt<uint32_t> mValue{};
+  ForeignFutureCompletevoid mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceSetValue(
       uint64_t aUniffiHandle,
       uint32_t aValue,
       ForeignFutureCompletevoid aUniffiCompleteCallback,
-      uint64_t aUniffiCallbackData)
-    : AsyncCallbackMethodHandlerBaseVoid(
-        "TestAsyncCallbackInterface.callback_interface_uniffi_bindings_tests_test_async_callback_interface_set_value",
-        aUniffiHandle,
-        aUniffiCompleteCallback,
-        aUniffiCallbackData
-    ), mValue(FfiValueInt<uint32_t>::FromRust(aValue))
-  {
-  }
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("TestAsyncCallbackInterface.callback_interface_uniffi_bindings_tests_test_async_callback_interface_set_value", aUniffiHandle),
+      mValue(FfiValueInt<uint32_t>::FromRust(aValue)),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
-
-    // Convert each argument
-    mValue.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
+    mValue.Lift(aCx, &uniffiArgs[0], aError);
     if (aError.Failed()) {
       return nullptr;
     }
@@ -11767,8 +12243,35 @@ public:
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 2, uniffiArgs, aError);
     return result.forget();
   }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultVoid result{};
+    CallbackLowerReturnVoid::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceSetValue() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnVoid] promise never completed"));
+      ForeignFutureResultVoid result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
+  }
 };
 
+/**
+ * callback_interface_uniffi_bindings_tests_test_async_callback_interface_set_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_async_callback_interface_set_value(
   uint64_t aUniffiHandle,
   uint32_t aValue,
@@ -11787,43 +12290,40 @@ extern "C" void callback_interface_uniffi_bindings_tests_test_async_callback_int
   // Now that everything is set up, schedule the call in the JS main thread.
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestAsyncCallbackInterface);
 }
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceThrowIfEqual final : public AsyncCallbackMethodHandlerBaseRustBuffer {
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_test_async_callback_interface_throw_if_equal
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceThrowIfEqual final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
   FfiValueRustBuffer mNumbers{};
+  ForeignFutureCompleterust_buffer mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceThrowIfEqual(
       uint64_t aUniffiHandle,
       RustBuffer aNumbers,
       ForeignFutureCompleterust_buffer aUniffiCompleteCallback,
-      uint64_t aUniffiCallbackData)
-    : AsyncCallbackMethodHandlerBaseRustBuffer(
-        "TestAsyncCallbackInterface.callback_interface_uniffi_bindings_tests_test_async_callback_interface_throw_if_equal",
-        aUniffiHandle,
-        aUniffiCompleteCallback,
-        aUniffiCallbackData
-    ), mNumbers(FfiValueRustBuffer::FromRust(aNumbers))
-  {
-  }
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("TestAsyncCallbackInterface.callback_interface_uniffi_bindings_tests_test_async_callback_interface_throw_if_equal", aUniffiHandle),
+      mNumbers(FfiValueRustBuffer::FromRust(aNumbers)),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
-
-    // Convert each argument
-    mNumbers.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
+    mNumbers.Lift(aCx, &uniffiArgs[0], aError);
     if (aError.Failed()) {
       return nullptr;
     }
@@ -11831,8 +12331,35 @@ public:
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 3, uniffiArgs, aError);
     return result.forget();
   }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultRustBuffer result{};
+    result.return_value  = CallbackLowerReturnRustBuffer::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodUniffiBindingsTestsTestAsyncCallbackInterfaceThrowIfEqual() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnRustBuffer] promise never completed"));
+      ForeignFutureResultRustBuffer result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
+  }
 };
 
+/**
+ * callback_interface_uniffi_bindings_tests_test_async_callback_interface_throw_if_equal -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_async_callback_interface_throw_if_equal(
   uint64_t aUniffiHandle,
   RustBuffer aNumbers,
@@ -11868,210 +12395,184 @@ static VTableCallbackInterfaceUniffiBindingsTestsTestAsyncCallbackInterface kUni
   callback_free_uniffi_bindings_tests_test_async_callback_interface
 };
 static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface;
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceNoop final : public AsyncCallbackMethodHandlerBase {
-private:
-  // Rust arguments
-
-public:
-  CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceNoop(
-      uint64_t aUniffiHandle)
-    : AsyncCallbackMethodHandlerBase(
-        "TestCallbackInterface.callback_interface_uniffi_bindings_tests_test_callback_interface_noop",
-        aUniffiHandle
-    )
-  {
-  }
-
-  MOZ_CAN_RUN_SCRIPT
-  already_AddRefed<dom::Promise>
-  MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
-    nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
-      aError.Throw(NS_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    // Convert each argument
-
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 0, uniffiArgs, aError);
-    
-    return nullptr;
-  }
-};
-
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+/**
+ * callback_interface_uniffi_bindings_tests_test_callback_interface_noop -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_callback_interface_noop(
   uint64_t aUniffiHandle,
   void* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustCallStatus* aUniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceNoop>(aUniffiHandle);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface);
-}
-
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceGetValue final : public AsyncCallbackMethodHandlerBase {
-private:
-  // Rust arguments
-
-public:
-  CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceGetValue(
-      uint64_t aUniffiHandle)
-    : AsyncCallbackMethodHandlerBase(
-        "TestCallbackInterface.callback_interface_uniffi_bindings_tests_test_callback_interface_get_value",
-        aUniffiHandle
-    )
-  {
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  // Take our own reference to the callback handler to ensure that it
+  // stays alive for the duration of this call
+  RefPtr<dom::UniFFICallbackHandler> jsHandler = gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface;
+  // Create a JS context for the call
+  JSObject* global = jsHandler->CallbackGlobalOrNull();
+  if (!global) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_callback_interface_noop] JS handler has null global"));
+    return;
   }
+  dom::AutoEntryScript aes(global, "callback_interface_uniffi_bindings_tests_test_callback_interface_noop");
 
-  MOZ_CAN_RUN_SCRIPT
-  already_AddRefed<dom::Promise>
-  MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
-    nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
-      aError.Throw(NS_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    // Convert each argument
-
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 1, uniffiArgs, aError);
-    
-    return nullptr;
+  // Convert arguments
+  nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
+  if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_callback_interface_noop] Failed to allocate arguments"));
+    return;
   }
-};
+  IgnoredErrorResult error;
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+  RootedDictionary<UniFFIScaffoldingCallResult> callResult(aes.cx());
+  jsHandler->CallSync(aUniffiHandle, 0, uniffiArgs, callResult, error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_callback_interface_noop] Error invoking JS handler"));
+    return;
+  }
+  CallbackLowerReturnVoid::Lower(callResult, aUniffiOutStatus, error);
+  }
+/**
+ * callback_interface_uniffi_bindings_tests_test_callback_interface_get_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_callback_interface_get_value(
   uint64_t aUniffiHandle,
   uint32_t* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustCallStatus* aUniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceGetValue>(aUniffiHandle);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface);
-}
-
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceSetValue final : public AsyncCallbackMethodHandlerBase {
-private:
-  // Rust arguments
-  FfiValueInt<uint32_t> mValue{};
-
-public:
-  CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceSetValue(
-      uint64_t aUniffiHandle,
-      uint32_t aValue)
-    : AsyncCallbackMethodHandlerBase(
-        "TestCallbackInterface.callback_interface_uniffi_bindings_tests_test_callback_interface_set_value",
-        aUniffiHandle
-    ), mValue(FfiValueInt<uint32_t>::FromRust(aValue))
-  {
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  // Take our own reference to the callback handler to ensure that it
+  // stays alive for the duration of this call
+  RefPtr<dom::UniFFICallbackHandler> jsHandler = gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface;
+  // Create a JS context for the call
+  JSObject* global = jsHandler->CallbackGlobalOrNull();
+  if (!global) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_callback_interface_get_value] JS handler has null global"));
+    return;
   }
+  dom::AutoEntryScript aes(global, "callback_interface_uniffi_bindings_tests_test_callback_interface_get_value");
 
-  MOZ_CAN_RUN_SCRIPT
-  already_AddRefed<dom::Promise>
-  MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
-    nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
-      aError.Throw(NS_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    // Convert each argument
-    mValue.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
-    if (aError.Failed()) {
-      return nullptr;
-    }
-
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 2, uniffiArgs, aError);
-    
-    return nullptr;
+  // Convert arguments
+  nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
+  if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_callback_interface_get_value] Failed to allocate arguments"));
+    return;
   }
-};
+  IgnoredErrorResult error;
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+  RootedDictionary<UniFFIScaffoldingCallResult> callResult(aes.cx());
+  jsHandler->CallSync(aUniffiHandle, 1, uniffiArgs, callResult, error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_callback_interface_get_value] Error invoking JS handler"));
+    return;
+  }
+  *aUniffiOutReturn = CallbackLowerReturnUInt32::Lower(callResult, aUniffiOutStatus, error);
+  }
+/**
+ * callback_interface_uniffi_bindings_tests_test_callback_interface_set_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_callback_interface_set_value(
   uint64_t aUniffiHandle,
   uint32_t aValue,
   void* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustCallStatus* aUniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceSetValue>(aUniffiHandle, aValue);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface);
-}
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  // Take our own reference to the callback handler to ensure that it
+  // stays alive for the duration of this call
+  RefPtr<dom::UniFFICallbackHandler> jsHandler = gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface;
+  // Create a JS context for the call
+  JSObject* global = jsHandler->CallbackGlobalOrNull();
+  if (!global) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_callback_interface_set_value] JS handler has null global"));
+    return;
+  }
+  dom::AutoEntryScript aes(global, "callback_interface_uniffi_bindings_tests_test_callback_interface_set_value");
 
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceThrowIfEqual final : public AsyncCallbackMethodHandlerBase {
-private:
-  // Rust arguments
-  FfiValueRustBuffer mNumbers{};
-
-public:
-  CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceThrowIfEqual(
-      uint64_t aUniffiHandle,
-      RustBuffer aNumbers)
-    : AsyncCallbackMethodHandlerBase(
-        "TestCallbackInterface.callback_interface_uniffi_bindings_tests_test_callback_interface_throw_if_equal",
-        aUniffiHandle
-    ), mNumbers(FfiValueRustBuffer::FromRust(aNumbers))
-  {
+  // Convert arguments
+  nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
+  if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_callback_interface_set_value] Failed to allocate arguments"));
+    return;
+  }
+  IgnoredErrorResult error;
+  FfiValueInt<uint32_t> value = FfiValueInt<uint32_t>::FromRust(aValue);
+  value.Lift(aes.cx(), &uniffiArgs[0], error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_callback_interface_set_value] Failed to lift aValue"));
+    return;
   }
 
-  MOZ_CAN_RUN_SCRIPT
-  already_AddRefed<dom::Promise>
-  MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
-    nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
-      aError.Throw(NS_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    // Convert each argument
-    mNumbers.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
-    if (aError.Failed()) {
-      return nullptr;
-    }
-
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 3, uniffiArgs, aError);
-    
-    return nullptr;
+  RootedDictionary<UniFFIScaffoldingCallResult> callResult(aes.cx());
+  jsHandler->CallSync(aUniffiHandle, 2, uniffiArgs, callResult, error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_callback_interface_set_value] Error invoking JS handler"));
+    return;
   }
-};
-
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+  CallbackLowerReturnVoid::Lower(callResult, aUniffiOutStatus, error);
+  }
+/**
+ * callback_interface_uniffi_bindings_tests_test_callback_interface_throw_if_equal -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_callback_interface_throw_if_equal(
   uint64_t aUniffiHandle,
   RustBuffer aNumbers,
   RustBuffer* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustCallStatus* aUniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsTestCallbackInterfaceThrowIfEqual>(aUniffiHandle, aNumbers);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface);
-}
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  // Take our own reference to the callback handler to ensure that it
+  // stays alive for the duration of this call
+  RefPtr<dom::UniFFICallbackHandler> jsHandler = gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface;
+  // Create a JS context for the call
+  JSObject* global = jsHandler->CallbackGlobalOrNull();
+  if (!global) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_callback_interface_throw_if_equal] JS handler has null global"));
+    return;
+  }
+  dom::AutoEntryScript aes(global, "callback_interface_uniffi_bindings_tests_test_callback_interface_throw_if_equal");
 
+  // Convert arguments
+  nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
+  if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_callback_interface_throw_if_equal] Failed to allocate arguments"));
+    return;
+  }
+  IgnoredErrorResult error;
+  FfiValueRustBuffer numbers = FfiValueRustBuffer::FromRust(aNumbers);
+  numbers.Lift(aes.cx(), &uniffiArgs[0], error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_callback_interface_throw_if_equal] Failed to lift aNumbers"));
+    return;
+  }
+
+  RootedDictionary<UniFFIScaffoldingCallResult> callResult(aes.cx());
+  jsHandler->CallSync(aUniffiHandle, 3, uniffiArgs, callResult, error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_callback_interface_throw_if_equal] Error invoking JS handler"));
+    return;
+  }
+  *aUniffiOutReturn = CallbackLowerReturnRustBuffer::Lower(callResult, aUniffiOutStatus, error);
+  }
 
 extern "C" void callback_free_uniffi_bindings_tests_test_callback_interface(uint64_t uniffiHandle) {
    // Callback object handles are keys in a map stored in the JS handler. To
@@ -12089,43 +12590,69 @@ static VTableCallbackInterfaceUniffiBindingsTestsTestCallbackInterface kUniffiVt
   callback_free_uniffi_bindings_tests_test_callback_interface
 };
 static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerUniffiBindingsTestsAsyncTestTraitInterface;
-
-class CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceNoop final : public AsyncCallbackMethodHandlerBaseVoid {
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_async_test_trait_interface_noop
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceNoop final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
+  ForeignFutureCompletevoid mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceNoop(
       uint64_t aUniffiHandle,
       ForeignFutureCompletevoid aUniffiCompleteCallback,
-      uint64_t aUniffiCallbackData)
-    : AsyncCallbackMethodHandlerBaseVoid(
-        "AsyncTestTraitInterface.callback_interface_uniffi_bindings_tests_async_test_trait_interface_noop",
-        aUniffiHandle,
-        aUniffiCompleteCallback,
-        aUniffiCallbackData
-    )
-  {
-  }
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("AsyncTestTraitInterface.callback_interface_uniffi_bindings_tests_async_test_trait_interface_noop", aUniffiHandle),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
 
-    // Convert each argument
-
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 0, uniffiArgs, aError);
     return result.forget();
   }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultVoid result{};
+    CallbackLowerReturnVoid::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceNoop() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnVoid] promise never completed"));
+      ForeignFutureResultVoid result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
+  }
 };
 
+/**
+ * callback_interface_uniffi_bindings_tests_async_test_trait_interface_noop -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_async_test_trait_interface_noop(
   uint64_t aUniffiHandle,
   ForeignFutureCompletevoid aUniffiForeignFutureCallback,
@@ -12142,43 +12669,69 @@ extern "C" void callback_interface_uniffi_bindings_tests_async_test_trait_interf
   // Now that everything is set up, schedule the call in the JS main thread.
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsAsyncTestTraitInterface);
 }
-
-class CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceGetValue final : public AsyncCallbackMethodHandlerBaseUInt32 {
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_async_test_trait_interface_get_value
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceGetValue final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
+  ForeignFutureCompleteu32 mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceGetValue(
       uint64_t aUniffiHandle,
       ForeignFutureCompleteu32 aUniffiCompleteCallback,
-      uint64_t aUniffiCallbackData)
-    : AsyncCallbackMethodHandlerBaseUInt32(
-        "AsyncTestTraitInterface.callback_interface_uniffi_bindings_tests_async_test_trait_interface_get_value",
-        aUniffiHandle,
-        aUniffiCompleteCallback,
-        aUniffiCallbackData
-    )
-  {
-  }
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("AsyncTestTraitInterface.callback_interface_uniffi_bindings_tests_async_test_trait_interface_get_value", aUniffiHandle),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
 
-    // Convert each argument
-
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 1, uniffiArgs, aError);
     return result.forget();
   }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultU32 result{};
+    result.return_value  = CallbackLowerReturnUInt32::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceGetValue() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnUInt32] promise never completed"));
+      ForeignFutureResultU32 result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
+  }
 };
 
+/**
+ * callback_interface_uniffi_bindings_tests_async_test_trait_interface_get_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_async_test_trait_interface_get_value(
   uint64_t aUniffiHandle,
   ForeignFutureCompleteu32 aUniffiForeignFutureCallback,
@@ -12195,43 +12748,40 @@ extern "C" void callback_interface_uniffi_bindings_tests_async_test_trait_interf
   // Now that everything is set up, schedule the call in the JS main thread.
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsAsyncTestTraitInterface);
 }
-
-class CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceSetValue final : public AsyncCallbackMethodHandlerBaseVoid {
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_async_test_trait_interface_set_value
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceSetValue final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
   FfiValueInt<uint32_t> mValue{};
+  ForeignFutureCompletevoid mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceSetValue(
       uint64_t aUniffiHandle,
       uint32_t aValue,
       ForeignFutureCompletevoid aUniffiCompleteCallback,
-      uint64_t aUniffiCallbackData)
-    : AsyncCallbackMethodHandlerBaseVoid(
-        "AsyncTestTraitInterface.callback_interface_uniffi_bindings_tests_async_test_trait_interface_set_value",
-        aUniffiHandle,
-        aUniffiCompleteCallback,
-        aUniffiCallbackData
-    ), mValue(FfiValueInt<uint32_t>::FromRust(aValue))
-  {
-  }
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("AsyncTestTraitInterface.callback_interface_uniffi_bindings_tests_async_test_trait_interface_set_value", aUniffiHandle),
+      mValue(FfiValueInt<uint32_t>::FromRust(aValue)),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
-
-    // Convert each argument
-    mValue.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
+    mValue.Lift(aCx, &uniffiArgs[0], aError);
     if (aError.Failed()) {
       return nullptr;
     }
@@ -12239,8 +12789,35 @@ public:
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 2, uniffiArgs, aError);
     return result.forget();
   }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultVoid result{};
+    CallbackLowerReturnVoid::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceSetValue() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnVoid] promise never completed"));
+      ForeignFutureResultVoid result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
+  }
 };
 
+/**
+ * callback_interface_uniffi_bindings_tests_async_test_trait_interface_set_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_async_test_trait_interface_set_value(
   uint64_t aUniffiHandle,
   uint32_t aValue,
@@ -12259,43 +12836,40 @@ extern "C" void callback_interface_uniffi_bindings_tests_async_test_trait_interf
   // Now that everything is set up, schedule the call in the JS main thread.
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsAsyncTestTraitInterface);
 }
-
-class CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceThrowIfEqual final : public AsyncCallbackMethodHandlerBaseRustBuffer {
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_async_test_trait_interface_throw_if_equal
+ *
+ * This handles the specifics of the async call.
+ * AsyncCallbackMethodHandlerBase::ScheduleAsyncCall handles the general parts.
+ */
+class CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceThrowIfEqual final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
   FfiValueRustBuffer mNumbers{};
+  ForeignFutureCompleterust_buffer mUniffiCompleteCallback;
+  uint64_t mUniffiCallbackData;
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceThrowIfEqual(
       uint64_t aUniffiHandle,
       RustBuffer aNumbers,
       ForeignFutureCompleterust_buffer aUniffiCompleteCallback,
-      uint64_t aUniffiCallbackData)
-    : AsyncCallbackMethodHandlerBaseRustBuffer(
-        "AsyncTestTraitInterface.callback_interface_uniffi_bindings_tests_async_test_trait_interface_throw_if_equal",
-        aUniffiHandle,
-        aUniffiCompleteCallback,
-        aUniffiCallbackData
-    ), mNumbers(FfiValueRustBuffer::FromRust(aNumbers))
-  {
-  }
+      uint64_t aUniffiCallbackData
+  ) : AsyncCallbackMethodHandlerBase ("AsyncTestTraitInterface.callback_interface_uniffi_bindings_tests_async_test_trait_interface_throw_if_equal", aUniffiHandle),
+      mNumbers(FfiValueRustBuffer::FromRust(aNumbers)),
+      mUniffiCompleteCallback(aUniffiCompleteCallback),
+      mUniffiCallbackData(aUniffiCallbackData) { }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
-
-    // Convert each argument
-    mNumbers.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
+    mNumbers.Lift(aCx, &uniffiArgs[0], aError);
     if (aError.Failed()) {
       return nullptr;
     }
@@ -12303,8 +12877,35 @@ public:
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 3, uniffiArgs, aError);
     return result.forget();
   }
+
+  void HandleReturn(const RootedDictionary<UniFFIScaffoldingCallResult>& aCallResult,
+                    ErrorResult& aRv) override {
+    if (!mUniffiCompleteCallback) {
+      MOZ_ASSERT_UNREACHABLE("HandleReturn called multiple times");
+      return;
+    }
+
+    ForeignFutureResultRustBuffer result{};
+    result.return_value  = CallbackLowerReturnRustBuffer::Lower(aCallResult, &result.call_status, aRv);
+    mUniffiCompleteCallback(mUniffiCallbackData, result);
+    mUniffiCompleteCallback = nullptr;
+  }
+
+  ~CallbackInterfaceMethodUniffiBindingsTestsAsyncTestTraitInterfaceThrowIfEqual() {
+    if (mUniffiCompleteCallback) {
+      MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[CallbackLowerReturnRustBuffer] promise never completed"));
+      ForeignFutureResultRustBuffer result{};
+      result.call_status.code = RUST_CALL_INTERNAL_ERROR;
+      mUniffiCompleteCallback(mUniffiCallbackData, result);
+    }
+  }
 };
 
+/**
+ * callback_interface_uniffi_bindings_tests_async_test_trait_interface_throw_if_equal -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_async_test_trait_interface_throw_if_equal(
   uint64_t aUniffiHandle,
   RustBuffer aNumbers,
@@ -12340,210 +12941,184 @@ static VTableCallbackInterfaceUniffiBindingsTestsAsyncTestTraitInterface kUniffi
   callback_free_uniffi_bindings_tests_async_test_trait_interface
 };
 static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface;
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceNoop final : public AsyncCallbackMethodHandlerBase {
-private:
-  // Rust arguments
-
-public:
-  CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceNoop(
-      uint64_t aUniffiHandle)
-    : AsyncCallbackMethodHandlerBase(
-        "TestTraitInterface.callback_interface_uniffi_bindings_tests_test_trait_interface_noop",
-        aUniffiHandle
-    )
-  {
-  }
-
-  MOZ_CAN_RUN_SCRIPT
-  already_AddRefed<dom::Promise>
-  MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
-    nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
-      aError.Throw(NS_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    // Convert each argument
-
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 0, uniffiArgs, aError);
-    
-    return nullptr;
-  }
-};
-
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+/**
+ * callback_interface_uniffi_bindings_tests_test_trait_interface_noop -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_trait_interface_noop(
   uint64_t aUniffiHandle,
   void* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustCallStatus* aUniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceNoop>(aUniffiHandle);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface);
-}
-
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceGetValue final : public AsyncCallbackMethodHandlerBase {
-private:
-  // Rust arguments
-
-public:
-  CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceGetValue(
-      uint64_t aUniffiHandle)
-    : AsyncCallbackMethodHandlerBase(
-        "TestTraitInterface.callback_interface_uniffi_bindings_tests_test_trait_interface_get_value",
-        aUniffiHandle
-    )
-  {
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  // Take our own reference to the callback handler to ensure that it
+  // stays alive for the duration of this call
+  RefPtr<dom::UniFFICallbackHandler> jsHandler = gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface;
+  // Create a JS context for the call
+  JSObject* global = jsHandler->CallbackGlobalOrNull();
+  if (!global) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_trait_interface_noop] JS handler has null global"));
+    return;
   }
+  dom::AutoEntryScript aes(global, "callback_interface_uniffi_bindings_tests_test_trait_interface_noop");
 
-  MOZ_CAN_RUN_SCRIPT
-  already_AddRefed<dom::Promise>
-  MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
-    nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
-      aError.Throw(NS_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    // Convert each argument
-
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 1, uniffiArgs, aError);
-    
-    return nullptr;
+  // Convert arguments
+  nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
+  if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_trait_interface_noop] Failed to allocate arguments"));
+    return;
   }
-};
+  IgnoredErrorResult error;
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+  RootedDictionary<UniFFIScaffoldingCallResult> callResult(aes.cx());
+  jsHandler->CallSync(aUniffiHandle, 0, uniffiArgs, callResult, error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_trait_interface_noop] Error invoking JS handler"));
+    return;
+  }
+  CallbackLowerReturnVoid::Lower(callResult, aUniffiOutStatus, error);
+  }
+/**
+ * callback_interface_uniffi_bindings_tests_test_trait_interface_get_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_trait_interface_get_value(
   uint64_t aUniffiHandle,
   uint32_t* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustCallStatus* aUniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceGetValue>(aUniffiHandle);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface);
-}
-
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceSetValue final : public AsyncCallbackMethodHandlerBase {
-private:
-  // Rust arguments
-  FfiValueInt<uint32_t> mValue{};
-
-public:
-  CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceSetValue(
-      uint64_t aUniffiHandle,
-      uint32_t aValue)
-    : AsyncCallbackMethodHandlerBase(
-        "TestTraitInterface.callback_interface_uniffi_bindings_tests_test_trait_interface_set_value",
-        aUniffiHandle
-    ), mValue(FfiValueInt<uint32_t>::FromRust(aValue))
-  {
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  // Take our own reference to the callback handler to ensure that it
+  // stays alive for the duration of this call
+  RefPtr<dom::UniFFICallbackHandler> jsHandler = gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface;
+  // Create a JS context for the call
+  JSObject* global = jsHandler->CallbackGlobalOrNull();
+  if (!global) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_trait_interface_get_value] JS handler has null global"));
+    return;
   }
+  dom::AutoEntryScript aes(global, "callback_interface_uniffi_bindings_tests_test_trait_interface_get_value");
 
-  MOZ_CAN_RUN_SCRIPT
-  already_AddRefed<dom::Promise>
-  MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
-    nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
-      aError.Throw(NS_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    // Convert each argument
-    mValue.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
-    if (aError.Failed()) {
-      return nullptr;
-    }
-
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 2, uniffiArgs, aError);
-    
-    return nullptr;
+  // Convert arguments
+  nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
+  if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_trait_interface_get_value] Failed to allocate arguments"));
+    return;
   }
-};
+  IgnoredErrorResult error;
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+  RootedDictionary<UniFFIScaffoldingCallResult> callResult(aes.cx());
+  jsHandler->CallSync(aUniffiHandle, 1, uniffiArgs, callResult, error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_trait_interface_get_value] Error invoking JS handler"));
+    return;
+  }
+  *aUniffiOutReturn = CallbackLowerReturnUInt32::Lower(callResult, aUniffiOutStatus, error);
+  }
+/**
+ * callback_interface_uniffi_bindings_tests_test_trait_interface_set_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_trait_interface_set_value(
   uint64_t aUniffiHandle,
   uint32_t aValue,
   void* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustCallStatus* aUniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceSetValue>(aUniffiHandle, aValue);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface);
-}
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  // Take our own reference to the callback handler to ensure that it
+  // stays alive for the duration of this call
+  RefPtr<dom::UniFFICallbackHandler> jsHandler = gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface;
+  // Create a JS context for the call
+  JSObject* global = jsHandler->CallbackGlobalOrNull();
+  if (!global) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_trait_interface_set_value] JS handler has null global"));
+    return;
+  }
+  dom::AutoEntryScript aes(global, "callback_interface_uniffi_bindings_tests_test_trait_interface_set_value");
 
-
-class CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceThrowIfEqual final : public AsyncCallbackMethodHandlerBase {
-private:
-  // Rust arguments
-  FfiValueRustBuffer mNumbers{};
-
-public:
-  CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceThrowIfEqual(
-      uint64_t aUniffiHandle,
-      RustBuffer aNumbers)
-    : AsyncCallbackMethodHandlerBase(
-        "TestTraitInterface.callback_interface_uniffi_bindings_tests_test_trait_interface_throw_if_equal",
-        aUniffiHandle
-    ), mNumbers(FfiValueRustBuffer::FromRust(aNumbers))
-  {
+  // Convert arguments
+  nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
+  if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_trait_interface_set_value] Failed to allocate arguments"));
+    return;
+  }
+  IgnoredErrorResult error;
+  FfiValueInt<uint32_t> value = FfiValueInt<uint32_t>::FromRust(aValue);
+  value.Lift(aes.cx(), &uniffiArgs[0], error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_trait_interface_set_value] Failed to lift aValue"));
+    return;
   }
 
-  MOZ_CAN_RUN_SCRIPT
-  already_AddRefed<dom::Promise>
-  MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
-    nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
-    if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
-      aError.Throw(NS_ERROR_OUT_OF_MEMORY);
-      return nullptr;
-    }
-
-    // Convert each argument
-    mNumbers.Lift(
-      aCx,
-      &uniffiArgs[0],
-      aError);
-    if (aError.Failed()) {
-      return nullptr;
-    }
-
-    RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 3, uniffiArgs, aError);
-    
-    return nullptr;
+  RootedDictionary<UniFFIScaffoldingCallResult> callResult(aes.cx());
+  jsHandler->CallSync(aUniffiHandle, 2, uniffiArgs, callResult, error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_trait_interface_set_value] Error invoking JS handler"));
+    return;
   }
-};
-
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+  CallbackLowerReturnVoid::Lower(callResult, aUniffiOutStatus, error);
+  }
+/**
+ * callback_interface_uniffi_bindings_tests_test_trait_interface_throw_if_equal -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_test_trait_interface_throw_if_equal(
   uint64_t aUniffiHandle,
   RustBuffer aNumbers,
   RustBuffer* aUniffiOutReturn,
-  RustCallStatus* uniffiOutStatus
+  RustCallStatus* aUniffiOutStatus
 ) {
-  UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsTestTraitInterfaceThrowIfEqual>(aUniffiHandle, aNumbers);
-  AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface);
-}
+  MOZ_RELEASE_ASSERT(NS_IsMainThread());
+  // Take our own reference to the callback handler to ensure that it
+  // stays alive for the duration of this call
+  RefPtr<dom::UniFFICallbackHandler> jsHandler = gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface;
+  // Create a JS context for the call
+  JSObject* global = jsHandler->CallbackGlobalOrNull();
+  if (!global) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_trait_interface_throw_if_equal] JS handler has null global"));
+    return;
+  }
+  dom::AutoEntryScript aes(global, "callback_interface_uniffi_bindings_tests_test_trait_interface_throw_if_equal");
 
+  // Convert arguments
+  nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
+  if (!uniffiArgs.AppendElements(1, mozilla::fallible)) {
+    MOZ_LOG(gUniffiLogger, LogLevel::Error, ("[callback_interface_uniffi_bindings_tests_test_trait_interface_throw_if_equal] Failed to allocate arguments"));
+    return;
+  }
+  IgnoredErrorResult error;
+  FfiValueRustBuffer numbers = FfiValueRustBuffer::FromRust(aNumbers);
+  numbers.Lift(aes.cx(), &uniffiArgs[0], error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_trait_interface_throw_if_equal] Failed to lift aNumbers"));
+    return;
+  }
+
+  RootedDictionary<UniFFIScaffoldingCallResult> callResult(aes.cx());
+  jsHandler->CallSync(aUniffiHandle, 3, uniffiArgs, callResult, error);
+  if (error.Failed()) {
+    MOZ_LOG(
+        gUniffiLogger, LogLevel::Error,
+        ("[callback_interface_uniffi_bindings_tests_test_trait_interface_throw_if_equal] Error invoking JS handler"));
+    return;
+  }
+  *aUniffiOutReturn = CallbackLowerReturnRustBuffer::Lower(callResult, aUniffiOutStatus, error);
+  }
 
 extern "C" void callback_free_uniffi_bindings_tests_test_trait_interface(uint64_t uniffiHandle) {
    // Callback object handles are keys in a map stored in the JS handler. To
@@ -12561,43 +13136,45 @@ static VTableCallbackInterfaceUniffiBindingsTestsTestTraitInterface kUniffiVtabl
   callback_free_uniffi_bindings_tests_test_trait_interface
 };
 static StaticRefPtr<dom::UniFFICallbackHandler> gUniffiCallbackHandlerUniffiBindingsTestsCollisionTestCallbackInterface;
-
+/**
+ * Callback method handler subclass for callback_interface_uniffi_bindings_tests_collision_test_callback_interface_get_value
+ *
+ * This is like the handler for an async function except:
+ *
+ * - It doesn't input the complete callback function/data
+ * - It doesn't override HandleReturn and returns `nullptr` from MakeCall.
+ *   This means ScheduleAsyncCall will schedule `MakeCall` and not do anything
+ *   with the result, which is what we want.
+ */
 class CallbackInterfaceMethodUniffiBindingsTestsCollisionTestCallbackInterfaceGetValue final : public AsyncCallbackMethodHandlerBase {
 private:
   // Rust arguments
 
 public:
   CallbackInterfaceMethodUniffiBindingsTestsCollisionTestCallbackInterfaceGetValue(
-      uint64_t aUniffiHandle)
-    : AsyncCallbackMethodHandlerBase(
-        "TestCallbackInterface.callback_interface_uniffi_bindings_tests_collision_test_callback_interface_get_value",
-        aUniffiHandle
-    )
-  {
-  }
+      uint64_t aUniffiHandle
+  ) : AsyncCallbackMethodHandlerBase ("TestCallbackInterface.callback_interface_uniffi_bindings_tests_collision_test_callback_interface_get_value", aUniffiHandle){ }
 
   MOZ_CAN_RUN_SCRIPT
   already_AddRefed<dom::Promise>
   MakeCall(JSContext* aCx, dom::UniFFICallbackHandler* aJsHandler, ErrorResult& aError) override {
+    // Convert arguments
     nsTArray<dom::OwningUniFFIScaffoldingValue> uniffiArgs;
-
-    // Setup
     if (!uniffiArgs.AppendElements(0, mozilla::fallible)) {
       aError.Throw(NS_ERROR_OUT_OF_MEMORY);
       return nullptr;
     }
 
-    // Convert each argument
-
     RefPtr<dom::Promise> result = aJsHandler->CallAsync(mUniffiHandle.IntoRust(), 0, uniffiArgs, aError);
-    
     return nullptr;
   }
 };
 
-
-// Sync callback methods are always wrapped to be fire-and-forget style async callbacks.  This means
-// we schedule the callback asynchronously and ignore the return value and any exceptions thrown.
+/**
+ * callback_interface_uniffi_bindings_tests_collision_test_callback_interface_get_value -- C function to handle the callback method
+ *
+ * This is what Rust calls when it invokes a callback method.
+ */
 extern "C" void callback_interface_uniffi_bindings_tests_collision_test_callback_interface_get_value(
   uint64_t aUniffiHandle,
   RustBuffer* aUniffiOutReturn,
@@ -12606,7 +13183,6 @@ extern "C" void callback_interface_uniffi_bindings_tests_collision_test_callback
   UniquePtr<AsyncCallbackMethodHandlerBase> handler = MakeUnique<CallbackInterfaceMethodUniffiBindingsTestsCollisionTestCallbackInterfaceGetValue>(aUniffiHandle);
   AsyncCallbackMethodHandlerBase::ScheduleAsyncCall(std::move(handler), &gUniffiCallbackHandlerUniffiBindingsTestsCollisionTestCallbackInterface);
 }
-
 
 extern "C" void callback_free_uniffi_bindings_tests_collision_test_callback_interface(uint64_t uniffiHandle) {
    // Callback object handles are keys in a map stored in the JS handler. To
@@ -12636,18 +13212,28 @@ void RegisterCallbackHandler(uint64_t aInterfaceId, UniFFICallbackHandler& aCall
       break;
     }
     case 2: {
-      if (gUniffiCallbackHandlerErrorsupportApplicationErrorReporter) {
-        aError.ThrowUnknownError("[UniFFI] Callback handler already registered for ApplicationErrorReporter"_ns);
+      if (gUniffiCallbackHandlerTracingEventSink) {
+        aError.ThrowUnknownError("[UniFFI] Callback handler already registered for EventSink"_ns);
         return;
       }
 
-      gUniffiCallbackHandlerErrorsupportApplicationErrorReporter = &aCallbackHandler;
-      uniffi_error_support_fn_init_callback_vtable_applicationerrorreporter(&kUniffiVtableErrorsupportApplicationErrorReporter);
+      gUniffiCallbackHandlerTracingEventSink = &aCallbackHandler;
+      uniffi_tracing_support_fn_init_callback_vtable_eventsink(&kUniffiVtableTracingEventSink);
+      break;
+    }
+    case 3: {
+      if (gUniffiCallbackHandlerViaductBackend) {
+        aError.ThrowUnknownError("[UniFFI] Callback handler already registered for Backend"_ns);
+        return;
+      }
+
+      gUniffiCallbackHandlerViaductBackend = &aCallbackHandler;
+      uniffi_viaduct_fn_init_callback_vtable_backend(&kUniffiVtableViaductBackend);
       break;
     }
     
     #ifdef MOZ_UNIFFI_FIXTURES
-    case 3: {
+    case 4: {
       if (gUniffiCallbackHandlerUniffiBindingsTestsTestAsyncCallbackInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler already registered for TestAsyncCallbackInterface"_ns);
         return;
@@ -12657,7 +13243,7 @@ void RegisterCallbackHandler(uint64_t aInterfaceId, UniFFICallbackHandler& aCall
       uniffi_uniffi_bindings_tests_fn_init_callback_vtable_testasynccallbackinterface(&kUniffiVtableUniffiBindingsTestsTestAsyncCallbackInterface);
       break;
     }
-    case 4: {
+    case 5: {
       if (gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler already registered for TestCallbackInterface"_ns);
         return;
@@ -12667,7 +13253,7 @@ void RegisterCallbackHandler(uint64_t aInterfaceId, UniFFICallbackHandler& aCall
       uniffi_uniffi_bindings_tests_fn_init_callback_vtable_testcallbackinterface(&kUniffiVtableUniffiBindingsTestsTestCallbackInterface);
       break;
     }
-    case 5: {
+    case 6: {
       if (gUniffiCallbackHandlerUniffiBindingsTestsAsyncTestTraitInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler already registered for AsyncTestTraitInterface"_ns);
         return;
@@ -12677,7 +13263,7 @@ void RegisterCallbackHandler(uint64_t aInterfaceId, UniFFICallbackHandler& aCall
       uniffi_uniffi_bindings_tests_fn_init_callback_vtable_asynctesttraitinterface(&kUniffiVtableUniffiBindingsTestsAsyncTestTraitInterface);
       break;
     }
-    case 6: {
+    case 7: {
       if (gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler already registered for TestTraitInterface"_ns);
         return;
@@ -12687,7 +13273,7 @@ void RegisterCallbackHandler(uint64_t aInterfaceId, UniFFICallbackHandler& aCall
       uniffi_uniffi_bindings_tests_fn_init_callback_vtable_testtraitinterface(&kUniffiVtableUniffiBindingsTestsTestTraitInterface);
       break;
     }
-    case 7: {
+    case 8: {
       if (gUniffiCallbackHandlerUniffiBindingsTestsCollisionTestCallbackInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler already registered for TestCallbackInterface"_ns);
         return;
@@ -12718,17 +13304,26 @@ void DeregisterCallbackHandler(uint64_t aInterfaceId, ErrorResult& aError) {
       break;
     }
     case 2: {
-      if (!gUniffiCallbackHandlerErrorsupportApplicationErrorReporter) {
-        aError.ThrowUnknownError("[UniFFI] Callback handler not registered for ApplicationErrorReporter"_ns);
+      if (!gUniffiCallbackHandlerTracingEventSink) {
+        aError.ThrowUnknownError("[UniFFI] Callback handler not registered for EventSink"_ns);
         return;
       }
 
-      gUniffiCallbackHandlerErrorsupportApplicationErrorReporter = nullptr;
+      gUniffiCallbackHandlerTracingEventSink = nullptr;
+      break;
+    }
+    case 3: {
+      if (!gUniffiCallbackHandlerViaductBackend) {
+        aError.ThrowUnknownError("[UniFFI] Callback handler not registered for Backend"_ns);
+        return;
+      }
+
+      gUniffiCallbackHandlerViaductBackend = nullptr;
       break;
     }
     
     #ifdef MOZ_UNIFFI_FIXTURES
-    case 3: {
+    case 4: {
       if (!gUniffiCallbackHandlerUniffiBindingsTestsTestAsyncCallbackInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler not registered for TestAsyncCallbackInterface"_ns);
         return;
@@ -12737,7 +13332,7 @@ void DeregisterCallbackHandler(uint64_t aInterfaceId, ErrorResult& aError) {
       gUniffiCallbackHandlerUniffiBindingsTestsTestAsyncCallbackInterface = nullptr;
       break;
     }
-    case 4: {
+    case 5: {
       if (!gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler not registered for TestCallbackInterface"_ns);
         return;
@@ -12746,7 +13341,7 @@ void DeregisterCallbackHandler(uint64_t aInterfaceId, ErrorResult& aError) {
       gUniffiCallbackHandlerUniffiBindingsTestsTestCallbackInterface = nullptr;
       break;
     }
-    case 5: {
+    case 6: {
       if (!gUniffiCallbackHandlerUniffiBindingsTestsAsyncTestTraitInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler not registered for AsyncTestTraitInterface"_ns);
         return;
@@ -12755,7 +13350,7 @@ void DeregisterCallbackHandler(uint64_t aInterfaceId, ErrorResult& aError) {
       gUniffiCallbackHandlerUniffiBindingsTestsAsyncTestTraitInterface = nullptr;
       break;
     }
-    case 6: {
+    case 7: {
       if (!gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler not registered for TestTraitInterface"_ns);
         return;
@@ -12764,7 +13359,7 @@ void DeregisterCallbackHandler(uint64_t aInterfaceId, ErrorResult& aError) {
       gUniffiCallbackHandlerUniffiBindingsTestsTestTraitInterface = nullptr;
       break;
     }
-    case 7: {
+    case 8: {
       if (!gUniffiCallbackHandlerUniffiBindingsTestsCollisionTestCallbackInterface) {
         aError.ThrowUnknownError("[UniFFI] Callback handler not registered for TestCallbackInterface"_ns);
         return;

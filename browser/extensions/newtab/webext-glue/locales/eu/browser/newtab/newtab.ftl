@@ -8,6 +8,9 @@
 newtab-page-title = Fitxa berria
 newtab-settings-button =
     .title = Pertsonalizatu fitxa berriaren orria
+newtab-customize-panel-icon-button =
+    .title = Pertsonalizatu orri hau
+newtab-customize-panel-icon-button-label = Pertsonalizatu
 newtab-personalize-settings-icon-label =
     .title = Pertsonalizatu fitxa berria
     .aria-label = Ezarpenak
@@ -53,6 +56,9 @@ newtab-topsites-add-shortcut-header = Lasterbide berria
 newtab-topsites-edit-topsites-header = Editatu maiz erabilitako gunea
 newtab-topsites-edit-shortcut-header = Editatu lasterbidea
 newtab-topsites-add-shortcut-label = Gehitu lasterbidea
+newtab-topsites-add-shortcut-title =
+    .title = Gehitu lasterbidea
+    .aria-label = Gehitu lasterbidea
 newtab-topsites-title-label = Izenburua
 newtab-topsites-title-input =
     .placeholder = Idatzi izenburua
@@ -117,15 +123,14 @@ newtab-menu-delete-pocket = Ezabatu { -pocket-brand-name }-etik
 newtab-menu-archive-pocket = Artxibatu { -pocket-brand-name }-en
 newtab-menu-show-privacy-info = Gure babesleak eta zure pribatutasuna
 newtab-menu-about-fakespot = { -fakespot-brand-name }(r)i buruz
+# Report is a verb (i.e. report issue with the content).
+newtab-menu-report = Jakinarazi
 # Context menu option to personalize New Tab recommended stories by blocking a section of stories,
 # e.g. "Sports". "Block" is a verb here.
 newtab-menu-section-block = Blokeatu
 # "Follow", "unfollow", and "following" are social media terms that refer to subscribing to or unsubscribing from a section of stories.
 # e.g. Following the travel section of stories.
 newtab-menu-section-unfollow = Ez jarraitu gaia
-
-## Context menu options for sponsored stories and new ad formats on New Tab.
-
 
 ## Message displayed in a modal window to explain privacy and provide context for sponsored content.
 
@@ -186,6 +191,8 @@ newtab-label-sponsored-by = Babeslea: { $sponsor }
 #   $source (string) - The name of a company or their domain
 #   $timeToRead (number) - The estimated number of minutes to read this story
 newtab-label-source-read-time = { $source } · { $timeToRead } min
+# This string is used under fixed size ads to indicate sponsored content
+newtab-label-sponsored-fixed = Babesleak hornituta
 
 ## Section Menu: These strings are displayed in the section context menu and are
 ## meant as a call to action for the given section.
@@ -296,12 +303,22 @@ newtab-custom-pocket-sponsored = Babesleen istorioak
 newtab-custom-pocket-show-recent-saves = Erakutsi gordetako azkenak
 newtab-custom-recent-title = Azken jarduera
 newtab-custom-recent-subtitle = Azken gune eta edukien hautapena
-newtab-custom-recent-toggle =
-    .label = Azken jarduera
-    .description = Azken gune eta edukien hautapena
 newtab-custom-weather-toggle =
     .label = Eguraldia
     .description = Gaurko eguraldi-iragarpena
+newtab-custom-widget-weather-toggle =
+    .label = Eguraldia
+newtab-custom-widget-trending-search-toggle =
+    .label = Bilaketa-joerak
+newtab-custom-widget-lists-toggle =
+    .label = Zerrendak
+newtab-custom-widget-timer-toggle =
+    .label = Tenporizadorea
+newtab-custom-widget-section-title = Widgetak
+# Tooltip for close button
+newtab-custom-close-menu-button =
+    .title = Itxi
+    .aria-label = Itxi menua
 newtab-custom-close-button = Itxi
 newtab-custom-settings = Kudeatu ezarpen gehiago
 
@@ -379,16 +396,12 @@ feature-highlight-wallpaper =
     .title = { -newtab-wallpaper-feature-highlight-header }
     .aria-label = { -newtab-wallpaper-feature-highlight-content }
 
-## Celestial
-
-
 ## New Tab Weather
 
 newtab-weather-menu-change-location = Aldatu kokapena
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Bilatu kokapena
     .aria-label = Bilatu kokapena
-newtab-weather-change-location-search-input = Bilatu kokapena
 newtab-weather-menu-weather-display = Eguraldia bistaratzea
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -447,6 +460,8 @@ newtab-section-unfollow-button = Utzi jarraitzeari
 ## e.g. Blocked the politics section of stories.
 
 newtab-section-block-button = Blokeatu
+newtab-section-blocked-button = Blokeatuta
+newtab-section-unblock-button = Desblokeatu
 
 ## Confirmation modal for blocking a section
 
@@ -459,18 +474,22 @@ newtab-section-block-topic-button = Blokeatu { $topic }
 
 ## Strings for custom wallpaper highlight
 
+newtab-section-mangage-topics-title = Gaiak
 newtab-section-manage-topics-button-v2 =
     .label = Kudeatu gaiak
 newtab-section-mangage-topics-followed-topics = Jarraituta
 newtab-section-mangage-topics-followed-topics-empty-state = Ez duzu inongo gairik jarraitu oraindik.
 newtab-section-mangage-topics-blocked-topics = Blokeatuta
 newtab-section-mangage-topics-blocked-topics-empty-state = Ez duzu inongo gairik blokeatu oraindik.
+newtab-custom-wallpaper-cta = Probatu
 
-## Strings for download mobile highlight
+## Strings for new user activation custom wallpaper highlight
 
+newtab-new-user-custom-wallpaper-cta = Probatu orain
 
 ## Strings for reporting ads and content
 
-
-## Strings for trending searches
-
+newtab-report-cancel = Utzi
+newtab-report-submit = Bidali
+newtab-toast-thanks-for-reporting =
+    .message = Eskerrik asko hau jakinarazteagatik.

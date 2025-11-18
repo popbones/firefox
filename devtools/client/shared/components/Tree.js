@@ -9,6 +9,10 @@ const { Component, createFactory } = React;
 const dom = require("resource://devtools/client/shared/vendor/react-dom-factories.js");
 const PropTypes = require("resource://devtools/client/shared/vendor/react-prop-types.mjs");
 
+const { scrollIntoView } = ChromeUtils.importESModule(
+  "resource://devtools/client/shared/scroll.mjs"
+);
+
 // Localized strings for (devtools/client/locales/en-US/components.properties)
 loader.lazyGetter(this, "L10N_COMPONENTS", function () {
   const { LocalizationHelper } = require("resource://devtools/shared/l10n.js");
@@ -501,7 +505,7 @@ class Tree extends Component {
       style: PropTypes.object,
       // Prevents blur when Tree loses focus
       preventBlur: PropTypes.bool,
-      initiallyExpanded: PropTypes.func,
+      getInitiallyExpanded: PropTypes.func,
     };
   }
 
@@ -567,10 +571,13 @@ class Tree extends Component {
   }
 
   _autoExpand() {
-    const { autoExpandDepth, autoExpandNodeChildrenLimit, initiallyExpanded } =
-      this.props;
+    const {
+      autoExpandDepth,
+      autoExpandNodeChildrenLimit,
+      getInitiallyExpanded,
+    } = this.props;
 
-    if (!autoExpandDepth && !initiallyExpanded) {
+    if (!autoExpandDepth && !getInitiallyExpanded) {
       return;
     }
 
@@ -579,7 +586,7 @@ class Tree extends Component {
     // collapsed nodes. Any initially expanded items will be expanded regardless
     // of how deep they are.
     const autoExpand = (item, currentDepth) => {
-      const initial = initiallyExpanded && initiallyExpanded(item);
+      const initial = getInitiallyExpanded && getInitiallyExpanded(item);
 
       if (!initial && currentDepth >= autoExpandDepth) {
         return;
@@ -614,9 +621,9 @@ class Tree extends Component {
     } else if (length != 0) {
       autoExpand(roots[0], 0);
 
-      if (initiallyExpanded) {
+      if (getInitiallyExpanded) {
         for (let i = 1; i < length; i++) {
-          if (initiallyExpanded(roots[i])) {
+          if (getInitiallyExpanded(roots[i])) {
             autoExpand(roots[i], 0);
           }
         }
@@ -727,9 +734,10 @@ class Tree extends Component {
    *
    * @param {Object|undefined} options
    *        An options object which can contain:
-   *          - dir: "up" or "down" to indicate if we should scroll the element
+   *          - alignTo: "up" or "down" to indicate if we should scroll the element
    *                 to the top or the bottom of the scrollable container when
    *                 the element is off canvas.
+   *          - preventAutoScroll: boolean, avoid scrolling automatically
    */
   _focus(item, options = {}) {
     const { preventAutoScroll } = options;
@@ -770,45 +778,20 @@ class Tree extends Component {
    *
    * @param {Object|undefined} options
    *        An options object which can contain:
-   *          - dir: "up" or "down" to indicate if we should scroll the element
+   *          - alignTo: "up" or "down" to indicate if we should scroll the element
    *                 to the top or the bottom of the scrollable container when
    *                 the element is off canvas.
    */
   _scrollNodeIntoView(item, options = {}) {
-    if (item !== undefined) {
-      const treeElement = this.treeRef.current;
-      const doc = treeElement && treeElement.ownerDocument;
-      const element = doc.getElementById(this.props.getKey(item));
+    if (!item) {
+      return;
+    }
+    const treeElement = this.treeRef.current;
+    const doc = treeElement && treeElement.ownerDocument;
+    const element = doc.getElementById(this.props.getKey(item));
 
-      if (element) {
-        const { top, bottom } = element.getBoundingClientRect();
-        const closestScrolledParent = node => {
-          if (node == null) {
-            return null;
-          }
-
-          if (node.scrollHeight > node.clientHeight) {
-            return node;
-          }
-          return closestScrolledParent(node.parentNode);
-        };
-        const scrolledParent = closestScrolledParent(treeElement);
-        const scrolledParentRect = scrolledParent
-          ? scrolledParent.getBoundingClientRect()
-          : null;
-        const isVisible =
-          !scrolledParent ||
-          (top >= scrolledParentRect.top &&
-            bottom <= scrolledParentRect.bottom);
-
-        if (!isVisible) {
-          const { alignTo } = options;
-          const scrollToTop = alignTo
-            ? alignTo === "top"
-            : !scrolledParentRect || top < scrolledParentRect.top;
-          element.scrollIntoView(scrollToTop);
-        }
-      }
+    if (element) {
+      scrollIntoView(element, options);
     }
   }
 

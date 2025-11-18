@@ -9,18 +9,22 @@
 #ifndef nsDOMCSSDeclaration_h___
 #define nsDOMCSSDeclaration_h___
 
-#include "nsICSSDeclaration.h"
-
 #include "mozilla/Attributes.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/URLExtraData.h"
 #include "nsAttrValue.h"
 #include "nsCOMPtr.h"
 #include "nsCompatibility.h"
+#include "nsICSSDeclaration.h"
+// The following include provides nsCSSProps::PropertyIDLName(), used by
+// generated CSS2PropertiesBinding.cpp
+// TODO: Ideally it would only be included from there.
+#include "nsCSSProps.h"
 
 class nsIPrincipal;
 struct JSContext;
 class JSObject;
+enum class AttrModType : uint8_t;  // Defined in nsIMutationObserver.h
 
 namespace mozilla {
 enum class StyleCssRuleType : uint8_t;
@@ -40,7 +44,7 @@ struct MutationClosureData {
 
   mozilla::dom::Element* mElement = nullptr;
   Maybe<nsAttrValue> mOldValue;
-  uint8_t mModType = 0;
+  AttrModType mModType{0};  // NOTE: The initial value is invalid value.
   bool mWasCalled = false;
   bool mShouldBeCalled = false;
 };
@@ -90,9 +94,10 @@ class nsDOMCSSDeclaration : public nsICSSDeclaration {
   void SetProperty(const nsACString& propertyName, const nsACString& value,
                    const nsACString& priority, nsIPrincipal* aSubjectPrincipal,
                    mozilla::ErrorResult& aRv) override;
+  using nsICSSDeclaration::SetProperty;
   uint32_t Length() override;
 
-  // WebIDL interface for CSS2Properties
+  // WebIDL interface for CSSStyleProperties
   virtual void IndexedGetter(uint32_t aIndex, bool& aFound,
                              nsACString& aPropName) override;
 

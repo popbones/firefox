@@ -6,7 +6,7 @@
 
 use std::{
     fmt,
-    ops::{Deref, DerefMut},
+    ops::Deref,
     os::raw::{c_char, c_uint},
     ptr::null_mut,
 };
@@ -69,7 +69,7 @@ impl RealAead {
     }
 
     #[must_use]
-    pub const fn expansion(&self) -> usize {
+    pub const fn expansion() -> usize {
         16
     }
 
@@ -152,7 +152,7 @@ impl RealAead {
                 aad.as_ptr(),
                 c_uint::try_from(aad.len())?,
                 data.as_ptr(),
-                c_uint::try_from(data.len() - self.expansion())?,
+                c_uint::try_from(data.len() - Self::expansion())?,
                 data.as_ptr(),
                 &mut l,
                 c_uint::try_from(data.len())?,
@@ -223,7 +223,7 @@ impl RealAead {
                 c_uint::try_from(data.len())?,
             )
         }?;
-        debug_assert_eq!(usize::try_from(l)?, data.len() - self.expansion());
+        debug_assert_eq!(usize::try_from(l)?, data.len() - Self::expansion());
         Ok(&mut data[..l.try_into()?])
     }
 }

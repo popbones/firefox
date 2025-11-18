@@ -6,13 +6,11 @@ package org.mozilla.fenix.webcompat.middleware
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
+import mozilla.components.browser.state.selector.selectedTab
 import mozilla.components.browser.state.state.BrowserState
 import mozilla.components.browser.state.store.BrowserStore
 import mozilla.components.lib.state.Middleware
 import mozilla.components.lib.state.MiddlewareContext
-import mozilla.components.support.base.log.logger.Logger
-import org.json.JSONObject
 import org.mozilla.fenix.GleanMetrics.BrokenSiteReport
 import org.mozilla.fenix.GleanMetrics.BrokenSiteReportBrowserInfo
 import org.mozilla.fenix.GleanMetrics.BrokenSiteReportBrowserInfoApp
@@ -25,6 +23,7 @@ import org.mozilla.fenix.GleanMetrics.BrokenSiteReportTabInfoFrameworks
 import org.mozilla.fenix.GleanMetrics.Pings
 import org.mozilla.fenix.components.AppStore
 import org.mozilla.fenix.components.appstate.AppAction
+import org.mozilla.fenix.webcompat.WebCompatReporterMoreInfoSender
 import org.mozilla.fenix.webcompat.store.WebCompatReporterAction
 import org.mozilla.fenix.webcompat.store.WebCompatReporterState
 
@@ -34,16 +33,19 @@ import org.mozilla.fenix.webcompat.store.WebCompatReporterState
  * @param appStore [AppStore] used to dispatch [AppAction]s.
  * @param browserStore [BrowserStore] used to access [BrowserState].
  * @param webCompatReporterRetrievalService The service that handles submission requests.
+ * @param webCompatReporterMoreInfoSender [WebCompatReporterMoreInfoSender] used
+ * to send WebCompat info to webcompat.com.
  * @param scope The [CoroutineScope] for launching coroutines.
+ * @param nimbusExperimentsProvider A [NimbusExperimentsProvider] used to get active experiments.
  */
 class WebCompatReporterSubmissionMiddleware(
     private val appStore: AppStore,
     private val browserStore: BrowserStore,
     private val webCompatReporterRetrievalService: WebCompatReporterRetrievalService,
+    private val webCompatReporterMoreInfoSender: WebCompatReporterMoreInfoSender,
     private val scope: CoroutineScope,
+    private val nimbusExperimentsProvider: NimbusExperimentsProvider,
 ) : Middleware<WebCompatReporterState, WebCompatReporterAction> {
-
-    private val logger = Logger("WebCompatReporterSubmissionMiddleware")
 
     override fun invoke(
         context: MiddlewareContext<WebCompatReporterState, WebCompatReporterAction>,
@@ -56,6 +58,7 @@ class WebCompatReporterSubmissionMiddleware(
             is WebCompatReporterAction.SendReportClicked -> {
                 scope.launch {
                     val webCompatInfo = webCompatReporterRetrievalService.retrieveInfo()
+
                     webCompatInfo?.let {
                         val enteredUrlMatchesTabUrl = context.state.enteredUrl == webCompatInfo.url
                         if (enteredUrlMatchesTabUrl) {
@@ -71,6 +74,7 @@ class WebCompatReporterSubmissionMiddleware(
                     setUrlMetrics(url = context.state.enteredUrl)
                     setReasonMetrics(reason = context.state.reason)
                     setDescriptionMetrics(description = context.state.problemDescription)
+                    setExperimentMetrics()
 
                     Pings.brokenSiteReport.submit()
                     context.store.dispatch(WebCompatReporterAction.ReportSubmitted)
@@ -79,39 +83,14 @@ class WebCompatReporterSubmissionMiddleware(
             }
             is WebCompatReporterAction.SendMoreInfoClicked -> {
                 scope.launch {
-                    val selectedTabId = browserStore.state.selectedTabId
-                    val selectedTab = browserStore.state.tabs.find { it.id == selectedTabId }
-                    val engineSession = selectedTab?.engineState?.engineSession
+                    webCompatReporterMoreInfoSender.sendMoreWebCompatInfo(
+                        reason = context.state.reason,
+                        problemDescription = context.state.problemDescription,
+                        enteredUrl = context.state.enteredUrl,
+                        tabUrl = context.state.tabUrl,
+                        engineSession = browserStore.state.selectedTab?.engineState?.engineSession,
+                    )
 
-                    val webCompatInfo = webCompatReporterRetrievalService.retrieveInfo()
-                    webCompatInfo?.let {
-                        val json = Json
-                        val info = JSONObject().apply {
-                            put("reason", context.state.reason)
-                            put("description", context.state.problemDescription)
-                            put("endpointUrl", "https://webcompat.com/issues/new")
-                            put("reportUrl", context.state.enteredUrl)
-                            put(
-                                "reporterConfig",
-                                JSONObject().apply {
-                                    put("src", "android-components-reporter")
-                                    put("utm_campaign", "report-site-issue-button")
-                                    put("utm_source", "android-components-reporter")
-                                },
-                            )
-                            put("webcompatInfo", JSONObject(json.encodeToString(webCompatInfo)))
-                        }
-
-                        engineSession?.sendMoreWebCompatInfo(
-                            info = info,
-                            onResult = {
-                                logger.debug("SendMoreWebCompatInfo succeeded")
-                            },
-                            onException = {
-                                logger.error("Error with SendMoreWebCompatInfo", it)
-                            },
-                        )
-                    }
                     context.store.dispatch(WebCompatReporterAction.SendMoreInfoSubmitted)
                 }
             }
@@ -148,18 +127,6 @@ class WebCompatReporterSubmissionMiddleware(
             )
         }
         BrokenSiteReportBrowserInfo.addons.set(addons)
-
-        val experiments = BrokenSiteReportBrowserInfo.ExperimentsObject()
-        for (experiment in browserInfo.experiments) {
-            experiments.add(
-                BrokenSiteReportBrowserInfo.ExperimentsObjectItem(
-                    branch = experiment.branch,
-                    slug = experiment.slug,
-                    kind = experiment.kind,
-                ),
-            )
-        }
-        BrokenSiteReportBrowserInfo.experiments.set(experiments)
 
         browserInfo.app?.let {
             BrokenSiteReportBrowserInfoApp.defaultUseragentString.set(it.defaultUserAgent)
@@ -235,5 +202,20 @@ class WebCompatReporterSubmissionMiddleware(
 
     private fun setTabUserAgentMetrics(userAgent: String) {
         BrokenSiteReportTabInfo.useragentString.set(userAgent)
+    }
+
+    private fun setExperimentMetrics() {
+        val items = mutableListOf<BrokenSiteReportBrowserInfo.ExperimentsObjectItem>()
+        nimbusExperimentsProvider.activeExperiments.mapTo(items) { experiment ->
+            BrokenSiteReportBrowserInfo.ExperimentsObjectItem(
+                branch = nimbusExperimentsProvider.getExperimentBranch(experiment.slug),
+                slug = experiment.slug,
+                kind = "nimbusExperiment",
+            )
+        }
+
+        BrokenSiteReportBrowserInfo.experiments.set(
+            BrokenSiteReportBrowserInfo.ExperimentsObject(items),
+        )
     }
 }

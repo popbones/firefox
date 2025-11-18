@@ -233,12 +233,14 @@ NS_IMETHODIMP_(MozExternalRefCountType) HttpChannelChild::Release() {
 
     // 3) Finally, we turn the reference into a regular smart pointer.
     RefPtr<HttpChannelChild> channel = dont_AddRef(this);
-    NS_DispatchToMainThread(NS_NewRunnableFunction(
+    MOZ_ASSERT(mRefCnt == 1);
+    NS_DispatchToCurrentThread(NS_NewRunnableFunction(
         "~HttpChannelChild>DoNotifyListener",
         [chan = std::move(channel)] { chan->DoNotifyListener(false); }));
-    // If NS_DispatchToMainThread failed then we're going to leak the runnable,
-    // and thus the channel, so there's no need to do anything else.
-    return mRefCnt;
+    // If NS_DispatchToCurrentThread failed then we're going to leak the
+    // runnable, and thus the channel, so there's no need to do anything else.
+    // this might be released at this point, so we can't access mRefCnt here.
+    return 1;
   }
 
   NS_LOG_RELEASE(this, count, "HttpChannelChild");
@@ -413,6 +415,7 @@ void HttpChannelChild::OnStartRequest(
   mIsRacing = aArgs.isRacing();
   mCacheEntryAvailable = aArgs.cacheEntryAvailable();
   mCacheEntryId = aArgs.cacheEntryId();
+  mCacheDisposition = aArgs.cacheDisposition();
   mCacheFetchCount = aArgs.cacheFetchCount();
   mProtocolVersion = aArgs.protocolVersion();
   mCacheExpirationTime = aArgs.cacheExpirationTime();
@@ -489,8 +492,16 @@ void HttpChannelChild::OnStartRequest(
                                       false);
   }
 
-  if (!aArgs.cookieHeaders().IsEmpty()) {
-    SetCookieHeaders(aArgs.cookieHeaders());
+  RefPtr<CookieServiceChild> cookieService = CookieServiceChild::GetSingleton();
+
+  for (const CookieChange& cookieChange : aArgs.cookieChanges()) {
+    if (cookieChange.added()) {
+      Unused << cookieService->RecvAddCookie(
+          cookieChange.cookie(), cookieChange.originAttributes(), Nothing());
+    } else {
+      Unused << cookieService->RecvRemoveCookie(
+          cookieChange.cookie(), cookieChange.originAttributes(), Nothing());
+    }
   }
 
   // Note: this is where we would notify "http-on-after-examine-response"
@@ -2452,8 +2463,6 @@ nsresult HttpChannelChild::ContinueAsyncOpen() {
 
   openArgs.channelId() = mChannelId;
 
-  openArgs.integrityMetadata() = mIntegrityMetadata;
-
   openArgs.contentWindowId() = contentWindowId;
   openArgs.browserId() = mBrowserId;
 
@@ -3402,6 +3411,16 @@ void HttpChannelChild::ExplicitSetUploadStreamLength(
   MOZ_ASSERT(!LoadWasOpened());
   HttpBaseChannel::ExplicitSetUploadStreamLength(aContentLength,
                                                  aSetContentLengthHeader);
+}
+
+NS_IMETHODIMP
+HttpChannelChild::GetCacheDisposition(
+    nsICacheInfoChannel::CacheDisposition* aDisposition) {
+  if (!aDisposition) {
+    return NS_ERROR_INVALID_ARG;
+  }
+  *aDisposition = mCacheDisposition;
+  return NS_OK;
 }
 
 }  // namespace mozilla::net

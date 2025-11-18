@@ -5,16 +5,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "nsMathMLOperators.h"
-#include "nsCOMPtr.h"
-#include "nsTHashMap.h"
-#include "nsHashKeys.h"
-#include "nsNetUtil.h"
-#include "nsTArray.h"
 
 #include "mozilla/intl/UnicodeProperties.h"
+#include "nsCOMPtr.h"
+#include "nsCRT.h"
+#include "nsHashKeys.h"
 #include "nsIPersistentProperties2.h"
 #include "nsISimpleEnumerator.h"
-#include "nsCRT.h"
+#include "nsNetUtil.h"
+#include "nsTArray.h"
+#include "nsTHashMap.h"
 
 // operator dictionary entry
 struct OperatorData {
@@ -430,6 +430,15 @@ bool nsMathMLOperators::IsMirrorableOperator(const nsString& aOperator) {
     return mozilla::intl::UnicodeProperties::IsMirrored(codePoint);
   }
   return false;
+}
+
+/* static */
+nsString nsMathMLOperators::GetMirroredOperator(const nsString& aOperator) {
+  nsString result;
+  if (auto codePoint = ToUnicodeCodePoint(aOperator)) {
+    result.Assign(mozilla::intl::UnicodeProperties::CharMirror(codePoint));
+  }
+  return result;
 }
 
 /* static */

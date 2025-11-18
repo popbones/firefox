@@ -22,6 +22,7 @@
 # do ok(true, "Type not supported") and stop the test.
 
 [DEFAULT]
+skip-if = ["isolated_process"] # Bug 1709948
 subsuite = "media"
 tags = "media-gpu"
 support-files = [
@@ -706,8 +707,8 @@ support-files = [
 
 ["test_bug495145.html"]
 skip-if = [
-  "win10_2009", #Bug 1404373
-  "win11_2009", #Bug 1404373
+  "win10_2009", # Bug 1404373
+  "win11_2009", # Bug 1404373
 ] 
 
 ["test_bug495300.html"]

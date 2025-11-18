@@ -32,6 +32,7 @@
 #include "mozilla/dom/BrowsingContext.h"
 #include "mozilla/dom/CanonicalBrowsingContext.h"
 #include "mozilla/dom/Document.h"
+#include "mozilla/dom/PolicyContainer.h"
 #include "mozilla/dom/WindowGlobalParent.h"
 #include "mozilla/LoadInfo.h"
 
@@ -503,16 +504,6 @@ nsresult LoadInfoToLoadInfoArgs(nsILoadInfo* aLoadInfo,
   static_cast<CookieJarSettings*>(cookieJarSettings.get())
       ->Serialize(cookieJarSettingsArgs);
 
-  Maybe<CSPInfo> maybeCspToInheritInfo;
-  nsCOMPtr<nsIContentSecurityPolicy> cspToInherit =
-      aLoadInfo->GetCspToInherit();
-  if (cspToInherit) {
-    CSPInfo cspToInheritInfo;
-    Unused << NS_WARN_IF(
-        NS_FAILED(CSPToCSPInfo(cspToInherit, &cspToInheritInfo)));
-    maybeCspToInheritInfo.emplace(cspToInheritInfo);
-  }
-
   nsCOMPtr<nsIURI> unstrippedURI;
   Unused << aLoadInfo->GetUnstrippedURI(getter_AddRefs(unstrippedURI));
 
@@ -558,6 +549,16 @@ nsresult LoadInfoToLoadInfoArgs(nsILoadInfo* aLoadInfo,
   Maybe<RequestMode> requestMode;
   aLoadInfo->GetRequestMode(&requestMode);
 
+  Maybe<PolicyContainerArgs> maybePolicyContainerToInherit;
+  nsCOMPtr<nsIPolicyContainer> policyContainerToInherit =
+      aLoadInfo->GetPolicyContainerToInherit();
+  if (policyContainerToInherit) {
+    PolicyContainerArgs args;
+    PolicyContainer::ToArgs(PolicyContainer::Cast(policyContainerToInherit),
+                            args);
+    maybePolicyContainerToInherit.emplace(args);
+  }
+
   *outLoadInfoArgs = LoadInfoArgs(
       loadingPrincipalInfo, triggeringPrincipalInfo, principalToInheritInfo,
       topLevelPrincipalInfo, optionalResultPrincipalURI, triggeringRemoteType,
@@ -576,6 +577,7 @@ nsresult LoadInfoToLoadInfoArgs(nsILoadInfo* aLoadInfo,
       aLoadInfo->GetBrowserWouldUpgradeInsecureRequests(),
       aLoadInfo->GetForceAllowDataURI(),
       aLoadInfo->GetAllowInsecureRedirectToDataURI(),
+      aLoadInfo->GetForceMediaDocument(),
       aLoadInfo->GetSkipContentPolicyCheckForWebRequest(),
       aLoadInfo->GetOriginalFrameSrcLoad(),
       aLoadInfo->GetForceInheritPrincipalDropped(),
@@ -604,7 +606,7 @@ nsresult LoadInfoToLoadInfoArgs(nsILoadInfo* aLoadInfo,
       requestMode, aLoadInfo->GetIsFromProcessingFrameAttributes(),
       aLoadInfo->GetIsMediaRequest(), aLoadInfo->GetIsMediaInitialRequest(),
       aLoadInfo->GetIsFromObjectOrEmbed(), cookieJarSettingsArgs,
-      aLoadInfo->GetRequestBlockingReason(), maybeCspToInheritInfo,
+      aLoadInfo->GetRequestBlockingReason(), maybePolicyContainerToInherit,
       aLoadInfo->GetStoragePermission(), aLoadInfo->GetParentIpAddressSpace(),
       aLoadInfo->GetIpAddressSpace(), overriddenFingerprintingSettingsArg,
       aLoadInfo->GetIsMetaRefresh(), aLoadInfo->GetLoadingEmbedderPolicy(),
@@ -803,14 +805,6 @@ nsresult LoadInfoArgsToLoadInfo(const LoadInfoArgs& loadInfoArgs,
         loadInfoArgs.overriddenFingerprintingSettings().ref());
   }
 
-  nsCOMPtr<nsIContentSecurityPolicy> cspToInherit;
-  Maybe<mozilla::ipc::CSPInfo> cspToInheritInfo =
-      loadInfoArgs.cspToInheritInfo();
-  if (cspToInheritInfo.isSome()) {
-    nsCOMPtr<Document> doc = do_QueryInterface(aCspToInheritLoadingContext);
-    cspToInherit = CSPInfoToCSP(cspToInheritInfo.ref(), doc);
-  }
-
   // Restore the loadingContext for frames using the BrowsingContext's
   // embedder element. Note that this only works if the embedder is
   // same-process, so won't be fission compatible.
@@ -855,79 +849,41 @@ nsresult LoadInfoArgsToLoadInfo(const LoadInfoArgs& loadInfoArgs,
         redirectChain, interceptionInfoArg.fromThirdParty());
   }
 
+  RefPtr<PolicyContainer> policyContainerToInherit;
+  const auto& policyContainerToInheritArgs =
+      loadInfoArgs.policyContainerToInherit();
+  if (policyContainerToInheritArgs.isSome()) {
+    nsCOMPtr<Document> doc = do_QueryInterface(aCspToInheritLoadingContext);
+    PolicyContainer::FromArgs(policyContainerToInheritArgs.ref(), doc,
+                              getter_AddRefs(policyContainerToInherit));
+  }
+
   RefPtr<mozilla::net::LoadInfo> loadInfo = new mozilla::net::LoadInfo(
       loadingPrincipal, triggeringPrincipal, principalToInherit,
-      topLevelPrincipal, resultPrincipalURI, cookieJarSettings, cspToInherit,
-      triggeringRemoteType, loadInfoArgs.sandboxedNullPrincipalID(), clientInfo,
-      reservedClientInfo, initialClientInfo, controller,
-      loadInfoArgs.securityFlags(), loadInfoArgs.sandboxFlags(),
-      loadInfoArgs.triggeringSandboxFlags(), loadInfoArgs.triggeringWindowId(),
-      loadInfoArgs.triggeringStorageAccess(),
-      loadInfoArgs.triggeringFirstPartyClassificationFlags(),
-      loadInfoArgs.triggeringThirdPartyClassificationFlags(),
-      loadInfoArgs.contentPolicyType(),
+      topLevelPrincipal, resultPrincipalURI, cookieJarSettings,
+      policyContainerToInherit, triggeringRemoteType,
+      loadInfoArgs.sandboxedNullPrincipalID(), clientInfo, reservedClientInfo,
+      initialClientInfo, controller, loadInfoArgs.securityFlags(),
+      loadInfoArgs.sandboxFlags(), loadInfoArgs.contentPolicyType(),
       static_cast<LoadTainting>(loadInfoArgs.tainting()),
-      loadInfoArgs.blockAllMixedContent(),
-      loadInfoArgs.upgradeInsecureRequests(),
-      loadInfoArgs.browserUpgradeInsecureRequests(),
-      loadInfoArgs.browserDidUpgradeInsecureRequests(),
-      loadInfoArgs.browserWouldUpgradeInsecureRequests(),
-      loadInfoArgs.forceAllowDataURI(),
-      loadInfoArgs.allowInsecureRedirectToDataURI(),
-      loadInfoArgs.skipContentPolicyCheckForWebRequest(),
-      loadInfoArgs.originalFrameSrcLoad(),
-      loadInfoArgs.forceInheritPrincipalDropped(), loadInfoArgs.innerWindowID(),
-      loadInfoArgs.browsingContextID(), loadInfoArgs.frameBrowsingContextID(),
-      loadInfoArgs.initialSecurityCheckDone(),
+
+#define DEFINE_ARGUMENT(_t, _n, name, _d) loadInfoArgs.name(),
+      LOADINFO_FOR_EACH_FIELD(DEFINE_ARGUMENT, LOADINFO_DUMMY_SETTER)
+#undef DEFINE_ARGUMENT
+
+          loadInfoArgs.initialSecurityCheckDone(),
       loadInfoArgs.isInThirdPartyContext(), isThirdPartyContextToTopWindow,
-      loadInfoArgs.isOn3PCBExceptionList(), loadInfoArgs.isFormSubmission(),
-      loadInfoArgs.isGETRequest(), loadInfoArgs.sendCSPViolationEvents(),
       loadInfoArgs.originAttributes(),
       std::move(redirectChainIncludingInternalRedirects),
       std::move(redirectChain), std::move(ancestorPrincipals),
       ancestorBrowsingContextIDs, loadInfoArgs.corsUnsafeHeaders(),
-      loadInfoArgs.forcePreflight(), loadInfoArgs.isPreflight(),
-      loadInfoArgs.loadTriggeredFromExternal(),
-      loadInfoArgs.serviceWorkerTaintingSynthesized(),
-      loadInfoArgs.documentHasUserInteracted(),
-      loadInfoArgs.allowListFutureDocumentsCreatedFromThisRedirectChain(),
-      loadInfoArgs.needForCheckingAntiTrackingHeuristic(),
-      loadInfoArgs.cspNonce(), loadInfoArgs.integrityMetadata(),
-      loadInfoArgs.skipContentSniffing(), loadInfoArgs.httpsOnlyStatus(),
-      loadInfoArgs.hstsStatus(), loadInfoArgs.hasValidUserGestureActivation(),
-      loadInfoArgs.textDirectiveUserActivation(),
+      loadInfoArgs.loadTriggeredFromExternal(), loadInfoArgs.cspNonce(),
+      loadInfoArgs.integrityMetadata(),
       // This function is only called for moving LoadInfo across processes.
       // Same-document navigation won't cross process boundaries.
-      /* aIsSameDocumentNavigation */ false,
-      loadInfoArgs.allowDeprecatedSystemRequests(),
-      loadInfoArgs.isInDevToolsContext(), loadInfoArgs.parserCreatedScript(),
-      loadInfoArgs.requestMode(), loadInfoArgs.storagePermission(),
-      loadInfoArgs.parentIPAddressSpace(), loadInfoArgs.ipAddressSpace(),
-      overriddenFingerprintingSettings, loadInfoArgs.isMetaRefresh(),
-      loadInfoArgs.requestBlockingReason(), loadingContext,
-      loadInfoArgs.loadingEmbedderPolicy(),
-      loadInfoArgs.originTrialCoepCredentiallessEnabledForTopLevel(),
-      loadInfoArgs.unstrippedURI(), interceptionInfo,
-      loadInfoArgs.hasInjectedCookieForCookieBannerHandling(),
-      loadInfoArgs.schemelessInput(), loadInfoArgs.httpsUpgradeTelemetry(),
-      loadInfoArgs.isNewWindowTarget(),
-      loadInfoArgs.userNavigationInvolvement());
-
-  if (loadInfoArgs.isFromProcessingFrameAttributes()) {
-    loadInfo->SetIsFromProcessingFrameAttributes();
-  }
-
-  if (loadInfoArgs.isMediaRequest()) {
-    loadInfo->SetIsMediaRequest(true);
-
-    if (loadInfoArgs.isMediaInitialRequest()) {
-      loadInfo->SetIsMediaInitialRequest(true);
-    }
-  }
-
-  if (loadInfoArgs.isFromObjectOrEmbed()) {
-    loadInfo->SetIsFromObjectOrEmbed(true);
-  }
+      /* aIsSameDocumentNavigation */ false, overriddenFingerprintingSettings,
+      loadingContext, loadInfoArgs.unstrippedURI(), interceptionInfo,
+      loadInfoArgs.schemelessInput(), loadInfoArgs.userNavigationInvolvement());
 
   loadInfo.forget(outLoadInfo);
   return NS_OK;

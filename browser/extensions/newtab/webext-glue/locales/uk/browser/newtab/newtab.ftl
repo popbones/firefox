@@ -8,6 +8,9 @@
 newtab-page-title = Нова вкладка
 newtab-settings-button =
     .title = Налаштуйте свою сторінку нової вкладки
+newtab-customize-panel-icon-button =
+    .title = Налаштувати цю сторінку
+newtab-customize-panel-icon-button-label = Налаштувати
 newtab-personalize-settings-icon-label =
     .title = Персоналізувати нову вкладку
     .aria-label = Налаштування
@@ -53,6 +56,9 @@ newtab-topsites-add-shortcut-header = Новий ярлик
 newtab-topsites-edit-topsites-header = Редагувати популярний сайт
 newtab-topsites-edit-shortcut-header = Редагувати ярлик
 newtab-topsites-add-shortcut-label = Додати ярлик
+newtab-topsites-add-shortcut-title =
+    .title = Додати ярлик
+    .aria-label = Додати ярлик
 newtab-topsites-title-label = Заголовок
 newtab-topsites-title-input =
     .placeholder = Введіть назву
@@ -109,7 +115,7 @@ newtab-menu-edit-topsites = Змінити
 newtab-menu-open-new-window = Відкрити в новому вікні
 newtab-menu-open-new-private-window = Відкрити в приватному вікні
 newtab-menu-dismiss = Сховати
-newtab-menu-pin = Прикріпити
+newtab-menu-pin = Закріпити
 newtab-menu-unpin = Відкріпити
 newtab-menu-delete-history = Видалити з історії
 newtab-menu-save-to-pocket = Зберегти в { -pocket-brand-name }
@@ -310,9 +316,6 @@ newtab-custom-pocket-sponsored = Матеріали від спонсорів
 newtab-custom-pocket-show-recent-saves = Показати останні збереження
 newtab-custom-recent-title = Недавня активність
 newtab-custom-recent-subtitle = Добірка недавніх сайтів та вмісту
-newtab-custom-recent-toggle =
-    .label = Недавня активність
-    .description = Добірка недавніх сайтів та вмісту
 newtab-custom-weather-toggle =
     .label = Погода
     .description = Точний прогноз на сьогодні
@@ -436,7 +439,6 @@ newtab-weather-menu-change-location = Змінити розташування
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Пошук розташування
     .aria-label = Пошук розташування
-newtab-weather-change-location-search-input = Пошук розташування
 newtab-weather-menu-weather-display = Подання погоди
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -502,6 +504,9 @@ newtab-topic-selection-button-pick-interests = Виберіть свої інт�
 newtab-section-follow-button = Читати
 newtab-section-following-button = Ви читаєте
 newtab-section-unfollow-button = Відписатися
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = Налаштуйте свою стрічку
+newtab-section-follow-highlight-subtitle = Слідкуйте за своїми інтересами, щоб бачити більше того, що вам подобається.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -544,6 +549,11 @@ newtab-download-mobile-highlight-body-variant-c = Чи знаєте ви, що {
 newtab-download-mobile-highlight-image =
     .aria-label = QR-код для завантаження { -brand-product-name } для мобільних пристроїв
 
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = Ваші закладки завжди під рукою
+newtab-shortcuts-highlight-subtitle = Додайте ярлик, щоб мати миттєвий доступ до своїх улюблених сайтів.
+
 ## Strings for reporting ads and content
 
 newtab-report-content-why-reporting-this =
@@ -569,11 +579,11 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
-# "Trending on Google" refers to the trending topics coming from Google Search, usually seen when a user is focused on the search bar
-newtab-trending-searches-trending-on-google = Популярне в Google
 newtab-trending-searches-show-trending =
     .title = Показати популярні пошукові запити
 newtab-trending-searches-hide-trending =
     .title = Приховати популярні пошукові запити
 newtab-trending-searches-learn-more = Докладніше
 newtab-trending-searches-dismiss = Приховати популярні пошукові запити
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = Популярні пошукові запити

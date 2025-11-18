@@ -1417,7 +1417,7 @@ void CompositorBridgeParent::PostInsertVsyncProfilerMarker(
   }
 }
 
-widget::PCompositorWidgetParent*
+already_AddRefed<widget::PCompositorWidgetParent>
 CompositorBridgeParent::AllocPCompositorWidgetParent(
     const CompositorWidgetInitData& aInitData) {
 #if defined(MOZ_WIDGET_SUPPORTS_OOP_COMPOSITING)
@@ -1426,27 +1426,31 @@ CompositorBridgeParent::AllocPCompositorWidgetParent(
     return nullptr;
   }
 
-  widget::CompositorWidgetParent* widget =
+  RefPtr<widget::CompositorWidgetParent> widget =
       new widget::CompositorWidgetParent(aInitData, mOptions);
-  widget->AddRef();
 
   // Sending the constructor acts as initialization as well.
   mWidget = widget;
-  return widget;
+  return widget.forget();
 #else
   return nullptr;
 #endif
 }
 
-bool CompositorBridgeParent::DeallocPCompositorWidgetParent(
-    PCompositorWidgetParent* aActor) {
-#if defined(MOZ_WIDGET_SUPPORTS_OOP_COMPOSITING)
-  static_cast<widget::CompositorWidgetParent*>(aActor)->Release();
-  return true;
-#else
-  return false;
-#endif
+#ifdef XP_MACOSX
+mozilla::ipc::IPCResult
+CompositorBridgeParent::RecvPCompositorWidgetConstructor(
+    PCompositorWidgetParent* actor, CompositorWidgetInitData&& aInitData) {
+  // macOS CocoaCompositorWidget (a superclass of the platform-specific
+  // CompositorWidgetParent) requires an extra step to pass aInitData
+  // with move semantics, because IPDL can't generate move semantics
+  // in the constructor. The macOS-specific aInitData contains an
+  // Endpoint, so it *must* use move semantics.
+  auto* widget = static_cast<widget::CompositorWidgetParent*>(actor);
+  widget->Init(std::move(aInitData));
+  return IPC_OK();
 }
+#endif
 
 CompositorController*
 CompositorBridgeParent::LayerTreeState::GetCompositorController() const {

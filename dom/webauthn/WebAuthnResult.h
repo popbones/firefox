@@ -5,19 +5,19 @@
 #ifndef mozilla_dom_WebAuthnResult_h_
 #define mozilla_dom_WebAuthnResult_h_
 
+#include "mozilla/Maybe.h"
 #include "nsIWebAuthnResult.h"
 #include "nsString.h"
 #include "nsTArray.h"
 
-#include "mozilla/Maybe.h"
-#include "nsString.h"
-
 #ifdef MOZ_WIDGET_ANDROID
+#  include "JavaBuiltins.h"
 #  include "mozilla/java/WebAuthnUtilsNatives.h"
 #endif
 
 #ifdef XP_WIN
 #  include <windows.h>
+
 #  include "mozilla/dom/PWebAuthnTransactionParent.h"
 #  include "winwebauthn/webauthn.h"
 #endif
@@ -38,7 +38,8 @@ class WebAuthnRegisterResult final : public nsIWebAuthnRegisterResult {
                          const Maybe<bool>& aPrfSupported,
                          const Maybe<nsTArray<uint8_t>>& aPrfFirst,
                          const Maybe<nsTArray<uint8_t>>& aPrfSecond)
-      : mClientDataJSON(aClientDataJSON),
+      : mAttestationConsentPromptShown(false),
+        mClientDataJSON(aClientDataJSON),
         mCredPropsRk(Nothing()),
         mAuthenticatorAttachment(aAuthenticatorAttachment),
         mLargeBlobSupported(aLargeBlobSupported),
@@ -63,6 +64,7 @@ class WebAuthnRegisterResult final : public nsIWebAuthnRegisterResult {
         reinterpret_cast<uint8_t*>(
             aResponse->AttestationObject()->GetElements().Elements()),
         aResponse->AttestationObject()->Length());
+    mAttestationConsentPromptShown = false;
     if (aResponse->ClientDataJson()) {
       mClientDataJSON = Some(nsAutoCString(
           reinterpret_cast<const char*>(
@@ -80,6 +82,10 @@ class WebAuthnRegisterResult final : public nsIWebAuthnRegisterResult {
     }
     mAuthenticatorAttachment =
         Some(aResponse->AuthenticatorAttachment()->ToString());
+    if (aResponse->CredProps()) {
+      mCredPropsRk = Some(java::sdk::Boolean::Ref::From(aResponse->CredProps())
+                              ->BooleanValue());
+    }
   }
 #endif
 
@@ -92,6 +98,7 @@ class WebAuthnRegisterResult final : public nsIWebAuthnRegisterResult {
 
     mAttestationObject.AppendElements(aResponse->pbAttestationObject,
                                       aResponse->cbAttestationObject);
+    mAttestationConsentPromptShown = true;
 
     nsTArray<WebAuthnExtensionResult> extensions;
     if (aResponse->dwVersion >= WEBAUTHN_CREDENTIAL_ATTESTATION_VERSION_2) {
@@ -166,6 +173,7 @@ class WebAuthnRegisterResult final : public nsIWebAuthnRegisterResult {
   ~WebAuthnRegisterResult() = default;
 
   nsTArray<uint8_t> mAttestationObject;
+  bool mAttestationConsentPromptShown;
   nsTArray<uint8_t> mCredentialId;
   nsTArray<nsString> mTransports;
   Maybe<nsCString> mClientDataJSON;

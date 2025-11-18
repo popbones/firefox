@@ -18,6 +18,10 @@ namespace js {
 class CollatorObject;
 class DateTimeFormatObject;
 class NumberFormatObject;
+
+namespace temporal {
+class TimeZoneObject;
+}
 }  // namespace js
 
 namespace js::intl {
@@ -31,18 +35,39 @@ enum class DateTimeFormatKind;
 class GlobalIntlData {
   /**
    * The locale information provided by the embedding, guiding SpiderMonkey's
-   * selection of a default locale. See intl_RuntimeDefaultLocale(), whose value
-   * controls the value returned by DefaultLocale() that's what's *actually*
-   * used.
-   */
-  GCPtr<JSLinearString*> runtimeDefaultLocale_;
-
-  /**
-   * Time zone information provided by ICU. See intl_defaultTimeZone(), whose
-   * value controls the value returned by DefaultTimeZone() that's what's
+   * selection of a default locale. See intl::ComputeDefaultLocale(), whose
+   * value controls the value returned by defaultLocale() that's what's
    * *actually* used.
    */
-  GCPtr<JSLinearString*> runtimeDefaultTimeZone_;
+  GCPtr<JSLinearString*> realmLocale_;
+
+  /**
+   * The actual default locale.
+   */
+  GCPtr<JSLinearString*> defaultLocale_;
+
+  /**
+   * Time zone information provided by ICU or the embedding. See
+   * temporal::ComputeSystemTimeZoneIdentifier(), whose value controls the value
+   * returned by defaultTimeZone() that's what's *actually* used.
+   */
+  GCPtr<JSLinearString*> realmTimeZone_;
+
+  /**
+   * The actual default time zone.
+   */
+  GCPtr<JSLinearString*> defaultTimeZone_;
+
+  /**
+   * Cached temporal::TimeZoneObject for the default time zone.
+   */
+  GCPtr<JSObject*> defaultTimeZoneObject_;
+
+  /**
+   * Cached temporal::TimeZoneObject of the last request to create a named
+   * time zone.
+   */
+  GCPtr<JSObject*> timeZoneObject_;
 
   /**
    * Locale string passed to the last call to localeCompare String method. Not
@@ -102,6 +127,31 @@ class GlobalIntlData {
 
  public:
   /**
+   * Returns the BCP 47 language tag for the global's current locale.
+   */
+  JSLinearString* defaultLocale(JSContext* cx);
+
+  /**
+   * Returns the IANA time zone name for the global's current time zone.
+   */
+  JSLinearString* defaultTimeZone(JSContext* cx);
+
+  /**
+   * Get or create the time zone object for the global's current time zone.
+   */
+  temporal::TimeZoneObject* getOrCreateDefaultTimeZone(JSContext* cx);
+
+  /**
+   * Get or create the time zone for the IANA time zone name |identifier|.
+   * |primaryIdentifier| must be the primary identifier for |identifier|, i.e.
+   * if |identifier| is a time zone link name, |primaryIdentifier| must be the
+   * link's target time zone.
+   */
+  temporal::TimeZoneObject* getOrCreateTimeZone(
+      JSContext* cx, JS::Handle<JSLinearString*> identifier,
+      JS::Handle<JSLinearString*> primaryIdentifier);
+
+  /**
    * Get or create the Intl.Collator instance for |locale|. The default locale
    * is used when |locale| is null.
    */
@@ -126,8 +176,8 @@ class GlobalIntlData {
   void trace(JSTracer* trc);
 
  private:
-  bool ensureRuntimeDefaultLocale(JSContext* cx);
-  bool ensureRuntimeDefaultTimeZone(JSContext* cx);
+  bool ensureRealmLocale(JSContext* cx);
+  bool ensureRealmTimeZone(JSContext* cx);
 
   void resetCollator();
   void resetNumberFormat();

@@ -3,8 +3,16 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import copy
+import inspect
 import logging
+import multiprocessing
 import os
+import platform
+from concurrent.futures import (
+    FIRST_COMPLETED,
+    ProcessPoolExecutor,
+    wait,
+)
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Union
 
@@ -37,23 +45,34 @@ class Kind:
     config: Dict
     graph_config: GraphConfig
 
-    def _get_loader(self):
+    def _get_loader(self) -> Callable:
         try:
-            loader = self.config["loader"]
+            loader_path = self.config["loader"]
         except KeyError:
-            loader = "taskgraph.loader.default:loader"
-        return find_object(loader)
+            loader_path = "taskgraph.loader.default:loader"
+        loader = find_object(loader_path)
+        assert callable(loader)
+        return loader
 
-    def load_tasks(self, parameters, loaded_tasks, write_artifacts):
+    def load_tasks(self, parameters, kind_dependencies_tasks, write_artifacts):
+        logger.debug(f"Loading tasks for kind {self.name}")
+
+        parameters = Parameters(**parameters)
         loader = self._get_loader()
         config = copy.deepcopy(self.config)
 
-        kind_dependencies = config.get("kind-dependencies", [])
-        kind_dependencies_tasks = {
-            task.label: task for task in loaded_tasks if task.kind in kind_dependencies
-        }
-
-        inputs = loader(self.name, self.path, config, parameters, loaded_tasks)
+        if "write_artifacts" in inspect.signature(loader).parameters:
+            extra_args = (write_artifacts,)
+        else:
+            extra_args = ()
+        inputs = loader(
+            self.name,
+            self.path,
+            config,
+            parameters,
+            list(kind_dependencies_tasks.values()),
+            *extra_args,
+        )
 
         transforms = TransformSequence()
         for xform_path in config["transforms"]:
@@ -87,6 +106,7 @@ class Kind:
             )
             for task_dict in transforms(trans_config, inputs)
         ]
+        logger.info(f"Generated {len(tasks)} tasks for kind {self.name}")
         return tasks
 
     @classmethod
@@ -123,6 +143,7 @@ class TaskGraphGenerator:
         parameters: Union[Parameters, Callable[[GraphConfig], Parameters]],
         decision_task_id: str = "DECISION-TASK",
         write_artifacts: bool = False,
+        enable_verifications: bool = True,
     ):
         """
         @param root_dir: root directory containing the Taskgraph config.yml file
@@ -136,6 +157,7 @@ class TaskGraphGenerator:
         self._parameters = parameters
         self._decision_task_id = decision_task_id
         self._write_artifacts = write_artifacts
+        self._enable_verifications = enable_verifications
 
         # start the generator
         self._run = self._run()  # type: ignore
@@ -249,6 +271,103 @@ class TaskGraphGenerator:
                 except KindNotFound:
                     continue
 
+    def _load_tasks_serial(self, kinds, kind_graph, parameters):
+        all_tasks = {}
+        for kind_name in kind_graph.visit_postorder():
+            logger.debug(f"Loading tasks for kind {kind_name}")
+
+            kind = kinds.get(kind_name)
+            if not kind:
+                message = f'Could not find the kind "{kind_name}"\nAvailable kinds:\n'
+                for k in sorted(kinds):
+                    message += f' - "{k}"\n'
+                raise Exception(message)
+
+            try:
+                new_tasks = kind.load_tasks(
+                    parameters,
+                    {
+                        k: t
+                        for k, t in all_tasks.items()
+                        if t.kind in kind.config.get("kind-dependencies", [])
+                    },
+                    self._write_artifacts,
+                )
+            except Exception:
+                logger.exception(f"Error loading tasks for kind {kind_name}:")
+                raise
+            for task in new_tasks:
+                if task.label in all_tasks:
+                    raise Exception("duplicate tasks with label " + task.label)
+                all_tasks[task.label] = task
+
+        return all_tasks
+
+    def _load_tasks_parallel(self, kinds, kind_graph, parameters):
+        all_tasks = {}
+        futures_to_kind = {}
+        futures = set()
+        edges = set(kind_graph.edges)
+
+        with ProcessPoolExecutor(
+            mp_context=multiprocessing.get_context("fork")
+        ) as executor:
+
+            def submit_ready_kinds():
+                """Create the next batch of tasks for kinds without dependencies."""
+                nonlocal kinds, edges, futures
+                loaded_tasks = all_tasks.copy()
+                kinds_with_deps = {edge[0] for edge in edges}
+                ready_kinds = (
+                    set(kinds) - kinds_with_deps - set(futures_to_kind.values())
+                )
+                for name in ready_kinds:
+                    kind = kinds.get(name)
+                    if not kind:
+                        message = (
+                            f'Could not find the kind "{name}"\nAvailable kinds:\n'
+                        )
+                        for k in sorted(kinds):
+                            message += f' - "{k}"\n'
+                        raise Exception(message)
+
+                    future = executor.submit(
+                        kind.load_tasks,
+                        dict(parameters),
+                        {
+                            k: t
+                            for k, t in loaded_tasks.items()
+                            if t.kind in kind.config.get("kind-dependencies", [])
+                        },
+                        self._write_artifacts,
+                    )
+                    futures.add(future)
+                    futures_to_kind[future] = name
+
+            submit_ready_kinds()
+            while futures:
+                done, _ = wait(futures, return_when=FIRST_COMPLETED)
+                for future in done:
+                    if exc := future.exception():
+                        executor.shutdown(wait=False, cancel_futures=True)
+                        raise exc
+                    kind = futures_to_kind.pop(future)
+                    futures.remove(future)
+
+                    for task in future.result():
+                        if task.label in all_tasks:
+                            raise Exception("duplicate tasks with label " + task.label)
+                        all_tasks[task.label] = task
+
+                    # Update state for next batch of futures.
+                    del kinds[kind]
+                    edges = {e for e in edges if e[1] != kind}
+
+                # Submit any newly unblocked kinds
+                submit_ready_kinds()
+
+        return all_tasks
+
     def _run(self):
         logger.info("Loading graph configuration.")
         graph_config = load_graph_config(self.root_dir)
@@ -258,7 +377,7 @@ class TaskGraphGenerator:
         graph_config.register()
 
         # Initial verifications that don't depend on any generation state.
-        verifications("initial")
+        self.verify("initial")
 
         if callable(self._parameters):
             parameters = self._parameters(graph_config)
@@ -289,7 +408,7 @@ class TaskGraphGenerator:
         kinds = {
             kind.name: kind for kind in self._load_kinds(graph_config, target_kinds)
         }
-        verifications("kinds", kinds)
+        self.verify("kinds", kinds)
 
         edges = set()
         for kind in kinds.values():
@@ -303,24 +422,18 @@ class TaskGraphGenerator:
             )
 
         logger.info("Generating full task set")
-        all_tasks = {}
-        for kind_name in kind_graph.visit_postorder():
-            logger.debug(f"Loading tasks for kind {kind_name}")
-            kind = kinds[kind_name]
-            try:
-                new_tasks = kind.load_tasks(
-                    parameters,
-                    list(all_tasks.values()),
-                    self._write_artifacts,
-                )
-            except Exception:
-                logger.exception(f"Error loading tasks for kind {kind_name}:")
-                raise
-            for task in new_tasks:
-                if task.label in all_tasks:
-                    raise Exception("duplicate tasks with label " + task.label)
-                all_tasks[task.label] = task
-            logger.info(f"Generated {len(new_tasks)} tasks for kind {kind_name}")
+        # Current parallel generation relies on multiprocessing, and forking.
+        # This causes problems on Windows and macOS due to how new processes
+        # are created there, and how doing so reinitializes global variables
+        # that are modified earlier in graph generation, that doesn't get
+        # redone in the new processes. Ideally this would be fixed, or we
+        # would take another approach to parallel kind generation. In the
+        # meantime, it's not supported outside of Linux.
+        if platform.system() != "Linux" or os.environ.get("TASKGRAPH_SERIAL"):
+            all_tasks = self._load_tasks_serial(kinds, kind_graph, parameters)
+        else:
+            all_tasks = self._load_tasks_parallel(kinds, kind_graph, parameters)
+
         full_task_set = TaskGraph(all_tasks, Graph(frozenset(all_tasks), frozenset()))
         yield self.verify("full_task_set", full_task_set, graph_config, parameters)
 
@@ -365,7 +478,7 @@ class TaskGraphGenerator:
         if parameters["enable_always_target"]:
             always_target_tasks = {
                 t.label
-                for t in full_task_graph.tasks.values()  # type: ignore
+                for t in full_task_graph.tasks.values()
                 if t.attributes.get("always_target")
                 if parameters["enable_always_target"] is True
                 or t.kind in parameters["enable_always_target"]
@@ -379,7 +492,7 @@ class TaskGraphGenerator:
         target_graph = full_task_graph.graph.transitive_closure(requested_tasks)
         target_task_graph = TaskGraph(
             {l: all_tasks[l] for l in target_graph.nodes},
-            target_graph,  # type: ignore
+            target_graph,
         )
         yield self.verify(
             "target_task_graph", target_task_graph, graph_config, parameters
@@ -430,9 +543,29 @@ class TaskGraphGenerator:
             self._run_results[k] = v
         return self._run_results[name]
 
-    def verify(self, name, obj, *args, **kwargs):
-        verifications(name, obj, *args, **kwargs)
-        return name, obj
+    def verify(self, name, *args, **kwargs):
+        if self._enable_verifications:
+            verifications(name, *args, **kwargs)
+        if args:
+            return name, args[0]
+
+
+def load_tasks_for_kinds(parameters, kinds, root_dir=None):
+    """
+    Get all the tasks of the given kinds.
+
+    This function is designed to be called from outside of taskgraph.
+    """
+    # make parameters read-write
+    parameters = dict(parameters)
+    parameters["target-kinds"] = kinds
+    parameters = parameters_loader(spec=None, strict=False, overrides=parameters)
+    tgg = TaskGraphGenerator(root_dir=root_dir, parameters=parameters)
+    return {
+        task.task["metadata"]["name"]: task
+        for task in tgg.full_task_set
+        if task.kind in kinds
+    }
 
 
 def load_tasks_for_kind(parameters, kind, root_dir=None):
@@ -441,13 +574,4 @@ def load_tasks_for_kind(parameters, kind, root_dir=None):
 
     This function is designed to be called from outside of taskgraph.
     """
-    # make parameters read-write
-    parameters = dict(parameters)
-    parameters["target-kinds"] = [kind]
-    parameters = parameters_loader(spec=None, strict=False, overrides=parameters)
-    tgg = TaskGraphGenerator(root_dir=root_dir, parameters=parameters)
-    return {
-        task.task["metadata"]["name"]: task
-        for task in tgg.full_task_set
-        if task.kind == kind
-    }
+    return load_tasks_for_kinds(parameters, [kind], root_dir)

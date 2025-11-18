@@ -6,20 +6,20 @@
 
 #include "FuzzingFunctions.h"
 
-#include "nsJSEnvironment.h"
 #include "js/GCAPI.h"
-#include "mozilla/dom/KeyboardEvent.h"
 #include "mozilla/ErrorResult.h"
 #include "mozilla/Fuzzing.h"
+#include "mozilla/SpinEventLoopUntil.h"
 #include "mozilla/Sprintf.h"
 #include "mozilla/TextEvents.h"
 #include "mozilla/TextInputProcessor.h"
+#include "mozilla/dom/KeyboardEvent.h"
 #include "nsFocusManager.h"
 #include "nsIAccessibilityService.h"
+#include "nsITimer.h"
+#include "nsJSEnvironment.h"
 #include "nsPIDOMWindow.h"
 #include "xpcAccessibilityService.h"
-#include "mozilla/SpinEventLoopUntil.h"
-#include "nsITimer.h"
 
 #ifdef FUZZING_SNAPSHOT
 #  include "mozilla/dom/ContentChild.h"
@@ -399,7 +399,7 @@ void FuzzingFunctions::SpinEventLoopFor(const GlobalObject&,
   nsCOMPtr<nsITimer> timer = NS_NewTimer();
   nsresult rv = timer->InitWithNamedFuncCallback(
       SpinEventLoopForCallback, &didRun, aMilliseconds, nsITimer::TYPE_ONE_SHOT,
-      "FuzzingFunctions::SpinEventLoopFor");
+      "FuzzingFunctions::SpinEventLoopFor"_ns);
   if (NS_FAILED(rv)) {
     return;
   }

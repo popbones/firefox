@@ -31,9 +31,12 @@ import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
-  CustomizableUI: "resource:///modules/CustomizableUI.sys.mjs",
-  CustomizableWidgets: "resource:///modules/CustomizableWidgets.sys.mjs",
-  PanelMultiView: "resource:///modules/PanelMultiView.sys.mjs",
+  CustomizableUI:
+    "moz-src:///browser/components/customizableui/CustomizableUI.sys.mjs",
+  CustomizableWidgets:
+    "moz-src:///browser/components/customizableui/CustomizableWidgets.sys.mjs",
+  PanelMultiView:
+    "moz-src:///browser/components/customizableui/PanelMultiView.sys.mjs",
   PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
   ProfilerMenuButton:
     "resource://devtools/client/performance-new/popup/menu-button.sys.mjs",
@@ -425,7 +428,7 @@ DevToolsStartup.prototype = {
     }
 
     // The following code would only work if we have a top level browser window opened
-    const window = Services.wm.getMostRecentWindow("navigator:browser");
+    const window = Services.wm.getMostRecentBrowserWindow();
     if (!window) {
       return;
     }
@@ -906,7 +909,7 @@ DevToolsStartup.prototype = {
       // Record the timing at which this event started in order to compute later in
       // gDevTools.showToolbox, the complete time it takes to open the toolbox.
       // i.e. especially take `initDevTools` into account.
-      const startTime = Cu.now();
+      const startTime = ChromeUtils.now();
       const require = this.initDevTools("KeyShortcut", key);
       const {
         gDevToolsBrowser,
@@ -1190,7 +1193,7 @@ DevToolsStartup.prototype = {
       keys = `${modifiers}+${shortcut}`;
     }
 
-    const window = Services.wm.getMostRecentWindow("navigator:browser");
+    const window = Services.wm.getMostRecentBrowserWindow();
 
     this.telemetry.addEventProperty(
       window,

@@ -7,6 +7,7 @@
 #include "builtin/WeakSetObject.h"
 
 #include "builtin/MapObject.h"
+#include "jit/InlinableNatives.h"
 #include "js/friend/ErrorMessages.h"  // JSMSG_*
 #include "js/PropertySpec.h"
 #include "vm/GlobalObject.h"
@@ -26,7 +27,7 @@ using namespace js;
 
 static bool AddWeakSetEntryImpl(JSContext* cx, Handle<WeakSetObject*> setObj,
                                 Handle<Value> keyVal) {
-  if (MOZ_UNLIKELY(!CanBeHeldWeakly(cx, keyVal))) {
+  if (MOZ_UNLIKELY(!CanBeHeldWeakly(keyVal))) {
     unsigned errorNum = GetErrorNumber(false);
     ReportValueError(cx, errorNum, JSDVG_IGNORE_STACK, keyVal, nullptr);
     return false;
@@ -68,7 +69,7 @@ bool WeakSetObject::add(JSContext* cx, unsigned argc, Value* vp) {
   MOZ_ASSERT(is(args.thisv()));
 
   // Step 4.
-  if (!CanBeHeldWeakly(cx, args.get(0))) {
+  if (!CanBeHeldWeakly(args.get(0))) {
     args.rval().setBoolean(false);
     return true;
   }
@@ -104,7 +105,7 @@ bool WeakSetObject::delete_(JSContext* cx, unsigned argc, Value* vp) {
   MOZ_ASSERT(is(args.thisv()));
 
   // Step 5.
-  if (!CanBeHeldWeakly(cx, args.get(0))) {
+  if (!CanBeHeldWeakly(args.get(0))) {
     args.rval().setBoolean(false);
     return true;
   }
@@ -132,6 +133,13 @@ bool WeakSetObject::has(JSContext* cx, unsigned argc, Value* vp) {
                                                                           args);
 }
 
+// static
+bool WeakSetObject::hasObject(WeakSetObject* weakSet, JSObject* obj) {
+  AutoUnsafeCallWithABI unsafe;
+  ValueValueWeakMap* map = weakSet->getMap();
+  return map && map->has(ObjectValue(*obj));
+}
+
 const ClassSpec WeakSetObject::classSpec_ = {
     GenericCreateConstructor<WeakSetObject::construct, 0,
                              gc::AllocKind::FUNCTION>,
@@ -140,7 +148,7 @@ const ClassSpec WeakSetObject::classSpec_ = {
     nullptr,
     WeakSetObject::methods,
     WeakSetObject::properties,
-    GenericFinishInit<WhichHasFuseProperty::Proto>,
+    GenericFinishInit<WhichHasRealmFuseProperty::Proto>,
 };
 
 const JSClass WeakSetObject::class_ = {
@@ -166,7 +174,7 @@ const JSPropertySpec WeakSetObject::properties[] = {
 const JSFunctionSpec WeakSetObject::methods[] = {
     JS_FN("add", add, 1, 0),
     JS_FN("delete", delete_, 1, 0),
-    JS_FN("has", has, 1, 0),
+    JS_INLINABLE_FN("has", has, 1, 0, WeakSetHas),
     JS_FS_END,
 };
 

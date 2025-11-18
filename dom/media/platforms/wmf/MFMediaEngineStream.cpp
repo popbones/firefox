@@ -3,17 +3,18 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "MFMediaEngineStream.h"
+
 #include <vcruntime.h>
 
 #include "AudioConverter.h"
-#include "MFMediaSource.h"
 #include "MFMediaEngineUtils.h"
+#include "MFMediaSource.h"
 #include "TimeUnits.h"
+#include "WMF.h"
+#include "WMFUtils.h"
 #include "mozilla/ProfilerLabels.h"
 #include "mozilla/ProfilerMarkerTypes.h"
 #include "mozilla/ScopeExit.h"
-#include "WMF.h"
-#include "WMFUtils.h"
 
 namespace mozilla {
 
@@ -135,13 +136,13 @@ MFMediaEngineStream::~MFMediaEngineStream() {
 }
 
 HRESULT MFMediaEngineStream::RuntimeClassInitialize(
-    uint64_t aStreamId, const TrackInfo& aInfo, bool aIsEncrytpedCustomInit,
+    uint64_t aStreamId, const TrackInfo& aInfo, bool aIsEncryptedCustomInit,
     MFMediaSource* aParentSource) {
   mParentSource = aParentSource;
   mTaskQueue = aParentSource->GetTaskQueue();
   MOZ_ASSERT(mTaskQueue);
   mStreamId = aStreamId;
-  mIsEncrytpedCustomInit = aIsEncrytpedCustomInit;
+  mIsEncryptedCustomInit = aIsEncryptedCustomInit;
 
   auto errorExit = MakeScopeExit([&] {
     SLOG("Failed to initialize media stream (id=%" PRIu64 ")", aStreamId);

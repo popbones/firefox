@@ -39,7 +39,6 @@ import androidx.test.platform.app.InstrumentationRegistry.getInstrumentation
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiSelector
 import junit.framework.AssertionFailedError
-import mozilla.components.support.utils.PendingIntentUtils
 import mozilla.components.support.utils.ext.getApplicationInfoCompat
 import okio.Buffer
 import org.hamcrest.Matchers
@@ -55,7 +54,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
-@Suppress("TooManyFunctions")
 object TestHelper {
     @JvmField
     var mDevice = UiDevice.getInstance(getInstrumentation())
@@ -231,7 +229,7 @@ object TestHelper {
         val appContext = getInstrumentation()
             .targetContext
             .applicationContext
-        val pendingIntent = PendingIntent.getActivity(appContext, 0, Intent(), PendingIntentUtils.defaultFlags)
+        val pendingIntent = PendingIntent.getActivity(appContext, 0, Intent(), PendingIntent.FLAG_IMMUTABLE)
 
         val customTabColorSchemeBuilder = CustomTabColorSchemeParams.Builder()
         customTabColorSchemeBuilder.setToolbarColor(Color.MAGENTA)

@@ -61,7 +61,6 @@ fail-if = ["a11y_checks"] # Bug 1849028 clicked element may not be focusable and
 
 ["browser_dbg-outline-focus.js"]
 fail-if = ["a11y_checks"] # Bug 1849028 clicked element may not be focusable and/or labeled
-skip-if = ["verify"]
 
 ["browser_dbg-outline-pretty.js"]
 
@@ -148,7 +147,8 @@ skip-if = [
 ]
 
 ["browser_dbg-preview-wrapped-lines.js"]
-fail-if = ["a11y_checks"] # Bug 1860733 splitter element is not focusable
+skip-if = ["true"] # Bug 1985564 the test is flaky
+# fail-if = ["a11y_checks"] # Bug 1860733 splitter element is not focusable
 
 ["browser_dbg-preview.js"]
 fail-if = ["a11y_checks"] # Bug 1849028 clicked element may not be focusable and/or labeled
@@ -159,9 +159,7 @@ fail-if = ["a11y_checks"] # Bug 1849028 clicked element may not be focusable and
 fail-if = ["a11y_checks"] # Bug 1849028 clicked element may not be focusable and/or labeled
 
 ["browser_dbg-quick-open.js"]
-skip-if = [
-  "os == 'linux' && os_version == '18.04' && processor == 'x86_64' && tsan", # Bug 1721999
-]
+skip-if = ["os == 'linux' && os_version == '18.04' && processor == 'x86_64' && tsan"] # Bug 1721999
 
 ["browser_dbg-react-app.js"]
 
@@ -244,7 +242,6 @@ fail-if = ["a11y_checks"] # Bug 1849028 clicked element may not be focusable and
 ["browser_dbg-sourcemaps-ignorelist.js"]
 
 ["browser_dbg-sourcemaps-indexed.js"]
-skip-if = ["verify"] # Bug 1434792
 
 ["browser_dbg-sourcemaps-redirect.js"]
 

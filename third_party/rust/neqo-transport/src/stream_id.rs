@@ -108,7 +108,7 @@ impl StreamId {
 
     /// Return the stream index for this stream ID.
     #[must_use]
-    pub const fn index(&self) -> u64 {
+    pub const fn index(self) -> u64 {
         self.0 >> 2
     }
 
@@ -128,21 +128,9 @@ impl From<u64> for StreamId {
     }
 }
 
-impl From<&u64> for StreamId {
-    fn from(val: &u64) -> Self {
-        Self::new(*val)
-    }
-}
-
 impl PartialEq<u64> for StreamId {
     fn eq(&self, other: &u64) -> bool {
         self.as_u64() == *other
-    }
-}
-
-impl AsRef<u64> for StreamId {
-    fn as_ref(&self) -> &u64 {
-        &self.0
     }
 }
 

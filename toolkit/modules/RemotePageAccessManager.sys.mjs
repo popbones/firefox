@@ -130,10 +130,7 @@ export let RemotePageAccessManager = {
       ],
       RPMAddMessageListener: ["*"],
       RPMRemoveMessageListener: ["*"],
-      RPMGetFormatURLPref: [
-        "app.support.baseURL",
-        "browser.privatebrowsing.vpnpromourl",
-      ],
+      RPMGetFormatURLPref: ["app.support.baseURL"],
       RPMIsWindowPrivate: ["*"],
       RPMGetBoolPref: ["browser.privatebrowsing.felt-privacy-v1"],
     },
@@ -154,7 +151,6 @@ export let RemotePageAccessManager = {
         "Profiles:MoreThemes",
         "Profiles:PageHide",
       ],
-      RPMGetBoolPref: ["browser.profiles.updated-avatar-selector"],
     },
     "about:newprofile": {
       RPMSendQuery: [
@@ -169,10 +165,7 @@ export let RemotePageAccessManager = {
         "Profiles:MoreThemes",
         "Profiles:PageHide",
       ],
-      RPMGetBoolPref: [
-        "browser.profiles.profile-name.updated",
-        "browser.profiles.updated-avatar-selector",
-      ],
+      RPMGetBoolPref: ["browser.profiles.profile-name.updated"],
       RPMGetFormatURLPref: ["app.support.baseURL"],
     },
     "about:protections": {

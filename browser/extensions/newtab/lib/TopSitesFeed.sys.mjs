@@ -125,21 +125,18 @@ const DISPLAY_FAIL_REASON_OVERSOLD = "oversold";
 const DISPLAY_FAIL_REASON_DISMISSED = "dismissed";
 const DISPLAY_FAIL_REASON_UNRESOLVED = "unresolved";
 
-// Thompson sampling of top sites
-import { tsampleTopSites } from "resource://newtab/lib/ShortcutsRanker.sys.mjs";
+// Smart shortcuts
+import { RankShortcutsProvider } from "resource://newtab/lib/SmartShortcutsRanker/RankShortcuts.mjs";
 
 const PREF_SYSTEM_SHORTCUTS_PERSONALIZATION =
   "discoverystream.shortcuts.personalization.enabled";
 
 function smartshortcutsEnabled(values) {
   const systemPref = values[PREF_SYSTEM_SHORTCUTS_PERSONALIZATION];
-  const experimentVariable = values.smartShortcutsConfig?.enabled;
+  const experimentVariable = values.trainhopConfig?.smartShortcuts?.enabled;
   return systemPref || experimentVariable;
 }
-const OVERSAMPLE_MULTIPLIER = 5;
-const SHORTCUT_POSITIVE_PRIOR = 1;
-const SHORTCUT_NEGATIVE_PRIOR = 1;
-const SHORTCUT_THOM_WEIGHT = 90;
+const OVERSAMPLE_MULTIPLIER = 2;
 
 function getShortHostnameForCurrentSearch() {
   return lazy.NewTabUtils.shortHostname(
@@ -748,6 +745,7 @@ export class TopSitesFeed {
       "_currentSearchHostname",
       getShortHostnameForCurrentSearch
     );
+    this.ranker = new RankShortcutsProvider();
 
     this.dedupe = new Dedupe(this._dedupeKey);
     this.frecentCache = new lazy.LinksCache(
@@ -1305,7 +1303,7 @@ export class TopSitesFeed {
     const prefValues = this.store.getState().Prefs.values;
     // switch on top_sites thompson sampling experiment
     const overSampleMultiplier =
-      prefValues.smartShortcutsConfig?.over_sample_multiplier ??
+      prefValues?.trainhopConfig?.smartShortcuts?.over_sample_multiplier ??
       OVERSAMPLE_MULTIPLIER;
     const numFetch =
       (smartshortcutsEnabled(this.store.getState().Prefs.values)
@@ -1485,14 +1483,10 @@ export class TopSitesFeed {
     // Sample topsites via thompson sampling, if in experiment
     let sampledSites;
     if (smartshortcutsEnabled(this.store.getState().Prefs.values)) {
-      sampledSites = await tsampleTopSites(
+      sampledSites = await this.ranker.rankTopSites(
         checkedAdult,
-        prefValues.smartShortcutsConfig?.positive_prior ??
-          SHORTCUT_POSITIVE_PRIOR,
-        prefValues.smartShortcutsConfig?.negative_prior ??
-          SHORTCUT_NEGATIVE_PRIOR,
-        (prefValues.smartShortcutsConfig?.thom_weight ?? SHORTCUT_THOM_WEIGHT) /
-          100
+        prefValues,
+        isStartup
       );
     } else {
       sampledSites = checkedAdult;

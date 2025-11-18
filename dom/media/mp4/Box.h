@@ -8,11 +8,12 @@
 #define BOX_H_
 
 #include <stdint.h>
-#include "nsTArray.h"
-#include "MediaResource.h"
-#include "mozilla/EndianUtils.h"
+
 #include "AtomType.h"
 #include "BufferReader.h"
+#include "MediaResource.h"
+#include "mozilla/EndianUtils.h"
+#include "nsTArray.h"
 
 namespace mozilla {
 class ByteStream;
@@ -44,6 +45,7 @@ class Box {
  public:
   Box(BoxContext* aContext, uint64_t aOffset, const Box* aParent = nullptr);
   Box();
+  nsresult InitStatus() const { return mInitStatus; }
 
   bool IsAvailable() const { return !mRange.IsEmpty(); }
   uint64_t Offset() const { return mRange.mStart; }
@@ -78,6 +80,7 @@ class Box {
   uint64_t mChildOffset;
   AtomType mType;
   const Box* mParent;
+  nsresult mInitStatus = NS_ERROR_NOT_INITIALIZED;
 };
 
 // BoxReader serves box data through an AutoByteReader. The box data is

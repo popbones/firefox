@@ -11,8 +11,8 @@
 #include <sstream>
 #include <vector>
 
-#ifdef MOZ_WIDGET_COCOA
-#  include <ApplicationServices/ApplicationServices.h>
+#ifdef XP_DARWIN
+#  include <CoreGraphics/CGColorSpace.h>
 #endif
 
 class SkCanvas;
@@ -66,6 +66,7 @@ class DrawTargetSkia : public DrawTarget {
                                      const Point& aDest,
                                      const ShadowOptions& aShadow,
                                      CompositionOp aOperator) override;
+  virtual void Blur(const GaussianBlur& aBlur) override;
   virtual void ClearRect(const Rect& aRect) override;
   virtual void CopySurface(SourceSurface* aSurface, const IntRect& aSourceRect,
                            const IntPoint& aDestination) override;
@@ -196,7 +197,7 @@ class DrawTargetSkia : public DrawTarget {
   RefPtr<SourceSurfaceSkia> mSnapshot;
   Mutex mSnapshotLock MOZ_UNANNOTATED;
 
-#ifdef MOZ_WIDGET_COCOA
+#ifdef XP_DARWIN
   friend class BorrowedCGContext;
 
   CGContextRef BorrowCGContext(const DrawOptions& aOptions);

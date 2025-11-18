@@ -249,7 +249,7 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
     display: flex;
     justify-content: space-between;
     flex-direction: column;
-    padding: var(--space-medium) var(--space-large);;
+    padding: var(--space-medium) var(--space-large);
     flex-grow: 1;
 
     .info-wrap {
@@ -270,6 +270,7 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
     }
 
     .source-wrapper {
+      color: var(--newtab-text-secondary-text);
       display: flex;
       margin-block-end: var(--space-xxsmall);
       align-items: center;
@@ -444,7 +445,6 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
 
       .source {
         -webkit-line-clamp: 1;
-        color: var(--newtab-text-secondary-text);
         font-size: var(--font-size-small);
       }
 
@@ -455,10 +455,6 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
         height: 28px;
         align-content: center;
         margin-block-start: var(--space-small);
-      }
-
-      .story-footer .story-sponsored-label {
-        color: var(--newtab-text-secondary-text);
       }
 
       .story-sponsored-label {
@@ -486,7 +482,7 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
 
     .card-stp-button-hover-background {
       border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
-      background-color: transparent;
+      background-color: var(--button-background-color-ghost);
     }
 
     .ds-card-link:focus {
@@ -520,13 +516,10 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
       padding-block: var(--space-medium);
 
       .title {
-        // Contrast fix for users who have wallpapers set
-        @include wallpaper-contrast-fix;
-
         text-transform: uppercase;
         font-size: var(--font-size-small);
         font-weight: var(--font-weight);
-        color: var(--newtab-contextual-text-secondary-color);
+        color: var(--newtab-text-secondary-color);
       }
 
       .excerpt {
@@ -553,13 +546,18 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
     }
 
     &.refined-cards {
+      background: var(--newtab-background-card);
+
       .img-wrapper .ds-image img {
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
       }
 
+      &:hover .img-wrapper .ds-image img {
+        box-shadow: none;
+      }
+
       .meta {
-        z-index: 10;
         padding: var(--space-small) var(--space-large);
         padding-block-end: 0;
 
@@ -569,7 +567,7 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
         margin-block-start: auto;
       }
 
-      .title {
+      .meta .title {
         text-transform: none;
       }
 
@@ -579,7 +577,7 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
 
       .card-stp-button-position-wrapper {
         z-index: 10;
-        top: 0;
+        bottom: 0;
         position: absolute;
 
       }
@@ -645,7 +643,7 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
   .card-stp-button-hover-background {
     height: 100%;
     padding-block-start: 0;
-    background: transparent;
+    background: var(--button-background-color-ghost);
 
     .card-stp-button-position-wrapper {
       inset-block-start: unset;
@@ -655,21 +653,21 @@ $ds-card-image-gradient-solid: rgba(0, 0, 0, 100%);
     }
   }
 
+  .context-menu-button {
+    background-color: var(--button-background-color-ghost);
+  }
+
   &:hover,
   &.active {
     h3 {
       color: var(--color-accent-primary);
     }
 
-    .context-menu-button {
-      background-color: transparent;
-    }
-
     .context-menu-button:hover {
-      background-color: var(--newtab-button-static-hover-background);
+      background-color: var(--button-background-color-ghost-hover);
 
       &:active {
-        background-color: var(--newtab-button-static-active-background);
+        background-color: var(--button-background-color-ghost-active);
       }
     }
 

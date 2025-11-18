@@ -6,12 +6,14 @@
 
 #include "GeckoEditableSupport.h"
 
+#include "AndroidBridgeUtilities.h"
 #include "AndroidRect.h"
 #include "KeyEvent.h"
 #include "PuppetWidget.h"
 #include "nsIContent.h"
 #include "nsITransferable.h"
 #include "nsStringStream.h"
+#include "nsWindow.h"
 
 #include "mozilla/dom/ContentChild.h"
 #include "mozilla/IMEStateManager.h"
@@ -42,6 +44,9 @@ static mozilla::LazyLogModule sGeckoEditableSupportLog("GeckoEditableSupport");
     do {                   \
     } while (0)
 #endif
+
+namespace mozilla {
+namespace widget {
 
 static uint32_t ConvertAndroidKeyCodeToDOMKeyCode(int32_t androidKeyCode) {
   // Special-case alphanumeric keycodes because they are most common.
@@ -425,8 +430,7 @@ static jni::ObjectArray::LocalRef ConvertRectArrayToJavaRectFArray(
   return rects;
 }
 
-namespace mozilla {
-namespace widget {
+uint32_t GeckoEditableSupport::sUniqueKeyEventId = 0;
 
 NS_IMPL_ISUPPORTS(GeckoEditableSupport, TextEventDispatcherListener,
                   nsISupportsWeakReference)
@@ -463,13 +467,11 @@ bool GeckoEditableSupport::RemoveComposition(RemoveCompositionFlag aFlag) {
   return true;
 }
 
-void GeckoEditableSupport::OnKeyEvent(int32_t aAction, int32_t aKeyCode,
-                                      int32_t aScanCode, int32_t aMetaState,
-                                      int32_t aKeyPressMetaState, int64_t aTime,
-                                      int32_t aDomPrintableKeyValue,
-                                      int32_t aRepeatCount, int32_t aFlags,
-                                      bool aIsSynthesizedImeKey,
-                                      jni::Object::Param aOriginalEvent) {
+void GeckoEditableSupport::OnKeyEvent(
+    int32_t aAction, int32_t aKeyCode, int32_t aScanCode, int32_t aMetaState,
+    int32_t aKeyPressMetaState, int64_t aTime, int32_t aDomPrintableKeyValue,
+    int32_t aRepeatCount, int32_t aFlags, bool aIsSynthesizedImeKey,
+    bool aWaitingReply, jni::Object::Param aOriginalEvent) {
   AutoGeckoEditableBlocker blocker(this);
 
   nsCOMPtr<nsIWidget> widget = GetWidget();
@@ -518,13 +520,29 @@ void GeckoEditableSupport::OnKeyEvent(int32_t aAction, int32_t aKeyCode,
     // these keys are dispatched in sequence.
     mIMEKeyEvents.AppendElement(UniquePtr<WidgetEvent>(event.Duplicate()));
   } else {
+    if (aWaitingReply) {
+      event.MarkAsWaitingReplyFromRemoteProcess();
+      event.mUniqueId = ++sUniqueKeyEventId;
+    }
     NS_ENSURE_SUCCESS_VOID(BeginInputTransaction(dispatcher));
     dispatcher->DispatchKeyboardEvent(msg, event, status);
     if (widget->Destroyed() || status == nsEventStatus_eConsumeNoDefault) {
       // Skip default processing.
       return;
     }
-    mEditable->OnDefaultKeyEvent(aOriginalEvent);
+
+    // If parent process, DispatchKeyboardEvent doesn't return status whether
+    // processing default. If not handled, OnDefaultKeyEvent() will be called
+    // when marked with waiting reply.
+    if (aWaitingReply) {
+      if (nsIWidget::UsePuppetWidgets()) {
+        mEditable->OnDefaultKeyEvent(aOriginalEvent);
+      } else {
+        jni::Object::GlobalRef originalKeyEvent(aOriginalEvent);
+        mWaitingReplyKeyEvents.AppendElement(
+            WaitingReplyKeyEvent{sUniqueKeyEventId, aOriginalEvent});
+      }
+    }
   }
 
   // Only send keypress after keydown.
@@ -1368,6 +1386,8 @@ nsresult GeckoEditableSupport::NotifyIME(
 
       // Mask events because we lost focus. Unmask on the next focus.
       mIMEMaskEventsCount++;
+
+      mWaitingReplyKeyEvents.Clear();
       break;
     }
 
@@ -1701,6 +1721,20 @@ void GeckoEditableSupport::OnImeInsertImage(jni::ByteArray::Param aData,
   command.mTransferable = trans.forget();
   nsEventStatus status;
   widget->DispatchEvent(&command, status);
+}
+
+void GeckoEditableSupport::PostHandleKeyEvent(WidgetKeyboardEvent* aEvent) {
+  const auto foundIt =
+      std::find_if(mWaitingReplyKeyEvents.begin(), mWaitingReplyKeyEvents.end(),
+                   [aEvent](const auto& item) {
+                     return item.mUniqueId == aEvent->mUniqueId;
+                   });
+  if (foundIt != mWaitingReplyKeyEvents.end()) {
+    mEditable->OnDefaultKeyEvent(*foundIt->mOriginalEvent);
+    // Old events might be discarded by preventDefault() call. No one will use
+    // it.
+    mWaitingReplyKeyEvents.RemoveElementsAt(0, foundIt.GetIndex() + 1);
+  }
 }
 
 }  // namespace widget

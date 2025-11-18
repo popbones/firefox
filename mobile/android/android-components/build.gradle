@@ -20,7 +20,7 @@ buildscript {
     }
 
     dependencies {
-        classpath libs.tools.androidgradle
+        classpath libs.android.gradle.plugin
     }
 }
 
@@ -47,9 +47,31 @@ allprojects {
         }
     }
 
+    ext {
+        gleanVersion = libs.versions.glean.get()
+    }
+
     // Enable Kotlin warnings as errors for all modules
     tasks.withType(KotlinCompile).configureEach {
         compilerOptions.allWarningsAsErrors = true
+    }
+
+    if (gradle.mozconfig.substs.DOWNLOAD_ALL_GRADLE_DEPENDENCIES) {
+        // Work around https://github.com/google/ksp/issues/1964 by explicitly
+        // declaring dependencies that are dynamically added during Gradle task
+        // execution.
+        pluginManager.withPlugin('com.google.devtools.ksp') {
+            project.configurations {
+                kspDependencies
+            }
+
+            project.dependencies {
+                kspDependencies libs.ksp.symbol.processing.aa
+                kspDependencies libs.ksp.symbol.processing.aa.embeddable
+                kspDependencies libs.ksp.symbol.processing.api
+                kspDependencies libs.ksp.symbol.processing.common.deps
+            }
+        }
     }
 }
 
@@ -68,13 +90,13 @@ subprojects {
             if (details.requested.group == 'org.mozilla.telemetry'
                     && details.requested.name.contains('glean') ) {
                 def requested = details.requested.version.tokenize(".")
-                def defined = libs.versions.mozilla.glean.get().tokenize(".")
+                def defined = project.ext.gleanVersion.tokenize(".")
                 // Check the major version
                 if (requested[0] != defined[0]) {
-                    throw new AssertionError("Cannot resolve to a single Glean version. Requested: ${details.requested.version}, A-C uses: ${libs.versions.mozilla.glean.get()}")
+                    throw new AssertionError("Cannot resolve to a single Glean version. Requested: ${details.requested.version}, A-C uses: ${project.ext.gleanVersion}")
                 } else {
                     // Enforce that all (transitive) dependencies are using the defined Glean version
-                    details.useVersion libs.versions.mozilla.glean.get()
+                    details.useVersion project.ext.gleanVersion
                 }
             }
         }
@@ -166,11 +188,9 @@ subprojects {
                     }
                 }
 
-                // https://issuetracker.google.com/issues/379732901
                 packaging {
                     resources {
-                        excludes += ['META-INF/LICENSE.md', 'META-INF/LICENSE-notice.md',
-                                     'META-INF/versions/9/OSGI-INF/MANIFEST.MF']
+                        excludes += ['META-INF/LICENSE.md', 'META-INF/LICENSE-notice.md']
                     }
                 }
 
@@ -179,7 +199,7 @@ subprojects {
                 }
             }
 
-            if (project.hasProperty("coverage") && project.name != "support-test") {
+            if (project.name != "support-test") {
                 android.buildTypes.all { buildType ->
                     tasks.withType(Test).configureEach() {
                         jacoco {
@@ -213,7 +233,10 @@ subprojects {
                 android {
                     buildTypes {
                         debug {
-                            testCoverageEnabled true
+                            // Enable test coverage when fetching dependencies: it's an easy way to
+                            // ensure we fetch the Jacoco agent dependency `org.jacoco.agent`, which
+                            // resolves to `org.jacoco.agent-$VERSION-runtime.jar`.
+                            testCoverageEnabled = project.hasProperty("coverage") || gradle.mozconfig.substs.DOWNLOAD_ALL_GRADLE_DEPENDENCIES
                         }
                     }
                 }
@@ -282,6 +305,15 @@ detekt {
     }
 }
 
+tasks.named("detekt").configure {
+    reports {
+        custom {
+            reportId = "suppression-count"
+            outputLocation.set(file("$projectDir/build/reports/suppressions.txt"))
+        }
+    }
+}
+
 tasks.withType(Detekt).configureEach() {
     // Custom detekt rules should be built before.
     // See https://detekt.dev/docs/introduction/extensions#pitfalls
@@ -330,6 +362,8 @@ tasks.withType(DetektCreateBaselineTask).configureEach() {
 
 configurations {
     ktlint
+
+    detektDependencies
 }
 
 dependencies {
@@ -339,6 +373,9 @@ dependencies {
         }
     }
     detektPlugins project(":components:tooling-detekt")
+    detekt libs.detekt.cli
+
+    detektDependencies libs.detekt.cli
 }
 
 tasks.register("ktlint", JavaExec) {

@@ -12,14 +12,13 @@ const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
   DownloadUtils: "resource://gre/modules/DownloadUtils.sys.mjs",
-  HttpInference: "chrome://global/content/ml/HttpInference.sys.mjs",
   ModelHub: "chrome://global/content/ml/ModelHub.sys.mjs",
   getInferenceProcessInfo: "chrome://global/content/ml/Utils.sys.mjs",
   getOptimalCPUConcurrency: "chrome://global/content/ml/Utils.sys.mjs",
   BACKENDS: "chrome://global/content/ml/EngineProcess.sys.mjs",
 });
 
-const { ExecutionPriority, EngineProcess, PipelineOptions } =
+const { ExecutionPriority, EngineProcess, PipelineOptions, createEngine } =
   ChromeUtils.importESModule(
     "chrome://global/content/ml/EngineProcess.sys.mjs"
   );
@@ -63,6 +62,7 @@ const TASKS = [
   "feature-extraction",
   "image-feature-extraction",
   "wllama-text-generation",
+  "moz-text-to-goal",
 ];
 
 const DTYPE = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "bnb4", "q4f16"];
@@ -310,7 +310,6 @@ const INFERENCE_PAD_PRESETS = {
     device: "cpu",
     backend: "onnx",
   },
-
   "link-preview": {
     inputArgs: `Summarize this: ${TINY_ARTICLE}`,
     runOptions: {
@@ -326,6 +325,26 @@ const INFERENCE_PAD_PRESETS = {
     dtype: "q8",
     device: "cpu",
     backend: "onnx",
+  },
+  openai: {
+    inputArgs: [
+      {
+        role: "system",
+        content:
+          "You are a helpful assistant that summarizes text clearly and concisely.",
+      },
+      {
+        role: "user",
+        content: `Please summarize the following text:\n\n ${TINY_ARTICLE} /no_think`,
+      },
+    ],
+    runOptions: {},
+    task: "text-generation",
+    modelId: "qwen3:0.6b",
+    modelRevision: "main",
+    apiKey: "ollama",
+    baseURL: "http://localhost:11434/v1",
+    backend: "openai",
   },
 };
 
@@ -595,10 +614,9 @@ async function updateModels() {
     if (!confirmed) {
       return;
     }
-
     modelFilesView.removeModel(e.detail);
-    const { model, revision } = e.detail;
-    await hub.deleteModels({ model, revision });
+    const { name, revision } = e.detail;
+    await hub.deleteModels({ model: name, revision });
   });
 }
 
@@ -809,8 +827,7 @@ async function runInference() {
   try {
     const pipelineOptions = new PipelineOptions(initData);
     startTime = performance.now();
-    const engineParent = await getEngineParent();
-    engine = await engineParent.getEngine(pipelineOptions, progressData => {
+    engine = await createEngine(pipelineOptions, progressData => {
       engineNotification(progressData).catch(err => {
         console.error("Error in engineNotification:", err);
       });
@@ -1025,56 +1042,6 @@ class TextareaConsole {
   }
 }
 
-async function runHttpInference() {
-  const output = document.getElementById("http.output");
-  output.value = "…";
-  output.value = await lazy.HttpInference.completion(
-    ["bearer", "endpoint", "model", "prompt"].reduce(
-      (config, key) => {
-        config[key] = document.getElementById("http." + key).value;
-        return config;
-      },
-      { onStream: val => (output.value = val) }
-    ),
-    await updateHttpContext()
-  );
-}
-
-async function updateHttpContext() {
-  const limit = document.getElementById("http.limit").value;
-  const { AboutNewTab, gBrowser, isBlankPageURL } =
-    window.browsingContext.topChromeWindow;
-  const recentTabs = gBrowser.tabs
-    .filter(
-      tab =>
-        !isBlankPageURL(tab.linkedBrowser.currentURI.spec) &&
-        tab != gBrowser.selectedTab
-    )
-    .toSorted((a, b) => b.lastSeenActive - a.lastSeenActive)
-    .slice(0, limit)
-    .map(tab => tab.label);
-  const context = {
-    recentTabs,
-    stories: Object.values(
-      AboutNewTab.activityStream.store.getState().DiscoveryStream.feeds.data
-    )[0]
-      ?.data.recommendations.slice(0, limit)
-      .map(rec => rec.title),
-    tabTitle: recentTabs[0],
-  };
-
-  const output = document.getElementById("http.context");
-  output.innerHTML = "";
-  const table = output.appendChild(document.createElement("table"));
-  Object.entries(context).forEach(([key, val]) => {
-    const tr = table.appendChild(document.createElement("tr"));
-    tr.appendChild(document.createElement("td")).textContent = `%${key}%`;
-    tr.appendChild(document.createElement("td")).textContent = val;
-  });
-
-  return context;
-}
-
 var selectedHub;
 var selectedPreset;
 
@@ -1122,7 +1089,7 @@ async function runBenchmark() {
   benchmarkConsole.addText("Starting benchmark...\n");
   let backend = document.getElementById("benchmark.backend").value;
   if (backend === "all") {
-    backend = lazy.BACKENDS;
+    backend = Object.values(lazy.BACKENDS);
   } else {
     backend = [backend];
   }
@@ -1142,7 +1109,7 @@ async function runBenchmark() {
       name: "ner-small",
       inputArgs: ["Sarah lives in the United States of America"],
       runOptions: {},
-      compatibleBackends: ["onnx"],
+      compatibleBackends: [lazy.BACKENDS.onnx],
       pipelineOptions: {
         taskName: "token-classification",
         modelId: "Xenova/bert-base-NER",
@@ -1155,7 +1122,7 @@ async function runBenchmark() {
     {
       name: "feature-extraction-large",
       inputArgs: [repeatedSentences],
-      compatibleBackends: ["onnx"],
+      compatibleBackends: [lazy.BACKENDS.onnx],
       runOptions: { pooling: "mean", normalize: true },
       pipelineOptions: {
         taskName: "feature-extraction",
@@ -1168,7 +1135,7 @@ async function runBenchmark() {
     },
     {
       name: "image-to-text",
-      compatibleBackends: ["onnx"],
+      compatibleBackends: [lazy.BACKENDS.onnx],
       inputArgs: [
         "https://huggingface.co/datasets/mishig/sample_images/resolve/main/football-match.jpg",
       ],
@@ -1184,7 +1151,7 @@ async function runBenchmark() {
     },
     {
       name: "link-preview",
-      compatibleBackends: ["wllama"],
+      compatibleBackends: [lazy.BACKENDS.wllama],
       inputArgs: `Summarize this: ${TINY_ARTICLE}`,
       runOptions: {
         nPredict: 100,
@@ -1241,7 +1208,7 @@ async function runBenchmark() {
 
         bench.initDuration = await measure(async () => {
           const pipelineOptions = new PipelineOptions(workload.pipelineOptions);
-          engine = await engineParent.getEngine(pipelineOptions);
+          engine = await engineParent.getEngine({ pipelineOptions });
         });
 
         benchmarkConsole.addText("\nRunning 25 iterations ");
@@ -1306,8 +1273,8 @@ window.onload = async function () {
   fillSelect("taskName", TASKS);
   fillSelect("numThreads", getNumThreadsArray());
   fillSelect("predefined", PREDEFINED);
-  fillSelect("benchmark.backend", ["all"].concat(lazy.BACKENDS));
-  fillSelect("backend", lazy.BACKENDS);
+  fillSelect("benchmark.backend", ["all"].concat(Object.values(lazy.BACKENDS)));
+  fillSelect("backend", Object.values(lazy.BACKENDS));
 
   document.getElementById("predefined").value = "feature-large";
   loadExample("feature-large");
@@ -1327,18 +1294,10 @@ window.onload = async function () {
   });
 
   document
-    .getElementById("http.button")
-    .addEventListener("click", runHttpInference);
-  document
-    .getElementById("http.limit")
-    .addEventListener("change", updateHttpContext);
-
-  document
     .getElementById("benchmark.button")
     .addEventListener("click", runBenchmark);
 
   document.getElementById("benchmark.output").value = "";
 
-  updateHttpContext();
   await refreshPage();
 };

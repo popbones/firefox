@@ -1351,9 +1351,14 @@ class GeneratedFile(ContextDerived):
         self.py2 = py2
 
         if self.config.substs.get("MOZ_WIDGET_TOOLKIT") == "android":
-            # In GeckoView builds we process Jinja files during pre-export
+            # In GeckoView builds, the gradle build is done during export to
+            # extract JNI wrapping details, so make sure generated Java and
+            # Android manifest files are created during pre-export.
             self.required_before_export = [
-                f for f in self.inputs if f.endswith(".jinja")
+                f
+                for f in self.outputs
+                if f.endswith((".java", ".kt"))
+                or mozpath.match(f, "**/AndroidManifest*.xml")
             ]
         else:
             self.required_before_export = False
@@ -1389,7 +1394,18 @@ class GeneratedFile(ContextDerived):
                 f
                 for f in self.outputs
                 if f.endswith(
-                    (".asm", ".c", ".cpp", ".inc", ".m", ".mm", ".def", "symverscript")
+                    (
+                        ".asm",
+                        ".c",
+                        ".cpp",
+                        ".inc",
+                        ".m",
+                        ".mm",
+                        ".def",
+                        ".s",
+                        ".S",
+                        "symverscript",
+                    )
                 )
             ]
         else:

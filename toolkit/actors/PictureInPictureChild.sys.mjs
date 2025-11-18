@@ -191,7 +191,10 @@ export class PictureInPictureLauncherChild extends JSWindowActorChild {
           detail: { reason },
         }
       );
-      video.dispatchEvent(stopPipEvent);
+      this.contentWindow.windowUtils.dispatchEventToChromeOnly(
+        video,
+        stopPipEvent
+      );
       return;
     }
 
@@ -389,21 +392,6 @@ export class PictureInPictureToggleChild extends JSWindowActorChild {
       return;
     }
 
-    this.toggleEnabled =
-      Services.prefs.getBoolPref(TOGGLE_ENABLED_PREF) &&
-      Services.prefs.getBoolPref(PIP_ENABLED_PREF);
-
-    if (this.toggleEnabled) {
-      // We have enabled the Picture-in-Picture toggle, so we need to make
-      // sure we register all of the videos that might already be on the page.
-      this.contentWindow.requestIdleCallback(() => {
-        let videos = this.document.querySelectorAll("video");
-        for (let video of videos) {
-          this.registerVideo(video);
-        }
-      });
-    }
-
     switch (data) {
       case TOGGLE_FIRST_SEEN_PREF:
         const firstSeenSeconds = Services.prefs.getIntPref(
@@ -542,7 +530,6 @@ export class PictureInPictureToggleChild extends JSWindowActorChild {
       }
       case "UAWidgetSetupOrChange": {
         if (
-          this.toggleEnabled &&
           this.contentWindow.HTMLVideoElement.isInstance(event.target) &&
           event.target.ownerDocument == this.document
         ) {
@@ -703,7 +690,7 @@ export class PictureInPictureToggleChild extends JSWindowActorChild {
           detail: { reason: "UrlBar", eventExtraKeys },
         }
       );
-      video.dispatchEvent(pipEvent);
+      this.contentWindow.windowUtils.dispatchEventToChromeOnly(video, pipEvent);
     }
   }
 
@@ -1092,7 +1079,7 @@ export class PictureInPictureToggleChild extends JSWindowActorChild {
         detail: { reason: "Toggle" },
       }
     );
-    video.dispatchEvent(pipEvent);
+    this.contentWindow.windowUtils.dispatchEventToChromeOnly(video, pipEvent);
 
     // Since we've initiated Picture-in-Picture, we can go ahead and
     // hide the toggle now.
@@ -1977,6 +1964,21 @@ export class PictureInPictureChild extends JSWindowActorChild {
       }
       case "pause": {
         this.sendAsyncMessage("PictureInPicture:Paused");
+        // MARKER: Pip Auto-Replay
+        let video = this.getWeakVideo();
+        let currentTime = this.videoWrapper.getCurrentTime(video);
+        let duration = this.videoWrapper.getDuration(video);
+        if (duration - currentTime <= 1.0) {
+          console.log("Video ended");
+          console.log("Move the scrubber to the beginning");
+          this.sendAsyncMessage("PictureInPicture:SetTimestampAndScrubberPosition", {
+            timestamp: this.videoWrapper.formatTimestamp(currentTime, duration),
+            scrubberPosition: 0
+          });
+          setTimeout(() => {
+            this.videoWrapper.play(video);
+          }, 100);
+        }
         break;
       }
       case "volumechange": {
@@ -2860,7 +2862,7 @@ class PictureInPictureChildVideoWrapper {
     const addonPolicy = WebExtensionPolicy.getByID(
       "pictureinpicture@mozilla.org"
     );
-    let wrapperScriptUrl = new URL(videoWrapperScriptPath, addonPolicy.baseURL);
+    let wrapperScriptUrl = addonPolicy.getURL(videoWrapperScriptPath);
     let originatingWin = video.ownerGlobal;
     let originatingDoc = video.ownerDocument;
 

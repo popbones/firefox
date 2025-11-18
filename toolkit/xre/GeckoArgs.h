@@ -209,6 +209,9 @@ static CommandLineArg<const char*> sAppOmni{"-appomni", "appomni"};
 static CommandLineArg<const char*> sProfile{"-profile", "profile"};
 
 static CommandLineArg<UniqueFileHandle> sIPCHandle{"-ipcHandle", "ipchandle"};
+#if defined(XP_DARWIN)
+static CommandLineArg<UniqueMachSendRight> sIPCPort{"-ipcPort", "ipcport"};
+#endif
 
 static CommandLineArg<mozilla::ipc::ReadOnlySharedMemoryHandle> sJsInitHandle{
     "-jsInitHandle", "jsinithandle"};
@@ -234,11 +237,9 @@ static CommandLineArg<const char*> sCrashReporter{"-crashReporter",
 #else
 static CommandLineArg<UniqueFileHandle> sCrashReporter{"-crashReporter",
                                                        "crashreporter"};
-#  if defined(XP_LINUX) && !defined(MOZ_WIDGET_ANDROID)
-static CommandLineArg<uint64_t> sCrashHelperPid{"-crashHelperPid",
-                                                "crashhelperpid"};
-#  endif  // defined(XP_LINUX) && !defined(MOZ_WIDGET_ANDROID)
 #endif
+static CommandLineArg<UniqueFileHandle> sCrashHelper{"-crashHelper",
+                                                     "crashhelper"};
 
 #if defined(XP_WIN)
 #  if defined(MOZ_SANDBOX)

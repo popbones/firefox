@@ -33,15 +33,16 @@
 // cases in which there are wrong offsets leading to self cross-talk (which is
 // rejected).
 
-// MSVC++ requires this to be set before any other includes to get M_PI.
-#define _USE_MATH_DEFINES
-
-#include <stdio.h>
-
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <map>
 #include <memory>
+#include <numbers>
 #include <optional>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "absl/strings/string_view.h"
@@ -103,7 +104,8 @@ std::unique_ptr<MockWavReaderFactory> CreateMockWavReaderFactory() {
 void CreateSineWavFile(absl::string_view filepath,
                        const MockWavReaderFactory::Params& params,
                        float frequency_hz = 440.0f) {
-  const double phase_step = 2 * M_PI * frequency_hz / params.sample_rate;
+  const double phase_step =
+      2 * std::numbers::pi * frequency_hz / params.sample_rate;
   double phase = 0.0;
   std::vector<int16_t> samples(params.num_samples);
   for (size_t i = 0; i < params.num_samples; ++i) {
@@ -623,7 +625,7 @@ TEST(ConversationalSpeechTest, DISABLED_MultiEndCallSimulator) {
   // Simulated call (one character corresponding to 500 ms):
   // A 0*********...........2*********.....
   // B ...........1*********.....3*********
-  const std::vector<Turn> expected_timing = {
+  const std::vector<Turn> expected_timing_multiend = {
       {"A", "t5000_440.wav", 0, 0},
       {"B", "t5000_880.wav", 500, 0},
       {"A", "t5000_440.wav", 0, 0},
@@ -637,21 +639,23 @@ TEST(ConversationalSpeechTest, DISABLED_MultiEndCallSimulator) {
       {"t5000_440.wav", {{sample_rate, 1u, sample_rate * 5}, 440.0}},
       {"t5000_880.wav", {{sample_rate, 1u, sample_rate * 5}, 880.0}},
   };
-  const std::string audiotracks_path =
+  const std::string audiotracks_path_multiend =
       CreateTemporarySineAudioTracks(sine_tracks_params);
 
   // Set up the multi-end call.
   auto wavreader_factory =
       std::unique_ptr<WavReaderFactory>(new WavReaderFactory());
-  MultiEndCall multiend_call(expected_timing, audiotracks_path,
+  MultiEndCall multiend_call(expected_timing_multiend,
+                             audiotracks_path_multiend,
                              std::move(wavreader_factory));
 
   // Simulate the call.
-  std::string output_path = JoinFilename(audiotracks_path, "output");
-  CreateDir(output_path);
-  RTC_LOG(LS_VERBOSE) << "simulator output path: " << output_path;
+  std::string output_path_multiend =
+      JoinFilename(audiotracks_path_multiend, "output");
+  CreateDir(output_path_multiend);
+  RTC_LOG(LS_VERBOSE) << "simulator output path: " << output_path_multiend;
   auto generated_audiotrak_pairs =
-      conversational_speech::Simulate(multiend_call, output_path);
+      conversational_speech::Simulate(multiend_call, output_path_multiend);
   EXPECT_EQ(2u, generated_audiotrak_pairs->size());
 
   // Check the output.
@@ -667,7 +671,7 @@ TEST(ConversationalSpeechTest, DISABLED_MultiEndCallSimulator) {
   }
 
   // Clean.
-  EXPECT_NO_FATAL_FAILURE(DeleteFolderAndContents(audiotracks_path));
+  EXPECT_NO_FATAL_FAILURE(DeleteFolderAndContents(audiotracks_path_multiend));
 }
 
 }  // namespace test

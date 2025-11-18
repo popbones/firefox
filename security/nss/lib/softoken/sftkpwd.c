@@ -42,7 +42,7 @@ getPBEIterationCount(void)
     int c = NSS_MP_PBE_ITERATION_COUNT;
 
     char *val = getenv("NSS_MIN_MP_PBE_ITERATION_COUNT");
-    if (val) {
+    if (val && *val) {
         int minimum = atoi(val);
         if (c < minimum) {
             c = minimum;
@@ -50,13 +50,17 @@ getPBEIterationCount(void)
     }
 
     val = getenv("NSS_MAX_MP_PBE_ITERATION_COUNT");
-    if (val) {
+    if (val && *val) {
         int maximum = atoi(val);
         if (c > maximum) {
             c = maximum;
         }
     }
-
+    /* never let c be less than one, no matter what the environment
+     * variable is set to */
+    if (c < 1) {
+        c = 1;
+    }
     return c;
 }
 
@@ -464,7 +468,6 @@ sftkdb_pbehash(SECOidTag sigOid, SECItem *passKey,
     HASH_HashType hashType = HASH_AlgNULL;
     const SECHashObject *hashObj;
     unsigned char addressData[SDB_ULONG_SIZE];
-
     hashType = HASH_FromHMACOid(param->encAlg);
     if (hashType == HASH_AlgNULL) {
         PORT_SetError(SEC_ERROR_INVALID_ALGORITHM);
@@ -1138,13 +1141,19 @@ sftk_updateMacs(PLArenaPool *arena, SFTKDBHandle *handle,
     CK_ATTRIBUTE_TYPE authAttrTypes[] = {
         CKA_MODULUS,
         CKA_PUBLIC_EXPONENT,
-        CKA_CERT_SHA1_HASH,
-        CKA_CERT_MD5_HASH,
-        CKA_TRUST_SERVER_AUTH,
-        CKA_TRUST_CLIENT_AUTH,
-        CKA_TRUST_EMAIL_PROTECTION,
-        CKA_TRUST_CODE_SIGNING,
-        CKA_TRUST_STEP_UP_APPROVED,
+        CKA_NSS_CERT_SHA1_HASH,
+        CKA_NSS_CERT_MD5_HASH,
+        CKA_NAME_HASH_ALGORITHM,
+        CKA_HASH_OF_CERTIFICATE,
+        CKA_PKCS_TRUST_SERVER_AUTH,
+        CKA_PKCS_TRUST_CLIENT_AUTH,
+        CKA_PKCS_TRUST_EMAIL_PROTECTION,
+        CKA_PKCS_TRUST_CODE_SIGNING,
+        CKA_NSS_TRUST_SERVER_AUTH,
+        CKA_NSS_TRUST_CLIENT_AUTH,
+        CKA_NSS_TRUST_EMAIL_PROTECTION,
+        CKA_NSS_TRUST_CODE_SIGNING,
+        CKA_NSS_TRUST_STEP_UP_APPROVED,
         CKA_NSS_OVERRIDE_EXTENSIONS,
     };
     const CK_ULONG authAttrTypeCount = sizeof(authAttrTypes) / sizeof(authAttrTypes[0]);
@@ -1204,6 +1213,7 @@ sftk_updateEncrypted(PLArenaPool *arena, SFTKDBHandle *keydb,
 {
     CK_ATTRIBUTE_TYPE privAttrTypes[] = {
         CKA_VALUE,
+        CKA_SEED,
         CKA_PRIVATE_EXPONENT,
         CKA_PRIME_1,
         CKA_PRIME_2,
@@ -1420,6 +1430,14 @@ sftkdb_ChangePassword(SFTKDBHandle *keydb,
             goto loser;
         }
         myClass = CKO_PUBLIC_KEY;
+        crv = sftkdb_convertObjects(certdb, &objectType, 1, &newKey,
+                                    iterationCount);
+        if (crv != CKR_OK) {
+            rv = SECFailure;
+            goto loser;
+        }
+
+        myClass = CKO_TRUST;
         crv = sftkdb_convertObjects(certdb, &objectType, 1, &newKey,
                                     iterationCount);
         if (crv != CKR_OK) {

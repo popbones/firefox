@@ -7,7 +7,8 @@ const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   AboutWelcomeParent: "resource:///actors/AboutWelcomeParent.sys.mjs",
   ASRouter: "resource:///modules/asrouter/ASRouter.sys.mjs",
-  CustomizableUI: "resource:///modules/CustomizableUI.sys.mjs",
+  CustomizableUI:
+    "moz-src:///browser/components/customizableui/CustomizableUI.sys.mjs",
   PageEventManager: "resource:///modules/asrouter/PageEventManager.sys.mjs",
 });
 
@@ -480,10 +481,11 @@ export class FeatureCallout {
       case "popupshowing":
         // If another panel is showing, close the tour.
         if (
+          event.target.ownerGlobal === this.win &&
           event.target !== this._container &&
           event.target.localName === "panel" &&
           event.target.id !== "ctrlTab-panel" &&
-          event.target.ownerGlobal === this.win
+          event.target.getAttribute("noautohide") !== "true"
         ) {
           this.endTour();
         }
@@ -2259,9 +2261,9 @@ export class FeatureCallout {
     "link-color-hover",
     "link-color-active",
     "icon-success-color",
-    "dismiss-button-bg",
-    "dismiss-button-bg-hover",
-    "dismiss-button-bg-active",
+    "dismiss-button-background",
+    "dismiss-button-background-hover",
+    "dismiss-button-background-active",
   ];
 
   /** @type {Object<String, FeatureCalloutTheme>} */
@@ -2271,50 +2273,46 @@ export class FeatureCallout {
     "themed-content": {
       all: {
         background:
-          "var(--newtab-background-color, var(--in-content-page-background)) linear-gradient(var(--newtab-background-color-secondary), var(--newtab-background-color-secondary))",
-        color: "var(--newtab-text-primary-color, var(--in-content-page-color))",
+          "var(--newtab-background-color, var(--background-color-canvas)) linear-gradient(var(--newtab-background-color-secondary), var(--newtab-background-color-secondary))",
+        color: "var(--newtab-text-primary-color, var(--text-color))",
         border:
           "color-mix(in srgb, var(--newtab-background-color-secondary) 80%, #000)",
-        "accent-color": "var(--in-content-primary-button-background)",
+        "accent-color": "var(--button-background-color-primary)",
         "button-background": "color-mix(in srgb, transparent 93%, #000)",
-        "button-color":
-          "var(--newtab-text-primary-color, var(--in-content-page-color))",
+        "button-color": "var(--newtab-text-primary-color, var(--text-color))",
         "button-border": "transparent",
         "button-background-hover": "color-mix(in srgb, transparent 88%, #000)",
         "button-color-hover":
-          "var(--newtab-text-primary-color, var(--in-content-page-color))",
+          "var(--newtab-text-primary-color, var(--text-color))",
         "button-border-hover": "transparent",
         "button-background-active": "color-mix(in srgb, transparent 80%, #000)",
         "button-color-active":
-          "var(--newtab-text-primary-color, var(--in-content-page-color))",
+          "var(--newtab-text-primary-color, var(--text-color))",
         "button-border-active": "transparent",
-        "primary-button-background":
-          "var(--in-content-primary-button-background)",
-        "primary-button-color": "var(--in-content-primary-button-text-color)",
-        "primary-button-border":
-          "var(--in-content-primary-button-border-color)",
+        "primary-button-background": "var(--button-background-color-primary)",
+        "primary-button-color": "var(--button-text-color-primary)",
+        "primary-button-border": "var(--button-border-color-primary)",
         "primary-button-background-hover":
-          "var(--in-content-primary-button-background-hover)",
-        "primary-button-color-hover":
-          "var(--in-content-primary-button-text-color-hover)",
+          "var(--button-background-color-primary-hover)",
+        "primary-button-color-hover": "var(--button-text-color-primary-hover)",
         "primary-button-border-hover":
-          "var(--in-content-primary-button-border-hover)",
+          "var(--button-border-color-primary-hover)",
         "primary-button-background-active":
-          "var(--in-content-primary-button-background-active)",
+          "var(--button-background-color-primary-active)",
         "primary-button-color-active":
-          "var(--in-content-primary-button-text-color-active)",
+          "var(--button-text-color-primary-active)",
         "primary-button-border-active":
-          "var(--in-content-primary-button-border-active)",
+          "var(--button-border-color-primary-active)",
         "link-color": "LinkText",
         "link-color-hover": "LinkText",
         "link-color-active": "ActiveText",
         "link-color-visited": "VisitedText",
-        "dismiss-button-bg":
-          "var(--newtab-background-color, var(--in-content-page-background)) linear-gradient(var(--newtab-background-color-secondary), var(--newtab-background-color-secondary))",
-        "dismiss-button-bg-hover":
-          "var(--newtab-background-color, var(--in-content-page-background)) linear-gradient(color-mix(in srgb, currentColor 14%, var(--newtab-background-color-secondary)), color-mix(in srgb, currentColor 14%, var(--newtab-background-color-secondary)))",
-        "dismiss-button-bg-active":
-          "var(--newtab-background-color, var(--in-content-page-background)) linear-gradient(color-mix(in srgb, currentColor 21%, var(--newtab-background-color-secondary)), color-mix(in srgb, currentColor 21%, var(--newtab-background-color-secondary)))",
+        "dismiss-button-background":
+          "var(--newtab-background-color, var(--background-color-canvas)) linear-gradient(var(--newtab-background-color-secondary), var(--newtab-background-color-secondary))",
+        "dismiss-button-background-hover":
+          "var(--newtab-background-color, var(--background-color-canvas)) linear-gradient(color-mix(in srgb, currentColor 14%, var(--newtab-background-color-secondary)), color-mix(in srgb, currentColor 14%, var(--newtab-background-color-secondary)))",
+        "dismiss-button-background-active":
+          "var(--newtab-background-color, var(--background-color-canvas)) linear-gradient(color-mix(in srgb, currentColor 21%, var(--newtab-background-color-secondary)), color-mix(in srgb, currentColor 21%, var(--newtab-background-color-secondary)))",
       },
       dark: {
         border:
@@ -2337,11 +2335,11 @@ export class FeatureCallout {
         "button-background-active": "ButtonText",
         "button-color-active": "ButtonFace",
         "button-border-active": "ButtonText",
-        "dismiss-button-bg": "-moz-dialog",
-        "dismiss-button-bg-hover":
-          "color-mix(in srgb, currentColor 14%, -moz-dialog)",
-        "dismiss-button-bg-active":
-          "color-mix(in srgb, currentColor 21%, -moz-dialog)",
+        "dismiss-button-background": "-moz-dialog",
+        "dismiss-button-background-hover":
+          "color-mix(in srgb, currentColor 14%, SelectedItem)",
+        "dismiss-button-background-active":
+          "color-mix(in srgb, currentColor 21%, SelectedItem)",
       },
     },
     // PDF.js colors are from toolkit/components/pdfjs/content/web/viewer.css
@@ -2365,9 +2363,10 @@ export class FeatureCallout {
         "link-color-hover": "LinkText",
         "link-color-active": "ActiveText",
         "link-color-visited": "VisitedText",
-        "dismiss-button-bg": "#FFF",
-        "dismiss-button-bg-hover": "color-mix(in srgb, currentColor 14%, #FFF)",
-        "dismiss-button-bg-active":
+        "dismiss-button-background": "#FFF",
+        "dismiss-button-background-hover":
+          "color-mix(in srgb, currentColor 14%, #FFF)",
+        "dismiss-button-background-active":
           "color-mix(in srgb, currentColor 21%, #FFF)",
       },
       dark: {
@@ -2380,10 +2379,10 @@ export class FeatureCallout {
         "button-color-hover": "#F9F9FA",
         "button-background-active": "rgb(102, 102, 103)",
         "button-color-active": "#F9F9FA",
-        "dismiss-button-bg": "#1C1B22",
-        "dismiss-button-bg-hover":
+        "dismiss-button-background": "#1C1B22",
+        "dismiss-button-background-hover":
           "color-mix(in srgb, currentColor 14%, #1C1B22)",
-        "dismiss-button-bg-active":
+        "dismiss-button-background-active":
           "color-mix(in srgb, currentColor 21%, #1C1B22)",
       },
       hcm: {
@@ -2400,11 +2399,11 @@ export class FeatureCallout {
         "button-background-active": "Highlight",
         "button-color-active": "CanvasText",
         "button-border-active": "Highlight",
-        "dismiss-button-bg": "-moz-dialog",
-        "dismiss-button-bg-hover":
-          "color-mix(in srgb, currentColor 14%, -moz-dialog)",
-        "dismiss-button-bg-active":
-          "color-mix(in srgb, currentColor 21%, -moz-dialog)",
+        "dismiss-button-background": "-moz-dialog",
+        "dismiss-button-background-hover":
+          "color-mix(in srgb, currentColor 14%, SelectedItem)",
+        "dismiss-button-background-active":
+          "color-mix(in srgb, currentColor 21%, SelectedItem)",
       },
     },
     newtab: {
@@ -2430,11 +2429,11 @@ export class FeatureCallout {
         "link-color-active": "color-mix(in srgb, rgb(0, 97, 224) 80%, #000)",
         "link-color-visited": "rgb(0, 97, 224)",
         "icon-success-color": "#2AC3A2",
-        "dismiss-button-bg":
+        "dismiss-button-background":
           "var(--newtab-background-color, #F9F9FB) linear-gradient(var(--newtab-background-color-secondary, #FFF), var(--newtab-background-color-secondary, #FFF))",
-        "dismiss-button-bg-hover":
+        "dismiss-button-background-hover":
           "var(--newtab-background-color, #F9F9FB) linear-gradient(color-mix(in srgb, currentColor 14%, var(--newtab-background-color-secondary, #FFF)), color-mix(in srgb, currentColor 14%, var(--newtab-background-color-secondary, #FFF)))",
-        "dismiss-button-bg-active":
+        "dismiss-button-background-active":
           "var(--newtab-background-color, #F9F9FB) linear-gradient(color-mix(in srgb, currentColor 21%, var(--newtab-background-color-secondary, #FFF)), color-mix(in srgb, currentColor 21%, var(--newtab-background-color-secondary, #FFF)))",
       },
       dark: {
@@ -2451,11 +2450,11 @@ export class FeatureCallout {
         "link-color-active": "color-mix(in srgb, rgb(0, 221, 255) 60%, #FFF)",
         "link-color-visited": "rgb(0, 221, 255)",
         "icon-success-color": "#54FFBD",
-        "dismiss-button-bg":
+        "dismiss-button-background":
           "var(--newtab-background-color, #2B2A33) linear-gradient(var(--newtab-background-color-secondary, #42414D), var(--newtab-background-color-secondary, #42414D))",
-        "dismiss-button-bg-hover":
+        "dismiss-button-background-hover":
           "var(--newtab-background-color, #2B2A33) linear-gradient(color-mix(in srgb, currentColor 14%, var(--newtab-background-color-secondary, #42414D)), color-mix(in srgb, currentColor 14%, var(--newtab-background-color-secondary, #42414D)))",
-        "dismiss-button-bg-active":
+        "dismiss-button-background-active":
           "var(--newtab-background-color, #2B2A33) linear-gradient(color-mix(in srgb, currentColor 21%, var(--newtab-background-color-secondary, #42414D), color-mix(in srgb, currentColor 21%, var(--newtab-background-color-secondary, #42414D)))",
       },
       hcm: {
@@ -2476,11 +2475,11 @@ export class FeatureCallout {
         "link-color-hover": "LinkText",
         "link-color-active": "ActiveText",
         "link-color-visited": "VisitedText",
-        "dismiss-button-bg": "-moz-dialog",
-        "dismiss-button-bg-hover":
-          "color-mix(in srgb, currentColor 14%, -moz-dialog)",
-        "dismiss-button-bg-active":
-          "color-mix(in srgb, currentColor 21%, -moz-dialog)",
+        "dismiss-button-background": "-moz-dialog",
+        "dismiss-button-background-hover":
+          "color-mix(in srgb, currentColor 14%, SelectedItem)",
+        "dismiss-button-background-active":
+          "color-mix(in srgb, currentColor 21%, SelectedItem)",
       },
     },
     // These colors are intended to inherit the user's theme properties from the
@@ -2541,20 +2540,20 @@ export class FeatureCallout {
         "link-color-visited": "VisitedText",
         "icon-success-color": "var(--attention-dot-color)",
         // Dismiss Button
-        "dismiss-button-bg":
+        "dismiss-button-background":
           "Menu linear-gradient(var(--arrowpanel-background), var(--arrowpanel-background))",
-        "dismiss-button-bg-hover":
+        "dismiss-button-background-hover":
           "Menu linear-gradient(color-mix(in srgb, currentColor 14%, var(--arrowpanel-background)))",
-        "dismiss-button-bg-active":
+        "dismiss-button-background-active":
           "Menu linear-gradient(color-mix(in srgb, currentColor 21%, var(--arrowpanel-background)))",
       },
       hcm: {
         background: "var(--arrowpanel-background)",
-        "dismiss-button-bg": "var(--arrowpanel-background)",
-        "dismiss-button-bg-hover":
-          "color-mix(in srgb, currentColor 14%, var(--arrowpanel-background))",
-        "dismiss-button-bg-active":
-          "color-mix(in srgb, currentColor 21%, var(--arrowpanel-background))",
+        "dismiss-button-background": "var(--arrowpanel-background)",
+        "dismiss-button-background-hover":
+          "color-mix(in srgb, currentColor 14%, SelectedItem)",
+        "dismiss-button-background-active":
+          "color-mix(in srgb, currentColor 21%, SelectedItem)",
       },
     },
   };

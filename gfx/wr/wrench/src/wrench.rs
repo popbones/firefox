@@ -248,6 +248,7 @@ impl Wrench {
 
         let mut debug_flags = DebugFlags::ECHO_DRIVER_MESSAGES;
         debug_flags.set(DebugFlags::DISABLE_BATCHING, no_batch);
+        debug_flags.set(DebugFlags::MISSING_SNAPSHOT_PINK, true);
         let callbacks = Arc::new(Mutex::new(blob::BlobCallbacks::new()));
 
         let precache_flags = if precache_shaders {
@@ -278,6 +279,7 @@ impl Wrench {
             // `clear_caches_with_quads`, but scissored clears work well.
             clear_caches_with_quads: !window.is_software(),
             compositor_config,
+            enable_debugger: true,
             ..Default::default()
         };
 

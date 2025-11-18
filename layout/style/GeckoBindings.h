@@ -11,15 +11,16 @@
 
 #include <stdint.h>
 
-#include "mozilla/ServoTypes.h"
+#include "COLRFonts.h"
+#include "mozilla/EffectCompositor.h"
+#include "mozilla/PreferenceSheet.h"
 #include "mozilla/ServoBindingTypes.h"
+#include "mozilla/ServoTypes.h"
 #include "mozilla/css/DocumentMatchingFunction.h"
 #include "mozilla/css/SheetLoadData.h"
 #include "mozilla/dom/Document.h"
-#include "mozilla/EffectCompositor.h"
-#include "mozilla/PreferenceSheet.h"
 #include "nsStyleStruct.h"
-#include "COLRFonts.h"
+#include "nsStyleStructList.h"
 
 class nsAtom;
 class nsIURI;
@@ -79,14 +80,8 @@ bool Gecko_IsSignificantChild(const nsINode*, bool whitespace_is_significant);
 
 const nsINode* Gecko_GetLastChild(const nsINode*);
 const nsINode* Gecko_GetFlattenedTreeParentNode(const nsINode*);
-const mozilla::dom::Element* Gecko_GetBeforeOrAfterPseudo(
-    const mozilla::dom::Element*, bool is_before);
-const mozilla::dom::Element* Gecko_GetMarkerPseudo(
-    const mozilla::dom::Element*);
-
-nsTArray<nsIContent*>* Gecko_GetAnonymousContentForElement(
-    const mozilla::dom::Element*);
-void Gecko_DestroyAnonymousContentList(nsTArray<nsIContent*>* anon_content);
+void Gecko_GetAnonymousContentForElement(const mozilla::dom::Element*,
+                                         nsTArray<nsIContent*>*);
 
 const nsTArray<RefPtr<nsINode>>* Gecko_GetAssignedNodes(
     const mozilla::dom::Element*);
@@ -120,8 +115,7 @@ NS_DECL_THREADSAFE_FFI_REFCOUNTING(mozilla::css::SheetLoadDataHolder,
 
 void Gecko_StyleSheet_FinishAsyncParse(
     mozilla::css::SheetLoadDataHolder* data,
-    mozilla::StyleStrong<mozilla::StyleStylesheetContents> sheet_contents,
-    mozilla::StyleUseCounters* use_counters);
+    mozilla::StyleStrong<mozilla::StyleStylesheetContents> sheet_contents);
 
 mozilla::StyleSheet* Gecko_LoadStyleSheet(
     mozilla::css::Loader* loader, mozilla::StyleSheet* parent,
@@ -508,14 +502,14 @@ float Gecko_GetLookAndFeelFloat(int32_t float_id);
 void Gecko_AddPropertyToSet(nsCSSPropertyIDSet*, nsCSSPropertyID);
 
 // Style-struct management.
-#define STYLE_STRUCT(name)                                                   \
+#define DECLARE_GECKO_FUNCTIONS(name)                                        \
   void Gecko_Construct_Default_nsStyle##name(nsStyle##name* ptr,             \
                                              const mozilla::dom::Document*); \
   void Gecko_CopyConstruct_nsStyle##name(nsStyle##name* ptr,                 \
                                          const nsStyle##name* other);        \
   void Gecko_Destroy_nsStyle##name(nsStyle##name* ptr);
-#include "nsStyleStructList.h"
-#undef STYLE_STRUCT
+FOR_EACH_STYLE_STRUCT(DECLARE_GECKO_FUNCTIONS, DECLARE_GECKO_FUNCTIONS)
+#undef DECLARE_GECKO_FUNCTIONS
 
 bool Gecko_DocumentRule_UseForPresentation(
     const mozilla::dom::Document*, const nsACString* aPattern,
@@ -597,6 +591,7 @@ float Gecko_MediaFeatures_GetResolution(const mozilla::dom::Document*);
 bool Gecko_MediaFeatures_PrefersReducedMotion(const mozilla::dom::Document*);
 bool Gecko_MediaFeatures_PrefersReducedTransparency(
     const mozilla::dom::Document*);
+bool Gecko_MediaFeatures_MacRTL(const mozilla::dom::Document*);
 mozilla::StylePrefersContrast Gecko_MediaFeatures_PrefersContrast(
     const mozilla::dom::Document*);
 mozilla::StylePrefersColorScheme Gecko_MediaFeatures_PrefersColorScheme(
@@ -633,6 +628,27 @@ bool Gecko_GetAnchorPosOffset(
     mozilla::StylePhysicalSide aPropSide,
     mozilla::StyleAnchorSideKeyword aAnchorSideKeyword, float aPercentage,
     mozilla::Length* aOut);
+
+/**
+ * Resolve the anchor size for a positioned element, given the anchor name.
+ *
+ * @param aParams  Parameters required to resolve anchor size.
+ * @param aAnchorName  Name of the anchor to use. If null, it will try to use
+ *                     the position-anchor property of the positioned frame (In
+ *                     |aParams|). If the property is not set, the lookup fails.
+ * @param aPropAxis  Axis of the property the anchor size is being resolved for.
+ *                   Used when |aAnchorSizeKeyword| is None
+ * @param aAnchorSizeKeyword  Which size value to use as the output.
+ * @param aLength  Location to write the resolved anchor size. Only set if the
+ *                 resolution is valid.
+ *
+ * @returns  True if the lookup succeeded.
+ */
+bool Gecko_GetAnchorPosSize(const AnchorPosResolutionParams* aParams,
+                            const nsAtom* aAnchorName,
+                            mozilla::StylePhysicalAxis aPropAxis,
+                            mozilla::StyleAnchorSizeKeyword aAnchorSizeKeyword,
+                            mozilla::Length* aOut);
 
 }  // extern "C"
 

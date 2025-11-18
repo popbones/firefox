@@ -135,14 +135,14 @@ impl FontRelativeLength {
     /// Return the unitless, raw value.
     fn unitless_value(&self) -> CSSFloat {
         match *self {
-            Self::Em(v) |
-            Self::Ex(v) |
-            Self::Ch(v) |
-            Self::Cap(v) |
-            Self::Ic(v) |
-            Self::Rem(v) |
-            Self::Lh(v) |
-            Self::Rlh(v) => v,
+            Self::Em(v)
+            | Self::Ex(v)
+            | Self::Ch(v)
+            | Self::Cap(v)
+            | Self::Ic(v)
+            | Self::Rem(v)
+            | Self::Lh(v)
+            | Self::Rlh(v) => v,
         }
     }
 
@@ -252,11 +252,7 @@ impl FontRelativeLength {
             orientation: FontMetricsOrientation,
             flags: QueryFontMetricsFlags,
         ) -> FontMetrics {
-            context.query_font_metrics(
-                base_size,
-                orientation,
-                flags,
-            )
+            context.query_font_metrics(base_size, orientation, flags)
         }
 
         let reference_font_size = base_size.resolve(context);
@@ -404,8 +400,8 @@ impl FontRelativeLength {
                         line_height_base,
                         context.style().writing_mode,
                     );
-                    if context.for_non_inherited_property &&
-                        line_height_base == LineHeightBase::CurrentStyle
+                    if context.for_non_inherited_property
+                        && line_height_base == LineHeightBase::CurrentStyle
                     {
                         context
                             .rule_cache_conditions
@@ -423,7 +419,8 @@ impl FontRelativeLength {
                 //     to the initial values of font and line-height properties.
                 //
                 let reference_size = if context.builder.is_root_element {
-                    context.builder
+                    context
+                        .builder
                         .calc_line_height(
                             context.device(),
                             line_height_base,
@@ -662,10 +659,10 @@ impl ViewportPercentageLength {
             // able to figure it own on its own so we help.
             _ => unsafe {
                 match *self {
-                    Vw(..) | Svw(..) | Lvw(..) | Dvw(..) | Vh(..) | Svh(..) | Lvh(..) |
-                    Dvh(..) | Vmin(..) | Svmin(..) | Lvmin(..) | Dvmin(..) | Vmax(..) |
-                    Svmax(..) | Lvmax(..) | Dvmax(..) | Vb(..) | Svb(..) | Lvb(..) | Dvb(..) |
-                    Vi(..) | Svi(..) | Lvi(..) | Dvi(..) => {},
+                    Vw(..) | Svw(..) | Lvw(..) | Dvw(..) | Vh(..) | Svh(..) | Lvh(..) | Dvh(..)
+                    | Vmin(..) | Svmin(..) | Lvmin(..) | Dvmin(..) | Vmax(..) | Svmax(..)
+                    | Lvmax(..) | Dvmax(..) | Vb(..) | Svb(..) | Lvb(..) | Dvb(..) | Vi(..)
+                    | Svi(..) | Lvi(..) | Dvi(..) => {},
                 }
                 debug_unreachable!("Forgot to handle unit in try_op()")
             },
@@ -785,13 +782,13 @@ impl AbsoluteLength {
     /// Return the unitless, raw value.
     fn unitless_value(&self) -> CSSFloat {
         match *self {
-            Self::Px(v) |
-            Self::In(v) |
-            Self::Cm(v) |
-            Self::Mm(v) |
-            Self::Q(v) |
-            Self::Pt(v) |
-            Self::Pc(v) => v,
+            Self::Px(v)
+            | Self::In(v)
+            | Self::Cm(v)
+            | Self::Mm(v)
+            | Self::Q(v)
+            | Self::Pt(v)
+            | Self::Pc(v) => v,
         }
     }
 
@@ -883,12 +880,12 @@ pub enum ContainerRelativeLength {
 impl ContainerRelativeLength {
     fn unitless_value(&self) -> CSSFloat {
         match *self {
-            Self::Cqw(v) |
-            Self::Cqh(v) |
-            Self::Cqi(v) |
-            Self::Cqb(v) |
-            Self::Cqmin(v) |
-            Self::Cqmax(v) => v,
+            Self::Cqw(v)
+            | Self::Cqh(v)
+            | Self::Cqi(v)
+            | Self::Cqb(v)
+            | Self::Cqmin(v)
+            | Self::Cqmax(v) => v,
         }
     }
 
@@ -1216,11 +1213,11 @@ impl NoCalcLength {
             // able to figure it own on its own so we help.
             _ => unsafe {
                 match *self {
-                    Absolute(..) |
-                    FontRelative(..) |
-                    ViewportPercentage(..) |
-                    ContainerRelative(..) |
-                    ServoCharacterWidth(..) => {},
+                    Absolute(..)
+                    | FontRelative(..)
+                    | ViewportPercentage(..)
+                    | ContainerRelative(..)
+                    | ServoCharacterWidth(..) => {},
                 }
                 debug_unreachable!("Forgot to handle unit in try_op()")
             },
@@ -1316,11 +1313,11 @@ impl PartialOrd for NoCalcLength {
             // able to figure it own on its own so we help.
             _ => unsafe {
                 match *self {
-                    Absolute(..) |
-                    FontRelative(..) |
-                    ViewportPercentage(..) |
-                    ContainerRelative(..) |
-                    ServoCharacterWidth(..) => {},
+                    Absolute(..)
+                    | FontRelative(..)
+                    | ViewportPercentage(..)
+                    | ContainerRelative(..)
+                    | ServoCharacterWidth(..) => {},
                 }
                 debug_unreachable!("Forgot an arm in partial_cmp?")
             },
@@ -1342,7 +1339,7 @@ impl Zero for NoCalcLength {
 /// This is commonly used for the `<length>` values.
 ///
 /// <https://drafts.csswg.org/css-values/#lengths>
-#[derive(Clone, Debug, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem)]
+#[derive(Clone, Debug, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem, ToTyped)]
 pub enum Length {
     /// The internal length type that cannot parse `calc`
     NoCalc(NoCalcLength),
@@ -1454,10 +1451,10 @@ impl PartialOrd for ViewportPercentageLength {
             // able to figure it own on its own so we help.
             _ => unsafe {
                 match *self {
-                    Vw(..) | Svw(..) | Lvw(..) | Dvw(..) | Vh(..) | Svh(..) | Lvh(..) |
-                    Dvh(..) | Vmin(..) | Svmin(..) | Lvmin(..) | Dvmin(..) | Vmax(..) |
-                    Svmax(..) | Lvmax(..) | Dvmax(..) | Vb(..) | Svb(..) | Lvb(..) | Dvb(..) |
-                    Vi(..) | Svi(..) | Lvi(..) | Dvi(..) => {},
+                    Vw(..) | Svw(..) | Lvw(..) | Dvw(..) | Vh(..) | Svh(..) | Lvh(..) | Dvh(..)
+                    | Vmin(..) | Svmin(..) | Lvmin(..) | Dvmin(..) | Vmax(..) | Svmax(..)
+                    | Lvmax(..) | Dvmax(..) | Vb(..) | Svb(..) | Lvb(..) | Dvb(..) | Vi(..)
+                    | Svi(..) | Lvi(..) | Dvi(..) => {},
                 }
                 debug_unreachable!("Forgot an arm in partial_cmp?")
             },
@@ -1484,9 +1481,9 @@ impl Length {
                     .map_err(|()| location.new_unexpected_token_error(token.clone()))
             },
             Token::Number { value, .. } if num_context.is_ok(context.parsing_mode, value) => {
-                if value != 0. &&
-                    !context.parsing_mode.allows_unitless_lengths() &&
-                    !allow_quirks.allowed(context.quirks_mode)
+                if value != 0.
+                    && !context.parsing_mode.allows_unitless_lengths()
+                    && !allow_quirks.allowed(context.quirks_mode)
                 {
                     return Err(location.new_custom_error(StyleParseErrorKind::UnspecifiedError));
                 }
@@ -1643,7 +1640,7 @@ impl NonNegativeLength {
 ///
 /// https://drafts.csswg.org/css-values-4/#typedef-length-percentage
 #[allow(missing_docs)]
-#[derive(Clone, Debug, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem)]
+#[derive(Clone, Debug, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem, ToTyped)]
 pub enum LengthPercentage {
     Length(NoCalcLength),
     Percentage(computed::Percentage),
@@ -1735,9 +1732,9 @@ impl LengthPercentage {
                 )));
             },
             Token::Number { value, .. } if num_context.is_ok(context.parsing_mode, value) => {
-                if value != 0. &&
-                    !context.parsing_mode.allows_unitless_lengths() &&
-                    !allow_quirks.allowed(context.quirks_mode)
+                if value != 0.
+                    && !context.parsing_mode.allows_unitless_lengths()
+                    && !allow_quirks.allowed(context.quirks_mode)
                 {
                     return Err(location.new_unexpected_token_error(token.clone()));
                 } else {
@@ -2051,7 +2048,8 @@ impl Parse for Size {
 }
 
 macro_rules! parse_size_non_length {
-    ($size:ident, $input:expr, $auto_or_none:expr => $auto_or_none_ident:ident) => {{
+    ($size:ident, $input:expr, $allow_webkit_fill_available:expr,
+     $auto_or_none:expr => $auto_or_none_ident:ident) => {{
         let size = $input.try_parse(|input| {
             Ok(try_match_ident_ignore_ascii_case! { input,
                 "min-content" | "-moz-min-content" => $size::MinContent,
@@ -2060,7 +2058,7 @@ macro_rules! parse_size_non_length {
                 #[cfg(feature = "gecko")]
                 "-moz-available" => $size::MozAvailable,
                 #[cfg(feature = "gecko")]
-                "-webkit-fill-available" if is_webkit_fill_available_keyword_enabled() => $size::WebkitFillAvailable,
+                "-webkit-fill-available" if $allow_webkit_fill_available => $size::WebkitFillAvailable,
                 "stretch" if is_stretch_enabled() => $size::Stretch,
                 $auto_or_none => $size::$auto_or_none_ident,
             })
@@ -2072,9 +2070,29 @@ macro_rules! parse_size_non_length {
 }
 
 #[cfg(feature = "gecko")]
-fn is_webkit_fill_available_keyword_enabled() -> bool {
+fn is_webkit_fill_available_enabled_in_width_and_height() -> bool {
     static_prefs::pref!("layout.css.webkit-fill-available.enabled")
 }
+
+#[cfg(feature = "gecko")]
+fn is_webkit_fill_available_enabled_in_all_size_properties() -> bool {
+    // For convenience at the callsites, we check both prefs here,
+    // since both must be 'true' in order for the keyword to be
+    // enabled in all size properties.
+    static_prefs::pref!("layout.css.webkit-fill-available.enabled")
+        && static_prefs::pref!("layout.css.webkit-fill-available.all-size-properties.enabled")
+}
+
+#[cfg(feature = "servo")]
+fn is_webkit_fill_available_enabled_in_width_and_height() -> bool {
+    false
+}
+
+#[cfg(feature = "servo")]
+fn is_webkit_fill_available_enabled_in_all_size_properties() -> bool {
+    false
+}
+
 fn is_stretch_enabled() -> bool {
     static_prefs::pref!("layout.css.stretch-size-keyword.enabled")
 }
@@ -2105,7 +2123,22 @@ impl Size {
         input: &mut Parser<'i, 't>,
         allow_quirks: AllowQuirks,
     ) -> Result<Self, ParseError<'i>> {
-        parse_size_non_length!(Size, input, "auto" => Auto);
+        let allow_webkit_fill_available = is_webkit_fill_available_enabled_in_all_size_properties();
+        Self::parse_quirky_internal(context, input, allow_quirks, allow_webkit_fill_available)
+    }
+
+    /// Parses, with quirks and configurable support for
+    /// whether the '-webkit-fill-available' keyword is allowed.
+    /// TODO(dholbert) Fold this function into callsites in bug 1989073 when
+    /// removing 'layout.css.webkit-fill-available.all-size-properties.enabled'.
+    fn parse_quirky_internal<'i, 't>(
+        context: &ParserContext,
+        input: &mut Parser<'i, 't>,
+        allow_quirks: AllowQuirks,
+        allow_webkit_fill_available: bool,
+    ) -> Result<Self, ParseError<'i>> {
+        parse_size_non_length!(Size, input, allow_webkit_fill_available,
+                               "auto" => Auto);
         parse_fit_content_function!(Size, input, context, allow_quirks);
 
         match input
@@ -2129,6 +2162,33 @@ impl Size {
         Ok(Self::AnchorSizeFunction(Box::new(
             GenericAnchorSizeFunction::parse(context, input)?,
         )))
+    }
+
+    /// Parse a size for width or height, where -webkit-fill-available
+    /// support is only controlled by one pref (vs. other properties where
+    /// there's an additional pref check):
+    /// TODO(dholbert) Remove this custom parse func in bug 1989073, along with
+    /// 'layout.css.webkit-fill-available.all-size-properties.enabled'.
+    pub fn parse_size_for_width_or_height_quirky<'i, 't>(
+        context: &ParserContext,
+        input: &mut Parser<'i, 't>,
+        allow_quirks: AllowQuirks,
+    ) -> Result<Self, ParseError<'i>> {
+        let allow_webkit_fill_available = is_webkit_fill_available_enabled_in_width_and_height();
+        Self::parse_quirky_internal(context, input, allow_quirks, allow_webkit_fill_available)
+    }
+
+    /// Parse a size for width or height, where -webkit-fill-available
+    /// support is only controlled by one pref (vs. other properties where
+    /// there's an additional pref check):
+    /// TODO(dholbert) Remove this custom parse func in bug 1989073, along with
+    /// 'layout.css.webkit-fill-available.all-size-properties.enabled'.
+    pub fn parse_size_for_width_or_height<'i, 't>(
+        context: &ParserContext,
+        input: &mut Parser<'i, 't>,
+    ) -> Result<Self, ParseError<'i>> {
+        let allow_webkit_fill_available = is_webkit_fill_available_enabled_in_width_and_height();
+        Self::parse_quirky_internal(context, input, AllowQuirks::No, allow_webkit_fill_available)
     }
 
     /// Returns `0%`.
@@ -2157,7 +2217,9 @@ impl MaxSize {
         input: &mut Parser<'i, 't>,
         allow_quirks: AllowQuirks,
     ) -> Result<Self, ParseError<'i>> {
-        parse_size_non_length!(MaxSize, input, "none" => None);
+        let allow_webkit_fill_available = is_webkit_fill_available_enabled_in_all_size_properties();
+        parse_size_non_length!(MaxSize, input, allow_webkit_fill_available,
+                               "none" => None);
         parse_fit_content_function!(MaxSize, input, context, allow_quirks);
 
         match input
@@ -2187,9 +2249,6 @@ impl MaxSize {
 /// A specified non-negative `<length>` | `<number>`.
 pub type NonNegativeLengthOrNumber = GenericLengthOrNumber<NonNegativeLength, NonNegativeNumber>;
 
-/// A specified value for `anchor-size` function.
-pub type AnchorSizeFunction = GenericAnchorSizeFunction<LengthPercentage>;
-
 /// A specified value for `margin` properties.
 pub type Margin = GenericMargin<LengthPercentage>;
 
@@ -2218,7 +2277,7 @@ impl Margin {
         }) {
             return Ok(Self::AnchorContainingCalcFunction(l));
         }
-        let inner = AnchorSizeFunction::parse(context, input)?;
+        let inner = GenericAnchorSizeFunction::<Margin>::parse(context, input)?;
         Ok(Self::AnchorSizeFunction(Box::new(inner)))
     }
 }

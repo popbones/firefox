@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # Documentation: https://firefox-source-docs.mozilla.org/taskcluster/partner-repacks.html
 
-import json
 import logging
 import os
 import re
@@ -16,6 +15,7 @@ from pathlib import Path
 from shutil import copy, copytree, move, rmtree, which
 from subprocess import Popen
 
+from mozfile import json
 from redo import retry
 
 logging.basicConfig(
@@ -102,10 +102,6 @@ def isLinux(platform: str):
     return "linux" in platform
 
 
-def isLinux32(platform: str):
-    return "linux32" in platform or "linux-i686" in platform or platform == "linux"
-
-
 def isLinux64(platform: str):
     return "linux64" in platform or "linux-x86_64" in platform
 
@@ -133,7 +129,6 @@ def isWin64Aarch64(platform: str):
 def isValidPlatform(platform: str):
     return (
         isLinux64(platform)
-        or isLinux32(platform)
         or isMac(platform)
         or isWin64(platform)
         or isWin64Aarch64(platform)
@@ -272,7 +267,7 @@ def getUpstreamArtifacts(upstream_tasks, repack_stub_installer):
             else:
                 artifact_ids[name] = taskId
     log.debug(
-        "Found artifacts: %s" % json.dumps(artifact_ids, indent=4, sort_keys=True)
+        "Found artifacts: %s" % json.dumps(artifact_ids, indent=2, sort_keys=True)
     )
     return artifact_ids
 

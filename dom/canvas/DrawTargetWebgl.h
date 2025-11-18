@@ -7,18 +7,19 @@
 #ifndef _MOZILLA_GFX_DRAWTARGETWEBGL_H
 #define _MOZILLA_GFX_DRAWTARGETWEBGL_H
 
+#include <memory>
+#include <vector>
+
 #include "GLTypes.h"
 #include "mozilla/Array.h"
+#include "mozilla/LinkedList.h"
+#include "mozilla/ThreadLocal.h"
+#include "mozilla/WeakPtr.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/PathSkia.h"
-#include "mozilla/LinkedList.h"
-#include "mozilla/WeakPtr.h"
-#include "mozilla/ThreadLocal.h"
 #include "mozilla/ipc/SharedMemoryHandle.h"
 #include "mozilla/ipc/SharedMemoryMapping.h"
 #include "mozilla/layers/LayersTypes.h"
-
-#include <vector>
 
 namespace WGR {
 struct OutputVertex;
@@ -38,6 +39,7 @@ class WebGLVertexArray;
 
 namespace gl {
 class GLContext;
+class SharedSurface;
 }  // namespace gl
 
 namespace layers {
@@ -49,6 +51,7 @@ namespace gfx {
 class DataSourceSurface;
 class DrawTargetSkia;
 class DrawTargetWebgl;
+class FilterNodeWebgl;
 class PathSkia;
 class SourceSurfaceSkia;
 class SourceSurfaceWebgl;
@@ -73,6 +76,7 @@ struct PathVertexRange;
 class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
                            public mozilla::SupportsWeakPtr {
   friend class DrawTargetWebgl;
+  friend class FilterNodeWebgl;
   friend class SourceSurfaceWebgl;
   friend class TextureHandle;
   friend class SharedTextureHandle;
@@ -96,10 +100,18 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
 
   void ClearCaches();
 
+  std::shared_ptr<gl::SharedSurface> ExportSharedSurface(
+      layers::TextureType aTextureType, SourceSurface* aSurface);
+
+  already_AddRefed<SourceSurface> ImportSurfaceDescriptor(
+      const layers::SurfaceDescriptor& aDesc, const gfx::IntSize& aSize,
+      SurfaceFormat aFormat);
+
  private:
   SharedContextWebgl();
 
   WeakPtr<DrawTargetWebgl> mCurrentTarget;
+  RefPtr<TextureHandle> mTargetHandle;
   IntSize mViewportSize;
   // The current integer-aligned scissor rect.
   IntRect mClipRect;
@@ -149,6 +161,18 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
   Maybe<uint32_t> mImageProgramSampler;
   Maybe<uint32_t> mImageProgramClipMask;
   Maybe<uint32_t> mImageProgramClipBounds;
+  RefPtr<WebGLProgram> mBlurProgram;
+  Maybe<uint32_t> mBlurProgramViewport;
+  Maybe<uint32_t> mBlurProgramTransform;
+  Maybe<uint32_t> mBlurProgramTexMatrix;
+  Maybe<uint32_t> mBlurProgramTexBounds;
+  Maybe<uint32_t> mBlurProgramOffsetScale;
+  Maybe<uint32_t> mBlurProgramSigma;
+  Maybe<uint32_t> mBlurProgramColor;
+  Maybe<uint32_t> mBlurProgramSwizzle;
+  Maybe<uint32_t> mBlurProgramSampler;
+  Maybe<uint32_t> mBlurProgramClipMask;
+  Maybe<uint32_t> mBlurProgramClipBounds;
 
   struct SolidProgramUniformState {
     Maybe<Array<float, 2>> mViewport;
@@ -169,8 +193,24 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
     Maybe<Array<float, 4>> mClipBounds;
   } mImageProgramUniformState;
 
+  struct BlurProgramUniformState {
+    Maybe<Array<float, 2>> mViewport;
+    Maybe<Array<float, 4>> mTransform;
+    Maybe<Array<float, 4>> mTexMatrix;
+    Maybe<Array<float, 4>> mTexBounds;
+    Maybe<Array<float, 2>> mOffsetScale;
+    Maybe<Array<float, 1>> mSigma;
+    Maybe<Array<float, 4>> mColor;
+    Maybe<Array<float, 1>> mSwizzle;
+    Maybe<Array<float, 4>> mClipBounds;
+  } mBlurProgramUniformState;
+
   // Scratch framebuffer used to wrap textures for miscellaneous utility ops.
   RefPtr<WebGLFramebuffer> mScratchFramebuffer;
+  // Scratch framebuffer used to wrap textures for sub-targets.
+  RefPtr<WebGLFramebuffer> mTargetFramebuffer;
+  // Scratch framebuffer used to wrap textures for export.
+  RefPtr<WebGLFramebuffer> mExportFramebuffer;
   // Buffer filled with zero data for initializing textures.
   RefPtr<WebGLBuffer> mZeroBuffer;
   size_t mZeroSize = 0;
@@ -184,6 +224,8 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
   CompositionOp mLastCompositionOp = CompositionOp::OP_SOURCE;
   // The constant blend color used for the blending operation.
   Maybe<DeviceColor> mLastBlendColor;
+  // The blend stage of the current blending operation.
+  uint8_t mLastBlendStage = 0;
 
   // The cached scissor state. Operations that rely on scissor state should
   // take care to enable or disable the cached scissor state as necessary.
@@ -195,8 +237,6 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
   size_t mNumTextureHandles = 0;
   // User data key linking a SourceSurface with its TextureHandle.
   UserDataKey mTextureHandleKey = {0};
-  // User data key linking a SourceSurface with its shadow blur TextureHandle.
-  UserDataKey mShadowTextureKey = {0};
   // User data key linking a ScaledFont with its GlyphCache.
   UserDataKey mGlyphCacheKey = {0};
   // List of all GlyphCaches currently allocated to fonts.
@@ -232,7 +272,10 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
 
   void BlendFunc(GLenum aSrcFactor, GLenum aDstFactor);
   void SetBlendState(CompositionOp aOp,
-                     const Maybe<DeviceColor>& aColor = Nothing());
+                     const Maybe<DeviceColor>& aColor = Nothing(),
+                     uint8_t aStage = 0);
+  uint8_t RequiresMultiStageBlend(const DrawOptions& aOptions,
+                                  DrawTargetWebgl* aDT = nullptr);
 
   void SetClipRect(const Rect& aClipRect);
   void SetClipRect(const IntRect& aClipRect) { SetClipRect(Rect(aClipRect)); }
@@ -257,7 +300,10 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
   bool IsCurrentTarget(DrawTargetWebgl* aDT) const {
     return aDT == mCurrentTarget;
   }
-  bool SetTarget(DrawTargetWebgl* aDT);
+  bool SetTarget(DrawTargetWebgl* aDT,
+                 const RefPtr<TextureHandle>& aHandle = nullptr,
+                 const IntSize& aViewportSize = IntSize());
+  void RestoreCurrentTarget(const RefPtr<WebGLTexture>& aClipMask = nullptr);
 
   // Reset the current target.
   void ClearTarget() { mCurrentTarget = nullptr; }
@@ -266,8 +312,8 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
 
   bool SupportsPattern(const Pattern& aPattern);
 
-  void EnableScissor(const IntRect& aRect);
-  void DisableScissor();
+  void EnableScissor(const IntRect& aRect, bool aForce = false);
+  void DisableScissor(bool aForce = false);
 
   void SetTexFilter(WebGLTexture* aTex, bool aFilter);
   void InitTexParameters(WebGLTexture* aTex, bool aFilter = true);
@@ -283,16 +329,26 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
       const IntRect& aRect, TextureHandle* aHandle = nullptr);
 
   already_AddRefed<WebGLTexture> GetCompatibleSnapshot(
-      SourceSurface* aSurface) const;
+      SourceSurface* aSurface, RefPtr<TextureHandle>* aHandle = nullptr,
+      bool aCheckTarget = true) const;
   bool IsCompatibleSurface(SourceSurface* aSurface) const;
 
   bool UploadSurface(DataSourceSurface* aData, SurfaceFormat aFormat,
                      const IntRect& aSrcRect, const IntPoint& aDstOffset,
                      bool aInit, bool aZero = false,
                      const RefPtr<WebGLTexture>& aTex = nullptr);
+  void UploadSurfaceToHandle(const RefPtr<DataSourceSurface>& aData,
+                             const IntPoint& aSrcOffset,
+                             const RefPtr<TextureHandle>& aHandle);
+  void BindAndInitRenderTex(const RefPtr<WebGLTexture>& aTex,
+                            SurfaceFormat aFormat, const IntSize& aSize);
+  void InitRenderTex(BackingTexture* aBacking);
+  void ClearRenderTex(BackingTexture* aBacking);
+  void BindScratchFramebuffer(TextureHandle* aHandle, bool aInit,
+                              const IntSize& aViewportSize = IntSize());
   already_AddRefed<TextureHandle> AllocateTextureHandle(
       SurfaceFormat aFormat, const IntSize& aSize, bool aAllowShared = true,
-      bool aRenderable = false);
+      bool aRenderable = false, BackingTexture* aAvoid = nullptr);
   void DrawQuad();
   void DrawTriangles(const PathVertexRange& aRange);
   bool DrawRectAccel(const Rect& aRect, const Pattern& aPattern,
@@ -303,7 +359,28 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
                      bool aAccelOnly = false, bool aForceUpdate = false,
                      const StrokeOptions* aStrokeOptions = nullptr,
                      const PathVertexRange* aVertexRange = nullptr,
-                     const Matrix* aRectXform = nullptr);
+                     const Matrix* aRectXform = nullptr,
+                     uint8_t aBlendStage = 0);
+  bool BlurRectPass(const Rect& aDestRect, const Point& aSigma,
+                    bool aHorizontal, const RefPtr<SourceSurface>& aSurface,
+                    const IntRect& aSourceRect,
+                    const DrawOptions& aOptions = DrawOptions(),
+                    Maybe<DeviceColor> aMaskColor = Nothing(),
+                    RefPtr<TextureHandle>* aHandle = nullptr,
+                    RefPtr<TextureHandle>* aTargetHandle = nullptr,
+                    bool aFilter = false);
+  bool BlurRectAccel(const Rect& aDestRect, const Point& aSigma,
+                     const RefPtr<SourceSurface>& aSurface,
+                     const IntRect& aSourceRect,
+                     const DrawOptions& aOptions = DrawOptions(),
+                     Maybe<DeviceColor> aMaskColor = Nothing(),
+                     RefPtr<TextureHandle>* aHandle = nullptr,
+                     RefPtr<TextureHandle>* aTargetHandle = nullptr,
+                     RefPtr<TextureHandle>* aResultHandle = nullptr,
+                     bool aFilter = false);
+  already_AddRefed<SourceSurface> DownscaleBlurInput(SourceSurface* aSurface,
+                                                     const IntRect& aSourceRect,
+                                                     int aIters = 1);
 
   already_AddRefed<TextureHandle> DrawStrokeMask(
       const PathVertexRange& aVertexRange, const IntSize& aSize);
@@ -323,6 +400,13 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
                        const Pattern& aPattern, const DrawOptions& aOptions,
                        const StrokeOptions* aStrokeOptions,
                        bool aUseSubpixelAA);
+
+  already_AddRefed<TextureHandle> ResolveFilterInputAccel(
+      DrawTargetWebgl* aDT, const Path* aPath, const Pattern& aPattern,
+      const IntRect& aSourceRect, const Matrix& aDestTransform,
+      const DrawOptions& aOptions = DrawOptions(),
+      const StrokeOptions* aStrokeOptions = nullptr,
+      SurfaceFormat aFormat = SurfaceFormat::B8G8R8A8);
 
   void PruneTextureHandle(const RefPtr<TextureHandle>& aHandle);
   bool PruneTextureMemory(size_t aMargin = 0, bool aPruneUnused = true);
@@ -364,6 +448,9 @@ class SharedContextWebgl : public mozilla::RefCounted<SharedContextWebgl>,
 // WebGL context so that data can be more easily interchanged between them and
 // also to enable more reasonable limiting of resource usage.
 class DrawTargetWebgl : public DrawTarget, public SupportsWeakPtr {
+  friend class FilterNodeWebgl;
+  friend class FilterNodeDeferInputWebgl;
+  friend class FilterNodeGaussianBlurWebgl;
   friend class SourceSurfaceWebgl;
   friend class SharedContextWebgl;
 
@@ -592,6 +679,17 @@ class DrawTargetWebgl : public DrawTarget, public SupportsWeakPtr {
       GradientStop* aStops, uint32_t aNumStops,
       ExtendMode aExtendMode = ExtendMode::CLAMP) const override;
   already_AddRefed<FilterNode> CreateFilter(FilterType aType) override;
+  already_AddRefed<FilterNode> DeferFilterInput(
+      const Path* aPath, const Pattern& aPattern, const IntRect& aSourceRect,
+      const IntPoint& aDestOffset, const DrawOptions& aOptions = DrawOptions(),
+      const StrokeOptions* aStrokeOptions = nullptr) override;
+
+  already_AddRefed<SourceSurfaceWebgl> ResolveFilterInputAccel(
+      const Path* aPath, const Pattern& aPattern, const IntRect& aSourceRect,
+      const Matrix& aDestTransform, const DrawOptions& aOptions = DrawOptions(),
+      const StrokeOptions* aStrokeOptions = nullptr,
+      SurfaceFormat aFormat = SurfaceFormat::B8G8R8A8);
+
   void SetTransform(const Matrix& aTransform) override;
   void* GetNativeSurface(NativeSurfaceType aType) override;
 
@@ -599,6 +697,10 @@ class DrawTargetWebgl : public DrawTarget, public SupportsWeakPtr {
       layers::TextureType aTextureType, layers::RemoteTextureId aId,
       layers::RemoteTextureOwnerId aOwnerId,
       layers::RemoteTextureOwnerClient* aOwnerClient = nullptr);
+
+  already_AddRefed<SourceSurface> ImportSurfaceDescriptor(
+      const layers::SurfaceDescriptor& aDesc, const gfx::IntSize& aSize,
+      SurfaceFormat aFormat) override;
 
   void OnMemoryPressure() { mSharedContext->OnMemoryPressure(); }
 
@@ -619,7 +721,9 @@ class DrawTargetWebgl : public DrawTarget, public SupportsWeakPtr {
 
   bool SetSimpleClipRect();
   bool GenerateComplexClipMask();
-  bool PrepareContext(bool aClipped = true);
+  bool PrepareContext(bool aClipped = true,
+                      const RefPtr<TextureHandle>& aHandle = nullptr,
+                      const IntSize& aViewportSize = IntSize());
 
   void DrawRectFallback(const Rect& aRect, const Pattern& aPattern,
                         const DrawOptions& aOptions,
@@ -653,6 +757,11 @@ class DrawTargetWebgl : public DrawTarget, public SupportsWeakPtr {
                   const DrawOptions& aOptions,
                   const StrokeOptions* aStrokeOptions = nullptr);
 
+  bool BlurSurface(float aSigma, SourceSurface* aSurface,
+                   const IntRect& aSourceRect, const Point& aDest,
+                   const DrawOptions& aOptions = DrawOptions(),
+                   const DeviceColor& aColor = DeviceColor(1, 1, 1, 1));
+
   bool MarkChanged();
 
   bool ReadIntoSkia();
@@ -675,6 +784,10 @@ class DrawTargetWebgl : public DrawTarget, public SupportsWeakPtr {
   void ClearSnapshot(bool aCopyOnWrite = true, bool aNeedHandle = false);
 
   bool CreateFramebuffer();
+
+  void DrawFilterFallback(FilterNode* aNode, const Rect& aSourceRect,
+                          const Point& aDestPoint,
+                          const DrawOptions& aOptions = DrawOptions());
 
   // PrepareContext may sometimes be used recursively. When this occurs, ensure
   // that clip state is restored after the context is used.

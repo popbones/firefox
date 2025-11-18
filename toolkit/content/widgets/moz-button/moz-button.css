@@ -6,6 +6,7 @@
   display: inline-block;
   height: fit-content;
   width: fit-content;
+  --button-alignment: center;
 }
 
 button {
@@ -48,7 +49,7 @@ button {
   /* Ensure font-size isn't overridden by widget styling (e.g. in forms.css) */
   font-size: var(--button-font-size);
   display: flex;
-  justify-content: center;
+  justify-content: var(--button-alignment);
   align-items: center;
   position: relative;
 
@@ -81,6 +82,12 @@ button {
     color: var(--button-text-color-active);
   }
 
+  button:is([aria-expanded="true"], [aria-pressed="true"]):not(:hover, :disabled) > & {
+    background-color: var(--button-background-color-selected);
+    border-color: var(--button-border-color-selected);
+    color: var(--button-text-color-selected);
+  }
+
   button:disabled > & {
     background-color: var(--button-background-color-disabled);
     border-color: var(--button-border-color-disabled);
@@ -110,6 +117,12 @@ button {
       color: var(--button-text-color-primary-active);
     }
 
+    button:is([aria-expanded="true"], [aria-pressed="true"]):not(:hover, :disabled) > & {
+      background-color: var(--button-background-color-primary-selected);
+      border-color: var(--button-border-color-primary-selected);
+      color: var(--button-text-color-primary-selected);
+    }
+
     button:disabled > & {
       background-color: var(--button-background-color-primary-disabled);
       border-color: var(--button-border-color-primary-disabled);
@@ -132,6 +145,12 @@ button {
       background-color: var(--button-background-color-destructive-active);
       border-color: var(--button-border-color-destructive-active);
       color: var(--button-text-color-destructive-active);
+    }
+
+    button:is([aria-expanded="true"], [aria-pressed="true"]):not(:hover, :disabled) > & {
+      background-color: var(--button-background-color-destructive-selected);
+      border-color: var(--button-border-color-destructive-selected);
+      color: var(--button-text-color-destructive-selected);
     }
 
     button:disabled > & {
@@ -158,6 +177,12 @@ button {
       color: var(--button-text-color-ghost-active);
     }
 
+    button:is([aria-expanded="true"], [aria-pressed="true"]):not(:hover, :disabled) > & {
+      background-color: var(--button-background-color-ghost-selected);
+      border-color: var(--button-border-color-ghost-selected);
+      color: var(--button-text-color-ghost-selected);
+    }
+
     button:disabled > & {
       background-color: var(--button-background-color-ghost-disabled);
       border-color: var(--button-border-color-ghost-disabled);
@@ -170,7 +195,7 @@ button {
   }
 
   &[type~="icon"]:not(.labelled) {
-    background-size: var(--icon-size-default);
+    background-size: var(--icon-size);
     background-position: center;
     background-repeat: no-repeat;
   }
@@ -195,8 +220,8 @@ button {
   }
 
   img {
-    width: var(--icon-size-default);
-    height: var(--icon-size-default);
+    width: var(--icon-size);
+    height: var(--icon-size);
     pointer-events: none;
   }
 }

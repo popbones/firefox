@@ -12,12 +12,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -25,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
@@ -45,6 +46,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.core.net.toUri
+import mozilla.components.compose.base.SelectableChip
+import mozilla.components.compose.base.SelectableChipColors
 import mozilla.components.compose.base.modifier.onShown
 import mozilla.components.compose.base.utils.inComposePreview
 import mozilla.components.service.pocket.PocketStory
@@ -54,10 +57,7 @@ import mozilla.components.service.pocket.PocketStory.PocketSponsoredStory
 import mozilla.components.service.pocket.PocketStory.SponsoredContent
 import org.mozilla.fenix.R
 import org.mozilla.fenix.compose.ITEM_WIDTH
-import org.mozilla.fenix.compose.ListItemTabLarge
 import org.mozilla.fenix.compose.ListItemTabSurface
-import org.mozilla.fenix.compose.SelectableChip
-import org.mozilla.fenix.compose.SelectableChipColors
 import org.mozilla.fenix.compose.TabSubtitleWithInterdot
 import org.mozilla.fenix.compose.eagerFlingBehavior
 import org.mozilla.fenix.ext.settings
@@ -80,7 +80,6 @@ private const val POCKET_STORIES_UTM_VALUE = "pocket-newtab-android"
  * @param backgroundColor The background [Color] of the story.
  * @param onStoryClick Callback for when the user taps on this story.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PocketStory(
     @PreviewParameter(PocketStoryProvider::class) story: PocketRecommendedStory,
@@ -93,53 +92,51 @@ fun PocketStory(
     )
     val isValidPublisher = story.publisher.isNotBlank()
     val isValidTimeToRead = story.timeToRead >= 0
-    ListItemTabLarge(
+    ListItemTabSurface(
         imageUrl = imageUrl,
         backgroundColor = backgroundColor,
         onClick = { onStoryClick(story) },
-        title = {
+    ) {
+        Text(
+            text = story.title,
+            modifier = Modifier.semantics {
+                testTagsAsResourceId = true
+                testTag = "pocket.story.title"
+            },
+            color = FirefoxTheme.colors.textPrimary,
+            overflow = TextOverflow.Ellipsis,
+            maxLines = 2,
+            style = FirefoxTheme.typography.body2,
+        )
+
+        if (isValidPublisher && isValidTimeToRead) {
+            TabSubtitleWithInterdot(story.publisher, "${story.timeToRead} min")
+        } else if (isValidPublisher) {
             Text(
-                text = story.title,
+                text = story.publisher,
                 modifier = Modifier.semantics {
                     testTagsAsResourceId = true
-                    testTag = "pocket.story.title"
+                    testTag = "pocket.story.publisher"
                 },
-                color = FirefoxTheme.colors.textPrimary,
+                color = FirefoxTheme.colors.textSecondary,
                 overflow = TextOverflow.Ellipsis,
-                maxLines = 2,
-                style = FirefoxTheme.typography.body2,
+                maxLines = 1,
+                style = FirefoxTheme.typography.caption,
             )
-        },
-        subtitle = {
-            if (isValidPublisher && isValidTimeToRead) {
-                TabSubtitleWithInterdot(story.publisher, "${story.timeToRead} min")
-            } else if (isValidPublisher) {
-                Text(
-                    text = story.publisher,
-                    modifier = Modifier.semantics {
-                        testTagsAsResourceId = true
-                        testTag = "pocket.story.publisher"
-                    },
-                    color = FirefoxTheme.colors.textSecondary,
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 1,
-                    style = FirefoxTheme.typography.caption,
-                )
-            } else if (isValidTimeToRead) {
-                Text(
-                    text = "${story.timeToRead} min",
-                    modifier = Modifier.semantics {
-                        testTagsAsResourceId = true
-                        testTag = "pocket.story.timeToRead"
-                    },
-                    color = FirefoxTheme.colors.textSecondary,
-                    overflow = TextOverflow.Ellipsis,
-                    maxLines = 1,
-                    style = FirefoxTheme.typography.caption,
-                )
-            }
-        },
-    )
+        } else if (isValidTimeToRead) {
+            Text(
+                text = "${story.timeToRead} min",
+                modifier = Modifier.semantics {
+                    testTagsAsResourceId = true
+                    testTag = "pocket.story.timeToRead"
+                },
+                color = FirefoxTheme.colors.textSecondary,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1,
+                style = FirefoxTheme.typography.caption,
+            )
+        }
+    }
 }
 
 /**
@@ -149,7 +146,6 @@ fun PocketStory(
  * @param backgroundColor The background [Color] of the story.
  * @param onStoryClick Callback for when the user taps on this story.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PocketSponsoredStory(
     story: PocketSponsoredStory,
@@ -220,7 +216,6 @@ fun PocketSponsoredStory(
  * @param backgroundColor The background [Color] of the sponsored content.
  * @param onClick Callback for when the user taps on the sponsored content.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun SponsoredContent(
     sponsoredContent: SponsoredContent,
@@ -284,7 +279,6 @@ fun SponsoredContent(
  * @param backgroundColor The background [Color] of the recommendation.
  * @param onClick Callback for when the user taps on the recommendation.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ContentRecommendation(
     recommendation: ContentRecommendation,
@@ -296,37 +290,35 @@ fun ContentRecommendation(
         with(LocalDensity.current) { "${116.dp.toPx().roundToInt()}x${84.dp.toPx().roundToInt()}" },
     )
 
-    ListItemTabLarge(
+    ListItemTabSurface(
         imageUrl = imageUrl,
         backgroundColor = backgroundColor,
         onClick = { onClick(recommendation) },
-        title = {
-            Text(
-                text = recommendation.title,
-                modifier = Modifier.semantics {
-                    testTagsAsResourceId = true
-                    testTag = "pocket.contentRecommendation.title"
-                },
-                color = FirefoxTheme.colors.textPrimary,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 2,
-                style = FirefoxTheme.typography.body2,
-            )
-        },
-        subtitle = {
-            Text(
-                text = recommendation.publisher,
-                modifier = Modifier.semantics {
-                    testTagsAsResourceId = true
-                    testTag = "pocket.contentRecommendation.publisher"
-                },
-                color = FirefoxTheme.colors.textSecondary,
-                overflow = TextOverflow.Ellipsis,
-                maxLines = 1,
-                style = FirefoxTheme.typography.caption,
-            )
-        },
-    )
+    ) {
+        Text(
+            text = recommendation.title,
+            modifier = Modifier.semantics {
+                testTagsAsResourceId = true
+                testTag = "pocket.contentRecommendation.title"
+            },
+            color = FirefoxTheme.colors.textPrimary,
+            overflow = TextOverflow.Ellipsis,
+            maxLines = 2,
+            style = FirefoxTheme.typography.body2,
+        )
+
+        Text(
+            text = recommendation.publisher,
+            modifier = Modifier.semantics {
+                testTagsAsResourceId = true
+                testTag = "pocket.contentRecommendation.publisher"
+            },
+            color = FirefoxTheme.colors.textSecondary,
+            overflow = TextOverflow.Ellipsis,
+            maxLines = 1,
+            style = FirefoxTheme.typography.caption,
+        )
+    }
 }
 
 /**
@@ -341,7 +333,6 @@ fun ContentRecommendation(
  * @param onStoryShown Callback for when a certain story is visible to the user.
  * @param onStoryClicked Callback for when the user taps on a recommended story.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Suppress("CyclomaticComplexMethod", "LongMethod")
 @Composable
 fun PocketStories(
@@ -352,14 +343,16 @@ fun PocketStories(
     onStoryClicked: (PocketStory, Triple<Int, Int, Int>) -> Unit,
 ) {
     // Show stories in at most 3 rows but on any number of columns depending on the data received.
-    val maxRowsNo = 3
+    val maxRowsNo = 1
     val storiesToShow = stories.chunked(maxRowsNo)
 
     val listState = rememberLazyListState()
     val flingBehavior = eagerFlingBehavior(lazyRowState = listState)
 
     val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
+    val screenWidth = with(LocalDensity.current) {
+        LocalWindowInfo.current.containerSize.width.toDp()
+    }
 
     val endPadding =
         remember { mutableStateOf(endPadding(configuration, screenWidth, contentPadding)) }
@@ -386,6 +379,7 @@ fun PocketStories(
                                 is PocketRecommendedStory,
                                 is ContentRecommendation,
                                     -> HOMEPAGE_STORY
+
                                 else -> HOMEPAGE_SPONSORED_STORY
                             }
                         },
@@ -398,7 +392,10 @@ fun PocketStories(
                                 ) {
                                     val uri = story.url.toUri()
                                         .buildUpon()
-                                        .appendQueryParameter(URI_PARAM_UTM_KEY, POCKET_STORIES_UTM_VALUE)
+                                        .appendQueryParameter(
+                                            URI_PARAM_UTM_KEY,
+                                            POCKET_STORIES_UTM_VALUE,
+                                        )
                                         .build().toString()
                                     onStoryClicked(
                                         it.copy(url = uri),
@@ -413,9 +410,7 @@ fun PocketStories(
                                     .apply {
                                         // Check if this is in a preview because `.settings()` breaks previews
                                         if (!inComposePreview) {
-                                            val verticalOffset = LocalContext.current.resources.getDimensionPixelSize(
-                                                R.dimen.browser_toolbar_height,
-                                            )
+                                            val verticalOffset = LocalContext.current.settings().browserToolbarHeight
 
                                             if (LocalContext.current.settings().shouldUseBottomToolbar) {
                                                 bottom -= verticalOffset
@@ -430,7 +425,11 @@ fun PocketStories(
                                         onVisible = {
                                             onStoryShown(
                                                 story,
-                                                Triple(rowIndex, columnIndex, stories.indexOf(story)),
+                                                Triple(
+                                                    rowIndex,
+                                                    columnIndex,
+                                                    stories.indexOf(story),
+                                                ),
                                             )
                                         },
                                         screenBounds = screenBounds,
@@ -466,9 +465,7 @@ fun PocketStories(
                                     .apply {
                                         // Check if this is in a preview because `settings()` breaks previews
                                         if (!inComposePreview) {
-                                            val verticalOffset = LocalContext.current.resources.getDimensionPixelSize(
-                                                R.dimen.browser_toolbar_height,
-                                            )
+                                            val verticalOffset = LocalContext.current.settings().browserToolbarHeight
 
                                             if (LocalContext.current.settings().shouldUseBottomToolbar) {
                                                 bottom -= verticalOffset
@@ -484,7 +481,11 @@ fun PocketStories(
                                         onVisible = {
                                             onStoryShown(
                                                 story,
-                                                Triple(rowIndex, columnIndex, stories.indexOf(story)),
+                                                Triple(
+                                                    rowIndex,
+                                                    columnIndex,
+                                                    stories.indexOf(story),
+                                                ),
                                             )
                                         },
                                         screenBounds = screenBounds,
@@ -531,7 +532,6 @@ private fun alignColumnToTitlePadding(screenWidth: Dp, contentPadding: Dp) =
  * @param categoryColors The color set defined by [SelectableChipColors] used to style Pocket categories.
  * @param onCategoryClick Callback for when the user taps a category.
  */
-@OptIn(ExperimentalComposeUiApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun PocketStoriesCategories(
     categories: List<PocketRecommendedStoriesCategory>,
@@ -550,15 +550,16 @@ fun PocketStoriesCategories(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            categories.filter { it.name != POCKET_STORIES_DEFAULT_CATEGORY_NAME }.forEach { category ->
-                SelectableChip(
-                    text = category.name,
-                    isSelected = selections.map { it.name }.contains(category.name),
-                    selectableChipColors = categoryColors,
-                ) {
-                    onCategoryClick(category)
+            categories.filter { it.name != POCKET_STORIES_DEFAULT_CATEGORY_NAME }
+                .forEach { category ->
+                    SelectableChip(
+                        text = category.name,
+                        isSelected = selections.map { it.name }.contains(category.name),
+                        selectableChipColors = categoryColors,
+                    ) {
+                        onCategoryClick(category)
+                    }
                 }
-            }
         }
     }
 }
@@ -567,7 +568,12 @@ fun PocketStoriesCategories(
 @Preview
 private fun PocketStoriesComposablesPreview() {
     FirefoxTheme {
-        Box(Modifier.background(FirefoxTheme.colors.layer2)) {
+        Box(
+            Modifier
+                .background(FirefoxTheme.colors.layer2)
+                .systemBarsPadding()
+                .padding(top = 32.dp),
+        ) {
             Column {
                 PocketStories(
                     stories = FakeHomepagePreview.pocketStories(limit = 8),
@@ -585,6 +591,78 @@ private fun PocketStoriesComposablesPreview() {
                     onCategoryClick = {},
                 )
             }
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun PocketStoryPreview() {
+    FirefoxTheme {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(FirefoxTheme.colors.layer2)
+                .padding(8.dp),
+        ) {
+            PocketStory(
+                story = FakeHomepagePreview.pocketRecommendedStory(),
+                backgroundColor = FirefoxTheme.colors.layer2,
+            ) {}
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun PocketSponsoredStoryPreview() {
+    FirefoxTheme {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(FirefoxTheme.colors.layer2)
+                .padding(8.dp),
+        ) {
+            PocketSponsoredStory(
+                story = FakeHomepagePreview.pocketSponsoredStory(),
+                backgroundColor = FirefoxTheme.colors.layer2,
+            ) {}
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun ContentRecommendationPreview() {
+    FirefoxTheme {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(FirefoxTheme.colors.layer2)
+                .padding(8.dp),
+        ) {
+            ContentRecommendation(
+                recommendation = FakeHomepagePreview.contentRecommendation(),
+                backgroundColor = FirefoxTheme.colors.layer2,
+            ) {}
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun SponsoredContentPreview() {
+    FirefoxTheme {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(FirefoxTheme.colors.layer2)
+                .padding(8.dp),
+        ) {
+            SponsoredContent(
+                sponsoredContent = FakeHomepagePreview.sponsoredContent(),
+                backgroundColor = FirefoxTheme.colors.layer2,
+            ) {}
         }
     }
 }

@@ -111,11 +111,11 @@ struct HostResolverMarker {
   static MarkerSchema MarkerTypeDisplay() {
     using MS = MarkerSchema;
     MS schema(MS::Location::MarkerChart, MS::Location::MarkerTable);
-    schema.SetTableLabel("{marker.name} - {marker.data.host}");
-    schema.AddKeyFormatSearchable("host", MS::Format::SanitizedString,
-                                  MS::Searchable::Searchable);
-    schema.AddKeyFormatSearchable("originSuffix", MS::Format::SanitizedString,
-                                  MS::Searchable::Searchable);
+    schema.SetTableLabel("{marker.data.host}");
+    schema.AddKeyFormat("host", MS::Format::SanitizedString,
+                        MS::PayloadFlags::Searchable);
+    schema.AddKeyFormat("originSuffix", MS::Format::SanitizedString,
+                        MS::PayloadFlags::Searchable);
     schema.AddKeyFormat("qtype", MS::Format::Integer);
     schema.AddKeyFormat("flags", MS::Format::String);
     return schema;
@@ -269,10 +269,12 @@ void nsHostResolver::ClearPendingQueue(
 // cache that have 'Resolve' set true but not 'OnQueue' are being resolved
 // right now, so we need to mark them to get re-resolved on completion!
 
-void nsHostResolver::FlushCache(bool aTrrToo) {
+void nsHostResolver::FlushCache(bool aTrrToo, bool aFlushEvictionQueue) {
   MutexAutoLock lock(mLock);
 
-  mQueue.FlushEvictionQ(mRecordDB, lock);
+  if (aFlushEvictionQueue) {
+    mQueue.FlushEvictionQ(mRecordDB, lock);
+  }
 
   // Refresh the cache entries that are resolving RIGHT now, remove the rest.
   for (auto iter = mRecordDB.Iter(); !iter.Done(); iter.Next()) {
@@ -1579,12 +1581,6 @@ nsHostResolver::LookupStatus nsHostResolver::CompleteLookupLocked(
     MutexAutoLock lock(addrRec->addr_info_lock);
     RefPtr<AddrInfo> old_addr_info;
     bool isDifferentRRSet = different_rrset(addrRec->addr_info, newRRSet);
-    bool isRenewal = addrRec->addr_info;
-    if (isRenewal) {
-      glean::dns::grace_period_renewal
-          .Get(isDifferentRRSet ? "different_record"_ns : "same_record"_ns)
-          .Add(1);
-    }
     if (isDifferentRRSet) {
       LOG(("nsHostResolver record %p new gencnt\n", addrRec.get()));
       old_addr_info = addrRec->addr_info;

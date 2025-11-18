@@ -436,6 +436,16 @@ bool GlobalObject::resolveConstructor(JSContext* cx,
     return false;
   }
 
+  if (JS::Prefs::objectfuse_for_js_builtin_ctors_protos()) {
+    if (proto &&
+        !NativeObject::setHasObjectFuse(cx, proto.as<NativeObject>())) {
+      return false;
+    }
+    if (!NativeObject::setHasObjectFuse(cx, ctor.as<NativeObject>())) {
+      return false;
+    }
+  }
+
   if (!isObjectOrFunction) {
     // Any operations that modifies the global object should be placed
     // after any other fallible operations.
@@ -588,6 +598,9 @@ GlobalObject* GlobalObject::createInternal(JSContext* cx,
       ObjectFlag::QualifiedVarObj,
       ObjectFlag::GenerationCountedGlobal,
   };
+  if (ShouldUseObjectFuses() && JS::Prefs::objectfuse_for_global()) {
+    objectFlags.setFlag(ObjectFlag::HasObjectFuse);
+  }
 
   JSObject* obj =
       NewTenuredObjectWithGivenProto(cx, clasp, nullptr, objectFlags);
@@ -846,16 +859,6 @@ RegExpStatics* GlobalObject::getRegExpStatics(JSContext* cx,
   return global->regExpRealm().regExpStatics.get();
 }
 
-gc::FinalizationRegistryGlobalData*
-GlobalObject::getOrCreateFinalizationRegistryData() {
-  if (!data().finalizationRegistryData) {
-    data().finalizationRegistryData =
-        MakeUnique<gc::FinalizationRegistryGlobalData>(zone());
-  }
-
-  return maybeFinalizationRegistryData();
-}
-
 /* static */
 bool GlobalObject::createIntrinsicsHolder(JSContext* cx,
                                           Handle<GlobalObject*> global) {
@@ -1075,10 +1078,6 @@ void GlobalObjectData::trace(JSTracer* trc, GlobalObject* global) {
 
   TraceNullableEdge(trc, &selfHostingScriptSource,
                     "self-hosting-script-source");
-
-  if (finalizationRegistryData) {
-    finalizationRegistryData->trace(trc);
-  }
 }
 
 void GlobalObjectData::addSizeOfIncludingThis(

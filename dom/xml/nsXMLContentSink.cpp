@@ -4,47 +4,21 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "nsCOMPtr.h"
 #include "nsXMLContentSink.h"
-#include "nsIParser.h"
-#include "mozilla/dom/Document.h"
-#include "nsIContent.h"
-#include "nsIURI.h"
-#include "nsNetUtil.h"
-#include "nsHTMLParts.h"
-#include "nsCRT.h"
-#include "mozilla/StyleSheetInlines.h"
-#include "mozilla/css/Loader.h"
-#include "nsGkAtoms.h"
-#include "nsContentUtils.h"
-#include "nsDocElementCreatedNotificationRunner.h"
-#include "nsIDocShell.h"
-#include "nsIScriptContext.h"
-#include "nsNameSpaceManager.h"
-#include "nsIScriptSecurityManager.h"
-#include "nsIDocumentViewer.h"
-#include "prtime.h"
-#include "mozilla/Logging.h"
-#include "nsRect.h"
-#include "nsIScriptElement.h"
-#include "nsReadableUtils.h"
-#include "nsUnicharUtils.h"
-#include "nsIChannel.h"
-#include "nsXMLPrettyPrinter.h"
-#include "nsNodeInfoManager.h"
-#include "nsContentCreatorFunctions.h"
-#include "nsIContentPolicy.h"
-#include "nsContentPolicyUtils.h"
-#include "nsError.h"
-#include "nsIScriptGlobalObject.h"
+
+#include "js/ColumnNumber.h"  // JS::ColumnNumberOneOrigin
 #include "mozAutoDocUpdate.h"
-#include "nsMimeTypes.h"
-#include "nsHtml5SVGLoadDispatcher.h"
-#include "nsTextNode.h"
-#include "mozilla/dom/CustomElementRegistry.h"
+#include "mozilla/CycleCollectedJSContext.h"
+#include "mozilla/LoadInfo.h"
+#include "mozilla/Logging.h"
+#include "mozilla/StyleSheetInlines.h"
+#include "mozilla/UseCounter.h"
+#include "mozilla/css/Loader.h"
 #include "mozilla/dom/CDATASection.h"
 #include "mozilla/dom/Comment.h"
+#include "mozilla/dom/CustomElementRegistry.h"
 #include "mozilla/dom/DocGroup.h"
+#include "mozilla/dom/Document.h"
 #include "mozilla/dom/DocumentType.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/HTMLTemplateElement.h"
@@ -52,12 +26,39 @@
 #include "mozilla/dom/NameSpaceConstants.h"
 #include "mozilla/dom/ProcessingInstruction.h"
 #include "mozilla/dom/ScriptLoader.h"
-#include "mozilla/dom/txMozillaXSLTProcessor.h"
 #include "mozilla/dom/nsCSPUtils.h"
-#include "mozilla/CycleCollectedJSContext.h"
-#include "mozilla/LoadInfo.h"
-#include "mozilla/UseCounter.h"
-#include "js/ColumnNumber.h"  // JS::ColumnNumberOneOrigin
+#include "mozilla/dom/txMozillaXSLTProcessor.h"
+#include "nsCOMPtr.h"
+#include "nsCRT.h"
+#include "nsContentCreatorFunctions.h"
+#include "nsContentPolicyUtils.h"
+#include "nsContentUtils.h"
+#include "nsDocElementCreatedNotificationRunner.h"
+#include "nsError.h"
+#include "nsGkAtoms.h"
+#include "nsHTMLParts.h"
+#include "nsHtml5SVGLoadDispatcher.h"
+#include "nsIChannel.h"
+#include "nsIContent.h"
+#include "nsIContentPolicy.h"
+#include "nsIDocShell.h"
+#include "nsIDocumentViewer.h"
+#include "nsIParser.h"
+#include "nsIScriptContext.h"
+#include "nsIScriptElement.h"
+#include "nsIScriptGlobalObject.h"
+#include "nsIScriptSecurityManager.h"
+#include "nsIURI.h"
+#include "nsMimeTypes.h"
+#include "nsNameSpaceManager.h"
+#include "nsNetUtil.h"
+#include "nsNodeInfoManager.h"
+#include "nsReadableUtils.h"
+#include "nsRect.h"
+#include "nsTextNode.h"
+#include "nsUnicharUtils.h"
+#include "nsXMLPrettyPrinter.h"
+#include "prtime.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -621,6 +622,13 @@ nsresult nsXMLContentSink::CloseElement(nsIContent* aContent) {
     // script element being adding to the tree.
     FlushTags();
 
+    // https://html.spec.whatwg.org/#parsing-xhtml-documents
+    // When the element's end tag is subsequently parsed, the user agent must
+    // perform a microtask checkpoint, and then prepare the script element.
+    {
+      nsAutoMicroTask mt;
+    }
+
     // Now tell the script that it's ready to go. This may execute the script
     // or return true, or neither if the script doesn't need executing.
     bool block = sele->AttemptToExecute();
@@ -905,11 +913,27 @@ bool nsXMLContentSink::SetDocElement(int32_t aNameSpaceID, nsAtom* aTagName,
     return true;
   }
 
-  if (!mDocumentChildren.IsEmpty()) {
-    for (nsIContent* child : mDocumentChildren) {
-      mDocument->AppendChildTo(child, false, IgnoreErrors());
+  auto documentChildren = std::move(mDocumentChildren);
+  MOZ_ASSERT(mDocumentChildren.IsEmpty());
+  for (nsIContent* child : documentChildren) {
+    auto* linkStyle = LinkStyle::FromNode(*child);
+    if (linkStyle) {
+      linkStyle->DisableUpdates();
     }
-    mDocumentChildren.Clear();
+    mDocument->AppendChildTo(child, false, IgnoreErrors());
+    if (linkStyle) {
+      auto updateOrError = linkStyle->EnableUpdatesAndUpdateStyleSheet(
+          mRunsToCompletion ? nullptr : this);
+      if (updateOrError.isErr()) {
+        continue;
+      }
+      auto update = updateOrError.unwrap();
+      // Successfully started a stylesheet load
+      if (update.ShouldBlock() && !mRunsToCompletion) {
+        ++mPendingSheetCount;
+        mScriptLoader->AddParserBlockingScriptExecutionBlocker();
+      }
+    }
   }
 
   // check for root elements that needs special handling for
@@ -1221,9 +1245,8 @@ nsXMLContentSink::HandleProcessingInstruction(const char16_t* aTarget,
   RefPtr<ProcessingInstruction> node =
       NS_NewXMLProcessingInstruction(mNodeInfoManager, target, data);
 
-  auto* linkStyle = LinkStyle::FromNode(*node);
-  if (linkStyle) {
-    linkStyle->DisableUpdates();
+  if (LinkStyle::FromNode(*node)) {
+    // TODO(emilio): can we move this check to SetDocElement?
     mPrettyPrintXML = false;
   }
 
@@ -1238,26 +1261,6 @@ nsXMLContentSink::HandleProcessingInstruction(const char16_t* aTarget,
     CSP_ApplyMetaCSPToDoc(*mDocument, data);
   }
 
-  if (linkStyle) {
-    // This is an xml-stylesheet processing instruction... but it might not be
-    // a CSS one if the type is set to something else.
-    auto updateOrError = linkStyle->EnableUpdatesAndUpdateStyleSheet(
-        mRunsToCompletion ? nullptr : this);
-    if (updateOrError.isErr()) {
-      return updateOrError.unwrapErr();
-    }
-
-    auto update = updateOrError.unwrap();
-    if (update.WillNotify()) {
-      // Successfully started a stylesheet load
-      if (update.ShouldBlock() && !mRunsToCompletion) {
-        ++mPendingSheetCount;
-        mScriptLoader->AddParserBlockingScriptExecutionBlocker();
-      }
-      return NS_OK;
-    }
-  }
-
   // Check whether this is a CSS stylesheet PI.  Make sure the type
   // handling here matches
   // XMLStylesheetProcessingInstruction::GetStyleSheetInfo.
@@ -1269,8 +1272,8 @@ nsXMLContentSink::HandleProcessingInstruction(const char16_t* aTarget,
   if (mState != eXMLContentSinkState_InProlog ||
       !target.EqualsLiteral("xml-stylesheet") || mimeType.IsEmpty() ||
       mimeType.LowerCaseEqualsLiteral("text/css")) {
-    // Either not a useful stylesheet PI, or a CSS stylesheet PI that
-    // got handled above by the "ssle" bits.  We're done here.
+    // Either not a useful stylesheet PI, or a regular CSS stylesheet PI that
+    // will get handled when appending mDocumentChildren.
     return DidProcessATokenImpl();
   }
 

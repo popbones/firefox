@@ -27,6 +27,7 @@ from mozfile import which
 from mozversioncontrol import get_repository_object
 from packaging.version import Version
 
+from mozboot.aerynos import AerynOsBootstrapper
 from mozboot.archlinux import ArchlinuxBootstrapper
 from mozboot.base import MODERN_RUST_VERSION
 from mozboot.centosfedora import CentOSFedoraBootstrapper
@@ -270,8 +271,10 @@ class Bootstrapper:
                 cls = GentooBootstrapper
             elif dist_id in ("solus"):
                 cls = SolusBootstrapper
-            elif dist_id in ("arch") or Path("/etc/arch-release").exists():
+            elif dist_id in ("arch", "kaos") or Path("/etc/arch-release").exists():
                 cls = ArchlinuxBootstrapper
+            elif dist_id in ("aerynos"):
+                cls = AerynOsBootstrapper
             elif dist_id in ("void"):
                 cls = VoidBootstrapper
             elif dist_id in (
@@ -337,11 +340,6 @@ class Bootstrapper:
 
     def check_code_submission(self, checkout_root: Path):
         if self.instance.no_interactive or which("moz-phab"):
-            return
-
-        # Skip moz-phab install until bug 1696357 is fixed and makes it to a moz-phab
-        # release.
-        if sys.platform.startswith("darwin") and platform.machine() == "arm64":
             return
 
         if not self.instance.prompt_yesno("Will you be submitting commits to Mozilla?"):

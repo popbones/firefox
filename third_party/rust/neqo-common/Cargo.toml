@@ -11,9 +11,9 @@
 
 [package]
 edition = "2021"
-rust-version = "1.82.0"
+rust-version = "1.81.0"
 name = "neqo-common"
-version = "0.13.4"
+version = "0.16.1"
 authors = ["The Neqo Authors <necko@mozilla.com>"]
 build = "build.rs"
 autolib = false
@@ -89,6 +89,10 @@ version = "0.27"
 features = ["derive"]
 default-features = false
 
+[dependencies.thiserror]
+version = "2.0.12"
+default-features = false
+
 [dev-dependencies.criterion]
 version = "0.6"
 features = ["cargo_bench_support"]
@@ -155,7 +159,6 @@ return_and_then = "warn"
 self_named_module_files = "warn"
 semicolon_inside_block = "warn"
 string_lit_chars_any = "warn"
-string_to_string = "warn"
 suspicious_xor_used_as_pow = "warn"
 try_err = "warn"
 unnecessary_safety_comment = "warn"
@@ -182,12 +185,10 @@ priority = -1
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"
-ambiguous_negative_literals = "warn"
 explicit_outlives_requirements = "warn"
 macro_use_extern_crate = "warn"
 missing_abi = "warn"
 non_ascii_idents = "warn"
-redundant_imports = "warn"
 redundant_lifetimes = "warn"
 trivial_numeric_casts = "warn"
 unit_bindings = "warn"

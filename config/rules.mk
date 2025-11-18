@@ -427,9 +427,6 @@ endif # WINNT && clang-cl
 ifdef ENABLE_STRIP
 	$(STRIP) $(STRIP_FLAGS) $@
 endif
-ifdef MOZ_POST_PROGRAM_COMMAND
-	$(MOZ_POST_PROGRAM_COMMAND) $@
-endif
 	$(call BUILDSTATUS,END_Program $(@F))
 
 $(HOST_PROGRAM): $(HOST_PROGOBJS) $(HOST_LIBS) $(HOST_EXTRA_DEPS) $(GLOBAL_DEPS) $(call mkdir_deps,$(DEPTH)/dist/host/bin)
@@ -471,9 +468,6 @@ endif # WINNT && clang-cl
 
 ifdef ENABLE_STRIP
 	$(STRIP) $(STRIP_FLAGS) $@
-endif
-ifdef MOZ_POST_PROGRAM_COMMAND
-	$(MOZ_POST_PROGRAM_COMMAND) $@
 endif
 	$(call BUILDSTATUS,END_Program $(@F))
 
@@ -908,7 +902,7 @@ endef
 
 # When you move this out of the tools tier, please remove the corresponding
 # hacks in recursivemake.py that check if Makefile.in sets the variable.
-ifneq ($(XPI_PKGNAME),)
+ifdef XPI_PKGNAME
 $(eval $(call xpi_package_rule,$(XPI_PKGNAME),$(FINAL_TARGET),$(FINAL_TARGET)/..,tools realchrome))
 endif
 

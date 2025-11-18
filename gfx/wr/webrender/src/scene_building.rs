@@ -1672,6 +1672,7 @@ impl<'a> SceneBuilder<'a> {
                     &mut end,
                     info.gradient.extend_mode,
                     &mut stops,
+                    self.config.enable_dithering,
                     &mut |rect, start, end, stops, edge_aa_mask| {
                         let layout = LayoutPrimitiveInfo { rect: *rect, clip_rect: *rect, flags };
                         if let Some(prim_key_kind) = self.create_linear_gradient_prim(
@@ -2364,8 +2365,8 @@ impl<'a> SceneBuilder<'a> {
 
         // If we are forcing a backdrop root here, isolate this context
         // by using an intermediate surface.
-        if flags.contains(StackingContextFlags::IS_BACKDROP_ROOT) {
-            blit_reason = BlitReason::BACKDROP;
+        if flags.contains(StackingContextFlags::FORCED_ISOLATION) {
+            blit_reason = BlitReason::FORCED_ISOLATION;
         }
 
         // Stacking context snapshots are offscreen surfaces.
@@ -2398,30 +2399,27 @@ impl<'a> SceneBuilder<'a> {
         // are handled by doing partial reads of the picture cache tiles during rendering.
         if flags.contains(StackingContextFlags::IS_BLEND_CONTAINER) {
             // Check if we're inside a stacking context hierarchy with an existing surface
-            match self.sc_stack.last() {
-                Some(_) => {
-                    // If we are already inside a stacking context hierarchy with a surface, then we
-                    // need to do the normal isolate of this blend container as a regular surface
-                    blit_reason |= BlitReason::ISOLATE;
+            if !self.sc_stack.is_empty() {
+                // If we are already inside a stacking context hierarchy with a surface, then we
+                // need to do the normal isolate of this blend container as a regular surface
+                blit_reason |= BlitReason::BLEND_MODE;
+                is_redundant = false;
+            } else {
+                // If the current slice is empty, then we can just mark the slice as
+                // atomic (so that compositor surfaces don't get promoted within it)
+                // and use that slice as the backing surface for the blend container
+                if self.tile_cache_builder.is_current_slice_empty() &&
+                   self.spatial_tree.is_root_coord_system(spatial_node_index) &&
+                   !self.clip_tree_builder.clip_node_has_complex_clips(clip_node_id, &self.interners)
+                {
+                    self.add_tile_cache_barrier_if_needed(SliceFlags::IS_ATOMIC);
+                    self.tile_cache_builder.make_current_slice_atomic();
+                } else {
+                    // If the slice wasn't empty, we need to isolate a separate surface
+                    // to ensure that the content already in the slice is not used as
+                    // an input to the mix-blend composite
+                    blit_reason |= BlitReason::BLEND_MODE;
                     is_redundant = false;
-                }
-                None => {
-                    // If the current slice is empty, then we can just mark the slice as
-                    // atomic (so that compositor surfaces don't get promoted within it)
-                    // and use that slice as the backing surface for the blend container
-                    if self.tile_cache_builder.is_current_slice_empty() &&
-                       self.spatial_tree.is_root_coord_system(spatial_node_index) &&
-                       !self.clip_tree_builder.clip_node_has_complex_clips(clip_node_id, &self.interners)
-                    {
-                        self.add_tile_cache_barrier_if_needed(SliceFlags::IS_ATOMIC);
-                        self.tile_cache_builder.make_current_slice_atomic();
-                    } else {
-                        // If the slice wasn't empty, we need to isolate a separate surface
-                        // to ensure that the content already in the slice is not used as
-                        // an input to the mix-blend composite
-                        blit_reason |= BlitReason::ISOLATE;
-                        is_redundant = false;
-                    }
                 }
             }
         }
@@ -3551,6 +3549,7 @@ impl<'a> SceneBuilder<'a> {
             nine_patch,
             cached,
             edge_aa_mask,
+            enable_dithering: self.config.enable_dithering,
         })
     }
 
@@ -3692,7 +3691,7 @@ impl<'a> SceneBuilder<'a> {
                 .unwrap();
 
             TextRun {
-                glyphs: Arc::new(glyphs),
+                glyphs,
                 font,
                 shadow: false,
                 requested_raster_space,
@@ -4129,9 +4128,13 @@ impl<'a> SceneBuilder<'a> {
                                 // not the 4th red value.  This layout makes the
                                 // shader more compatible with buggy compilers that
                                 // do not like indexing components on a vec4.
+                                //
+                                // If the alpha value of the lowest alpha index
+                                // is more than 0.5/255.0, then the filter
+                                // creates pixels from nothing.
                                 let creates_pixels =
                                     if let Some(a) = filter_data.r_values.get(3) {
-                                        *a != 0.0
+                                        *a >= (0.5/255.0)
                                     } else {
                                         false
                                     };

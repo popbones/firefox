@@ -76,21 +76,7 @@ add_task(async function testBreakableLinesOverReloads() {
     13,
   ]);
 
-  await selectSource(dbg, "iframe.html");
-  // When EFT is disabled, iframe.html is a regular source and the right content is displayed
-  if (isEveryFrameTargetEnabled()) {
-    is(
-      getEditorContent(dbg),
-      `Error: Incorrect contents fetched, please reload.`
-    );
-  }
-  /**
-   * Bug 1762381 - Can't assert breakable lines yet, because the iframe page content fails loading
-
   info("Assert breakable lines of the second iframe page load");
-  await assertBreakableLines(dbg, "iframe.html", 27, [
-    ...getRange(15, 17),
-    ...getRange(21, 23),
-  ]);
-  */
+  await selectSource(dbg, "iframe.html");
+  await assertBreakableLines(dbg, "iframe.html", 30, [15, 17, 21, 23]);
 });

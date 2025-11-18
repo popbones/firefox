@@ -5,8 +5,8 @@
 #ifndef RESOURCESTREAM_H_
 #define RESOURCESTREAM_H_
 
-#include "MediaResource.h"
 #include "ByteStream.h"
+#include "MediaResource.h"
 #include "mozilla/RefPtr.h"
 
 namespace mozilla {
@@ -18,10 +18,10 @@ class ResourceStream : public ByteStream,
  public:
   explicit ResourceStream(mozilla::MediaResource* aResource);
 
-  virtual bool ReadAt(int64_t offset, void* aBuffer, size_t aCount,
-                      size_t* aBytesRead) override;
-  virtual bool CachedReadAt(int64_t aOffset, void* aBuffer, size_t aCount,
-                            size_t* aBytesRead) override;
+  virtual nsresult ReadAt(int64_t offset, void* aBuffer, size_t aCount,
+                          size_t* aBytesRead) override;
+  virtual nsresult CachedReadAt(int64_t aOffset, void* aBuffer, size_t aCount,
+                                size_t* aBytesRead) override;
   virtual bool Length(int64_t* size) override;
 
   void Pin() {

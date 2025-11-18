@@ -10,6 +10,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <functional>
@@ -19,22 +20,24 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+
 #include "ActorsParentCommon.h"
 #include "CrashAnnotations.h"
+#include "DBSchema.h"
 #include "DatabaseFileInfo.h"
 #include "DatabaseFileManager.h"
 #include "DatabaseFileManagerImpl.h"
-#include "DBSchema.h"
 #include "ErrorList.h"
 #include "IDBCursorType.h"
 #include "IDBObjectStore.h"
 #include "IDBTransaction.h"
+#include "IndexedDBCipherKeyManager.h"
 #include "IndexedDBCommon.h"
 #include "IndexedDatabaseInlines.h"
 #include "IndexedDatabaseManager.h"
-#include "IndexedDBCipherKeyManager.h"
 #include "KeyPath.h"
 #include "MainThreadUtils.h"
+#include "NotifyUtils.h"
 #include "ProfilerHelpers.h"
 #include "ReportInternalError.h"
 #include "SafeRefPtr.h"
@@ -66,6 +69,7 @@
 #include "mozilla/EndianUtils.h"
 #include "mozilla/ErrorNames.h"
 #include "mozilla/ErrorResult.h"
+#include "mozilla/GeckoTrace.h"
 #include "mozilla/InitializedOnce.h"
 #include "mozilla/Logging.h"
 #include "mozilla/MacroForEach.h"
@@ -126,10 +130,10 @@
 #include "mozilla/dom/quota/ClientImpl.h"
 #include "mozilla/dom/quota/ConditionalCompilation.h"
 #include "mozilla/dom/quota/Date.h"
+#include "mozilla/dom/quota/DecryptingInputStream_impl.h"
 #include "mozilla/dom/quota/DirectoryLock.h"
 #include "mozilla/dom/quota/DirectoryLockInlines.h"
 #include "mozilla/dom/quota/DirectoryMetadata.h"
-#include "mozilla/dom/quota/DecryptingInputStream_impl.h"
 #include "mozilla/dom/quota/EncryptingOutputStream_impl.h"
 #include "mozilla/dom/quota/ErrorHandling.h"
 #include "mozilla/dom/quota/FileStreams.h"
@@ -145,6 +149,7 @@
 #include "mozilla/dom/quota/UniversalDirectoryLock.h"
 #include "mozilla/dom/quota/UsageInfo.h"
 #include "mozilla/fallible.h"
+#include "mozilla/glean/DomIndexedDBMetrics.h"
 #include "mozilla/ipc/BackgroundParent.h"
 #include "mozilla/ipc/BackgroundUtils.h"
 #include "mozilla/ipc/InputStreamParams.h"
@@ -153,12 +158,10 @@
 #include "mozilla/ipc/ProtocolUtils.h"
 #include "mozilla/mozalloc.h"
 #include "mozilla/storage/Variant.h"
-#include "NotifyUtils.h"
 #include "nsBaseHashtable.h"
 #include "nsCOMPtr.h"
 #include "nsClassHashtable.h"
 #include "nsContentUtils.h"
-#include "nsTHashMap.h"
 #include "nsDebug.h"
 #include "nsError.h"
 #include "nsEscape.h"
@@ -194,6 +197,7 @@
 #include "nsStringFlags.h"
 #include "nsStringFwd.h"
 #include "nsTArray.h"
+#include "nsTHashMap.h"
 #include "nsTHashSet.h"
 #include "nsTHashtable.h"
 #include "nsTLiteralString.h"
@@ -1591,7 +1595,7 @@ class ConnectionPool::CloseConnectionRunnable final
 };
 
 struct ConnectionPool::DatabaseInfo final {
-  friend class mozilla::DefaultDelete<DatabaseInfo>;
+  friend mozilla::DefaultDelete<DatabaseInfo>;
 
   RefPtr<ConnectionPool> mConnectionPool;
   const nsCString mDatabaseId;
@@ -1633,7 +1637,7 @@ struct ConnectionPool::DatabaseInfo final {
 };
 
 struct ConnectionPool::DatabaseCompleteCallback final {
-  friend class DefaultDelete<DatabaseCompleteCallback>;
+  friend DefaultDelete<DatabaseCompleteCallback>;
 
   nsCString mDatabaseId;
   nsCOMPtr<nsIRunnable> mCallback;
@@ -1695,7 +1699,7 @@ class ConnectionPool::TransactionRunnable final : public Runnable {
 #endif
 
 class ConnectionPool::TransactionInfo final {
-  friend class mozilla::DefaultDelete<TransactionInfo>;
+  friend mozilla::DefaultDelete<TransactionInfo>;
 
   nsTHashSet<TransactionInfo*> mBlocking;
   nsTArray<NotNull<TransactionInfo*>> mBlockingOrdered;
@@ -4753,7 +4757,7 @@ class Utils final : public PBackgroundIndexedDBUtilsParent {
  ******************************************************************************/
 
 struct DatabaseActorInfo final {
-  friend class mozilla::DefaultDelete<DatabaseActorInfo>;
+  friend mozilla::DefaultDelete<DatabaseActorInfo>;
 
   SafeRefPtr<FullDatabaseMetadata> mMetadata;
   // We don't use LinkedList<CheckedUnsafePtr<Database>> because
@@ -5791,6 +5795,8 @@ Result<Ok, nsresult> DeleteFileManagerDirectory(
     nsIFile& aFileManagerDirectory, QuotaManager* aQuotaManager,
     const PersistenceType aPersistenceType,
     const OriginMetadata& aOriginMetadata) {
+  GECKO_TRACE_SCOPE("dom::indexedDB", "DeleteFileManagerDirectory");
+
   // XXX In theory, deleting can continue for other files in case of a failure,
   // leaving only those files behind that cause the problem actually. However,
   // the current architecture doesn't allow having more databases (for the same
@@ -5843,6 +5849,8 @@ nsresult RemoveDatabaseFilesAndDirectory(nsIFile& aBaseDirectory,
                                          const PersistenceType aPersistenceType,
                                          const OriginMetadata& aOriginMetadata,
                                          const nsAString& aDatabaseName) {
+  GECKO_TRACE_SCOPE("dom::indexedDB", "RemoveDatabaseFilesAndDirectory");
+
   AssertIsOnIOThread();
   MOZ_ASSERT(!aDatabaseFilenameBase.IsEmpty());
 
@@ -8153,7 +8161,7 @@ void ConnectionPool::AdjustIdleTimer() {
 
     MOZ_ALWAYS_SUCCEEDS(mIdleTimer->InitWithNamedFuncCallback(
         IdleTimerCallback, this, delay, nsITimer::TYPE_ONE_SHOT,
-        "ConnectionPool::IdleTimerCallback"));
+        "ConnectionPool::IdleTimerCallback"_ns));
 
     mTargetIdleTime = newTargetIdleTime;
   }
@@ -12227,7 +12235,7 @@ nsresult QuotaClient::AsyncDeleteFile(DatabaseFileManager* aFileManager,
 
   QM_TRY(MOZ_TO_RESULT(mDeleteTimer->InitWithNamedFuncCallback(
       DeleteTimerCallback, this, kDeleteTimeoutMs, nsITimer::TYPE_ONE_SHOT,
-      "dom::indexeddb::QuotaClient::AsyncDeleteFile")));
+      "dom::indexeddb::QuotaClient::AsyncDeleteFile"_ns)));
 
   mPendingDeleteInfos.GetOrInsertNew(aFileManager)->AppendElement(aFileId);
 
@@ -12452,6 +12460,8 @@ nsresult QuotaClient::GetUsageForOriginInternal(
     PersistenceType aPersistenceType, const OriginMetadata& aOriginMetadata,
     const AtomicBool& aCanceled, const bool aInitializing,
     UsageInfo* aUsageInfo) {
+  GECKO_TRACE_SCOPE("dom::indexedDB", "QuotaClient::GetUsageForOriginInternal");
+
   AssertIsOnIOThread();
   MOZ_ASSERT(aOriginMetadata.mPersistenceType == aPersistenceType);
 
@@ -13197,7 +13207,7 @@ RefPtr<UniversalDirectoryLockPromise> Maintenance::OpenStorageDirectory(
   QuotaManager* quotaManager = QuotaManager::Get();
   MOZ_ASSERT(quotaManager);
 
-  // Return a shared lock for <profile>/storage/*/*/idb
+  // Return a shared lock for <profile>/storage/repo(aPersistenceScope)/*/idb
   return quotaManager->OpenStorageDirectory(
       aPersistenceScope, OriginScope::FromNull(),
       ClientStorageScope::CreateFromClient(Client::IDB),
@@ -13361,6 +13371,11 @@ nsresult Maintenance::DirectoryWork() {
       continue;
     }
 
+    // For all non-persistent types, temporary storage must already be
+    // initialized
+    MOZ_DIAGNOSTIC_ASSERT(
+        persistent || quotaManager->IsTemporaryStorageInitializedInternal());
+
     // XXX persistenceType == PERSISTENCE_TYPE_PERSISTENT shouldn't be a special
     // case...
     const auto persistenceTypeString =
@@ -13416,6 +13431,8 @@ nsresult Maintenance::DirectoryWork() {
               if (!persistent &&
                   !quotaManager->IsTemporaryOriginInitializedInternal(
                       metadata)) {
+                glean::idb_maintenance::fallback_fullrestore_metadata.Add();
+
                 // XXX GetOriginMetadata, which skips loading the metadata file
                 // and instead relies on parsing the origin directory name and
                 // reconstructing the principal, may produce a different origin
@@ -13428,10 +13445,26 @@ nsresult Maintenance::DirectoryWork() {
                 // In the future, it would be useful to report anonymized
                 // origin strings via telemetry to help investigate and
                 // eventually fix this mismatch.
-                QM_TRY_UNWRAP(
-                    metadata,
-                    quotaManager->LoadFullOriginMetadataWithRestore(originDir),
+
+                QM_TRY_INSPECT(
+                    const auto& fullmetadataAndStatus,
+                    quotaManager->LoadFullOriginMetadataWithRestoreAndStatus(
+                        originDir),
                     Ok{});
+
+                metadata = fullmetadataAndStatus.first;
+                if (fullmetadataAndStatus.second) {
+                  /* metadata was restored */
+                  glean::idb_maintenance::metadata_restored.Add();
+                }
+
+                QM_TRY(OkIf(quotaManager->IsTemporaryOriginInitializedInternal(
+                           metadata)),
+                       /* unexpected but still fine to just skip it */ Ok{},
+                       /* increment telemetry in case of failure */
+                       [](const auto&) {
+                         glean::idb_maintenance::unknown_metadata.Add();
+                       });
               }
 
               // We now use a dedicated repository for private browsing
@@ -13506,7 +13539,6 @@ nsresult Maintenance::DirectoryWork() {
                 if (!persistent) {
                   auto maybeOriginStateMetadata =
                       quotaManager->GetOriginStateMetadata(metadata);
-
                   auto originStateMetadata = maybeOriginStateMetadata.extract();
 
                   // Skip origin maintenance if the origin hasn't been accessed

@@ -111,6 +111,47 @@ add_task(async function test_registerMetricsAndPings_validFormat() {
 });
 
 /**
+ * Test case: Handle ping configuration options name from runtime-metrics JSON
+ * Verifies successful registration of pings with ping config options (such as `include_client_id`)
+ * in snake case inside runtime-metrics JSON
+ */
+add_task(async function test_registerPings_validSnakeCaseFormat() {
+  const sandbox = test_setup();
+  NewTabGleanUtils.readJSON.returns({
+    pings: {
+      newtab_ping_1: {
+        include_client_id: false,
+        send_if_empty: false,
+        precise_timestamps: true,
+        include_info_sections: true,
+        enabled: true,
+        schedules_pings: [],
+        reason_codes: [],
+        follows_collection_enabled: true,
+        uploader_capabilities: [],
+      },
+    },
+    metrics: {
+      newtab_category_1: {
+        metric1: {
+          type: "text",
+          description: "test-description",
+          lifetime: "ping",
+          pings: ["newtab"],
+          disabled: false,
+        },
+      },
+    },
+  });
+
+  let result =
+    await NewTabGleanUtils.registerMetricsAndPings(TEST_RESOURCE_URI);
+  Assert.ok(result, "Registration success for valid metric and ping formats");
+
+  sandbox.restore();
+});
+
+/**
  * Test case: Optional metric description
  * Verifies that metric registration succeeds even when description is missing
  * Tests that description is not a required field for metric registration
@@ -335,3 +376,38 @@ add_task(async function test_registerMetricIfNeeded_nonEventMetrics() {
     "Success when using set to send data of type text"
   );
 });
+
+/**
+ * Test case: Memory distribution metric registration
+ * Verifies proper registration and recording of memory_distribution metrics
+ * Ensures that extraArgs (memory_unit) are honored
+ */
+add_task(
+  async function test_registerMetricIfNeeded_memoryDistributionMetrics() {
+    const optionsWithExtra = {
+      name: "memdist1",
+      category: "test_category",
+      type: "memory_distribution",
+      pings: ["metrics"],
+      lifetime: "ping",
+      disabled: false,
+      extraArgs: {
+        memory_unit: "megabyte",
+      },
+    };
+
+    NewTabGleanUtils.registerMetricIfNeeded(optionsWithExtra);
+
+    Assert.ok(
+      Glean.newtab.metricRegistered.memdist1.testGetValue(),
+      "Glean metricRegistered telemetry sent with value as true"
+    );
+
+    Glean.testCategory.memdist1.accumulate(7);
+    Glean.testCategory.memdist1.accumulate(17);
+
+    let data = Glean.testCategory.memdist1.testGetValue();
+    Assert.equal(2, data.count, "Recorded sample count");
+    Assert.equal(24 * 1024 * 1024, data.sum, "Sum is in bytes for MB unit");
+  }
+);

@@ -4,10 +4,8 @@
 
 package org.mozilla.fenix.search
 
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.Lifecycle.State.RESUMED
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.Job
@@ -15,17 +13,19 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarAction
-import mozilla.components.compose.browser.toolbar.store.BrowserToolbarAction.Init
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarAction.ToggleEditMode
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarState
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarStore
+import mozilla.components.compose.browser.toolbar.store.EnvironmentCleared
+import mozilla.components.compose.browser.toolbar.store.EnvironmentRehydrated
 import mozilla.components.lib.state.Middleware
 import mozilla.components.lib.state.MiddlewareContext
 import mozilla.components.lib.state.State
 import mozilla.components.lib.state.Store
 import mozilla.components.lib.state.ext.flow
 import org.mozilla.fenix.components.AppStore
-import org.mozilla.fenix.components.appstate.AppAction.UpdateSearchBeingActiveState
+import org.mozilla.fenix.components.appstate.AppAction.SearchAction.SearchEnded
+import org.mozilla.fenix.components.toolbar.BrowserToolbarEnvironment
 import mozilla.components.lib.state.Action as MVIAction
 
 /**
@@ -35,22 +35,10 @@ import mozilla.components.lib.state.Action as MVIAction
  */
 class BrowserToolbarSearchStatusSyncMiddleware(
     private val appStore: AppStore,
-) : Middleware<BrowserToolbarState, BrowserToolbarAction>, ViewModel() {
-    private var store: BrowserToolbarStore? = null
-    private lateinit var dependencies: LifecycleDependencies
+) : Middleware<BrowserToolbarState, BrowserToolbarAction> {
+    @VisibleForTesting
+    internal var environment: BrowserToolbarEnvironment? = null
     private var syncSearchActiveJob: Job? = null
-
-    /**
-     * Updates the lifecycle [LifecycleDependencies].
-     *
-     * @param dependencies The new [LifecycleDependencies].
-     */
-    fun updateLifecycleDependencies(dependencies: LifecycleDependencies) {
-        this.dependencies = dependencies
-        if (syncSearchActiveJob != null) {
-            syncSearchActive()
-        }
-    }
 
     override fun invoke(
         context: MiddlewareContext<BrowserToolbarState, BrowserToolbarAction>,
@@ -59,67 +47,39 @@ class BrowserToolbarSearchStatusSyncMiddleware(
     ) {
         next(action)
 
-        if (action is Init) {
-            store = context.store as BrowserToolbarStore
+        if (action is EnvironmentRehydrated) {
+            environment = action.environment as? BrowserToolbarEnvironment
+            syncSearchActive(context)
+        }
+        if (action is EnvironmentCleared) {
+            syncSearchActiveJob?.cancel()
+            environment = null
         }
 
-        if (action is ToggleEditMode) {
-            when (action.editMode) {
-                true -> syncSearchActive()
-                false -> syncSearchActiveJob?.cancel()
-            }
-            appStore.dispatch(UpdateSearchBeingActiveState(isSearchActive = action.editMode))
+        if (action is ToggleEditMode && !action.editMode) {
+            // Only support the toolbar triggering exiting search mode in the application.
+            // Entering search mode in the application needs more parameters and so
+            // this must happen through a specifically configured action, not through an automated one.
+            appStore.dispatch(SearchEnded)
         }
     }
 
-    private fun syncSearchActive() {
-        syncSearchActiveJob?.cancel()
-        syncSearchActiveJob = observeWhileActive(appStore) {
-            distinctUntilChangedBy { it.isSearchActive }
+    private fun syncSearchActive(context: MiddlewareContext<BrowserToolbarState, BrowserToolbarAction>) {
+        syncSearchActiveJob = appStore.observeWhileActive {
+            distinctUntilChangedBy { it.searchState.isSearchActive }
                 .collect {
-                    if (!it.isSearchActive) {
-                        store?.dispatch(ToggleEditMode(false))
-                    }
+                    context.dispatch(ToggleEditMode(it.searchState.isSearchActive))
                 }
         }
     }
 
-    private inline fun <S : State, A : MVIAction> observeWhileActive(
-        store: Store<S, A>,
+    private inline fun <S : State, A : MVIAction> Store<S, A>.observeWhileActive(
         crossinline observe: suspend (Flow<S>.() -> Unit),
-    ): Job = with(dependencies.lifecycleOwner) {
+    ): Job? = environment?.fragment?.viewLifecycleOwner?.run {
         lifecycleScope.launch {
             repeatOnLifecycle(RESUMED) {
-                store.flow().observe()
+                flow().observe()
             }
-        }
-    }
-
-    /**
-     * Lifecycle dependencies for the [BrowserToolbarSearchStatusSyncMiddleware].
-     *
-     * @property lifecycleOwner [LifecycleOwner] depending on which lifecycle related operations will be scheduled.
-     */
-    data class LifecycleDependencies(
-        val lifecycleOwner: LifecycleOwner,
-    )
-
-    /**
-     * Static functionalities of the [BrowserToolbarSearchStatusSyncMiddleware].
-     */
-    companion object {
-        /**
-         * [ViewModelProvider.Factory] for creating a [BrowserToolbarSearchStatusSyncMiddleware].
-         *
-         * @param appStore The [AppStore] to sync from.
-         */
-        fun viewModelFactory(
-            appStore: AppStore,
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                (BrowserToolbarSearchStatusSyncMiddleware(appStore) as? T)
-                    ?: throw IllegalArgumentException("Unknown ViewModel class")
         }
     }
 }

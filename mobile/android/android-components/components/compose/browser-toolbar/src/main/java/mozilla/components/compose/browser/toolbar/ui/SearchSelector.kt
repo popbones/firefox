@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,6 +37,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
@@ -42,6 +45,7 @@ import mozilla.components.compose.base.menu.CustomPlacementPopup
 import mozilla.components.compose.base.menu.CustomPlacementPopupVerticalContent
 import mozilla.components.compose.base.theme.AcornTheme
 import mozilla.components.compose.browser.toolbar.R
+import mozilla.components.compose.browser.toolbar.concept.BrowserToolbarTestTags.SEARCH_SELECTOR
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarInteraction.BrowserToolbarEvent
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarInteraction.BrowserToolbarMenu
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarMenuItem
@@ -74,9 +78,12 @@ fun SearchSelector(
 
     Card(
         modifier = Modifier
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = 4.dp)
+            .width(52.dp)
+            .height(40.dp)
             .semantics(mergeDescendants = true) {
                 this.contentDescription = contentDescription
+                this.testTag = SEARCH_SELECTOR
             }
             .clickable {
                 view.playSoundEffect(SoundEffectConstants.CLICK)
@@ -85,7 +92,7 @@ fun SearchSelector(
                     onInteraction(onClick)
                 }
             },
-        shape = RoundedCornerShape(4.dp),
+        shape = RoundedCornerShape(90.dp),
         colors = CardDefaults.cardColors(
             containerColor = AcornTheme.colors.layer2,
         ),
@@ -94,12 +101,8 @@ fun SearchSelector(
         ),
     ) {
         Row(
-            modifier = Modifier.padding(
-                start = 2.dp,
-                top = 2.dp,
-                end = 4.dp,
-                bottom = 2.dp,
-            ),
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(

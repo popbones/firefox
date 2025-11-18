@@ -7,12 +7,13 @@
 #ifndef nsIGlobalObject_h__
 #define nsIGlobalObject_h__
 
+#include "js/TypeDecls.h"
 #include "mozilla/LinkedList.h"
 #include "mozilla/Maybe.h"
+#include "mozilla/OriginTrials.h"
 #include "mozilla/dom/ClientInfo.h"
 #include "mozilla/dom/ClientState.h"
 #include "mozilla/dom/ServiceWorkerDescriptor.h"
-#include "mozilla/OriginTrials.h"
 #include "nsContentUtils.h"
 #include "nsHashKeys.h"
 #include "nsISupports.h"
@@ -20,7 +21,6 @@
 #include "nsStringFwd.h"
 #include "nsTArray.h"
 #include "nsTHashtable.h"
-#include "js/TypeDecls.h"
 
 // Must be kept in sync with xpcom/rust/xpcom/src/interfaces/nonidl.rs
 #define NS_IGLOBALOBJECT_IID \
@@ -294,6 +294,9 @@ class nsIGlobalObject : public nsISupports {
                                   RFPTarget aTarget) const;
 
   RTPCallerType GetRTPCallerType() const;
+
+  bool IsRFPTargetActive(const nsAString& aTargetName,
+                         mozilla::ErrorResult& aRv);
 
   /**
    * Get the module loader to use for this global, if any. By default this

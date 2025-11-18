@@ -5,12 +5,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "HTMLFrameSetElement.h"
+
 #include "mozilla/Try.h"
-#include "mozilla/dom/HTMLFrameSetElementBinding.h"
+#include "mozilla/UniquePtrExtensions.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/EventHandlerBinding.h"
+#include "mozilla/dom/HTMLFrameSetElementBinding.h"
 #include "nsGlobalWindowInner.h"
-#include "mozilla/UniquePtrExtensions.h"
 
 NS_IMPL_NS_NEW_HTML_ELEMENT(FrameSet)
 
@@ -137,7 +138,7 @@ bool HTMLFrameSetElement::ParseAttribute(int32_t aNamespaceID,
 }
 
 nsChangeHint HTMLFrameSetElement::GetAttributeChangeHint(
-    const nsAtom* aAttribute, int32_t aModType) const {
+    const nsAtom* aAttribute, AttrModType aModType) const {
   nsChangeHint retval =
       nsGenericHTMLElement::GetAttributeChangeHint(aAttribute, aModType);
   if (aAttribute == nsGkAtoms::rows || aAttribute == nsGkAtoms::cols) {

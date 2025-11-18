@@ -573,3 +573,75 @@ pub mod specified {
         }
     }
 }
+
+/// A property-agnostic representation of a value, used by Typed OM.
+///
+/// `TypedValue` is the internal counterpart of the various `CSSStyleValue`
+/// subclasses defined by the Typed OM specification. It captures values that
+/// can be represented independently of any particular property.
+#[derive(Clone, Debug)]
+#[repr(C)]
+pub enum TypedValue {
+    /// Temporary marker to satisfy `#[repr(C)]`. This will be replaced by
+    /// concrete value kinds as Typed OM reification support expands.
+    Placeholder,
+}
+
+/// Reifies a value into its Typed OM representation.
+///
+/// This trait is the Typed OM analogue of [`ToCss`]. Instead of serializing
+/// values into CSS syntax, it converts them into [`TypedValue`]s that can be
+/// exposed to the DOM as `CSSStyleValue` subclasses.
+///
+/// This trait is derivable with `#[derive(ToTyped)]`. The derived
+/// implementation currently does not attempt to reify anything by default; it
+/// simply provides the trait with its default method, which always returns
+/// `None`. This acts as a marker that reification is not yet supported for the
+/// given value.
+///
+/// Over time, the derive may be extended to cover common patterns, similar to
+/// `ToCss`
+pub trait ToTyped {
+    /// Attempt to convert `self` into a [`TypedValue`].
+    ///
+    /// Returns `Some(TypedValue)` if the value can be reified into a
+    /// property-agnostic CSSStyleValue subclass. Returns `None` if the value
+    /// is unrepresentable, in which case reification produces a property-tied
+    /// CSSStyleValue instead.
+    fn to_typed(&self) -> Option<TypedValue> {
+        None
+    }
+}
+
+impl<T> ToTyped for Box<T>
+where
+    T: ?Sized + ToTyped,
+{
+    fn to_typed(&self) -> Option<TypedValue> {
+        (**self).to_typed()
+    }
+}
+
+impl ToTyped for Au {
+    fn to_typed(&self) -> Option<TypedValue> {
+        // XXX Should return TypedValue::Numeric in px units once that variant
+        // is available. Tracked in bug 1990419.
+        None
+    }
+}
+
+macro_rules! impl_to_typed_for_predefined_type {
+    ($name: ty) => {
+        impl<'a> ToTyped for $name {
+            fn to_typed(&self) -> Option<TypedValue> {
+                // XXX Should return TypedValue::Numeric with unit "number"
+                // once that variant is available. Tracked in bug 1990419.
+                None
+            }
+        }
+    };
+}
+
+impl_to_typed_for_predefined_type!(f32);
+impl_to_typed_for_predefined_type!(i8);
+impl_to_typed_for_predefined_type!(i32);

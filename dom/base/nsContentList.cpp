@@ -11,26 +11,27 @@
  */
 
 #include "nsContentList.h"
-#include "nsIContent.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/ContentIterator.h"
-#include "mozilla/dom/Element.h"
-#include "nsWrapperCacheInlines.h"
-#include "nsContentUtils.h"
-#include "nsCCUncollectableMarker.h"
-#include "nsGkAtoms.h"
-#include "mozilla/dom/HTMLCollectionBinding.h"
-#include "mozilla/dom/NodeListBinding.h"
-#include "mozilla/Likely.h"
-#include "nsGenericHTMLElement.h"
-#include "jsfriendapi.h"
+
 #include <algorithm>
-#include "mozilla/dom/NodeInfoInlines.h"
-#include "mozilla/MruCache.h"
-#include "mozilla/StaticPtr.h"
 
 #include "PLDHashTable.h"
+#include "jsfriendapi.h"
+#include "mozilla/ContentIterator.h"
+#include "mozilla/Likely.h"
+#include "mozilla/MruCache.h"
+#include "mozilla/StaticPtr.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/Element.h"
+#include "mozilla/dom/HTMLCollectionBinding.h"
+#include "mozilla/dom/NodeInfoInlines.h"
+#include "mozilla/dom/NodeListBinding.h"
+#include "nsCCUncollectableMarker.h"
+#include "nsContentUtils.h"
+#include "nsGenericHTMLElement.h"
+#include "nsGkAtoms.h"
+#include "nsIContent.h"
 #include "nsTHashtable.h"
+#include "nsWrapperCacheInlines.h"
 
 #ifdef DEBUG_CONTENT_LIST
 #  define ASSERT_IN_SYNC AssertInSync()
@@ -669,7 +670,7 @@ nsIContent* nsContentList::Item(uint32_t aIndex) {
 }
 
 void nsContentList::AttributeChanged(Element* aElement, int32_t aNameSpaceID,
-                                     nsAtom* aAttribute, int32_t aModType,
+                                     nsAtom* aAttribute, AttrModType,
                                      const nsAttrValue* aOldValue) {
   MOZ_ASSERT(aElement, "Must have a content node to work with");
 
@@ -1070,7 +1071,7 @@ JSObject* nsCachableElementsByNameNodeList::WrapObject(
 
 void nsCachableElementsByNameNodeList::AttributeChanged(
     Element* aElement, int32_t aNameSpaceID, nsAtom* aAttribute,
-    int32_t aModType, const nsAttrValue* aOldValue) {
+    AttrModType aModType, const nsAttrValue* aOldValue) {
   // No need to rebuild the list if the changed attribute is not the name
   // attribute.
   if (aAttribute != nsGkAtoms::name) {
@@ -1099,7 +1100,7 @@ JSObject* nsLabelsNodeList::WrapObject(JSContext* cx,
 }
 
 void nsLabelsNodeList::AttributeChanged(Element* aElement, int32_t aNameSpaceID,
-                                        nsAtom* aAttribute, int32_t aModType,
+                                        nsAtom* aAttribute, AttrModType,
                                         const nsAttrValue* aOldValue) {
   MOZ_ASSERT(aElement, "Must have a content node to work with");
   if (mState == State::Dirty ||

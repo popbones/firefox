@@ -221,7 +221,11 @@ RemoteAccessible* DocAccessibleParent::CreateAcc(
   RemoteAccessible* newProxy;
   if ((newProxy = GetAccessible(aAccData.ID()))) {
     // This is a move. Reuse the Accessible; don't destroy it.
-    MOZ_ASSERT(!newProxy->RemoteParent());
+    if (newProxy->RemoteParent()) {
+      MOZ_ASSERT_UNREACHABLE(
+          "Attempt to move RemoteAccessible which still has a parent!");
+      return nullptr;
+    }
     return newProxy;
   }
 
@@ -487,6 +491,7 @@ mozilla::ipc::IPCResult DocAccessibleParent::RecvCaretMoveEvent(
   mCaretId = aID;
   mCaretOffset = aOffset;
   mIsCaretAtEndOfLine = aIsAtEndOfLine;
+  mCaretRect = aCaretRect;
   if (aIsSelectionCollapsed) {
     // We don't fire selection events for collapsed selections, but we need to
     // ensure we don't have a stale cached selection; e.g. when selecting
@@ -496,7 +501,7 @@ mozilla::ipc::IPCResult DocAccessibleParent::RecvCaretMoveEvent(
   }
 
   PlatformCaretMoveEvent(proxy, aOffset, aIsSelectionCollapsed, aGranularity,
-                         aCaretRect, aFromUser);
+                         aFromUser);
 
   if (!nsCoreUtils::AccEventObserversExist()) {
     return IPC_OK();
@@ -1158,7 +1163,8 @@ mozilla::ipc::IPCResult DocAccessibleParent::RecvFocusEvent(
 #endif
 
   mFocus = aID;
-  PlatformFocusEvent(proxy, aCaretRect);
+  mCaretRect = aCaretRect;
+  PlatformFocusEvent(proxy);
 
   if (!nsCoreUtils::AccEventObserversExist()) {
     return IPC_OK();
@@ -1173,6 +1179,17 @@ mozilla::ipc::IPCResult DocAccessibleParent::RecvFocusEvent(
   nsCoreUtils::DispatchAccEvent(std::move(event));
 
   return IPC_OK();
+}
+
+LayoutDeviceIntRect DocAccessibleParent::GetCachedCaretRect() {
+  LayoutDeviceIntRect caretRect = mCaretRect;
+  if (!caretRect.IsEmpty()) {
+    // Reapply doc offset to the caret rect.
+    LayoutDeviceIntRect docRect = Bounds();
+    caretRect.MoveBy(docRect.X(), docRect.Y());
+  }
+
+  return caretRect;
 }
 
 void DocAccessibleParent::SelectionRanges(nsTArray<TextRange>* aRanges) const {

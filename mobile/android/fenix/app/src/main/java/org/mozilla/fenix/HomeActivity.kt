@@ -9,7 +9,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_MAIN
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -27,7 +29,6 @@ import android.view.WindowManager.LayoutParams.FLAG_SECURE
 import androidx.activity.BackEventCompat
 import androidx.annotation.CallSuper
 import androidx.annotation.IdRes
-import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import androidx.appcompat.app.ActionBar
 import androidx.appcompat.widget.Toolbar
@@ -42,19 +43,19 @@ import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import mozilla.appservices.places.BookmarkRoot
 import mozilla.components.browser.state.action.MediaSessionAction
 import mozilla.components.browser.state.action.SearchAction
 import mozilla.components.browser.state.search.SearchEngine
 import mozilla.components.browser.state.selector.getNormalOrPrivateTabs
-import mozilla.components.browser.state.selector.privateTabs
 import mozilla.components.browser.state.selector.selectedTab
 import mozilla.components.browser.state.state.WebExtensionState
 import mozilla.components.concept.engine.EngineSession
@@ -66,7 +67,6 @@ import mozilla.components.feature.media.ext.findActiveMediaTab
 import mozilla.components.feature.privatemode.notification.PrivateNotificationFeature
 import mozilla.components.feature.search.BrowserStoreSearchAdapter
 import mozilla.components.service.fxa.sync.SyncReason
-import mozilla.components.service.pocket.PocketStoriesService
 import mozilla.components.support.base.feature.ActivityResultHandler
 import mozilla.components.support.base.feature.UserInteractionHandler
 import mozilla.components.support.base.feature.UserInteractionOnBackPressedCallback
@@ -91,6 +91,8 @@ import org.mozilla.fenix.GleanMetrics.SplashScreen
 import org.mozilla.fenix.GleanMetrics.StartOnHome
 import org.mozilla.fenix.addons.ExtensionsProcessDisabledBackgroundController
 import org.mozilla.fenix.addons.ExtensionsProcessDisabledForegroundController
+import org.mozilla.fenix.bindings.ExternalAppLinkStatusBinding
+import org.mozilla.fenix.bookmarks.DesktopFolders
 import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.browser.browsingmode.BrowsingModeManager
 import org.mozilla.fenix.browser.browsingmode.DefaultBrowsingModeManager
@@ -102,11 +104,13 @@ import org.mozilla.fenix.components.metrics.GrowthDataWorker
 import org.mozilla.fenix.components.metrics.MarketingAttributionService
 import org.mozilla.fenix.components.metrics.fonts.FontEnumerationWorker
 import org.mozilla.fenix.crashes.CrashReporterBinding
+import org.mozilla.fenix.crashes.StartupCrashCanary
 import org.mozilla.fenix.crashes.UnsubmittedCrashDialog
 import org.mozilla.fenix.customtabs.ExternalAppBrowserActivity
 import org.mozilla.fenix.databinding.ActivityHomeBinding
 import org.mozilla.fenix.debugsettings.data.DefaultDebugSettingsRepository
 import org.mozilla.fenix.debugsettings.ui.FenixOverlay
+import org.mozilla.fenix.downloads.DownloadSnackbar
 import org.mozilla.fenix.experiments.ResearchSurfaceDialogFragment
 import org.mozilla.fenix.ext.alreadyOnDestination
 import org.mozilla.fenix.ext.breadcrumb
@@ -134,11 +138,12 @@ import org.mozilla.fenix.home.intent.OpenSpecificTabIntentProcessor
 import org.mozilla.fenix.home.intent.ReEngagementIntentProcessor
 import org.mozilla.fenix.home.intent.SpeechProcessingIntentProcessor
 import org.mozilla.fenix.home.intent.StartSearchIntentProcessor
-import org.mozilla.fenix.library.bookmarks.DesktopFolders
 import org.mozilla.fenix.messaging.FenixMessageSurfaceId
 import org.mozilla.fenix.messaging.MessageNotificationWorker
 import org.mozilla.fenix.nimbus.FxNimbus
 import org.mozilla.fenix.onboarding.ReEngagementNotificationWorker
+import org.mozilla.fenix.pbmlock.DefaultPrivateBrowsingLockStorage
+import org.mozilla.fenix.pbmlock.PrivateBrowsingLockFeature
 import org.mozilla.fenix.perf.MarkersActivityLifecycleCallbacks
 import org.mozilla.fenix.perf.MarkersFragmentLifecycleCallbacks
 import org.mozilla.fenix.perf.Performance
@@ -155,6 +160,7 @@ import org.mozilla.fenix.splashscreen.DefaultExperimentsOperationStorage
 import org.mozilla.fenix.splashscreen.DefaultSplashScreenStorage
 import org.mozilla.fenix.splashscreen.FetchExperimentsOperation
 import org.mozilla.fenix.splashscreen.SplashScreenManager
+import org.mozilla.fenix.startupCrash.StartupCrashActivity
 import org.mozilla.fenix.tabhistory.TabHistoryDialogFragment
 import org.mozilla.fenix.tabstray.TabsTrayFragment
 import org.mozilla.fenix.theme.DefaultThemeManager
@@ -163,9 +169,6 @@ import org.mozilla.fenix.theme.ThemeManager
 import org.mozilla.fenix.utils.AccessibilityUtils.announcePrivateModeForAccessibility
 import org.mozilla.fenix.utils.Settings
 import org.mozilla.fenix.utils.changeAppLauncherIcon
-import java.lang.Math
-import java.lang.System
-import java.lang.ref.WeakReference
 import java.util.Locale
 
 /**
@@ -199,6 +202,7 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
             store = components.core.store,
             context = this@HomeActivity,
             fragmentManager = supportFragmentManager,
+            navController = navHost.navController,
             onLinkClicked = { url, shouldOpenInBrowser ->
                 if (shouldOpenInBrowser) {
                     openToBrowserAndLoad(
@@ -218,11 +222,34 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         )
     }
 
+    private val aboutHomeBinding by lazy {
+        AboutHomeBinding(
+            browserStore = components.core.store,
+            navController = navHost.navController,
+        )
+    }
+
+    private val downloadSnackbar by lazy {
+        DownloadSnackbar(
+            store = components.core.store,
+            appStore = components.appStore,
+        )
+    }
+
     private val crashReporterBinding by lazy {
         CrashReporterBinding(
             context = this,
             store = components.appStore,
             onReporting = ::showCrashReporter,
+        )
+    }
+
+    private val externalAppLinkStatusBinding by lazy {
+        ExternalAppLinkStatusBinding(
+            settings = settings(),
+            appLinksUseCases = components.useCases.appLinksUseCases,
+            browserStore = components.core.store,
+            appStore = components.appStore,
         )
     }
 
@@ -239,6 +266,17 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
 
     private val serviceWorkerSupport by lazy {
         ServiceWorkerSupportFeature(this)
+    }
+
+    private val privateBrowsingLockFeature by lazy {
+        PrivateBrowsingLockFeature(
+            appStore = components.appStore,
+            browserStore = components.core.store,
+            storage = DefaultPrivateBrowsingLockStorage(
+                preferences = settings().preferences,
+                privateBrowsingLockPrefKey = getString(R.string.pref_key_private_browsing_locked),
+            ),
+        )
     }
 
     private var inflater: LayoutInflater? = null
@@ -310,8 +348,27 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         }
     }
 
-    @Suppress("ComplexMethod")
     final override fun onCreate(savedInstanceState: Bundle?) {
+        if (StartupCrashCanary.build(applicationContext).startupCrashDetected) {
+            super.onCreate(savedInstanceState)
+            val startupCrashIntent =
+                Intent(
+                    applicationContext,
+                    StartupCrashActivity::class.java,
+                )
+            startupCrashIntent.flags = FLAG_ACTIVITY_NEW_TASK
+            startActivity(startupCrashIntent)
+            finish()
+        } else {
+            initialize(savedInstanceState)
+        }
+    }
+
+    /**
+     * Initializes [HomeActivity] and all required subsystems.
+     */
+    @Suppress("ComplexMethod")
+    fun initialize(savedInstanceState: Bundle?) {
         // DO NOT MOVE ANYTHING ABOVE THIS getProfilerTime CALL.
         val startTimeProfiler = components.core.engine.profiler?.getProfilerTime()
 
@@ -377,7 +434,6 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
             },
             scope = lifecycleScope,
             splashScreenTimeout = FxNimbus.features.splashScreen.value().maximumDurationMs.toLong(),
-            isDeviceSupported = { Build.VERSION.SDK_INT > Build.VERSION_CODES.M },
             storage = DefaultSplashScreenStorage(components.settings),
             showSplashScreen = { installSplashScreen().setKeepOnScreenCondition(it) },
             onSplashScreenFinished = { result ->
@@ -425,12 +481,6 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         setContentView(binding.root)
         ProfilerMarkers.addListenerForOnGlobalLayout(components.core.engine, this, binding.root)
 
-        // Must be after we set the content view
-        if (isVisuallyComplete) {
-            components.performance.visualCompletenessQueue
-                .attachViewToRunVisualCompletenessQueueLater(WeakReference(binding.rootContainer))
-        }
-
         privateNotificationObserver = PrivateNotificationFeature(
             applicationContext,
             components.core.store,
@@ -447,10 +497,7 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
             // Unless the activity is recreated, navigate to home first (without rendering it)
             // to add it to the back stack.
             if (savedInstanceState == null) {
-                val intent = intent.toSafeIntent()
-                val focusOnAddressBar = intent.getStringExtra(OPEN_TO_SEARCH) != null
-
-                navigateToHome(navHost.navController, focusOnAddressBar)
+                navigateToHome(navHost.navController)
             }
 
             if (shouldNavigateToBrowserOnColdStart(savedInstanceState)) {
@@ -465,6 +512,8 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
 
         Performance.processIntentIfPerformanceTest(intent, this)
 
+        // This will record an event in Nimbus' internal event store. Used for behavioral targeting
+        recordEventInNimbus("app_opened")
         if (settings().isTelemetryEnabled) {
             lifecycle.addObserver(
                 BreadcrumbsRecorder(
@@ -483,8 +532,6 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
                             source = source,
                         ),
                     )
-                    // This will record an event in Nimbus' internal event store. Used for behavioral targeting
-                    recordEventInNimbus("app_opened")
 
                     if (safeIntent.action.equals(ACTION_OPEN_PRIVATE_TAB) && source == APP_ICON) {
                         AppIcon.newPrivateTabTapped.record(NoExtras())
@@ -498,16 +545,15 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
             extensionsProcessDisabledForegroundController,
             extensionsProcessDisabledBackgroundController,
             serviceWorkerSupport,
+            aboutHomeBinding,
             crashReporterBinding,
             TopSitesRefresher(
                 settings = settings(),
-                topSitesProvider = if (settings().marsAPIEnabled) {
-                    components.core.marsTopSitesProvider
-                } else {
-                    components.core.contileTopSitesProvider
-                },
+                topSitesProvider = components.core.marsTopSitesProvider,
             ),
-            components.privateBrowsingLockFeature,
+            downloadSnackbar,
+            privateBrowsingLockFeature,
+            externalAppLinkStatusBinding,
         )
 
         if (!isCustomTabIntent(intent)) {
@@ -530,7 +576,7 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         components.core.requestInterceptor.setNavigationController(navHost.navController)
 
         supportFragmentManager.registerFragmentLifecycleCallbacks(
-            StatusBarColorManager(themeManager, this),
+            StatusBarColorManager(themeManager, this, settings().isTabStripEnabled),
             true,
         )
 
@@ -541,31 +587,6 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         if (!settings().hiddenEnginesRestored) {
             settings().hiddenEnginesRestored = true
             components.useCases.searchUseCases.restoreHiddenSearchEngines.invoke()
-        }
-
-        // To assess whether the Pocket stories are to be downloaded or not multiple SharedPreferences
-        // are read possibly needing to load them on the current thread. Move that to a background thread.
-        lifecycleScope.launch(IO) {
-            if (settings().showPocketRecommendationsFeature) {
-                components.core.pocketStoriesService.startPeriodicContentRecommendationsRefresh()
-            }
-
-            if (settings().marsAPIEnabled && !settings().hasPocketSponsoredStoriesProfileMigrated) {
-                migratePocketSponsoredStoriesProfile(components.core.pocketStoriesService)
-            }
-
-            if (settings().showPocketSponsoredStories) {
-                if (settings().marsAPIEnabled) {
-                    components.core.pocketStoriesService.startPeriodicSponsoredContentsRefresh()
-                } else {
-                    components.core.pocketStoriesService.startPeriodicSponsoredStoriesRefresh()
-                    // If the secret setting for sponsored stories parameters is set,
-                    // force refresh the sponsored Pocket stories.
-                    if (settings().useCustomConfigurationForSponsoredStories) {
-                        components.core.pocketStoriesService.refreshSponsoredStories()
-                    }
-                }
-            }
         }
 
         components.backgroundServices.accountManagerAvailableQueue.runIfReadyOrQueue {
@@ -623,18 +644,8 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         openSetDefaultBrowserOption()
     }
 
-    /**
-     * Deletes the user's existing sponsored stories profile as part of the migration to the
-     * MARS API.
-     */
-    @VisibleForTesting
-    internal fun migratePocketSponsoredStoriesProfile(pocketStoriesService: PocketStoriesService) {
-        pocketStoriesService.deleteProfile()
-        settings().hasPocketSponsoredStoriesProfileMigrated = true
-    }
-
     private fun checkAndExitPiP() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode && intent != null) {
+        if (isInPictureInPictureMode && intent != null) {
             // Exit PiP mode
             moveTaskToBack(false)
             startActivity(Intent(this, this::class.java).setFlags(FLAG_ACTIVITY_REORDER_TO_FRONT))
@@ -650,6 +661,26 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
             safeIntent,
             binding.rootContainer,
         )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        when (requestCode) {
+            REQUEST_CODE_CAMERA_PERMISSIONS -> {
+                if (grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_DENIED
+                    ) {
+                    // if denied, do not relaunch QR Scanner
+                    components.appStore.dispatch(AppAction.QrScannerAction.QrScannerRequestConsumed)
+                } else {
+                    components.appStore.dispatch(AppAction.QrScannerAction.QrScannerRequested)
+                }
+            }
+            else -> super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        }
     }
 
     @CallSuper
@@ -697,9 +728,17 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         components.core.store.dispatch(SearchAction.RefreshSearchEnginesAction)
     }
 
+    override fun onRestart() {
+        super.onRestart()
+
+        browsingModeManager.updateMode(intent)
+    }
+
     final override fun onStart() {
         // DO NOT MOVE ANYTHING ABOVE THIS getProfilerTime CALL.
         val startProfilerTime = components.core.engine.profiler?.getProfilerTime()
+
+        components.termsOfUseManager.onStart()
 
         super.onStart()
 
@@ -788,7 +827,6 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         BrowsersCache.resetAll()
     }
 
-    @RequiresApi(Build.VERSION_CODES.M)
     override fun onProvideAssistContent(outContent: AssistContent?) {
         super.onProvideAssistContent(outContent)
         val currentTabUrl = components.core.store.state.selectedTab?.content?.url
@@ -980,11 +1018,9 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
     }
 
     private fun shouldUseCustomBackLongPress(): Boolean {
-        val isAndroidN =
-            Build.VERSION.SDK_INT == Build.VERSION_CODES.N || Build.VERSION.SDK_INT == Build.VERSION_CODES.N_MR1
         // Huawei devices seem to have problems with onKeyLongPress
         // See https://github.com/mozilla-mobile/fenix/issues/13498
-        return isAndroidN || BuildManufacturerChecker().isHuawei()
+        return BuildManufacturerChecker().isHuawei()
     }
 
     /**
@@ -1247,12 +1283,12 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
     }
 
     @VisibleForTesting
-    internal fun navigateToHome(navController: NavController, focusOnAddressBar: Boolean) {
+    internal fun navigateToHome(navController: NavController) {
         if (this is ExternalAppBrowserActivity) {
             return
         }
 
-        navController.navigate(NavGraphDirections.actionStartupHome(focusOnAddressBar = focusOnAddressBar))
+        navController.navigate(NavGraphDirections.actionStartupHome())
     }
 
     final override fun attachBaseContext(base: Context) {
@@ -1266,7 +1302,7 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         // when using the TimePicker. Since the inflater was created for performance monitoring
         // purposes and that we test on new android versions, this means that any difference in
         // inflation will be caught on those devices.
-        if (LAYOUT_INFLATER_SERVICE == name && Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
+        if (LAYOUT_INFLATER_SERVICE == name) {
             if (inflater == null) {
                 inflater = PerformanceInflater(LayoutInflater.from(baseContext), this)
             }
@@ -1278,19 +1314,17 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
     private fun createBrowsingModeManager(intent: Intent?): BrowsingModeManager {
         return DefaultBrowsingModeManager(
             intent = intent,
-            store = components.core.store,
             settings = components.settings,
-            modeDidChange = { newMode ->
+            onModeChange = { newMode ->
                 updateSecureWindowFlags(newMode)
-                addPrivateHomepageTabIfNecessary(newMode)
-                themeManager.currentTheme = newMode
-            },
-            updateAppStateMode = { newMode ->
+
+                if (::themeManager.isInitialized) {
+                    themeManager.currentTheme = newMode
+                }
+
                 components.appStore.dispatch(AppAction.BrowsingModeManagerModeChanged(mode = newMode))
             },
-        ).also {
-            updateSecureWindowFlags(it.mode)
-        }
+        )
     }
 
     private fun updateSecureWindowFlags(mode: BrowsingMode = browsingModeManager.mode) {
@@ -1298,22 +1332,6 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
             window.addFlags(FLAG_SECURE)
         } else {
             window.clearFlags(FLAG_SECURE)
-        }
-    }
-
-    /**
-     * When switching to private mode, add a private homepage tab if there are
-     * no private tabs available.
-     *
-     * @param mode The new [BrowsingMode] that is being swapped to.
-     */
-    @VisibleForTesting
-    internal fun addPrivateHomepageTabIfNecessary(mode: BrowsingMode) {
-        if (settings().enableHomepageAsNewTab &&
-            mode.isPrivate &&
-            components.core.store.state.privateTabs.isEmpty()
-        ) {
-            components.useCases.fenixBrowserUseCases.addNewHomepageTab(private = true)
         }
     }
 
@@ -1337,20 +1355,23 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         isVisuallyComplete = true
     }
 
-    private fun captureSnapshotTelemetryMetrics() = CoroutineScope(IO).launch {
-        // PWA
-        val recentlyUsedPwaCount = components.core.webAppShortcutManager.recentlyUsedWebAppsCount(
-            activeThresholdMs = PWA_RECENTLY_USED_THRESHOLD,
-        )
-        if (recentlyUsedPwaCount == 0) {
-            Metrics.hasRecentPwas.set(false)
-        } else {
-            Metrics.hasRecentPwas.set(true)
-            // This metric's lifecycle is set to 'application', meaning that it gets reset upon
-            // application restart. Combined with the behaviour of the metric type itself (a growing counter),
-            // it's important that this metric is only set once per application's lifetime.
-            // Otherwise, we're going to over-count.
-            Metrics.recentlyUsedPwaCount.add(recentlyUsedPwaCount)
+    private fun captureSnapshotTelemetryMetrics() {
+        lifecycleScope.launch {
+            val recentlyUsedPwaCount = withContext(Dispatchers.IO) {
+                components.core.webAppShortcutManager.recentlyUsedWebAppsCount(
+                    activeThresholdMs = PWA_RECENTLY_USED_THRESHOLD,
+                )
+            }
+            if (recentlyUsedPwaCount == 0) {
+                Metrics.hasRecentPwas.set(false)
+            } else {
+                Metrics.hasRecentPwas.set(true)
+                // This metric's lifecycle is set to 'application', meaning that it gets reset upon
+                // application restart. Combined with the behaviour of the metric type itself (a growing counter),
+                // it's important that this metric is only set once per application's lifetime.
+                // Otherwise, we're going to over-count.
+                Metrics.recentlyUsedPwaCount.add(recentlyUsedPwaCount)
+            }
         }
     }
 
@@ -1428,20 +1449,14 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
     }
 
     @VisibleForTesting
-    internal fun showCrashReporter(crashIDs: Array<String>?, ctxt: Context) {
+    internal fun showCrashReporter(crashIDs: List<String>?, ctxt: Context) {
         if (!settings().useNewCrashReporterDialog) {
-            return
-        }
-
-        var now = Math.round(System.currentTimeMillis() / DateUtils.SECOND_IN_MILLIS * 1.0)
-        if (now < settings().crashPullDontShowBefore) {
             return
         }
 
         UnsubmittedCrashDialog(
             dispatcher = { action ->
                 components.appStore.dispatch(AppAction.CrashActionWrapper(action))
-                settings().crashPullDontShowBefore = now + CRASH_PULL_SILENCE_FOR_DAYS_IN_S
             },
             crashIDs = crashIDs,
             localContext = ctxt,
@@ -1461,6 +1476,6 @@ open class HomeActivity : LocaleAwareAppCompatActivity(), NavHostActivity {
         // telemetry purposes.
         private const val PWA_RECENTLY_USED_THRESHOLD = DateUtils.DAY_IN_MILLIS * 30L
 
-        private const val CRASH_PULL_SILENCE_FOR_DAYS_IN_S = 7L * 86400L
+        private const val REQUEST_CODE_CAMERA_PERMISSIONS = 1
     }
 }

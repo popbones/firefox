@@ -8,20 +8,20 @@
 
 #include <algorithm>
 
+#include "SMILCSSProperty.h"
+#include "SMILCompositor.h"
 #include "mozilla/AutoRestore.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/PresShellInlines.h"
 #include "mozilla/RestyleManager.h"
 #include "mozilla/SMILTimedElement.h"
+#include "mozilla/dom/Document.h"
 #include "mozilla/dom/DocumentInlines.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/SVGAnimationElement.h"
-#include "nsContentUtils.h"
 #include "nsCSSProps.h"
+#include "nsContentUtils.h"
 #include "nsRefreshDriver.h"
-#include "mozilla/dom/Document.h"
-#include "SMILCompositor.h"
-#include "SMILCSSProperty.h"
 
 using namespace mozilla::dom;
 
@@ -520,12 +520,16 @@ void SMILAnimationController::AddAnimationToCompositorTable(
   }
 }
 
-static inline bool IsTransformAttribute(int32_t aNamespaceID,
-                                        nsAtom* aAttributeName) {
-  return aNamespaceID == kNameSpaceID_None &&
-         (aAttributeName == nsGkAtoms::transform ||
-          aAttributeName == nsGkAtoms::patternTransform ||
-          aAttributeName == nsGkAtoms::gradientTransform);
+static inline bool IsTransformAttribute(const Element* aElement,
+                                        int32_t aNamespaceID,
+                                        const nsAtom* aAttributeName) {
+  if (aNamespaceID != kNameSpaceID_None) {
+    return false;
+  }
+  if (auto* svgElement = SVGElement::FromNode(aElement)) {
+    return svgElement->GetTransformListAttrName() == aAttributeName;
+  }
+  return false;
 }
 
 // Helper function that, given a SVGAnimationElement, looks up its target
@@ -552,8 +556,8 @@ bool SMILAnimationController::GetTargetIdentifierForAnimation(
 
   // animateTransform can only animate transforms, conversely transforms
   // can only be animated by animateTransform
-  if (IsTransformAttribute(attributeNamespaceID, attributeName) !=
-      (aAnimElem->IsSVGElement(nsGkAtoms::animateTransform)))
+  if (IsTransformAttribute(targetElem, attributeNamespaceID, attributeName) !=
+      aAnimElem->IsSVGElement(nsGkAtoms::animateTransform))
     return false;
 
   // Construct the key

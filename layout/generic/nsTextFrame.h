@@ -7,17 +7,16 @@
 #ifndef nsTextFrame_h__
 #define nsTextFrame_h__
 
+#include "JustificationUtils.h"
+#include "gfxSkipChars.h"
+#include "gfxTextRun.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/dom/Text.h"
 #include "mozilla/gfx/2D.h"
-
 #include "nsIFrame.h"
 #include "nsISelectionController.h"
 #include "nsSplittableFrame.h"
-#include "gfxSkipChars.h"
-#include "gfxTextRun.h"
-#include "JustificationUtils.h"
 
 // Undo the windows.h damage
 #if defined(XP_WIN) && defined(DrawText)
@@ -26,7 +25,6 @@
 
 struct SelectionDetails;
 class nsBlockFrame;
-class nsTextFragment;
 class nsTextPaintStyle;
 
 namespace mozilla {
@@ -34,18 +32,78 @@ class SVGContextPaint;
 class SVGTextFrame;
 class nsDisplayTextGeometry;
 class nsDisplayText;
+namespace dom {
+class CharacterDataBuffer;
+}
+
+/**
+ * Helper for CSS text-autospace, used by nsTextFrame::PropertyProvider.
+ */
+class MOZ_STACK_CLASS TextAutospace final {
+ public:
+  enum class CharClass : uint8_t {
+    Other,
+    CombiningMark,
+    Ideograph,
+    NonIdeographicLetter,
+    NonIdeographicNumeral,
+  };
+
+  enum class Boundary : uint8_t {
+    IdeographAlpha,
+    IdeographNumeric,
+  };
+  using BoundarySet = EnumSet<Boundary>;
+
+  // Returns true if inter-script spacing may be added at boundaries.
+  static bool Enabled(const StyleTextAutospace& aStyleTextAutospace,
+                      const nsTextFrame* aFrame);
+
+  TextAutospace(const StyleTextAutospace& aStyleTextAutospace,
+                nscoord aSpacing);
+
+  nscoord InterScriptSpacing() const { return mInterScriptSpacing; }
+
+  // Return true if inter-script spacing should be applied between aPrevClass
+  // and aCurrClass.
+  bool ShouldApplySpacing(CharClass aPrevClass, CharClass aCurrClass) const;
+
+  // Returns true when non-ideographic letters/numerals should not participate
+  // in autospace boundaries for aFrame.
+  static bool ShouldSuppressLetterNumeralSpacing(const nsIFrame* aFrame);
+
+  // Return true if aChar is an ideograph.
+  // https://drafts.csswg.org/css-text-4/#ideographs
+  static bool IsIdeograph(char32_t aChar);
+
+  // Get character class for aChar.
+  // https://drafts.csswg.org/css-text-4/#text-spacing-classes
+  static CharClass GetCharClass(char32_t aChar);
+
+ private:
+  BoundarySet InitBoundarySet(
+      const StyleTextAutospace& aStyleTextAutospace) const;
+
+  // Enabled boundaries. When non-empty, insert spacing at these class
+  // boundaries (e.g. ideograph-alpha, ideograph-numeric).
+  BoundarySet mBoundarySet;
+
+  // Inter-script spacing amount to add at boundaries.
+  nscoord mInterScriptSpacing{};
+};
+
 }  // namespace mozilla
 
 class nsTextFrame : public nsIFrame {
-  typedef mozilla::LayoutDeviceRect LayoutDeviceRect;
-  typedef mozilla::SelectionTypeMask SelectionTypeMask;
-  typedef mozilla::SelectionType SelectionType;
-  typedef mozilla::TextRangeStyle TextRangeStyle;
-  typedef mozilla::gfx::DrawTarget DrawTarget;
-  typedef mozilla::gfx::Point Point;
-  typedef mozilla::gfx::Rect Rect;
-  typedef mozilla::gfx::Size Size;
-  typedef gfxTextRun::Range Range;
+  using DrawTarget = mozilla::gfx::DrawTarget;
+  using LayoutDeviceRect = mozilla::LayoutDeviceRect;
+  using Point = mozilla::gfx::Point;
+  using Range = gfxTextRun::Range;
+  using Rect = mozilla::gfx::Rect;
+  using SelectionType = mozilla::SelectionType;
+  using SelectionTypeMask = mozilla::SelectionTypeMask;
+  using Size = mozilla::gfx::Size;
+  using TextRangeStyle = mozilla::TextRangeStyle;
 
  public:
   enum TextRunType : uint8_t;
@@ -57,9 +115,7 @@ class nsTextFrame : public nsIFrame {
    */
   class MOZ_STACK_CLASS PropertyProvider final
       : public gfxTextRun::PropertyProvider {
-    typedef gfxTextRun::Range Range;
-    typedef gfxTextRun::HyphenType HyphenType;
-    typedef mozilla::gfx::DrawTarget DrawTarget;
+    using HyphenType = gfxTextRun::HyphenType;
 
    public:
     /**
@@ -72,9 +128,9 @@ class nsTextFrame : public nsIFrame {
      * cannot be called, nor can GetOriginalLength().
      */
     PropertyProvider(gfxTextRun* aTextRun, const nsStyleText* aTextStyle,
-                     const nsTextFragment* aFrag, nsTextFrame* aFrame,
-                     const gfxSkipCharsIterator& aStart, int32_t aLength,
-                     nsIFrame* aLineContainer,
+                     const mozilla::dom::CharacterDataBuffer& aBuffer,
+                     nsTextFrame* aFrame, const gfxSkipCharsIterator& aStart,
+                     int32_t aLength, nsIFrame* aLineContainer,
                      nscoord aOffsetFromBlockOriginForTabs,
                      nsTextFrame::TextRunType aWhichTextRun,
                      bool aAtStartOfLine);
@@ -137,7 +193,9 @@ class nsTextFrame : public nsIFrame {
       NS_ASSERTION(mLength != INT32_MAX, "Length not known");
       return mLength;
     }
-    const nsTextFragment* GetFragment() const { return mFrag; }
+    const mozilla::dom::CharacterDataBuffer& GetCharacterDataBuffer() const {
+      return mCharacterDataBuffer;
+    }
 
     gfxFontGroup* GetFontGroup() const {
       if (!mFontGroup) {
@@ -170,27 +228,45 @@ class nsTextFrame : public nsIFrame {
 
     void InitFontGroupAndFontMetrics() const;
 
+    // Initialize TextAutospace, if inter-script spacing applies.
+    void InitTextAutospace();
+
     const RefPtr<gfxTextRun> mTextRun;
     mutable gfxFontGroup* mFontGroup;
     mutable RefPtr<nsFontMetrics> mFontMetrics;
     const nsStyleText* mTextStyle;
-    const nsTextFragment* mFrag;
+    const mozilla::dom::CharacterDataBuffer& mCharacterDataBuffer;
     const nsIFrame* mLineContainer;
     nsTextFrame* mFrame;
-    gfxSkipCharsIterator mStart;  // Offset in original and transformed string
+
+    // Offset in original and transformed string
+    gfxSkipCharsIterator mStart;
+
     const gfxSkipCharsIterator mTempIterator;
 
     // Either null, or pointing to the frame's TabWidthProperty.
     mutable nsTextFrame::TabWidthStore* mTabWidths;
+
     // How far we've done tab-width calculation; this is ONLY valid when
     // mTabWidths is nullptr (otherwise rely on mTabWidths->mLimit instead).
     // It's a DOM offset relative to the current frame's offset.
     mutable uint32_t mTabWidthsAnalyzedLimit;
 
-    int32_t mLength;                  // DOM string length, may be INT32_MAX
-    const gfxFloat mWordSpacing;      // space for each whitespace char
-    const gfxFloat mLetterSpacing;    // space for each letter
-    mutable gfxFloat mMinTabAdvance;  // min advance for <tab> char
+    // DOM string length, may be INT32_MAX
+    int32_t mLength;
+
+    // space for each whitespace char
+    const gfxFloat mWordSpacing;
+
+    // space for each letter
+    const gfxFloat mLetterSpacing;
+
+    // If TextAutospace exists, inter-script spacing applies.
+    Maybe<mozilla::TextAutospace> mTextAutospace;
+
+    // min advance for <tab> char
+    mutable gfxFloat mMinTabAdvance;
+
     mutable gfxFloat mHyphenWidth;
     mutable gfxFloat mOffsetFromBlockOriginForTabs;
 
@@ -301,8 +377,8 @@ class nsTextFrame : public nsIFrame {
   // Returns this text frame's content's text fragment.
   //
   // Assertions in Init() ensure we only ever get a Text node as content.
-  const nsTextFragment* TextFragment() const {
-    return &mContent->AsText()->TextFragment();
+  const mozilla::dom::CharacterDataBuffer& CharacterDataBuffer() const {
+    return mContent->AsText()->DataBuffer();
   }
 
   /**
@@ -732,7 +808,7 @@ class nsTextFrame : public nsIFrame {
     NoTrimBefore = 1 << 2
   };
   TrimmedOffsets GetTrimmedOffsets(
-      const nsTextFragment* aFrag,
+      const mozilla::dom::CharacterDataBuffer& aBuffer,
       TrimmedOffsetFlags aFlags = TrimmedOffsetFlags::Default) const;
 
   // Similar to Reflow(), but for use from nsLineLayout
@@ -781,6 +857,10 @@ class nsTextFrame : public nsIFrame {
   void SetTrimmableWS(gfxTextRun::TrimmableWS aTrimmableWS);
   gfxTextRun::TrimmableWS GetTrimmableWS() const;
   void ClearTrimmableWS();
+
+  // Return ShapedTextFlags::TEXT_ENABLE_SPACING if spacing is needed due to
+  // letter-spacing, word-spacing, etc.
+  mozilla::gfx::ShapedTextFlags GetSpacingFlags() const;
 
  protected:
   virtual ~nsTextFrame();
@@ -1055,7 +1135,8 @@ class nsTextFrame : public nsIFrame {
   ContentOffsets GetCharacterOffsetAtFramePointInternal(
       const nsPoint& aPoint, bool aForInsertionPoint);
 
-  static float GetTextCombineScaleFactor(nsTextFrame* aFrame);
+  float GetTextCombineScale() const;
+  std::pair<nscoord, float> GetTextCombineOffsetAndScale() const;
 
   void ClearFrameOffsetCache();
 
@@ -1098,7 +1179,7 @@ class nsTextFrame : public nsIFrame {
     const uint32_t mEndOffset;
     const TextOffsetType mOffsetType;
     const TrailingWhitespace mTrimTrailingWhitespace;
-    const nsTextFragment* const mTextFrag;
+    const mozilla::dom::CharacterDataBuffer& mCharacterDataBuffer;
     // Mutable state, updated as we loop over the continuations.
     nsBlockFrame* mLineContainer = nullptr;
     uint32_t mOffsetInRenderedString = 0;

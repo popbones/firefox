@@ -20,6 +20,7 @@ import { TopicSelection } from "content-src/components/DiscoveryStreamComponents
 import { DownloadMobilePromoHighlight } from "../DiscoveryStreamComponents/FeatureHighlight/DownloadMobilePromoHighlight";
 import { WallpaperFeatureHighlight } from "../DiscoveryStreamComponents/FeatureHighlight/WallpaperFeatureHighlight";
 import { MessageWrapper } from "content-src/components/MessageWrapper/MessageWrapper";
+import { selectWeatherPlacement } from "../../lib/utils";
 
 const VISIBLE = "visible";
 const VISIBILITY_CHANGE_EVENT = "visibilitychange";
@@ -57,28 +58,6 @@ export class _Base extends React.PureComponent {
 
   notifyContent(state) {
     this.setState(state);
-  }
-
-  componentWillUnmount() {
-    this.updateTheme();
-  }
-
-  componentWillUpdate() {
-    this.updateTheme();
-  }
-
-  updateTheme() {
-    const bodyClassName = [
-      "activity-stream",
-      // If we skipped the about:welcome overlay and removed the CSS classes
-      // we don't want to add them back to the Activity Stream view
-      document.body.classList.contains("inline-onboarding")
-        ? "inline-onboarding"
-        : "",
-    ]
-      .filter(v => v)
-      .join(" ");
-    globalThis.document.body.className = bodyClassName;
   }
 
   render() {
@@ -121,6 +100,7 @@ export class BaseContent extends React.PureComponent {
     this.toggleDownloadHighlight = this.toggleDownloadHighlight.bind(this);
     this.handleDismissDownloadHighlight =
       this.handleDismissDownloadHighlight.bind(this);
+    this.applyBodyClasses = this.applyBodyClasses.bind(this);
     this.state = {
       fixedSearch: false,
       firstVisibleTimestamp: null,
@@ -140,6 +120,7 @@ export class BaseContent extends React.PureComponent {
   }
 
   componentDidMount() {
+    this.applyBodyClasses();
     global.addEventListener("scroll", this.onWindowScroll);
     global.addEventListener("keydown", this.handleOnKeyDown);
     const prefs = this.props.Prefs.values;
@@ -180,7 +161,18 @@ export class BaseContent extends React.PureComponent {
   }
 
   componentDidUpdate(prevProps) {
+    this.applyBodyClasses();
     const prefs = this.props.Prefs.values;
+
+    // Check if weather widget was re-enabled from customization menu
+    const wasWeatherDisabled = !prevProps.Prefs.values.showWeather;
+    const isWeatherEnabled = this.props.Prefs.values.showWeather;
+
+    if (wasWeatherDisabled && isWeatherEnabled) {
+      // If weather widget was enabled from customization menu, display opt-in dialog
+      this.props.dispatch(ac.SetPref("weather.optInDisplayed", true));
+    }
+
     const wallpapersEnabled = prefs["newtabWallpapers.enabled"];
     if (wallpapersEnabled) {
       // destructure current and previous props with fallbacks
@@ -199,6 +191,10 @@ export class BaseContent extends React.PureComponent {
 
       const selectedWallpaper = prefs["newtabWallpapers.wallpaper"];
       const prevSelectedWallpaper = prevPrefs["newtabWallpapers.wallpaper"];
+      const uploadedWallpaperTheme =
+        prefs["newtabWallpapers.customWallpaper.theme"];
+      const prevUploadedWallpaperTheme =
+        prevPrefs["newtabWallpapers.customWallpaper.theme"];
 
       // don't update wallpaper unless the wallpaper is being changed.
       if (
@@ -206,7 +202,8 @@ export class BaseContent extends React.PureComponent {
         uploadedWallpaper !== prevUploadedWallpaper || // uploading a new wallpaper
         wallpaperList !== prevWallpaperList || // remote settings wallpaper list updates
         this.props.App.isForStartupCache.Wallpaper !==
-          prevProps.App.isForStartupCache.Wallpaper // Startup cached page wallpaper is updating
+          prevProps.App.isForStartupCache.Wallpaper || // Startup cached page wallpaper is updating
+        uploadedWallpaperTheme !== prevUploadedWallpaperTheme
       ) {
         this.updateWallpaper();
       }
@@ -215,7 +212,10 @@ export class BaseContent extends React.PureComponent {
 
   handleColorModeChange() {
     const colorMode = this.prefersDarkQuery?.matches ? "dark" : "light";
-    this.setState({ colorMode });
+    if (colorMode !== this.state.colorMode) {
+      this.setState({ colorMode });
+      this.updateWallpaper();
+    }
   }
 
   componentWillUnmount() {
@@ -331,6 +331,17 @@ export class BaseContent extends React.PureComponent {
     this.props.dispatch(ac.SetPref(pref, value));
   }
 
+  applyBodyClasses() {
+    const { body } = this.props.document;
+    if (!body) {
+      return;
+    }
+
+    if (!body.classList.contains("activity-stream")) {
+      body.classList.add("activity-stream");
+    }
+  }
+
   renderWallpaperAttribution() {
     const { wallpaperList } = this.props.Wallpapers;
     const activeWallpaper =
@@ -370,92 +381,67 @@ export class BaseContent extends React.PureComponent {
   async updateWallpaper() {
     const prefs = this.props.Prefs.values;
     const selectedWallpaper = prefs["newtabWallpapers.wallpaper"];
-    const { wallpaperList, uploadedWallpaper } = this.props.Wallpapers;
-    let lightWallpaper = {};
-    let darkWallpaper = {};
+    const { wallpaperList, uploadedWallpaper: uploadedWallpaperUrl } =
+      this.props.Wallpapers;
+    const uploadedWallpaperTheme =
+      prefs["newtabWallpapers.customWallpaper.theme"];
+    // Uuse this.prefersDarkQuery since this.state.colorMode can be undefined when this is called
+    const colorMode = this.prefersDarkQuery?.matches ? "dark" : "light";
+    let url = "";
+    let color = "transparent";
+    let newTheme = colorMode;
 
-    if (selectedWallpaper === "custom" && uploadedWallpaper) {
-      // revoke ObjectURL to prevent memory leaks
-      if (this.uploadedWallpaperUrl) {
-        URL.revokeObjectURL(this.uploadedWallpaperUrl);
-      }
-
-      try {
-        const uploadedWallpaperUrl = URL.createObjectURL(uploadedWallpaper);
-
-        global.document?.body.style.setProperty(
-          "--newtab-wallpaper",
-          `url(${uploadedWallpaperUrl})`
-        );
-
-        global.document?.body.style.setProperty(
-          "--newtab-wallpaper-color",
-          "transparent"
-        );
-
-        // Based on the current colorMode, add the corresponding dark/light CSS classes
-        if (this.state.colorMode) {
-          this.setState(prevState => ({
-            wallpaperTheme: prevState.colorMode,
-          }));
-        }
-      } catch (e) {}
-
+    // if no selected wallpaper fallback to browser/theme styles
+    if (!selectedWallpaper) {
+      global.document?.body.style.removeProperty("--newtab-wallpaper");
+      global.document?.body.style.removeProperty("--newtab-wallpaper-color");
+      global.document?.body.classList.remove("lightWallpaper", "darkWallpaper");
       return;
     }
 
-    if (wallpaperList) {
-      let wallpaper = wallpaperList.find(wp => wp.title === selectedWallpaper);
-      if (selectedWallpaper && wallpaper) {
-        // if selectedWallpaper exists - we override what light and dark prefs are to match that
-        lightWallpaper = wallpaper;
-        darkWallpaper = wallpaper;
-      }
-
-      // solid-color-picker-#00d100
-      const regexRGB = /#([a-fA-F0-9]{6})/;
-
-      // Override Remote Settings to set custom HEX bg color
+    // uploaded wallpaper
+    if (selectedWallpaper === "custom" && uploadedWallpaperUrl) {
+      url = uploadedWallpaperUrl;
+      color = "transparent";
+      newTheme = uploadedWallpaperTheme || colorMode;
+    } else if (wallpaperList) {
+      const wallpaper = wallpaperList.find(
+        wp => wp.title === selectedWallpaper
+      );
+      // solid color picker
       if (selectedWallpaper.includes("solid-color-picker")) {
-        wallpaper = {
-          theme: wallpaper?.theme || "light",
-          title: "solid-color-picker",
-          category: "solid-colors",
-          solid_color: selectedWallpaper.match(regexRGB)?.[0],
-        };
-      }
-
-      const wallpaperColor = wallpaper?.solid_color || "";
-
-      global.document?.body.style.setProperty(
-        "--newtab-wallpaper",
-        `url(${wallpaper?.wallpaperUrl || ""})`
-      );
-
-      global.document?.body.style.setProperty(
-        "--newtab-wallpaper-color",
-        wallpaperColor || "transparent"
-      );
-
-      let wallpaperTheme = "";
-
-      // If we have a solid colour set, let's see how dark it is.
-      if (wallpaperColor) {
-        const rgbColors = this.getRGBColors(wallpaperColor);
-        const isColorDark = this.isWallpaperColorDark(rgbColors);
-        wallpaperTheme = isColorDark ? "dark" : "light";
-      } else {
-        // Grab the contrast of the currently displayed wallpaper.
-        const { theme } =
-          this.state.colorMode === "light" ? lightWallpaper : darkWallpaper;
-
-        if (theme) {
-          wallpaperTheme = theme;
+        const regexRGB = /#([a-fA-F0-9]{6})/;
+        const hex = selectedWallpaper.match(regexRGB)?.[0];
+        url = "";
+        color = hex;
+        const rgbColors = this.getRGBColors(hex);
+        newTheme = this.isWallpaperColorDark(rgbColors) ? "dark" : "light";
+        // standard wallpaper & solid colors
+      } else if (selectedWallpaper) {
+        url = wallpaper?.wallpaperUrl || "";
+        color = wallpaper?.solid_color || "transparent";
+        newTheme = wallpaper?.theme || colorMode;
+        // if a solid color, determine if dark or light
+        if (wallpaper?.solid_color) {
+          const rgbColors = this.getRGBColors(wallpaper.solid_color);
+          const isColorDark = this.isWallpaperColorDark(rgbColors);
+          newTheme = isColorDark ? "dark" : "light";
         }
       }
-
-      this.setState({ wallpaperTheme });
     }
+    global.document?.body.style.setProperty(
+      "--newtab-wallpaper",
+      `url(${url})`
+    );
+    global.document?.body.style.setProperty(
+      "--newtab-wallpaper-color",
+      color || "transparent"
+    );
+
+    global.document?.body.classList.remove("lightWallpaper", "darkWallpaper");
+    global.document?.body.classList.add(
+      newTheme === "dark" ? "darkWallpaper" : "lightWallpaper"
+    );
   }
 
   shouldShowOMCHighlight(componentId) {
@@ -558,29 +544,18 @@ export class BaseContent extends React.PureComponent {
     const { initialized, customizeMenuVisible } = App;
     const prefs = props.Prefs.values;
 
-    const shortcutsRefresh = prefs["newtabShortcuts.refresh"];
-
     const activeWallpaper = prefs[`newtabWallpapers.wallpaper`];
     const wallpapersEnabled = prefs["newtabWallpapers.enabled"];
     const weatherEnabled = prefs.showWeather;
     const { showTopicSelection } = DiscoveryStream;
     const mayShowTopicSelection =
       showTopicSelection && prefs["discoverystream.topicSelection.enabled"];
-    const { pocketConfig } = prefs;
 
     const isDiscoveryStream =
       props.DiscoveryStream.config && props.DiscoveryStream.config.enabled;
     let filteredSections = props.Sections.filter(
       section => section.id !== "topstories"
     );
-
-    let spocMessageVariant = "";
-    if (
-      props.App.locale?.startsWith("en-") &&
-      pocketConfig?.spocMessageVariant === "variant-c"
-    ) {
-      spocMessageVariant = pocketConfig.spocMessageVariant;
-    }
 
     const pocketEnabled =
       prefs["feeds.section.topstories"] && prefs["feeds.system.topstories"];
@@ -594,19 +569,51 @@ export class BaseContent extends React.PureComponent {
       pocketEnabled: prefs["feeds.section.topstories"],
       showInferredPersonalizationEnabled:
         prefs[PREF_INFERRED_PERSONALIZATION_USER],
-      showRecentSavesEnabled: prefs.showRecentSaves,
       topSitesRowsCount: prefs.topSitesRows,
       weatherEnabled: prefs.showWeather,
       trendingSearchEnabled: prefs["trendingSearch.enabled"],
     };
 
     const pocketRegion = prefs["feeds.system.topstories"];
-    const mayHaveSponsoredStories = prefs["system.showSponsored"];
     const mayHaveInferredPersonalization =
       prefs[PREF_INFERRED_PERSONALIZATION_SYSTEM];
     const mayHaveWeather = prefs["system.showWeather"];
-    const { mayHaveSponsoredTopSites } = prefs;
     const supportUrl = prefs["support.url"];
+
+    // Weather can be enabled and not rendered in the top right corner
+    const shouldDisplayWeather =
+      prefs.showWeather && this.props.weatherPlacement === "header";
+
+    // Widgets experiment pref check
+    const nimbusWidgetsEnabled = prefs.widgetsConfig?.enabled;
+    const nimbusListsEnabled = prefs.widgetsConfig?.listsEnabled;
+    const nimbusTimerEnabled = prefs.widgetsConfig?.timerEnabled;
+    const nimbusWidgetsTrainhopEnabled = prefs.trainhopConfig?.widgets?.enabled;
+    const nimbusListsTrainhopEnabled =
+      prefs.trainhopConfig?.widgets?.listsEnabled;
+    const nimbusTimerTrainhopEnabled =
+      prefs.trainhopConfig?.widgets?.timerEnabled;
+
+    const mayHaveWidgets =
+      prefs["widgets.system.enabled"] ||
+      nimbusWidgetsEnabled ||
+      nimbusWidgetsTrainhopEnabled;
+    const mayHaveListsWidget =
+      prefs["widgets.system.lists.enabled"] ||
+      nimbusListsEnabled ||
+      nimbusListsTrainhopEnabled;
+    const mayHaveTimerWidget =
+      prefs["widgets.system.focusTimer.enabled"] ||
+      nimbusTimerEnabled ||
+      nimbusTimerTrainhopEnabled;
+
+    // These prefs set the initial values on the Customize panel toggle switches
+    const enabledWidgets = {
+      listsEnabled: prefs["widgets.lists.enabled"],
+      timerEnabled: prefs["widgets.focusTimer.enabled"],
+      trendingSearchEnabled: prefs["trendingSearch.enabled"],
+      weatherEnabled: prefs.showWeather,
+    };
 
     // Trending Searches experiment pref check
     const mayHaveTrendingSearch =
@@ -628,6 +635,7 @@ export class BaseContent extends React.PureComponent {
     const mobileDownloadPromoWrapperHeightModifier =
       prefs["weather.display"] === "detailed" &&
       weatherEnabled &&
+      shouldDisplayWeather &&
       mayHaveWeather
         ? "is-tall"
         : "";
@@ -654,11 +662,10 @@ export class BaseContent extends React.PureComponent {
       mobileDownloadPromoEnabled &&
         mobileDownloadPromoVariantABorC &&
         "has-mobile-download-promo", // Mobile download promo modal is enabled/visible
-      weatherEnabled && mayHaveWeather && "has-weather", // Weather widget is enabled/visible
+      weatherEnabled && mayHaveWeather && shouldDisplayWeather && "has-weather", // Weather widget is enabled/visible
       prefs.showSearch ? "has-search" : "no-search",
       // layoutsVariantAEnabled ? "layout-variant-a" : "", // Layout experiment variant A
       // layoutsVariantBEnabled ? "layout-variant-b" : "", // Layout experiment variant B
-      shortcutsRefresh ? "shortcuts-refresh" : "", // Shortcuts refresh experiment
       pocketEnabled ? "has-recommended-stories" : "no-recommended-stories",
       sectionsEnabled ? "has-sections-grid" : "",
     ]
@@ -684,18 +691,6 @@ export class BaseContent extends React.PureComponent {
     ]
       .filter(v => v)
       .join(" ");
-    if (wallpapersEnabled) {
-      // Add helper class to body if user has a wallpaper selected
-      if (this.state.wallpaperTheme === "light") {
-        global.document?.body.classList.add("lightWallpaper");
-        global.document?.body.classList.remove("darkWallpaper");
-      }
-
-      if (this.state.wallpaperTheme === "dark") {
-        global.document?.body.classList.add("darkWallpaper");
-        global.document?.body.classList.remove("lightWallpaper");
-      }
-    }
 
     // If state.showDownloadHighlightOverride has value, let it override the logic
     // Otherwise, defer to OMC message display logic
@@ -713,16 +708,17 @@ export class BaseContent extends React.PureComponent {
             openPreferences={this.openPreferences}
             setPref={this.setPref}
             enabledSections={enabledSections}
+            enabledWidgets={enabledWidgets}
             wallpapersEnabled={wallpapersEnabled}
             activeWallpaper={activeWallpaper}
             pocketRegion={pocketRegion}
             mayHaveTopicSections={mayHavePersonalizedTopicSections}
-            mayHaveSponsoredTopSites={mayHaveSponsoredTopSites}
-            mayHaveSponsoredStories={mayHaveSponsoredStories}
             mayHaveInferredPersonalization={mayHaveInferredPersonalization}
             mayHaveWeather={mayHaveWeather}
             mayHaveTrendingSearch={mayHaveTrendingSearch}
-            spocMessageVariant={spocMessageVariant}
+            mayHaveWidgets={mayHaveWidgets}
+            mayHaveTimerWidget={mayHaveTimerWidget}
+            mayHaveListsWidget={mayHaveListsWidget}
             showing={customizeMenuVisible}
           />
           {this.shouldShowOMCHighlight("CustomWallpaperHighlight") && (
@@ -735,7 +731,7 @@ export class BaseContent extends React.PureComponent {
           )}
         </menu>
         <div className="weatherWrapper">
-          {weatherEnabled && (
+          {shouldDisplayWeather && (
             <ErrorBoundary>
               <Weather />
             </ErrorBoundary>
@@ -789,7 +785,6 @@ export class BaseContent extends React.PureComponent {
                 <ErrorBoundary className="borderless-error">
                   <DiscoveryStreamBase
                     locale={props.App.locale}
-                    mayHaveSponsoredStories={mayHaveSponsoredStories}
                     firstVisibleTimestamp={this.state.firstVisibleTimestamp}
                   />
                 </ErrorBoundary>
@@ -831,4 +826,5 @@ export const Base = connect(state => ({
   Search: state.Search,
   Wallpapers: state.Wallpapers,
   Weather: state.Weather,
+  weatherPlacement: selectWeatherPlacement(state),
 }))(_Base);

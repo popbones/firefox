@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <new>
 #include <utility>
+
 #include "ErrorList.h"
 #include "MainThreadUtils.h"
 #include "Units.h"
@@ -23,11 +24,9 @@
 #include "mozilla/Attributes.h"
 #include "mozilla/BasicEvents.h"
 #include "mozilla/BitSet.h"
-#include "mozilla/RenderingPhase.h"
-#include "mozilla/OriginTrials.h"
-#include "mozilla/ContentBlockingNotifier.h"
 #include "mozilla/CORSMode.h"
 #include "mozilla/CallState.h"
+#include "mozilla/ContentBlockingNotifier.h"
 #include "mozilla/FlushType.h"
 #include "mozilla/FunctionRef.h"
 #include "mozilla/HashTable.h"
@@ -35,9 +34,12 @@
 #include "mozilla/Maybe.h"
 #include "mozilla/MozPromise.h"
 #include "mozilla/NotNull.h"
+#include "mozilla/OriginTrials.h"
+#include "mozilla/PageloadEvent.h"
 #include "mozilla/PointerLockManager.h"
 #include "mozilla/PreloadService.h"
 #include "mozilla/RefPtr.h"
+#include "mozilla/RenderingPhase.h"
 #include "mozilla/Result.h"
 #include "mozilla/SegmentedVector.h"
 #include "mozilla/ServoStyleSet.h"
@@ -51,12 +53,12 @@
 #include "mozilla/dom/DocumentOrShadowRoot.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/EventTarget.h"
+#include "mozilla/dom/LargestContentfulPaint.h"
 #include "mozilla/dom/Nullable.h"
 #include "mozilla/dom/RadioGroupContainer.h"
 #include "mozilla/dom/TreeOrderedArray.h"
-#include "mozilla/dom/ViewportMetaData.h"
-#include "mozilla/dom/LargestContentfulPaint.h"
 #include "mozilla/dom/UserActivation.h"
+#include "mozilla/dom/ViewportMetaData.h"
 #include "mozilla/dom/WakeLockBinding.h"
 #include "nsAtom.h"
 #include "nsCOMArray.h"
@@ -65,7 +67,6 @@
 #include "nsCompatibility.h"
 #include "nsContentListDeclarations.h"
 #include "nsCycleCollectionParticipant.h"
-#include "nsTHashMap.h"
 #include "nsDebug.h"
 #include "nsGkAtoms.h"
 #include "nsHashKeys.h"
@@ -98,6 +99,7 @@
 #include "nsRefPtrHashtable.h"
 #include "nsString.h"
 #include "nsTArray.h"
+#include "nsTHashMap.h"
 #include "nsTHashSet.h"
 #include "nsTLiteralString.h"
 #include "nsTObserverArray.h"
@@ -132,6 +134,7 @@ class InfallibleAllocPolicy;
 class JSObject;
 class JSTracer;
 class PLDHashTable;
+class PolicyContainer;
 class gfxUserFontSet;
 class mozIDOMWindowProxy;
 class nsCachableElementsByNameNodeList;
@@ -167,7 +170,7 @@ class nsIInputStream;
 class nsILayoutHistoryState;
 class nsIObjectLoadingContent;
 class nsIPermissionDelegateHandler;
-class nsIRadioVisitor;
+class nsIPolicyContainer;
 class nsIRequest;
 class nsIRunnable;
 class nsIScriptGlobalObject;
@@ -226,6 +229,7 @@ class Rule;
 namespace dom {
 class AnonymousContent;
 class Attr;
+class AutoSuppressNotifyingDevToolsOfNodeRemovals;
 class XULBroadcastManager;
 class XULPersist;
 class BrowserBridgeChild;
@@ -330,9 +334,6 @@ enum BFCacheStatus {
 };
 
 }  // namespace dom
-namespace glean::perf {
-struct PageLoadExtra;
-}
 }  // namespace mozilla
 
 namespace mozilla::net {
@@ -343,6 +344,8 @@ class EarlyHintConnectArgs;
 // Must be kept in sync with xpcom/rust/xpcom/src/interfaces/nonidl.rs
 #define NS_IDOCUMENT_IID \
   {0xce1f7627, 0x7109, 0x4977, {0xba, 0x77, 0x49, 0x0f, 0xfd, 0xe0, 0x7a, 0xaa}}
+
+using mozilla::performance::pageload_event::PageloadEventData;
 
 namespace mozilla::dom {
 
@@ -704,10 +707,16 @@ class Document : public nsINode,
   virtual bool SuppressParserErrorConsoleMessages() { return false; }
 
   // nsINode
-  void InsertChildBefore(nsIContent* aKid, nsIContent* aBeforeThis,
-                         bool aNotify, ErrorResult& aRv) override;
+  void InsertChildBefore(
+      nsIContent* aKid, nsIContent* aBeforeThis, bool aNotify, ErrorResult& aRv,
+      nsINode* aOldParent = nullptr,
+      MutationEffectOnScript aMutationEffectOnScript =
+          MutationEffectOnScript::DropTrustWorthiness) override;
   void RemoveChildNode(nsIContent* aKid, bool aNotify,
-                       const BatchRemovalState* = nullptr) final;
+                       const BatchRemovalState* = nullptr,
+                       nsINode* aNewParent = nullptr,
+                       MutationEffectOnScript aMutationEffectOnScript =
+                           MutationEffectOnScript::DropTrustWorthiness) final;
   nsresult Clone(dom::NodeInfo* aNodeInfo, nsINode** aResult) const override {
     return NS_ERROR_NOT_IMPLEMENTED;
   }
@@ -778,9 +787,6 @@ class Document : public nsINode,
    * available yet, hence we sync CSP of document and Client when the
    * Client becomes available within nsGlobalWindowInner::EnsureClientSource().
    */
-  nsIContentSecurityPolicy* GetCsp() const;
-  void SetCsp(nsIContentSecurityPolicy* aCSP);
-
   nsIContentSecurityPolicy* GetPreloadCsp() const;
   void SetPreloadCsp(nsIContentSecurityPolicy* aPreloadCSP);
 
@@ -791,7 +797,8 @@ class Document : public nsINode,
    */
   void ApplySettingsFromCSP(bool aSpeculative);
 
-  IntegrityPolicy* GetIntegrityPolicy() const { return mIntegrityPolicy; }
+  nsIPolicyContainer* GetPolicyContainer() const;
+  void SetPolicyContainer(nsIPolicyContainer* aPolicyContainer);
 
   already_AddRefed<nsIParser> CreatorParserOrNull() {
     nsCOMPtr<nsIParser> parser = mParser;
@@ -1529,6 +1536,7 @@ class Document : public nsINode,
  protected:
   friend class nsUnblockOnloadEvent;
 
+  nsresult InitPolicyContainer(nsIChannel* aChannel);
   nsresult InitCSP(nsIChannel* aChannel);
   nsresult InitIntegrityPolicy(nsIChannel* aChannel);
   nsresult InitCOEP(nsIChannel* aChannel);
@@ -2523,19 +2531,6 @@ class Document : public nsINode,
   bool HaveFiredDOMTitleChange() const { return mHaveFiredTitleChange; }
 
   /**
-   * To batch DOMSubtreeModified, document needs to be informed when
-   * a mutation event might be dispatched, even if the event isn't actually
-   * created because there are no listeners for it.
-   *
-   * @param aTarget is the target for the mutation event.
-   */
-  void MayDispatchMutationEvent(nsINode* aTarget) {
-    if (mSubtreeModifiedDepth > 0) {
-      mSubtreeModifiedTargets.AppendObject(aTarget);
-    }
-  }
-
-  /**
    * Marks as not-going-to-be-collected for the given generation of
    * cycle collection.
    */
@@ -3134,28 +3129,19 @@ class Document : public nsINode,
   void CancelVideoFrameCallbacks(HTMLVideoElement* aElement);
 
   /**
-   * Returns true if the handle refers to a callback that was canceled that
-   * we did not find in our list of callbacks (e.g. because it is one of those
-   * in the set of callbacks currently queued to be run).
-   */
-  bool IsCanceledFrameRequestCallback(uint32_t aHandle) const;
-
-  /**
    * Put this document's video frame request callbacks into the provided
    * list, and forget about them.
    */
   void TakeVideoFrameRequestCallbacks(
       nsTArray<RefPtr<HTMLVideoElement>>& aVideoCallbacks);
 
-  /**
-   * Put this document's frame request callbacks into the provided
-   * list, and forget about them.
-   */
-  void TakeFrameRequestCallbacks(nsTArray<FrameRequest>& aCallbacks);
-
   /** Whether we have any scheduled frame request */
   bool HasFrameRequestCallbacks() const {
     return !mFrameRequestManager.IsEmpty();
+  }
+
+  dom::FrameRequestManager& FrameRequestManager() {
+    return mFrameRequestManager;
   }
 
   /**
@@ -3243,8 +3229,9 @@ class Document : public nsINode,
 
   void SetNavigationTiming(nsDOMNavigationTiming* aTiming);
 
-  inline void SetPageloadEventFeature(uint32_t aFeature) {
-    mPageloadEventFeatures |= aFeature;
+  inline void SetPageloadEventFeature(
+      performance::pageload_event::DocumentFeature aFeature) {
+    mPageloadEventData.SetDocumentFeature(aFeature);
   }
 
   nsContentList* ImageMapList();
@@ -3717,10 +3704,11 @@ class Document : public nsINode,
   // effect once per document, and so is called during document destruction.
   void ReportDocumentUseCounters();
 
-  // Report the names of the HTMLDocument properties thad had been shadowed
-  // using id/name and were then accessed ("DOM clobbering"). This data is
-  // collected by nsHTMLDocument::NamedGetter and limited to 10 unique entries.
-  void ReportShadowedHTMLDocumentProperties();
+  // Report the names of the HTMLDocument/HTMLFormElement properties that had
+  // been shadowed using ID/name, and which were subsequently accessed
+  // ("DOM clobbering"). This data is collected by the corresponding NamedGetter
+  // methods and limited to 10 unique entries.
+  void ReportShadowedProperties();
 
   // Reports largest contentful paint via telemetry. We want the most up to
   // date value for LCP and so this is called during document destruction.
@@ -3735,7 +3723,12 @@ class Document : public nsINode,
   // call it just before the document loses its window.
   void SendPageUseCounters();
 
+  void RecordASMJSExecutionTime();
+
   void SetUseCounter(UseCounter aUseCounter) {
+    if (aUseCounter == eUseCounter_custom_JS_use_asm) {
+      RecordASMJSExecutionTime();
+    }
     mUseCounters[aUseCounter] = true;
   }
 
@@ -3755,10 +3748,17 @@ class Document : public nsINode,
   // can.
   void PropagateImageUseCounters(Document* aReferencingDocument);
 
+  void CollectShadowedHTMLFormElementProperty(const nsAString& aName);
+
   // Called to track whether this document has had any interaction.
   // This is used to track whether we should permit "beforeunload".
+  // Note: These APIs are deprecated (bug 1766214), and should not be used in
+  // new code. Please use HasBeenUserGestureActivated() or
+  // HasValidTransientUserGestureActivation() APIs which align with the spec
+  // (https://html.spec.whatwg.org/multipage/interaction.html#tracking-user-activation)
+  // more and also support fission nicer.
   void SetUserHasInteracted();
-  bool UserHasInteracted() { return mUserHasInteracted; }
+  bool UserHasInteracted() const { return mUserHasInteracted; }
   void ResetUserInteractionTimer();
 
   // Whether we're cloning the contents of an SVG use element.
@@ -3767,9 +3767,14 @@ class Document : public nsINode,
   // If this is true, we're ignoring scrolling to a fragment.
   bool ForceLoadAtTop() const { return mForceLoadAtTop; }
 
-  // https://html.spec.whatwg.org/#concept-document-fire-mutation-events-flag
-  bool FireMutationEvents() const { return mFireMutationEvents; }
-  void SetFireMutationEvents(bool aFire) { mFireMutationEvents = aFire; }
+  /**
+   * Return false if it's allowed to notify DevTools of node removals in this
+   * document.
+   */
+  [[nodiscard]] bool SuppressedNotifyingDevToolsOfNodeRemovals() const {
+    return mSuppressNotifyingDevToolsOfNodeRemovals;
+  }
+  friend class AutoSuppressNotifyingDevToolsOfNodeRemovals;
 
   // https://w3c.github.io/trusted-types/dist/spec/#require-trusted-types-for-csp-directive
   bool HasPolicyWithRequireTrustedTypesForDirective() const {
@@ -3783,10 +3788,6 @@ class Document : public nsINode,
   bool IsClipboardCopyTriggered() const { return mClipboardCopyTriggered; }
   void ClearClipboardCopyTriggered() { mClipboardCopyTriggered = false; }
   void SetClipboardCopyTriggered() { mClipboardCopyTriggered = true; }
-
-  // Even if mutation events are disabled by default,
-  // dom.mutation_events.forceEnable can be used to enable them per site.
-  bool MutationEventsEnabled();
 
   // This should be called when this document receives events which are likely
   // to be user interaction with the document, rather than the byproduct of
@@ -4630,16 +4631,6 @@ class Document : public nsINode,
   // Never ever call this. Only call AllowXULXBL!
   bool InternalAllowXULXBL();
 
-  /**
-   * These methods should be called before and after dispatching
-   * a mutation event.
-   * To make this easy and painless, use the mozAutoSubtreeModified helper
-   * class.
-   */
-  void WillDispatchMutationEvent(nsINode* aTarget);
-  void MutationEventDispatched(nsINode* aTarget);
-  friend class mozAutoSubtreeModified;
-
   virtual Element* GetNameSpaceElement() override { return GetRootElement(); }
 
   nsCString GetContentTypeInternal() const { return mContentType; }
@@ -5094,7 +5085,7 @@ class Document : public nsINode,
 
   bool mForceLoadAtTop : 1;
 
-  bool mFireMutationEvents : 1;
+  bool mSuppressNotifyingDevToolsOfNodeRemovals : 1;
 
   // Whether the document's CSP contains a require-trusted-types-for directive.
   bool mHasPolicyWithRequireTrustedTypesForDirective : 1;
@@ -5102,8 +5093,6 @@ class Document : public nsINode,
   // Whether a copy event happened. Used to detect when this happens
   // while a paste event is being handled in JS.
   bool mClipboardCopyTriggered : 1;
-
-  Maybe<bool> mMutationEventsEnabled;
 
   // The fingerprinting protections overrides for this document. The value will
   // override the default enabled fingerprinting protections for this document.
@@ -5189,12 +5178,8 @@ class Document : public nsINode,
   // The channel that got passed to Document::StartDocumentLoad(), if any.
   nsCOMPtr<nsIChannel> mChannel;
 
-  // The CSP for every load lives in the Client within the LoadInfo. For all
-  // document-initiated subresource loads we can use that cached version of the
-  // CSP so we do not have to deserialize the CSP from the Client all the time.
-  nsCOMPtr<nsIContentSecurityPolicy> mCSP;
   nsCOMPtr<nsIContentSecurityPolicy> mPreloadCSP;
-  RefPtr<IntegrityPolicy> mIntegrityPolicy;
+  RefPtr<PolicyContainer> mPolicyContainer;
 
  private:
   nsCString mContentType;
@@ -5207,6 +5192,9 @@ class Document : public nsINode,
   // This only applies to error pages. Might be null.
   nsCOMPtr<nsIChannel> mFailedChannel;
 
+  // Timer for delayed ASMJS execution time recording
+  nsCOMPtr<nsITimer> mASMJSExecutionTimer;
+
   // if this document is part of a multipart document,
   // the ID can be used to distinguish it from the other parts.
   uint32_t mPartID;
@@ -5216,9 +5204,6 @@ class Document : public nsINode,
   uint32_t mMarkedCCGeneration;
 
   PresShell* mPresShell;
-
-  nsCOMArray<nsINode> mSubtreeModifiedTargets;
-  uint32_t mSubtreeModifiedDepth;
 
   // All images in process of being preloaded.  This is a hashtable so
   // we can remove them as the real image loads start; that way we
@@ -5280,7 +5265,7 @@ class Document : public nsINode,
 
   nsCOMPtr<nsIDocumentEncoder> mCachedEncoder;
 
-  FrameRequestManager mFrameRequestManager;
+  dom::FrameRequestManager mFrameRequestManager;
 
   // This object allows us to evict ourself from the back/forward cache.  The
   // pointer is non-null iff we're currently in the bfcache.
@@ -5610,21 +5595,21 @@ class Document : public nsINode,
   // collected shadowed HTMLDocument properties. (Limited to 10 entries)
   nsTArray<nsString> mShadowedHTMLDocumentProperties;
 
-  // Bitfield to be collected in the pageload event, recording relevant features
-  // used in the document
-  uint32_t mPageloadEventFeatures = 0;
+  // Used by the shadowed_html_form_element_property_access telemetry probe to
+  // collected shadowed HTMLFormElement properties. (Limited to 10 entries)
+  nsTArray<nsString> mShadowedHTMLFormElementProperties;
+
+  // Collection of data used by the pageload event.
+  PageloadEventData mPageloadEventData;
 
   // Record page load telemetry
-  void RecordPageLoadEventTelemetry(
-      glean::perf::PageLoadExtra& aEventTelemetryData);
+  void RecordPageLoadEventTelemetry();
 
   // Accumulate JS telemetry collected
-  void AccumulateJSTelemetry(
-      glean::perf::PageLoadExtra& aEventTelemetryDataOut);
+  void AccumulateJSTelemetry();
 
   // Accumulate page load metrics
-  void AccumulatePageLoadTelemetry(
-      glean::perf::PageLoadExtra& aEventTelemetryDataOut);
+  void AccumulatePageLoadTelemetry();
 
   // The OOP counterpart to nsDocLoader::mChildrenInOnload.
   // Not holding strong refs here since we don't actually use the BBCs.
@@ -5663,42 +5648,6 @@ class Document : public nsINode,
                                               const nsAString& aHTML,
                                               const SetHTMLOptions& aOptions,
                                               ErrorResult& aError);
-};
-
-/**
- * mozAutoSubtreeModified batches DOM mutations so that a DOMSubtreeModified
- * event is dispatched, if necessary, when the outermost mozAutoSubtreeModified
- * object is deleted.
- */
-class MOZ_STACK_CLASS mozAutoSubtreeModified {
- public:
-  /**
-   * @param aSubTreeOwner The document in which a subtree will be modified.
-   * @param aTarget       The target of the possible DOMSubtreeModified event.
-   *                      Can be nullptr, in which case mozAutoSubtreeModified
-   *                      is just used to batch DOM mutations.
-   */
-  mozAutoSubtreeModified(Document* aSubtreeOwner, nsINode* aTarget) {
-    UpdateTarget(aSubtreeOwner, aTarget);
-  }
-
-  ~mozAutoSubtreeModified() { UpdateTarget(nullptr, nullptr); }
-
-  void UpdateTarget(Document* aSubtreeOwner, nsINode* aTarget) {
-    if (mSubtreeOwner) {
-      mSubtreeOwner->MutationEventDispatched(mTarget);
-    }
-
-    mTarget = aTarget;
-    mSubtreeOwner = aSubtreeOwner;
-    if (mSubtreeOwner) {
-      mSubtreeOwner->WillDispatchMutationEvent(mTarget);
-    }
-  }
-
- private:
-  nsCOMPtr<nsINode> mTarget;
-  RefPtr<Document> mSubtreeOwner;
 };
 
 enum class SyncOperationBehavior { eSuspendInput, eAllowInput };
@@ -5763,6 +5712,31 @@ class MOZ_RAII IgnoreOpensDuringUnload final {
 
  private:
   Document* mDoc;
+};
+
+/**
+ * Suppress notifying DevTools of node removals in the given document even if
+ * DevTools wants to know that.  This guarantees the lifetime of the given
+ * document while the instance is alive.
+ */
+class MOZ_RAII AutoSuppressNotifyingDevToolsOfNodeRemovals final {
+ public:
+  explicit AutoSuppressNotifyingDevToolsOfNodeRemovals(Document& aDoc)
+      : mDoc(aDoc),
+        mDidSuppress(
+            static_cast<bool>(aDoc.mSuppressNotifyingDevToolsOfNodeRemovals)) {
+    mDoc->mSuppressNotifyingDevToolsOfNodeRemovals = true;
+  }
+  ~AutoSuppressNotifyingDevToolsOfNodeRemovals() {
+    MOZ_ASSERT(mDoc->mSuppressNotifyingDevToolsOfNodeRemovals);
+    mDoc->mSuppressNotifyingDevToolsOfNodeRemovals = mDidSuppress;
+  }
+
+  Document& Doc() const { return mDoc; }
+
+ private:
+  const OwningNonNull<Document> mDoc;
+  bool mDidSuppress;
 };
 
 bool IsInFocusedTab(Document* aDoc);

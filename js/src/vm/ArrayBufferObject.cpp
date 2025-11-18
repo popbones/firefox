@@ -370,7 +370,7 @@ static const ClassSpec ArrayBufferObjectClassSpec = {
     arraybuffer_properties,
     arraybuffer_proto_functions,
     arraybuffer_proto_properties,
-    GenericFinishInit<WhichHasFuseProperty::ProtoAndCtor>,
+    GenericFinishInit<WhichHasRealmFuseProperty::ProtoAndCtor>,
 };
 
 static const ClassExtension FixedLengthArrayBufferObjectClassExtension = {
@@ -545,6 +545,19 @@ bool ArrayBufferObject::maxByteLengthGetterImpl(JSContext* cx,
   MOZ_ASSERT(IsArrayBuffer(args.thisv()));
 
   auto* buffer = &args.thisv().toObject().as<ArrayBufferObject>();
+
+  // Special case for wasm with potentially 64-bits memory.
+  // Manually compute the maxByteLength to avoid an overflow on 32-bit machines.
+  if (buffer->isWasm() && buffer->isResizable()) {
+    Pages sourceMaxPages = buffer->wasmSourceMaxPages().value();
+    uint64_t sourceMaxBytes = sourceMaxPages.byteLength64();
+
+    MOZ_ASSERT(sourceMaxBytes <=
+               wasm::PageSize * wasm::MaxMemory64PagesValidation);
+    args.rval().setNumber(double(sourceMaxBytes));
+
+    return true;
+  }
 
   // Steps 4-6.
   size_t maxByteLength = buffer->maxByteLength();
@@ -2306,6 +2319,50 @@ ArrayBufferObject* ArrayBufferObject::createForContents(
       contents.kind() == MALLOCED_UNKNOWN_ARENA) {
     AddCellMemory(buffer, nAllocated, MemoryUse::ArrayBufferContents);
   }
+
+  return buffer;
+}
+
+ArrayBufferObject* ArrayBufferObject::createFromTypedArrayMallocedElements(
+    JSContext* cx, Handle<FixedLengthTypedArrayObject*> tarray) {
+  MOZ_ASSERT(cx->realm() == tarray->realm());
+  MOZ_ASSERT(tarray->hasMallocedElements(cx));
+
+  size_t byteLength = tarray->byteLength();
+
+  // The typed array's byteLength must be a valid array buffer length.
+  static_assert(TypedArrayObject::ByteLengthLimit ==
+                ArrayBufferObject::ByteLengthLimit);
+  MOZ_RELEASE_ASSERT(byteLength <= ArrayBufferObject::ByteLengthLimit);
+
+  constexpr size_t reservedSlots = FixedLengthArrayBufferObject::RESERVED_SLOTS;
+  constexpr gc::AllocKind allocKind = GetArrayBufferGCObjectKind(reservedSlots);
+
+  AutoSetNewObjectMetadata metadata(cx);
+  Rooted<ArrayBufferObject*> buffer(
+      cx, NewArrayBufferObject<FixedLengthArrayBufferObject>(cx, nullptr,
+                                                             allocKind));
+  if (!buffer) {
+    return nullptr;
+  }
+
+  MOZ_ASSERT(!gc::IsInsideNursery(buffer),
+             "ArrayBufferObject has a finalizer that must be called to not "
+             "leak in some cases, so it can't be nursery-allocated");
+
+  // Transfer ownership of the malloced buffer from the typed array to the
+  // new array buffer.
+
+  size_t nbytes = RoundUp(byteLength, sizeof(Value));
+  if (!tarray->isTenured()) {
+    cx->nursery().removeMallocedBuffer(tarray->elements(), nbytes);
+  }
+  RemoveCellMemory(tarray, nbytes, MemoryUse::TypedArrayElements);
+
+  auto contents = BufferContents::createMallocedArrayBufferContentsArena(
+      tarray->elements());
+  buffer->initialize(byteLength, contents);
+  AddCellMemory(buffer, byteLength, MemoryUse::ArrayBufferContents);
 
   return buffer;
 }

@@ -125,7 +125,6 @@ class nsHttpChannel final : public HttpBaseChannel,
                                       nsProxyInfo* aProxyInfo,
                                       uint32_t aProxyResolveFlags,
                                       nsIURI* aProxyURI, uint64_t aChannelId,
-                                      ExtContentPolicyType aContentPolicyType,
                                       nsILoadInfo* aLoadInfo) override;
 
   static bool IsRedirectStatus(uint32_t status);
@@ -142,7 +141,8 @@ class nsHttpChannel final : public HttpBaseChannel,
   NS_IMETHOD Suspend() override;
   NS_IMETHOD Resume() override;
   // nsIChannel
-  NS_IMETHOD GetSecurityInfo(nsITransportSecurityInfo** aSecurityInfo) override;
+  NS_IMETHOD
+  GetSecurityInfo(nsITransportSecurityInfo** aSecurityInfo) override;
   NS_IMETHOD AsyncOpen(nsIStreamListener* aListener) override;
   // nsIHttpChannel
   NS_IMETHOD GetEncodedBodySize(uint64_t* aEncodedBodySize) override;
@@ -309,6 +309,17 @@ class nsHttpChannel final : public HttpBaseChannel,
   // end server host name.
   ProxyDNSStrategy GetProxyDNSStrategy();
 
+  // Add Sec-Fetch-Storage-Access headers based on cookie partitioning
+  void AddStorageAccessHeadersToRequest();
+
+ public:
+  // returns whether this channel is a retry after receiving the
+  // "Activate-Storage-Access"-header for a request that is eligable for
+  // unpartitioned cookies. Therefore needs to have still valid
+  // storage-permission granted. Public to be accible from AntiTrackingUtils.
+  bool StorageAccessReloadedChannel();
+
+ private:
   // We might synchronously or asynchronously call BeginConnect,
   // which includes DNS prefetch and speculative connection, according to
   // whether an async tracker lookup is required. If the tracker lookup
@@ -335,6 +346,11 @@ class nsHttpChannel final : public HttpBaseChannel,
       nsHttpConnectionInfo* aConnInfo);
   [[nodiscard]] nsresult ContinueProcessResponse2(nsresult);
   nsresult HandleOverrideResponse();
+  nsresult OnPermissionPromptResult(bool aGranted, const nsACString& aType);
+  LNAPermission UpdateLocalNetworkAccessPermissions(
+      const nsACString& aPermissionType);
+  void MaybeUpdateDocumentIPAddressSpaceFromCache();
+  nsresult ProcessLNAActions();
 
  public:
   void UpdateCacheDisposition(bool aSuccessfulReval, bool aPartialContentUsed);
@@ -700,7 +716,8 @@ class nsHttpChannel final : public HttpBaseChannel,
     // transaction is created.
     (uint32_t, HTTPSSVCTelemetryReported, 1),
     (uint32_t, EchConfigUsed, 1),
-    (uint32_t, AuthRedirectedChannel, 1)
+    (uint32_t, AuthRedirectedChannel, 1),
+    (uint32_t, StorageAccessReloadChannel, 1)
   ))
   // clang-format on
   enum CachedContentValidity : uint8_t { Unset = 0, Invalid = 1, Valid = 2 };
@@ -855,6 +872,13 @@ class nsHttpChannel final : public HttpBaseChannel,
   // rates of retried channels to the fallback domain.
   Maybe<EssentialDomainCategory> mEssentialDomainCategory;
   static EssentialDomainCategory GetEssentialDomainCategory(nsCString& domain);
+
+  // Permissions for the request to make local network access
+  LNAPerms mLNAPermission{};
+
+  // Track if we are waiting for OnPermissionPromptResult callback
+  // Used to handle cancellation while suspended waiting for LNA permission
+  bool mWaitingForLNAPermission{false};
 
  protected:
   virtual void DoNotifyListenerCleanup() override;

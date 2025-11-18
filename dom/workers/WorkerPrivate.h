@@ -8,6 +8,8 @@
 #define mozilla_dom_workers_workerprivate_h__
 
 #include <bitset>
+
+#include "FontVisibilityProvider.h"
 #include "MainThreadUtils.h"
 #include "ScriptLoader.h"
 #include "js/ContextOptions.h"
@@ -22,6 +24,7 @@
 #include "mozilla/OriginTrials.h"
 #include "mozilla/RelativeTimeline.h"
 #include "mozilla/Result.h"
+#include "mozilla/StaticPrefs_extensions.h"
 #include "mozilla/StorageAccess.h"
 #include "mozilla/ThreadBound.h"
 #include "mozilla/ThreadSafeWeakPtr.h"
@@ -29,21 +32,20 @@
 #include "mozilla/UseCounter.h"
 #include "mozilla/dom/ClientSource.h"
 #include "mozilla/dom/FlippedOnce.h"
+#include "mozilla/dom/JSExecutionManager.h"
 #include "mozilla/dom/PRemoteWorkerNonLifeCycleOpControllerChild.h"
 #include "mozilla/dom/RemoteWorkerTypes.h"
 #include "mozilla/dom/Timeout.h"
-#include "mozilla/dom/quota/CheckedUnsafePtr.h"
 #include "mozilla/dom/Worker.h"
 #include "mozilla/dom/WorkerBinding.h"
 #include "mozilla/dom/WorkerCommon.h"
 #include "mozilla/dom/WorkerLoadInfo.h"
 #include "mozilla/dom/WorkerStatus.h"
+#include "mozilla/dom/quota/CheckedUnsafePtr.h"
 #include "mozilla/dom/workerinternals/JSSettings.h"
 #include "mozilla/dom/workerinternals/Queue.h"
-#include "mozilla/dom/JSExecutionManager.h"
 #include "mozilla/ipc/Endpoint.h"
 #include "mozilla/net/NeckoChannelParams.h"
-#include "mozilla/StaticPrefs_extensions.h"
 #include "nsContentUtils.h"
 #include "nsIChannel.h"
 #include "nsIContentPolicy.h"
@@ -146,7 +148,8 @@ nsString ComputeWorkerPrivateId();
 
 class WorkerPrivate final
     : public RelativeTimeline,
-      public SupportsCheckedUnsafePtr<CheckIf<DiagnosticAssertEnabled>> {
+      public SupportsCheckedUnsafePtr<CheckIf<DiagnosticAssertEnabled>>,
+      public FontVisibilityProvider {
  public:
   // Callback invoked on the parent thread when the worker's cancellation is
   // about to be requested.  This covers both calls to
@@ -234,6 +237,8 @@ class WorkerPrivate final
 
   NS_INLINE_DECL_REFCOUNTING(WorkerPrivate)
 
+  FONT_VISIBILITY_PROVIDER_IMPL
+
   static already_AddRefed<WorkerPrivate> Constructor(
       JSContext* aCx, const nsAString& aScriptURL, bool aIsChromeWorker,
       WorkerKind aWorkerKind, RequestCredentials aRequestCredentials,
@@ -319,10 +324,18 @@ class WorkerPrivate final
     return mIsPlayingAudio;
   }
 
+  bool HasActivePeerConnections() {
+    AssertIsOnWorkerThread();
+    return mHasActivePeerConnections;
+  }
+
+  void SetActivePeerConnections(bool aHasPeerConnections);
+
   void SetIsRunningInForeground();
 
   bool ChangeBackgroundStateInternal(bool aIsBackground);
   bool ChangePlaybackStateInternal(bool aIsPlayingAudio);
+  bool ChangePeerConnectionsInternal(bool aHasPeerConnections);
 
   // returns true, if worker is running in the background tab
   bool IsRunningInBackground() const { return mIsInBackground; }
@@ -445,10 +458,6 @@ class WorkerPrivate final
                      ErrorResult& aRv);
 
   void ClearTimeout(int32_t aId, Timeout::Reason aReason);
-
-  MOZ_CAN_RUN_SCRIPT bool RunExpiredTimeouts(JSContext* aCx);
-
-  bool RescheduleTimeoutTimer(JSContext* aCx);
 
   void UpdateContextOptionsInternal(JSContext* aCx,
                                     const JS::ContextOptions& aContextOptions);
@@ -612,23 +621,26 @@ class WorkerPrivate final
   nsISerialEventTarget* MainThreadEventTargetForMessaging();
 
   nsresult DispatchToMainThreadForMessaging(
-      nsIRunnable* aRunnable, uint32_t aFlags = NS_DISPATCH_NORMAL);
+      nsIRunnable* aRunnable,
+      nsIEventTarget::DispatchFlags aFlags = NS_DISPATCH_NORMAL);
 
   nsresult DispatchToMainThreadForMessaging(
       already_AddRefed<nsIRunnable> aRunnable,
-      uint32_t aFlags = NS_DISPATCH_NORMAL);
+      nsIEventTarget::DispatchFlags aFlags = NS_DISPATCH_NORMAL);
 
   nsISerialEventTarget* MainThreadEventTarget();
 
-  nsresult DispatchToMainThread(nsIRunnable* aRunnable,
-                                uint32_t aFlags = NS_DISPATCH_NORMAL);
+  nsresult DispatchToMainThread(
+      nsIRunnable* aRunnable,
+      nsIEventTarget::DispatchFlags aFlags = NS_DISPATCH_NORMAL);
 
-  nsresult DispatchToMainThread(already_AddRefed<nsIRunnable> aRunnable,
-                                uint32_t aFlags = NS_DISPATCH_NORMAL);
+  nsresult DispatchToMainThread(
+      already_AddRefed<nsIRunnable> aRunnable,
+      nsIEventTarget::DispatchFlags aFlags = NS_DISPATCH_NORMAL);
 
   nsresult DispatchDebuggeeToMainThread(
       already_AddRefed<WorkerRunnable> aRunnable,
-      uint32_t aFlags = NS_DISPATCH_NORMAL);
+      nsIEventTarget::DispatchFlags aFlags = NS_DISPATCH_NORMAL);
 
   // Get an event target that will dispatch runnables as control runnables on
   // the worker thread.  Implement nsICancelableRunnable if you wish to take
@@ -1015,8 +1027,6 @@ class WorkerPrivate final
 
   bool IsWatchedByDevTools() const { return mLoadInfo.mWatchedByDevTools; }
 
-  bool ShouldResistFingerprinting(RFPTarget aTarget) const;
-
   const Maybe<RFPTargetSet>& GetOverriddenFingerprintingSettings() const {
     return mLoadInfo.mOverriddenFingerprintingSettings;
   }
@@ -1332,11 +1342,7 @@ class WorkerPrivate final
 
   void NotifyWorkerRefs(WorkerStatus aStatus);
 
-  bool HasActiveWorkerRefs() {
-    auto data = mWorkerThreadAccessible.Access();
-    return !(data->mChildWorkers.IsEmpty() && data->mTimeouts.IsEmpty() &&
-             data->mWorkerRefs.IsEmpty());
-  }
+  bool HasActiveWorkerRefs();
 
   friend class WorkerEventTarget;
 
@@ -1379,8 +1385,6 @@ class WorkerPrivate final
   class EventTarget;
   friend class EventTarget;
   friend class AutoSyncLoopHolder;
-
-  struct TimeoutInfo;
 
   class MemoryReporter;
   friend class MemoryReporter;
@@ -1438,6 +1442,16 @@ class WorkerPrivate final
   workerinternals::Queue<WorkerRunnable*, 4> mControlQueue;
   workerinternals::Queue<WorkerRunnable*, 4> mDebuggerQueue
       MOZ_GUARDED_BY(mMutex);
+
+  // This counts the numbers of dispatching WorkerControlRunnables.
+  // This is used to decouple the lock sequence between WorkerPrivate::mMutex
+  // and FutexThread::Lock. If this count is not zero, it means there are some
+  // WorkerControlRunnables are dispatching, and WorkerControlRunables might
+  // unlock WorkerPrivate::mMutex to request JS execution interrupt on the
+  // Worker thread.
+  // When a Worker starts shutdown, before releasing mJSContext, this value must
+  // be ensured to be zero.
+  uint32_t mDispatchingControlRunnables MOZ_GUARDED_BY(mMutex);
 
   // Touched on multiple threads, protected with mMutex. Only modified on the
   // worker thread
@@ -1540,10 +1554,6 @@ class WorkerPrivate final
     // our static assert
     nsTArray<WorkerPrivate*> mChildWorkers;
     nsTObserverArray<WorkerRef*> mWorkerRefs;
-    nsTArray<UniquePtr<TimeoutInfo>> mTimeouts;
-
-    nsCOMPtr<nsITimer> mTimer;
-    nsCOMPtr<nsITimerCallback> mTimerRunnable;
 
     nsCOMPtr<nsITimer> mPeriodicGCTimer;
     nsCOMPtr<nsITimer> mIdleGCTimer;
@@ -1581,20 +1591,6 @@ class WorkerPrivate final
     uint32_t mNonblockingCCBackgroundActorCount;
 
     uint32_t mErrorHandlerRecursionCount;
-    int32_t mNextTimeoutId;
-
-    // Tracks the current setTimeout/setInterval nesting level.
-    // When there isn't a TimeoutHandler on the stack, this will be 0.
-    // Whenever setTimeout/setInterval are called, a new TimeoutInfo will be
-    // created with a nesting level one more than the current nesting level,
-    // saturating at the kClampTimeoutNestingLevel.
-    //
-    // When RunExpiredTimeouts is run, it sets this value to the
-    // TimeoutInfo::mNestingLevel for the duration of
-    // the WorkerScriptTimeoutHandler::Call which will explicitly trigger a
-    // microtask checkpoint so that any immediately-resolved promises will
-    // still see the nesting level.
-    uint32_t mCurrentTimerNestingLevel;
 
     bool mFrozen;
 
@@ -1604,7 +1600,6 @@ class WorkerPrivate final
     // cleared after processing the debugger runnables.
     bool mDebuggerInterruptRequested;
 
-    bool mTimerRunning;
     bool mRunningExpiredTimeouts;
     bool mPeriodicGCTimerRunning;
     bool mIdleGCTimerRunning;
@@ -1672,6 +1667,7 @@ class WorkerPrivate final
   bool mDebuggerRegistered MOZ_GUARDED_BY(mMutex);
   mozilla::Atomic<bool> mIsInBackground;
   bool mIsPlayingAudio{};
+  bool mHasActivePeerConnections{};
 
   // During registration, this worker may be marked as not being ready to
   // execute debuggee runnables or content.
@@ -1733,6 +1729,8 @@ class WorkerPrivate final
   bool hasNotifiedStorageKeyUsed{false};
 
   RefPtr<WorkerParentRef> mParentRef;
+
+  FontVisibility mFontVisibility;
 };
 
 class AutoSyncLoopHolder {

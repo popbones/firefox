@@ -5,10 +5,12 @@
 package org.mozilla.fenix.reviewprompt
 
 import android.app.Dialog
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.fragment.compose.content
 import androidx.lifecycle.lifecycleScope
@@ -19,13 +21,13 @@ import mozilla.components.lib.state.ext.observeAsState
 import org.mozilla.fenix.R
 import org.mozilla.fenix.components.lazyStore
 import org.mozilla.fenix.ext.requireComponents
-import org.mozilla.fenix.reviewprompt.CustomReviewPromptAction.DismissRequested
 import org.mozilla.fenix.reviewprompt.CustomReviewPromptAction.LeaveFeedbackButtonClicked
 import org.mozilla.fenix.reviewprompt.CustomReviewPromptAction.NegativePrePromptButtonClicked
 import org.mozilla.fenix.reviewprompt.CustomReviewPromptAction.PositivePrePromptButtonClicked
 import org.mozilla.fenix.reviewprompt.CustomReviewPromptAction.RateButtonClicked
 import org.mozilla.fenix.reviewprompt.ui.CustomReviewPrompt
 import org.mozilla.fenix.theme.FirefoxTheme
+import com.google.android.material.R as materialR
 
 /** A bottom sheet fragment for displaying [CustomReviewPrompt]. */
 class CustomReviewPromptBottomSheetFragment : BottomSheetDialogFragment() {
@@ -34,6 +36,7 @@ class CustomReviewPromptBottomSheetFragment : BottomSheetDialogFragment() {
             initialState = CustomReviewPromptState.PrePrompt,
             middleware = listOf(
                 CustomReviewPromptNavigationMiddleware(viewModelScope),
+                CustomReviewPromptTelemetryMiddleware(),
             ),
         )
     }
@@ -41,7 +44,7 @@ class CustomReviewPromptBottomSheetFragment : BottomSheetDialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         return super.onCreateDialog(savedInstanceState).apply {
             setOnShowListener {
-                val bottomSheet = findViewById<View?>(R.id.design_bottom_sheet)
+                val bottomSheet = findViewById<View?>(materialR.id.design_bottom_sheet)
                 bottomSheet?.setBackgroundResource(android.R.color.transparent)
             }
         }
@@ -53,10 +56,15 @@ class CustomReviewPromptBottomSheetFragment : BottomSheetDialogFragment() {
         savedInstanceState: Bundle?,
     ) = content {
         val state by store.observeAsState(CustomReviewPromptState.PrePrompt) { it }
+
+        LaunchedEffect(Unit) {
+            store.dispatch(CustomReviewPromptAction.Displayed)
+        }
+
         FirefoxTheme {
             CustomReviewPrompt(
-                state = state,
-                onRequestDismiss = { store.dispatch(DismissRequested) },
+                customReviewPromptState = state,
+                onDismissRequest = { dismissAllowingStateLoss() },
                 onNegativePrePromptButtonClick = { store.dispatch(NegativePrePromptButtonClicked) },
                 onPositivePrePromptButtonClick = { store.dispatch(PositivePrePromptButtonClicked) },
                 onRateButtonClick = { store.dispatch(RateButtonClicked) },
@@ -84,5 +92,10 @@ class CustomReviewPromptBottomSheetFragment : BottomSheetDialogFragment() {
                 }
             }
         }
+    }
+
+    override fun onDismiss(dialog: DialogInterface) {
+        super.onDismiss(dialog)
+        store.dispatch(CustomReviewPromptAction.Dismissed)
     }
 }

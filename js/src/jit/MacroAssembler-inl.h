@@ -203,6 +203,8 @@ ABIFunctionType MacroAssembler::signature() const {
     case Args_Double_DoubleDoubleDouble:
     case Args_Double_DoubleDoubleDoubleDouble:
     case Args_Int64_GeneralGeneral:
+    case Args_General_GeneralInt64GeneralGeneral:
+    case Args_General_GeneralFloat32GeneralGeneral:
       break;
     default:
       MOZ_CRASH("Unexpected type");
@@ -267,7 +269,9 @@ void MacroAssembler::pushFrameDescriptorForJitCall(FrameType type,
                                                    bool hasInlineICScript) {
   lshift32(Imm32(FrameDescriptor::NumActualArgsShift), argc, scratch);
   FrameDescriptor base(type, 0, hasInlineICScript);
-  or32(Imm32(base.value()), scratch);
+  if (base.value()) {
+    or32(Imm32(base.value()), scratch);
+  }
   push(scratch);
 }
 
@@ -540,9 +544,8 @@ void MacroAssembler::branchIfObjectEmulatesUndefined(Register objReg,
 
   Label done;
 
-  loadPtr(
-      AbsoluteAddress(runtime()->addressOfHasSeenObjectEmulateUndefinedFuse()),
-      scratch);
+  loadRuntimeFuse(RuntimeFuses::FuseIndex::HasSeenObjectEmulateUndefinedFuse,
+                  scratch);
   branchPtr(Assembler::Equal, scratch, ImmPtr(nullptr), &done);
 
   loadObjClassUnsafe(objReg, scratch);

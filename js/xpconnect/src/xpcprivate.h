@@ -68,7 +68,6 @@
 #ifndef xpcprivate_h___
 #define xpcprivate_h___
 
-#include "mozilla/Alignment.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Atomics.h"
@@ -2448,6 +2447,14 @@ nsresult GetSandboxMetadata(JSContext* cx, JS::HandleObject sandboxArg,
 [[nodiscard]] nsresult SetSandboxMetadata(JSContext* cx,
                                           JS::HandleObject sandboxArg,
                                           JS::HandleValue metadata);
+
+[[nodiscard]] nsresult SetSandboxLocaleOverride(JSContext* cx,
+                                                JS::HandleObject sandboxArg,
+                                                const char* locale);
+
+[[nodiscard]] nsresult SetSandboxTimezoneOverride(JSContext* cx,
+                                                  JS::HandleObject sandboxArg,
+                                                  const char* timezone);
 
 bool CreateObjectIn(JSContext* cx, JS::HandleValue vobj,
                     CreateObjectInOptions& options,

@@ -71,9 +71,10 @@ use std::{mem, u32};
 use std::path::PathBuf;
 #[cfg(feature = "replay")]
 use crate::frame_builder::Frame;
-use time::precise_time_ns;
 use core::time::Duration;
 use crate::util::{Recycler, VecHelper, drain_filter};
+#[cfg(feature = "debugger")]
+use crate::debugger::DebugQueryKind;
 
 #[cfg_attr(feature = "capture", derive(Serialize))]
 #[cfg_attr(feature = "replay", derive(Deserialize))]
@@ -519,7 +520,7 @@ impl Document {
         render_reasons: RenderReasons,
         chunk_pool: Arc<ChunkPool>,
     ) -> RenderedDocument {
-        let frame_build_start_time = precise_time_ns();
+        let frame_build_start_time = zeitstempel::now();
 
         // Advance to the next frame.
         self.stamp.advance();
@@ -560,7 +561,7 @@ impl Document {
         self.has_built_scene = false;
 
         let frame_build_time_ms =
-            profiler::ns_to_ms(precise_time_ns() - frame_build_start_time);
+            profiler::ns_to_ms(zeitstempel::now() - frame_build_start_time);
         self.profile.set(profiler::FRAME_BUILDING_TIME, frame_build_time_ms);
         self.profile.start_time(profiler::FRAME_SEND_TIME);
 
@@ -1147,6 +1148,32 @@ impl RenderBackend {
 
                         return RenderBackendStatus::Continue;
                     }
+                    DebugCommand::GenerateFrame => {
+                        self.prepare_for_frames();
+
+                        let documents: Vec<DocumentId> = self.documents.keys()
+                            .cloned()
+                            .collect();
+                        for document_id in documents {
+                            self.update_document(
+                                document_id,
+                                Vec::default(),
+                                Vec::default(),
+                                Vec::default(),
+                                true,
+                                true,
+                                false,
+                                RenderReasons::empty(),
+                                None,
+                                true,
+                                frame_counter,
+                                false,
+                                None);
+                        }
+                        self.bookkeep_after_frames();
+
+                        return RenderBackendStatus::Continue;
+                    }
                     #[cfg(feature = "capture")]
                     DebugCommand::SaveCapture(root, bits) => {
                         let output = self.save_capture(root, bits);
@@ -1186,6 +1213,22 @@ impl RenderBackend {
                         // Note: we can't pass `LoadCapture` here since it needs to arrive
                         // before the `PublishDocument` messages sent by `load_capture`.
                         return RenderBackendStatus::Continue;
+                    }
+                    #[cfg(feature = "debugger")]
+                    DebugCommand::Query(ref query) => {
+                        match query.kind {
+                            DebugQueryKind::SpatialTree { .. } => {
+                                if let Some(doc) = self.documents.values().next() {
+                                    let result = doc.spatial_tree.print_to_string();
+                                    query.result.send(result).ok();
+                                }
+                                return RenderBackendStatus::Continue;
+                            }
+                            DebugQueryKind::CompositorView { .. } |
+                            DebugQueryKind::CompositorConfig { .. } => {
+                                ResultMsg::DebugCommand(option)
+                            }
+                        }
                     }
                     DebugCommand::ClearCaches(mask) => {
                         self.resource_cache.clear(mask);
@@ -1490,7 +1533,7 @@ impl RenderBackend {
         has_built_scene: bool,
         start_time: Option<u64>
     ) -> bool {
-        let update_doc_start = precise_time_ns();
+        let update_doc_start = zeitstempel::now();
 
         let requested_frame = render_frame;
 
@@ -1570,7 +1613,7 @@ impl RenderBackend {
             }
 
             if start_time.is_some() {
-              Telemetry::record_time_to_frame_build(Duration::from_nanos(precise_time_ns() - start_time.unwrap()));
+              Telemetry::record_time_to_frame_build(Duration::from_nanos(zeitstempel::now() - start_time.unwrap()));
             }
             profile_scope!("generate frame");
 
@@ -1651,7 +1694,7 @@ impl RenderBackend {
                 None => {},
             }
 
-            let update_doc_time = profiler::ns_to_ms(precise_time_ns() - update_doc_start);
+            let update_doc_time = profiler::ns_to_ms(zeitstempel::now() - update_doc_start);
             rendered_document.profile.set(profiler::UPDATE_DOCUMENT_TIME, update_doc_time);
 
             let msg = ResultMsg::PublishPipelineInfo(doc.updated_pipeline_info());

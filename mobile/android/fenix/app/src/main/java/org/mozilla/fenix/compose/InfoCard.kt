@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,10 +32,10 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
-import mozilla.components.compose.base.button.PrimaryButton
-import org.mozilla.fenix.R
+import mozilla.components.compose.base.button.FilledButton
 import org.mozilla.fenix.shopping.ui.ext.headingResource
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * Card for presenting informational messages or errors.
@@ -74,21 +75,21 @@ fun InfoCard(
         ) {
             when (type) {
                 InfoType.Warning -> {
-                    InfoCardIcon(iconId = R.drawable.mozac_ic_warning_fill_24)
+                    InfoCardIcon(iconId = iconsR.drawable.mozac_ic_warning_fill_24)
                 }
 
                 InfoType.Confirmation -> {
-                    InfoCardIcon(iconId = R.drawable.mozac_ic_checkmark_24)
+                    InfoCardIcon(iconId = iconsR.drawable.mozac_ic_checkmark_24)
                 }
 
                 InfoType.Error -> {
-                    InfoCardIcon(iconId = R.drawable.mozac_ic_critical_fill_24)
+                    InfoCardIcon(iconId = iconsR.drawable.mozac_ic_critical_fill_24)
                 }
 
                 InfoType.Info,
                 InfoType.InfoPlain,
                 -> {
-                    InfoCardIcon(iconId = R.drawable.mozac_ic_information_fill_24)
+                    InfoCardIcon(iconId = iconsR.drawable.mozac_ic_information_fill_24)
                 }
             }
 
@@ -138,11 +139,11 @@ fun InfoCard(
         buttonText?.let {
             Spacer(modifier = Modifier.height(8.dp))
 
-            PrimaryButton(
+            FilledButton(
                 text = it.text,
                 modifier = Modifier.fillMaxWidth(),
-                textColor = type.buttonTextColor,
-                backgroundColor = type.buttonBackgroundColor,
+                contentColor = type.buttonTextColor,
+                containerColor = type.buttonBackgroundColor,
                 onClick = it.onClick,
             )
         }
@@ -194,6 +195,7 @@ enum class InfoType {
 
     val cardBackgroundColor: Color
         @Composable
+        @ReadOnlyComposable
         get() = when (this) {
             Warning -> FirefoxTheme.colors.layerWarning
             Confirmation -> FirefoxTheme.colors.layerSuccess
@@ -204,6 +206,7 @@ enum class InfoType {
 
     val buttonBackgroundColor: Color
         @Composable
+        @ReadOnlyComposable
         get() = when (this) {
             Warning -> FirefoxTheme.colors.actionWarning
             Confirmation -> FirefoxTheme.colors.actionSuccess
@@ -214,6 +217,7 @@ enum class InfoType {
 
     val buttonTextColor: Color
         @Composable
+        @ReadOnlyComposable
         get() = when {
             this == Info && !isSystemInDarkTheme() -> FirefoxTheme.colors.textOnColorPrimary
             this == InfoPlain -> FirefoxTheme.colors.textActionSecondary

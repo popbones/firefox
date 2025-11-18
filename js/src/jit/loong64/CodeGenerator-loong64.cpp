@@ -192,16 +192,17 @@ void CodeGeneratorLOONG64::emitTableSwitchDispatch(MTableSwitch* mir,
 template <typename T>
 void CodeGeneratorLOONG64::emitWasmLoad(T* lir) {
   const MWasmLoad* mir = lir->mir();
-  SecondScratchRegisterScope scratch2(masm);
+  UseScratchRegisterScope temps(masm);
+  Register scratch = temps.Acquire();
 
   Register memoryBase = ToRegister(lir->memoryBase());
   Register ptr = ToRegister(lir->ptr());
   Register ptrScratch = ToTempRegisterOrInvalid(lir->temp0());
 
   if (mir->base()->type() == MIRType::Int32) {
-    masm.move32To64ZeroExtend(ptr, Register64(scratch2));
-    ptr = scratch2;
-    ptrScratch = ptrScratch != InvalidReg ? scratch2 : InvalidReg;
+    masm.move32To64ZeroExtend(ptr, Register64(scratch));
+    ptr = scratch;
+    ptrScratch = ptrScratch != InvalidReg ? scratch : InvalidReg;
   }
 
   // ptr is a GPR and is either a 32-bit value zero-extended to 64-bit, or a
@@ -213,16 +214,17 @@ void CodeGeneratorLOONG64::emitWasmLoad(T* lir) {
 template <typename T>
 void CodeGeneratorLOONG64::emitWasmStore(T* lir) {
   const MWasmStore* mir = lir->mir();
-  SecondScratchRegisterScope scratch2(masm);
+  UseScratchRegisterScope temps(masm);
+  Register scratch = temps.Acquire();
 
   Register memoryBase = ToRegister(lir->memoryBase());
   Register ptr = ToRegister(lir->ptr());
   Register ptrScratch = ToTempRegisterOrInvalid(lir->temp0());
 
   if (mir->base()->type() == MIRType::Int32) {
-    masm.move32To64ZeroExtend(ptr, Register64(scratch2));
-    ptr = scratch2;
-    ptrScratch = ptrScratch != InvalidReg ? scratch2 : InvalidReg;
+    masm.move32To64ZeroExtend(ptr, Register64(scratch));
+    ptr = scratch;
+    ptrScratch = ptrScratch != InvalidReg ? scratch : InvalidReg;
   }
 
   // ptr is a GPR and is either a 32-bit value zero-extended to 64-bit, or a
@@ -682,6 +684,18 @@ void CodeGenerator::visitAddI(LAddI* ins) {
   bailoutFrom(&overflow, ins->snapshot());
 }
 
+void CodeGenerator::visitAddIntPtr(LAddIntPtr* ins) {
+  Register lhs = ToRegister(ins->lhs());
+  const LAllocation* rhs = ins->rhs();
+  Register dest = ToRegister(ins->output());
+
+  if (rhs->isConstant()) {
+    masm.ma_add_d(dest, lhs, ImmWord(ToIntPtr(rhs)));
+  } else {
+    masm.as_add_d(dest, lhs, ToRegister(rhs));
+  }
+}
+
 void CodeGenerator::visitAddI64(LAddI64* lir) {
   LInt64Allocation lhs = lir->lhs();
   LInt64Allocation rhs = lir->rhs();
@@ -724,6 +738,18 @@ void CodeGenerator::visitSubI(LSubI* ins) {
   }
 
   bailoutFrom(&overflow, ins->snapshot());
+}
+
+void CodeGenerator::visitSubIntPtr(LSubIntPtr* ins) {
+  Register lhs = ToRegister(ins->lhs());
+  const LAllocation* rhs = ins->rhs();
+  Register dest = ToRegister(ins->output());
+
+  if (rhs->isConstant()) {
+    masm.ma_sub_d(dest, lhs, ImmWord(ToIntPtr(rhs)));
+  } else {
+    masm.as_sub_d(dest, lhs, ToRegister(rhs));
+  }
 }
 
 void CodeGenerator::visitSubI64(LSubI64* lir) {
@@ -818,7 +844,8 @@ void CodeGenerator::visitMulI(LMulI* ins) {
           // power of 2.
 
           if ((1 << shift) == constant) {
-            ScratchRegisterScope scratch(masm);
+            UseScratchRegisterScope temps(masm);
+            Register scratch = temps.Acquire();
             // dest = lhs * pow(2, shift)
             masm.as_slli_w(dest, src, shift % 32);
             // At runtime, check (lhs == dest >> shift), if this does
@@ -859,12 +886,49 @@ void CodeGenerator::visitMulI(LMulI* ins) {
 
       // Result is -0 if lhs or rhs is negative.
       // In that case result must be double value so bailout
-      Register scratch = SecondScratchReg;
+      UseScratchRegisterScope temps(masm);
+      Register scratch = temps.Acquire();
       masm.as_or(scratch, ToRegister(lhs), ToRegister(rhs));
       bailoutCmp32(Assembler::Signed, scratch, scratch, ins->snapshot());
 
       masm.bind(&done);
     }
+  }
+}
+
+void CodeGenerator::visitMulIntPtr(LMulIntPtr* ins) {
+  Register lhs = ToRegister(ins->lhs());
+  const LAllocation* rhs = ins->rhs();
+  Register dest = ToRegister(ins->output());
+
+  if (rhs->isConstant()) {
+    intptr_t constant = ToIntPtr(rhs);
+
+    switch (constant) {
+      case -1:
+        masm.as_sub_d(dest, zero, lhs);
+        return;
+      case 0:
+        masm.movePtr(zero, dest);
+        return;
+      case 1:
+        masm.movePtr(lhs, dest);
+        return;
+      case 2:
+        masm.as_add_d(dest, lhs, lhs);
+        return;
+    }
+
+    // Use shift if constant is a power of 2.
+    if (constant > 0 && mozilla::IsPowerOfTwo(uintptr_t(constant))) {
+      uint32_t shift = mozilla::FloorLog2(constant);
+      masm.lshiftPtr(Imm32(shift), lhs, dest);
+      return;
+    }
+
+    masm.ma_mul_d(dest, lhs, ImmWord(constant));
+  } else {
+    masm.as_mul_d(dest, lhs, ToRegister(rhs));
   }
 }
 
@@ -892,7 +956,8 @@ void CodeGenerator::visitMulI64(LMulI64* lir) {
       default:
         if (constant > 0) {
           if (mozilla::IsPowerOfTwo(static_cast<uint64_t>(constant + 1))) {
-            ScratchRegisterScope scratch(masm);
+            UseScratchRegisterScope temps(masm);
+            Register scratch = temps.Acquire();
             masm.movePtr(ToRegister64(lhs).reg, scratch);
             masm.as_slli_d(output.reg, ToRegister64(lhs).reg,
                            FloorLog2(constant + 1));
@@ -905,7 +970,8 @@ void CodeGenerator::visitMulI64(LMulI64* lir) {
               masm.as_alsl_d(output.reg, ToRegister64(lhs).reg,
                              ToRegister64(lhs).reg, shift - 1);
             } else {
-              ScratchRegisterScope scratch(masm);
+              UseScratchRegisterScope temps(masm);
+              Register scratch = temps.Acquire();
               masm.movePtr(ToRegister64(lhs).reg, scratch);
               masm.as_slli_d(output.reg, ToRegister64(lhs).reg, shift);
               masm.add64(scratch, output);
@@ -1263,22 +1329,58 @@ void CodeGenerator::visitShiftI(LShiftI* ins) {
         MOZ_CRASH("Unexpected shift op");
     }
   } else {
-    // The shift amounts should be AND'ed into the 0-31 range
-    masm.ma_and(dest, ToRegister(rhs), Imm32(0x1F));
-
+    Register shift = ToRegister(rhs);
     switch (ins->bitop()) {
       case JSOp::Lsh:
-        masm.as_sll_w(dest, lhs, dest);
+        masm.as_sll_w(dest, lhs, shift);
         break;
       case JSOp::Rsh:
-        masm.as_sra_w(dest, lhs, dest);
+        masm.as_sra_w(dest, lhs, shift);
         break;
       case JSOp::Ursh:
-        masm.as_srl_w(dest, lhs, dest);
+        masm.as_srl_w(dest, lhs, shift);
         if (ins->mir()->toUrsh()->fallible()) {
           // x >>> 0 can overflow.
           bailoutCmp32(Assembler::LessThan, dest, Imm32(0), ins->snapshot());
         }
+        break;
+      default:
+        MOZ_CRASH("Unexpected shift op");
+    }
+  }
+}
+
+void CodeGenerator::visitShiftIntPtr(LShiftIntPtr* ins) {
+  Register lhs = ToRegister(ins->lhs());
+  const LAllocation* rhs = ins->rhs();
+  Register dest = ToRegister(ins->output());
+
+  if (rhs->isConstant()) {
+    int32_t shift = ToIntPtr(rhs) & 0x3F;
+    switch (ins->bitop()) {
+      case JSOp::Lsh:
+        masm.as_slli_d(dest, lhs, shift);
+        break;
+      case JSOp::Rsh:
+        masm.as_srai_d(dest, lhs, shift);
+        break;
+      case JSOp::Ursh:
+        masm.as_srli_d(dest, lhs, shift);
+        break;
+      default:
+        MOZ_CRASH("Unexpected shift op");
+    }
+  } else {
+    Register shift = ToRegister(rhs);
+    switch (ins->bitop()) {
+      case JSOp::Lsh:
+        masm.as_sll_d(dest, lhs, shift);
+        break;
+      case JSOp::Rsh:
+        masm.as_sra_d(dest, lhs, shift);
+        break;
+      case JSOp::Ursh:
+        masm.as_srl_d(dest, lhs, shift);
         break;
       default:
         MOZ_CRASH("Unexpected shift op");
@@ -1679,31 +1781,32 @@ void CodeGenerator::visitAsmJSLoadHeap(LAsmJSLoadHeap* ins) {
   }
 
   // TODO(loong64): zero-extend index in asm.js?
-  SecondScratchRegisterScope scratch2(masm);
-  masm.move32To64ZeroExtend(ptrReg, Register64(scratch2));
+  UseScratchRegisterScope temps(masm);
+  Register scratch = temps.Acquire();
+  masm.move32To64ZeroExtend(ptrReg, Register64(scratch));
 
   switch (accessType) {
     case Scalar::Int8:
-      masm.as_ldx_b(ToRegister(output), HeapReg, scratch2);
+      masm.as_ldx_b(ToRegister(output), HeapReg, scratch);
       break;
     case Scalar::Uint8:
-      masm.as_ldx_bu(ToRegister(output), HeapReg, scratch2);
+      masm.as_ldx_bu(ToRegister(output), HeapReg, scratch);
       break;
     case Scalar::Int16:
-      masm.as_ldx_h(ToRegister(output), HeapReg, scratch2);
+      masm.as_ldx_h(ToRegister(output), HeapReg, scratch);
       break;
     case Scalar::Uint16:
-      masm.as_ldx_hu(ToRegister(output), HeapReg, scratch2);
+      masm.as_ldx_hu(ToRegister(output), HeapReg, scratch);
       break;
     case Scalar::Int32:
     case Scalar::Uint32:
-      masm.as_ldx_w(ToRegister(output), HeapReg, scratch2);
+      masm.as_ldx_w(ToRegister(output), HeapReg, scratch);
       break;
     case Scalar::Float64:
-      masm.as_fldx_d(ToFloatRegister(output), HeapReg, scratch2);
+      masm.as_fldx_d(ToFloatRegister(output), HeapReg, scratch);
       break;
     case Scalar::Float32:
-      masm.as_fldx_s(ToFloatRegister(output), HeapReg, scratch2);
+      masm.as_fldx_s(ToFloatRegister(output), HeapReg, scratch);
       break;
     default:
       MOZ_CRASH("unexpected array type");
@@ -1732,27 +1835,28 @@ void CodeGenerator::visitAsmJSStoreHeap(LAsmJSStoreHeap* ins) {
   }
 
   // TODO(loong64): zero-extend index in asm.js?
-  SecondScratchRegisterScope scratch2(masm);
-  masm.move32To64ZeroExtend(ptrReg, Register64(scratch2));
+  UseScratchRegisterScope temps(masm);
+  Register scratch = temps.Acquire();
+  masm.move32To64ZeroExtend(ptrReg, Register64(scratch));
 
   switch (mir->accessType()) {
     case Scalar::Int8:
     case Scalar::Uint8:
-      masm.as_stx_b(ToRegister(value), HeapReg, scratch2);
+      masm.as_stx_b(ToRegister(value), HeapReg, scratch);
       break;
     case Scalar::Int16:
     case Scalar::Uint16:
-      masm.as_stx_h(ToRegister(value), HeapReg, scratch2);
+      masm.as_stx_h(ToRegister(value), HeapReg, scratch);
       break;
     case Scalar::Int32:
     case Scalar::Uint32:
-      masm.as_stx_w(ToRegister(value), HeapReg, scratch2);
+      masm.as_stx_w(ToRegister(value), HeapReg, scratch);
       break;
     case Scalar::Float64:
-      masm.as_fstx_d(ToFloatRegister(value), HeapReg, scratch2);
+      masm.as_fstx_d(ToFloatRegister(value), HeapReg, scratch);
       break;
     case Scalar::Float32:
-      masm.as_fstx_s(ToFloatRegister(value), HeapReg, scratch2);
+      masm.as_fstx_s(ToFloatRegister(value), HeapReg, scratch);
       break;
     default:
       MOZ_CRASH("unexpected array type");
@@ -1976,20 +2080,23 @@ void CodeGenerator::visitUDivOrMod(LUDivOrMod* ins) {
   masm.bind(&done);
 }
 
-void CodeGenerator::visitEffectiveAddress(LEffectiveAddress* ins) {
-  const MEffectiveAddress* mir = ins->mir();
+void CodeGenerator::visitEffectiveAddress3(LEffectiveAddress3* ins) {
+  const MEffectiveAddress3* mir = ins->mir();
   Register base = ToRegister(ins->base());
   Register index = ToRegister(ins->index());
   Register output = ToRegister(ins->output());
-  int32_t shift = Imm32::ShiftOf(mir->scale()).value;
 
-  if (shift) {
-    MOZ_ASSERT(shift <= 4);
-    masm.as_alsl_w(output, index, base, shift - 1);
-  } else {
-    masm.as_add_w(output, base, index);
-  }
-  masm.ma_add_w(output, output, Imm32(mir->displacement()));
+  BaseIndex address(base, index, mir->scale(), mir->displacement());
+  masm.computeEffectiveAddress32(address, output);
+}
+
+void CodeGenerator::visitEffectiveAddress2(LEffectiveAddress2* ins) {
+  const MEffectiveAddress2* mir = ins->mir();
+  Register index = ToRegister(ins->index());
+  Register output = ToRegister(ins->output());
+
+  BaseIndex address(zero, index, mir->scale(), mir->displacement());
+  masm.computeEffectiveAddress32(address, output);
 }
 
 void CodeGenerator::visitNegI(LNegI* ins) {
@@ -2056,18 +2163,13 @@ void CodeGenerator::visitAtomicTypedArrayElementBinop(
   Register value = ToRegister(lir->value());
   Scalar::Type arrayType = lir->mir()->arrayType();
 
-  if (lir->index()->isConstant()) {
-    Address mem = ToAddress(elements, lir->index(), arrayType);
+  auto mem = ToAddressOrBaseIndex(elements, lir->index(), arrayType);
+
+  mem.match([&](const auto& mem) {
     masm.atomicFetchOpJS(arrayType, Synchronization::Full(),
                          lir->mir()->operation(), value, mem, valueTemp,
                          offsetTemp, maskTemp, outTemp, output);
-  } else {
-    BaseIndex mem(elements, ToRegister(lir->index()),
-                  ScaleFromScalarType(arrayType));
-    masm.atomicFetchOpJS(arrayType, Synchronization::Full(),
-                         lir->mir()->operation(), value, mem, valueTemp,
-                         offsetTemp, maskTemp, outTemp, output);
-  }
+  });
 }
 
 void CodeGenerator::visitAtomicTypedArrayElementBinopForEffect(
@@ -2081,18 +2183,13 @@ void CodeGenerator::visitAtomicTypedArrayElementBinopForEffect(
   Register value = ToRegister(lir->value());
   Scalar::Type arrayType = lir->mir()->arrayType();
 
-  if (lir->index()->isConstant()) {
-    Address mem = ToAddress(elements, lir->index(), arrayType);
+  auto mem = ToAddressOrBaseIndex(elements, lir->index(), arrayType);
+
+  mem.match([&](const auto& mem) {
     masm.atomicEffectOpJS(arrayType, Synchronization::Full(),
                           lir->mir()->operation(), value, mem, valueTemp,
                           offsetTemp, maskTemp);
-  } else {
-    BaseIndex mem(elements, ToRegister(lir->index()),
-                  ScaleFromScalarType(arrayType));
-    masm.atomicEffectOpJS(arrayType, Synchronization::Full(),
-                          lir->mir()->operation(), value, mem, valueTemp,
-                          offsetTemp, maskTemp);
-  }
+  });
 }
 
 void CodeGenerator::visitCompareExchangeTypedArrayElement(
@@ -2108,18 +2205,13 @@ void CodeGenerator::visitCompareExchangeTypedArrayElement(
   Register maskTemp = ToTempRegisterOrInvalid(lir->temp3());
   Scalar::Type arrayType = lir->mir()->arrayType();
 
-  if (lir->index()->isConstant()) {
-    Address dest = ToAddress(elements, lir->index(), arrayType);
+  auto dest = ToAddressOrBaseIndex(elements, lir->index(), arrayType);
+
+  dest.match([&](const auto& dest) {
     masm.compareExchangeJS(arrayType, Synchronization::Full(), dest, oldval,
                            newval, valueTemp, offsetTemp, maskTemp, outTemp,
                            output);
-  } else {
-    BaseIndex dest(elements, ToRegister(lir->index()),
-                   ScaleFromScalarType(arrayType));
-    masm.compareExchangeJS(arrayType, Synchronization::Full(), dest, oldval,
-                           newval, valueTemp, offsetTemp, maskTemp, outTemp,
-                           output);
-  }
+  });
 }
 
 void CodeGenerator::visitAtomicExchangeTypedArrayElement(
@@ -2134,16 +2226,12 @@ void CodeGenerator::visitAtomicExchangeTypedArrayElement(
   Register maskTemp = ToTempRegisterOrInvalid(lir->temp3());
   Scalar::Type arrayType = lir->mir()->arrayType();
 
-  if (lir->index()->isConstant()) {
-    Address dest = ToAddress(elements, lir->index(), arrayType);
+  auto dest = ToAddressOrBaseIndex(elements, lir->index(), arrayType);
+
+  dest.match([&](const auto& dest) {
     masm.atomicExchangeJS(arrayType, Synchronization::Full(), dest, value,
                           valueTemp, offsetTemp, maskTemp, outTemp, output);
-  } else {
-    BaseIndex dest(elements, ToRegister(lir->index()),
-                   ScaleFromScalarType(arrayType));
-    masm.atomicExchangeJS(arrayType, Synchronization::Full(), dest, value,
-                          valueTemp, offsetTemp, maskTemp, outTemp, output);
-  }
+  });
 }
 
 void CodeGenerator::visitCompareExchangeTypedArrayElement64(
@@ -2154,14 +2242,11 @@ void CodeGenerator::visitCompareExchangeTypedArrayElement64(
   Register64 out = ToOutRegister64(lir);
   Scalar::Type arrayType = lir->mir()->arrayType();
 
-  if (lir->index()->isConstant()) {
-    Address dest = ToAddress(elements, lir->index(), arrayType);
+  auto dest = ToAddressOrBaseIndex(elements, lir->index(), arrayType);
+
+  dest.match([&](const auto& dest) {
     masm.compareExchange64(Synchronization::Full(), dest, oldval, newval, out);
-  } else {
-    BaseIndex dest(elements, ToRegister(lir->index()),
-                   ScaleFromScalarType(arrayType));
-    masm.compareExchange64(Synchronization::Full(), dest, oldval, newval, out);
-  }
+  });
 }
 
 void CodeGenerator::visitAtomicExchangeTypedArrayElement64(
@@ -2171,14 +2256,11 @@ void CodeGenerator::visitAtomicExchangeTypedArrayElement64(
   Register64 out = ToOutRegister64(lir);
   Scalar::Type arrayType = lir->mir()->arrayType();
 
-  if (lir->index()->isConstant()) {
-    Address dest = ToAddress(elements, lir->index(), arrayType);
+  auto dest = ToAddressOrBaseIndex(elements, lir->index(), arrayType);
+
+  dest.match([&](const auto& dest) {
     masm.atomicExchange64(Synchronization::Full(), dest, value, out);
-  } else {
-    BaseIndex dest(elements, ToRegister(lir->index()),
-                   ScaleFromScalarType(arrayType));
-    masm.atomicExchange64(Synchronization::Full(), dest, value, out);
-  }
+  });
 }
 
 void CodeGenerator::visitAtomicTypedArrayElementBinop64(
@@ -2193,16 +2275,12 @@ void CodeGenerator::visitAtomicTypedArrayElementBinop64(
   Scalar::Type arrayType = lir->mir()->arrayType();
   AtomicOp atomicOp = lir->mir()->operation();
 
-  if (lir->index()->isConstant()) {
-    Address dest = ToAddress(elements, lir->index(), arrayType);
+  auto dest = ToAddressOrBaseIndex(elements, lir->index(), arrayType);
+
+  dest.match([&](const auto& dest) {
     masm.atomicFetchOp64(Synchronization::Full(), atomicOp, value, dest, temp,
                          out);
-  } else {
-    BaseIndex dest(elements, ToRegister(lir->index()),
-                   ScaleFromScalarType(arrayType));
-    masm.atomicFetchOp64(Synchronization::Full(), atomicOp, value, dest, temp,
-                         out);
-  }
+  });
 }
 
 void CodeGenerator::visitAtomicTypedArrayElementBinopForEffect64(
@@ -2216,34 +2294,24 @@ void CodeGenerator::visitAtomicTypedArrayElementBinopForEffect64(
   Scalar::Type arrayType = lir->mir()->arrayType();
   AtomicOp atomicOp = lir->mir()->operation();
 
-  if (lir->index()->isConstant()) {
-    Address dest = ToAddress(elements, lir->index(), arrayType);
+  auto dest = ToAddressOrBaseIndex(elements, lir->index(), arrayType);
+
+  dest.match([&](const auto& dest) {
     masm.atomicEffectOp64(Synchronization::Full(), atomicOp, value, dest, temp);
-  } else {
-    BaseIndex dest(elements, ToRegister(lir->index()),
-                   ScaleFromScalarType(arrayType));
-    masm.atomicEffectOp64(Synchronization::Full(), atomicOp, value, dest, temp);
-  }
+  });
 }
 
 void CodeGenerator::visitAtomicLoad64(LAtomicLoad64* lir) {
   Register elements = ToRegister(lir->elements());
   Register64 out = ToOutRegister64(lir);
-  const MLoadUnboxedScalar* mir = lir->mir();
 
-  Scalar::Type storageType = mir->storageType();
+  Scalar::Type storageType = lir->mir()->storageType();
+
+  auto source = ToAddressOrBaseIndex(elements, lir->index(), storageType);
 
   auto sync = Synchronization::Load();
   masm.memoryBarrierBefore(sync);
-  if (lir->index()->isConstant()) {
-    Address source =
-        ToAddress(elements, lir->index(), storageType, mir->offsetAdjustment());
-    masm.load64(source, out);
-  } else {
-    BaseIndex source(elements, ToRegister(lir->index()),
-                     ScaleFromScalarType(storageType), mir->offsetAdjustment());
-    masm.load64(source, out);
-  }
+  source.match([&](const auto& source) { masm.load64(source, out); });
   masm.memoryBarrierAfter(sync);
 }
 
@@ -2253,16 +2321,11 @@ void CodeGenerator::visitAtomicStore64(LAtomicStore64* lir) {
 
   Scalar::Type writeType = lir->mir()->writeType();
 
+  auto dest = ToAddressOrBaseIndex(elements, lir->index(), writeType);
+
   auto sync = Synchronization::Store();
   masm.memoryBarrierBefore(sync);
-  if (lir->index()->isConstant()) {
-    Address dest = ToAddress(elements, lir->index(), writeType);
-    masm.store64(value, dest);
-  } else {
-    BaseIndex dest(elements, ToRegister(lir->index()),
-                   ScaleFromScalarType(writeType));
-    masm.store64(value, dest);
-  }
+  dest.match([&](const auto& dest) { masm.store64(value, dest); });
   masm.memoryBarrierAfter(sync);
 }
 
@@ -2303,10 +2366,6 @@ void CodeGenerator::visitWasmAtomicBinopI64(LWasmAtomicBinopI64* lir) {
   masm.wasmAtomicFetchOp64(lir->mir()->access(), lir->mir()->operation(), value,
                            addr, temp, output);
 }
-
-void CodeGenerator::visitNearbyInt(LNearbyInt*) { MOZ_CRASH("NYI"); }
-
-void CodeGenerator::visitNearbyIntF(LNearbyIntF*) { MOZ_CRASH("NYI"); }
 
 void CodeGenerator::visitSimd128(LSimd128* ins) { MOZ_CRASH("No SIMD"); }
 

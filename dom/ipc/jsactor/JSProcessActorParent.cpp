@@ -4,10 +4,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "mozilla/dom/JSProcessActorBinding.h"
 #include "mozilla/dom/JSProcessActorParent.h"
+
 #include "mozilla/dom/InProcessChild.h"
 #include "mozilla/dom/InProcessParent.h"
+#include "mozilla/dom/JSProcessActorBinding.h"
 
 namespace mozilla::dom {
 
@@ -34,8 +35,8 @@ void JSProcessActorParent::Init(const nsACString& aName,
 JSProcessActorParent::~JSProcessActorParent() { MOZ_ASSERT(!mManager); }
 
 void JSProcessActorParent::SendRawMessage(
-    const JSActorMessageMeta& aMeta, Maybe<ipc::StructuredCloneData>&& aData,
-    Maybe<ipc::StructuredCloneData>&& aStack, ErrorResult& aRv) {
+    const JSActorMessageMeta& aMeta, UniquePtr<ipc::StructuredCloneData> aData,
+    UniquePtr<ipc::StructuredCloneData> aStack, ErrorResult& aRv) {
   if (NS_WARN_IF(!CanSend() || !mManager || !mManager->GetCanSend())) {
     aRv.ThrowInvalidStateError(
         nsPrintfCString("Actor '%s' cannot send message '%s' during shutdown.",
@@ -55,9 +56,9 @@ void JSProcessActorParent::SendRawMessage(
   }
 
   // Cross-process case - send data over ContentParent to other side.
-  Maybe<ClonedMessageData> msgData;
+  UniquePtr<ClonedMessageData> msgData;
   if (aData) {
-    msgData.emplace();
+    msgData = MakeUnique<ClonedMessageData>();
     if (NS_WARN_IF(!aData->BuildClonedMessageData(*msgData))) {
       aRv.ThrowDataCloneError(
           nsPrintfCString("Actor '%s' cannot send message '%s': cannot clone.",
@@ -67,9 +68,9 @@ void JSProcessActorParent::SendRawMessage(
     }
   }
 
-  Maybe<ClonedMessageData> stackData;
+  UniquePtr<ClonedMessageData> stackData;
   if (aStack) {
-    stackData.emplace();
+    stackData = MakeUnique<ClonedMessageData>();
     if (!aStack->BuildClonedMessageData(*stackData)) {
       stackData.reset();
     }

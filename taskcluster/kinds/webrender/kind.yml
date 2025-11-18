@@ -112,11 +112,12 @@ tasks:
                   name: public/build/wrench-macos-headless.tar.bz2
                   path: /builds/worker/artifacts/wrench-macos-headless.tar.bz2
         dependencies:
+            # Using libLLVM and headers for gallium, which require an older version
             macosx64-clang-14: toolchain-macosx64-clang-14-raw
         fetches:
             toolchain:
                 - linux64-rust-macos
-                - linux64-clang-14
+                - linux64-clang
                 - macosx64-sdk-13.3
                 - wrench-deps
             macosx64-clang-14:
@@ -278,8 +279,7 @@ tasks:
                 - android-gradle-dependencies
                 - android-ndk-linux
                 - android-sdk-linux
-                - android-system-image-x86_64-linux
-                - android-avd-x86_64-linux
+                - android34-avd-x86_64-linux
                 - linux64-cargo-apk
                 - linux64-jdk
                 - linux64-rust-android
@@ -329,8 +329,7 @@ tasks:
                 - android-gradle-dependencies
                 - android-ndk-linux
                 - android-sdk-linux
-                - android-system-image-x86_64-linux
-                - android-avd-x86_64-linux
+                - android34-avd-x86_64-linux
                 - linux64-cargo-apk
                 - linux64-jdk
                 - linux64-rust-android
@@ -370,8 +369,8 @@ tasks:
                   extract: false
             toolchain:
                 - android-sdk-linux
-                - android-system-image-x86_64-linux
-                - android-avd-x86_64-linux
+                - android34-system-image-x86_64-linux
+                - android34-avd-x86_64-linux
                 - linux64-jdk
         run:
             using: run-task
@@ -416,8 +415,8 @@ tasks:
                   extract: false
             toolchain:
                 - android-sdk-linux
-                - android-system-image-x86_64-linux
-                - android-avd-x86_64-linux
+                - android34-system-image-x86_64-linux
+                - android34-avd-x86_64-linux
                 - linux64-jdk
         run:
             using: run-task

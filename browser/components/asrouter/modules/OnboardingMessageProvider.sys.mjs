@@ -24,7 +24,7 @@ const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
   BrowserUtils: "resource://gre/modules/BrowserUtils.sys.mjs",
-  ShellService: "resource:///modules/ShellService.sys.mjs",
+  ShellService: "moz-src:///browser/components/shell/ShellService.sys.mjs",
 });
 
 XPCOMUtils.defineLazyPreferenceGetter(
@@ -486,7 +486,7 @@ const BASE_MESSAGES = () => [
             },
             title_style: "fancy shine",
             background:
-              "url('chrome://activity-stream/content/data/content/assets/confetti.svg') top / 100% no-repeat var(--in-content-page-background)",
+              "url('chrome://activity-stream/content/data/content/assets/confetti.svg') top / 100% no-repeat var(--background-color-canvas)",
             subtitle: {
               string_id: "fx100-upgrade-thanks-keep-body",
             },
@@ -1800,6 +1800,32 @@ const BASE_MESSAGES = () => [
       id: "messagesLoaded",
     },
   },
+  {
+    id: "MULTIPROFILE_DATA_COLLECTION_CHANGED_INFOBAR",
+    template: "infobar",
+    targeting: "true",
+    content: {
+      priority: 3,
+      text: { string_id: "multiprofile-data-collection-message" },
+      buttons: [
+        {
+          label: { string_id: "multiprofile-data-collection-view-settings" },
+          action: {
+            type: "OPEN_PREFERENCES_PAGE",
+            data: { category: "privacy-reports" },
+            dismiss: true,
+          },
+        },
+        {
+          label: { string_id: "multiprofile-data-collection-dismiss" },
+          action: { type: "CANCEL", dismiss: true },
+        },
+      ],
+    },
+    trigger: {
+      id: "selectableProfilesUpdated",
+    },
+  },
 ];
 
 const PREONBOARDING_MESSAGES = () => [
@@ -1807,8 +1833,8 @@ const PREONBOARDING_MESSAGES = () => [
     id: "NEW_USER_TOU_ONBOARDING",
     enabled: true,
     requireAction: true,
-    currentPolicyVersion: 3,
-    minimumPolicyVersion: 3,
+    currentVersion: 4,
+    minimumVersion: 4,
     firstRunURL: "https://www.mozilla.org/privacy/firefox/",
     screens: [
       {
@@ -1961,7 +1987,7 @@ const PREONBOARDING_MESSAGES = () => [
                 orderedExecution: true,
                 actions: [
                   {
-                    type: "DATAREPORTING_NOTIFY_DATA_POLICY_INTERACTED",
+                    type: "SET_TERMS_OF_USE_INTERACTED",
                   },
                 ],
               },

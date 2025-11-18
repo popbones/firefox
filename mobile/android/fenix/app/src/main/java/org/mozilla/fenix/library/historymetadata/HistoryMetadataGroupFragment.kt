@@ -17,12 +17,12 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
-import androidx.appcompat.app.AlertDialog
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
@@ -42,6 +42,7 @@ import org.mozilla.fenix.ext.nav
 import org.mozilla.fenix.ext.requireComponents
 import org.mozilla.fenix.ext.runIfFragmentIsAttached
 import org.mozilla.fenix.ext.setTextColor
+import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.ext.showToolbar
 import org.mozilla.fenix.library.LibraryPageFragment
 import org.mozilla.fenix.library.history.History
@@ -49,8 +50,8 @@ import org.mozilla.fenix.library.historymetadata.controller.DefaultHistoryMetada
 import org.mozilla.fenix.library.historymetadata.interactor.DefaultHistoryMetadataGroupInteractor
 import org.mozilla.fenix.library.historymetadata.interactor.HistoryMetadataGroupInteractor
 import org.mozilla.fenix.library.historymetadata.view.HistoryMetadataGroupView
-import org.mozilla.fenix.lifecycle.registerForVerification
-import org.mozilla.fenix.lifecycle.verifyUser
+import org.mozilla.fenix.pbmlock.registerForVerification
+import org.mozilla.fenix.pbmlock.verifyUser
 import org.mozilla.fenix.tabstray.Page
 import org.mozilla.fenix.utils.allowUndo
 
@@ -102,7 +103,9 @@ class HistoryMetadataGroupFragment :
                 appStore = requireContext().components.appStore,
                 store = historyMetadataGroupStore,
                 selectOrAddUseCase = requireComponents.useCases.tabsUseCases.selectOrAddTab,
+                fenixBrowserUseCases = requireComponents.useCases.fenixBrowserUseCases,
                 navController = findNavController(),
+                settings = requireComponents.settings,
                 scope = CoroutineScope(Dispatchers.IO),
                 searchTerm = args.title,
                 deleteSnackbar = ::deleteSnackbar,
@@ -267,16 +270,29 @@ class HistoryMetadataGroupFragment :
     }
 
     private fun showTabTray(openInPrivate: Boolean = false) {
-        findNavController().nav(
-            R.id.historyMetadataGroupFragment,
-            HistoryMetadataGroupFragmentDirections.actionGlobalTabsTrayFragment(
-                page = if (openInPrivate) {
-                    Page.PrivateTabs
-                } else {
-                    Page.NormalTabs
-                },
-            ),
-        )
+        if (requireContext().settings().tabManagerEnhancementsEnabled) {
+            findNavController().nav(
+                R.id.historyMetadataGroupFragment,
+                HistoryMetadataGroupFragmentDirections.actionGlobalTabManagementFragment(
+                    page = if (openInPrivate) {
+                        Page.PrivateTabs
+                    } else {
+                        Page.NormalTabs
+                    },
+                ),
+            )
+        } else {
+            findNavController().nav(
+                R.id.historyMetadataGroupFragment,
+                HistoryMetadataGroupFragmentDirections.actionGlobalTabsTrayFragment(
+                    page = if (openInPrivate) {
+                        Page.PrivateTabs
+                    } else {
+                        Page.NormalTabs
+                    },
+                ),
+            )
+        }
     }
 
     private fun getSnackBarMessage(historyItems: Set<History.Metadata>): String {
@@ -292,7 +308,7 @@ class HistoryMetadataGroupFragment :
         private val groupName: String,
     ) : DialogFragment() {
         override fun onCreateDialog(savedInstanceState: Bundle?): Dialog =
-            AlertDialog.Builder(requireContext())
+            MaterialAlertDialogBuilder(requireContext())
                 .setMessage(
                     String.format(
                         getString(R.string.delete_all_history_group_prompt_message),

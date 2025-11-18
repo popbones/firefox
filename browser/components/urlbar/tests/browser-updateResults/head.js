@@ -8,10 +8,11 @@
 
 ChromeUtils.defineESModuleGetters(this, {
   PlacesTestUtils: "resource://testing-common/PlacesTestUtils.sys.mjs",
-  UrlbarProvidersManager: "resource:///modules/UrlbarProvidersManager.sys.mjs",
-  UrlbarResult: "resource:///modules/UrlbarResult.sys.mjs",
-  UrlbarUtils: "resource:///modules/UrlbarUtils.sys.mjs",
-  UrlbarView: "resource:///modules/UrlbarView.sys.mjs",
+  UrlbarProvidersManager:
+    "moz-src:///browser/components/urlbar/UrlbarProvidersManager.sys.mjs",
+  UrlbarResult: "moz-src:///browser/components/urlbar/UrlbarResult.sys.mjs",
+  UrlbarUtils: "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs",
+  UrlbarView: "moz-src:///browser/components/urlbar/UrlbarView.sys.mjs",
 });
 
 ChromeUtils.defineLazyGetter(this, "UrlbarTestUtils", () => {
@@ -21,6 +22,8 @@ ChromeUtils.defineLazyGetter(this, "UrlbarTestUtils", () => {
   module.init(this);
   return module;
 });
+
+const MAX_RESULTS = 10;
 
 add_setup(async function headInit() {
   await PlacesUtils.history.clear();
@@ -35,7 +38,7 @@ add_setup(async function headInit() {
       ["ui.popup.disable_autohide", true],
 
       // Make sure maxRichResults is 10 for sanity.
-      ["browser.urlbar.maxRichResults", 10],
+      ["browser.urlbar.maxRichResults", MAX_RESULTS],
     ],
   });
 
@@ -72,21 +75,20 @@ class DelayingTestProvider extends UrlbarTestUtils.TestProvider {
  * @returns {UrlbarResult}
  */
 function makeSuggestedIndexResult(suggestedIndex, resultSpan = 1) {
-  return Object.assign(
-    new UrlbarResult(
-      UrlbarUtils.RESULT_TYPE.URL,
-      UrlbarUtils.RESULT_SOURCE.HISTORY,
-      {
-        url: "http://example.com/si",
-        displayUrl: "http://example.com/si",
-        title: "suggested index",
-        helpUrl: "http://example.com/",
-        isBlockable: true,
-        blockL10n: { id: "urlbar-result-menu-remove-from-history" },
-      }
-    ),
-    { suggestedIndex, resultSpan }
-  );
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.URL,
+    source: UrlbarUtils.RESULT_SOURCE.HISTORY,
+    suggestedIndex,
+    resultSpan,
+    payload: {
+      url: "http://example.com/si",
+      displayUrl: "http://example.com/si",
+      title: "suggested index",
+      helpUrl: "http://example.com/",
+      isBlockable: true,
+      blockL10n: { id: "urlbar-result-menu-remove-from-history" },
+    },
+  });
 }
 
 /**
@@ -119,17 +121,15 @@ function makeProviderResults({ count = 0, type = undefined, specs = [] }) {
 
   let query = "test";
   let results = [
-    Object.assign(
-      new UrlbarResult(
-        UrlbarUtils.RESULT_TYPE.SEARCH,
-        UrlbarUtils.RESULT_SOURCE.SEARCH,
-        {
-          query,
-          engine: Services.search.defaultEngine.name,
-        }
-      ),
-      { heuristic: true }
-    ),
+    new UrlbarResult({
+      type: UrlbarUtils.RESULT_TYPE.SEARCH,
+      source: UrlbarUtils.RESULT_SOURCE.SEARCH,
+      heuristic: true,
+      payload: {
+        query,
+        engine: Services.search.defaultEngine.name,
+      },
+    }),
   ];
 
   for (let { count: specCount, type: specType } of specs) {
@@ -138,32 +138,32 @@ function makeProviderResults({ count = 0, type = undefined, specs = [] }) {
       switch (specType) {
         case UrlbarUtils.RESULT_TYPE.SEARCH:
           results.push(
-            new UrlbarResult(
-              UrlbarUtils.RESULT_TYPE.SEARCH,
-              UrlbarUtils.RESULT_SOURCE.SEARCH,
-              {
+            new UrlbarResult({
+              type: UrlbarUtils.RESULT_TYPE.SEARCH,
+              source: UrlbarUtils.RESULT_SOURCE.SEARCH,
+              payload: {
                 query,
                 suggestion: str,
                 lowerCaseSuggestion: str.toLowerCase(),
                 engine: Services.search.defaultEngine.name,
-              }
-            )
+              },
+            })
           );
           break;
         case UrlbarUtils.RESULT_TYPE.URL:
           results.push(
-            new UrlbarResult(
-              UrlbarUtils.RESULT_TYPE.URL,
-              UrlbarUtils.RESULT_SOURCE.HISTORY,
-              {
+            new UrlbarResult({
+              type: UrlbarUtils.RESULT_TYPE.URL,
+              source: UrlbarUtils.RESULT_SOURCE.HISTORY,
+              payload: {
                 url: "http://example.com/" + i,
                 displayUrl: "http://example.com/" + i,
                 title: str,
                 helpUrl: "http://example.com/",
                 isBlockable: true,
                 blockL10n: { id: "urlbar-result-menu-remove-from-history" },
-              }
-            )
+              },
+            })
           );
           break;
         default:
@@ -386,7 +386,15 @@ async function doSuggestedIndexTest({ search1, search2, duringUpdate }) {
   // update and delaying resolving the provider's finishQueryPromise.
   let mutationPromise = new Promise(resolve => {
     let lastRowState = duringUpdate[duringUpdate.length - 1];
-    let observer = new MutationObserver(() => {
+    let observer = new MutationObserver(mutations => {
+      let visibleChildren = Array.from(mutations[0].target.children).filter(
+        child => BrowserTestUtils.isVisible(child)
+      );
+      Assert.lessOrEqual(
+        visibleChildren.length,
+        MAX_RESULTS,
+        `There must be less than ${MAX_RESULTS} visible rows during update`
+      );
       observer.disconnect();
       resolve();
     });

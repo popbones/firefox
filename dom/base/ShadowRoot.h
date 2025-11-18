@@ -7,14 +7,14 @@
 #ifndef mozilla_dom_shadowroot_h__
 #define mozilla_dom_shadowroot_h__
 
+#include "mozilla/BindgenUniquePtr.h"
 #include "mozilla/DOMEventTargetHelper.h"
+#include "mozilla/ServoBindingTypes.h"
 #include "mozilla/dom/DocumentBinding.h"
 #include "mozilla/dom/DocumentFragment.h"
 #include "mozilla/dom/DocumentOrShadowRoot.h"
 #include "mozilla/dom/NameSpaceConstants.h"
 #include "mozilla/dom/ShadowRootBinding.h"
-#include "mozilla/ServoBindingTypes.h"
-#include "mozilla/BindgenUniquePtr.h"
 #include "nsCOMPtr.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsStubMutationObserver.h"
@@ -275,6 +275,19 @@ class ShadowRoot final : public DocumentFragment, public DocumentOrShadowRoot {
 
   void GetHTML(const GetHTMLOptions& aOptions, nsAString& aResult);
 
+  void GetReferenceTarget(nsAString& aResult) const {
+    mReferenceTarget->ToString(aResult);
+  }
+  nsAtom* ReferenceTarget() const { return mReferenceTarget; }
+  void SetReferenceTarget(const nsAString& aValue) {
+    SetReferenceTarget(NS_Atomize(aValue));
+  }
+  void SetReferenceTarget(RefPtr<nsAtom> aTarget);
+  Element* GetReferenceTargetElement() const {
+    return mReferenceTarget->IsEmpty() ? nullptr
+                                       : GetElementById(mReferenceTarget);
+  }
+
  protected:
   // FIXME(emilio): This will need to become more fine-grained.
   void ApplicableRulesChanged();
@@ -320,6 +333,8 @@ class ShadowRoot final : public DocumentFragment, public DocumentOrShadowRoot {
 
   // https://dom.spec.whatwg.org/#shadowroot-serializable
   const IsSerializable mIsSerializable;
+
+  RefPtr<nsAtom> mReferenceTarget;
 
   nsresult Clone(dom::NodeInfo*, nsINode** aResult) const override;
 };

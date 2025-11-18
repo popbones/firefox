@@ -6,25 +6,19 @@
 
 #include "BindingUtils.h"
 
-#include <algorithm>
-#include <cstdint>
 #include <stdarg.h>
 
-#include "mozilla/Assertions.h"
-#include "mozilla/DebugOnly.h"
-#include "mozilla/Encoding.h"
-#include "mozilla/FloatingPoint.h"
-#include "mozilla/Preferences.h"
-#include "mozilla/ScopeExit.h"
-#include "mozilla/StaticPrefs_dom.h"
-#include "mozilla/UniquePtr.h"
-#include "mozilla/Unused.h"
-#include "mozilla/UseCounter.h"
+#include <algorithm>
+#include <cstdint>
 
 #include "AccessCheck.h"
+#include "WorkerPrivate.h"
+#include "WorkerRunnable.h"
+#include "WrapperFactory.h"
+#include "XrayWrapper.h"
+#include "ipc/ErrorIPCUtils.h"
+#include "ipc/IPCMessageUtilsSpecializations.h"
 #include "js/CallAndConstruct.h"  // JS::Call, JS::IsCallable
-#include "js/experimental/JitInfo.h"  // JSJit{Getter,Setter,Method}CallArgs, JSJit{Getter,Setter}Op, JSJitInfo
-#include "js/friend/StackLimits.h"  // js::AutoCheckRecursionLimit
 #include "js/Id.h"
 #include "js/JSON.h"
 #include "js/MapAndSet.h"
@@ -33,7 +27,48 @@
 #include "js/StableStringChars.h"
 #include "js/String.h"  // JS::GetStringLength, JS::MaxStringLength, JS::StringHasLatin1Chars
 #include "js/Symbol.h"
+#include "js/experimental/JitInfo.h"  // JSJit{Getter,Setter,Method}CallArgs, JSJit{Getter,Setter}Op, JSJitInfo
+#include "js/friend/StackLimits.h"  // js::AutoCheckRecursionLimit
 #include "jsfriendapi.h"
+#include "mozilla/Assertions.h"
+#include "mozilla/DebugOnly.h"
+#include "mozilla/Encoding.h"
+#include "mozilla/FloatingPoint.h"
+#include "mozilla/Preferences.h"
+#include "mozilla/ScopeExit.h"
+#include "mozilla/Sprintf.h"
+#include "mozilla/StaticPrefs_dom.h"
+#include "mozilla/UniquePtr.h"
+#include "mozilla/Unused.h"
+#include "mozilla/UseCounter.h"
+#include "mozilla/dom/CustomElementRegistry.h"
+#include "mozilla/dom/DOMException.h"
+#include "mozilla/dom/DeprecationReportBody.h"
+#include "mozilla/dom/DocGroup.h"
+#include "mozilla/dom/ElementBinding.h"
+#include "mozilla/dom/Exceptions.h"
+#include "mozilla/dom/HTMLElementBinding.h"
+#include "mozilla/dom/HTMLEmbedElement.h"
+#include "mozilla/dom/HTMLEmbedElementBinding.h"
+#include "mozilla/dom/HTMLObjectElement.h"
+#include "mozilla/dom/HTMLObjectElementBinding.h"
+#include "mozilla/dom/MaybeCrossOriginObject.h"
+#include "mozilla/dom/ObservableArrayProxyHandler.h"
+#include "mozilla/dom/Promise.h"
+#include "mozilla/dom/ReportingUtils.h"
+#include "mozilla/dom/ScriptSettings.h"
+#include "mozilla/dom/WebIDLGlobalNameHash.h"
+#include "mozilla/dom/WindowProxyHolder.h"
+#include "mozilla/dom/WorkerPrivate.h"
+#include "mozilla/dom/WorkerScope.h"
+#include "mozilla/dom/XULElementBinding.h"
+#include "mozilla/dom/XULFrameElementBinding.h"
+#include "mozilla/dom/XULMenuElementBinding.h"
+#include "mozilla/dom/XULPopupElementBinding.h"
+#include "mozilla/dom/XULResizerElementBinding.h"
+#include "mozilla/dom/XULTextElementBinding.h"
+#include "mozilla/dom/XULTreeElementBinding.h"
+#include "mozilla/dom/XrayExpandoClass.h"
 #include "nsContentCreatorFunctions.h"
 #include "nsContentUtils.h"
 #include "nsGlobalWindowInner.h"
@@ -43,48 +78,12 @@
 #include "nsIOService.h"
 #include "nsIPrincipal.h"
 #include "nsIXPConnect.h"
-#include "nsUTF8Utils.h"
-#include "WorkerPrivate.h"
-#include "WorkerRunnable.h"
-#include "WrapperFactory.h"
-#include "xpcprivate.h"
-#include "XrayWrapper.h"
 #include "nsPrintfCString.h"
-#include "mozilla/Sprintf.h"
 #include "nsReadableUtils.h"
+#include "nsUTF8Utils.h"
 #include "nsWrapperCacheInlines.h"
-
-#include "mozilla/dom/ScriptSettings.h"
-#include "mozilla/dom/CustomElementRegistry.h"
-#include "mozilla/dom/DeprecationReportBody.h"
-#include "mozilla/dom/DOMException.h"
-#include "mozilla/dom/ElementBinding.h"
-#include "mozilla/dom/Exceptions.h"
-#include "mozilla/dom/HTMLObjectElement.h"
-#include "mozilla/dom/HTMLObjectElementBinding.h"
-#include "mozilla/dom/HTMLEmbedElement.h"
-#include "mozilla/dom/HTMLElementBinding.h"
-#include "mozilla/dom/HTMLEmbedElementBinding.h"
-#include "mozilla/dom/MaybeCrossOriginObject.h"
-#include "mozilla/dom/ObservableArrayProxyHandler.h"
-#include "mozilla/dom/ReportingUtils.h"
-#include "mozilla/dom/XULElementBinding.h"
-#include "mozilla/dom/XULFrameElementBinding.h"
-#include "mozilla/dom/XULMenuElementBinding.h"
-#include "mozilla/dom/XULPopupElementBinding.h"
-#include "mozilla/dom/XULResizerElementBinding.h"
-#include "mozilla/dom/XULTextElementBinding.h"
-#include "mozilla/dom/XULTreeElementBinding.h"
-#include "mozilla/dom/Promise.h"
-#include "mozilla/dom/WebIDLGlobalNameHash.h"
-#include "mozilla/dom/WorkerPrivate.h"
-#include "mozilla/dom/WorkerScope.h"
-#include "mozilla/dom/XrayExpandoClass.h"
-#include "mozilla/dom/WindowProxyHolder.h"
-#include "ipc/ErrorIPCUtils.h"
-#include "ipc/IPCMessageUtilsSpecializations.h"
-#include "mozilla/dom/DocGroup.h"
 #include "nsXULElement.h"
+#include "xpcprivate.h"
 
 namespace mozilla {
 namespace dom {
@@ -214,13 +213,6 @@ bool ThrowInvalidThis(JSContext* aCx, const JS::CallArgs& aArgs,
                       bool aSecurityError, prototypes::ID aProtoId) {
   return ThrowInvalidThis(aCx, aArgs, aSecurityError,
                           NamesOfInterfacesWithProtos(aProtoId));
-}
-
-bool ThrowNoSetterArg(JSContext* aCx, const JS::CallArgs& aArgs,
-                      prototypes::ID aProtoId) {
-  nsPrintfCString errorMessage("%s attribute setter",
-                               NamesOfInterfacesWithProtos(aProtoId));
-  return aArgs.requireAtLeast(aCx, errorMessage.get(), 1);
 }
 
 }  // namespace dom
@@ -3246,13 +3238,23 @@ bool GenericSetter(JSContext* cx, unsigned argc, JS::Value* vp) {
           cx, args, rv == NS_ERROR_XPC_SECURITY_MANAGER_VETO, protoID);
     }
   }
-  if (args.length() == 0) {
-    return ThrowNoSetterArg(cx, args, protoID);
-  }
   MOZ_ASSERT(info->type() == JSJitInfo::Setter);
   JSJitSetterOp setter = info->setter;
-  if (!setter(cx, obj, self, JSJitSetterCallArgs(args))) {
-    return false;
+
+  // https://webidl.spec.whatwg.org/#dfn-attribute-setter
+  //
+  // Step 4.1.  Let |V| be <emu-val>undefined</emu-val>.
+  // Step 4.2.  If any arguments were passed, then set |V| to the value of the
+  //            first argument passed.
+  if (args.length() == 0) {
+    JS::Rooted<JS::Value> undef(cx);
+    if (!setter(cx, obj, self, JSJitSetterCallArgs(&undef))) {
+      return false;
+    }
+  } else {
+    if (!setter(cx, obj, self, JSJitSetterCallArgs(args))) {
+      return false;
+    }
   }
   args.rval().setUndefined();
 #ifdef DEBUG

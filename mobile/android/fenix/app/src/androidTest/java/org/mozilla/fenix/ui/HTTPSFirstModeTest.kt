@@ -9,10 +9,11 @@ import androidx.core.net.toUri
 import org.junit.Rule
 import org.junit.Test
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
+import org.mozilla.fenix.helpers.TestSetup
 import org.mozilla.fenix.helpers.perf.DetectMemoryLeaksRule
 import org.mozilla.fenix.ui.robots.navigationToolbar
 
-class HTTPSFirstModeTest {
+class HTTPSFirstModeTest : TestSetup() {
     @get:Rule
     val activityTestRule =
         AndroidComposeTestRule(
@@ -25,28 +26,28 @@ class HTTPSFirstModeTest {
     @Test
     fun httpsFirstModeImplicitSchemeTest() {
         navigationToolbar {
-        }.enterURLAndEnterToBrowser("example.com".toUri()) {
-            verifyPageContent("Example Domain")
+        }.enterURLAndEnterToBrowser("permission.site".toUri()) {
+            verifyPageContent("permission.site")
         }.openNavigationToolbar {
-            verifyUrl("https://example.com/")
+            verifyUrl("https://permission.site/")
         }
     }
 
     @Test
     fun httpsFirstModeExplicitSchemeTest() {
         navigationToolbar {
-        }.enterURLAndEnterToBrowser("http://example.com".toUri()) {
-            verifyPageContent("Example Domain")
+        }.enterURLAndEnterToBrowser("http://permission.site".toUri()) {
+            verifyPageContent("permission.site")
         }.openNavigationToolbar {
-            verifyUrl("http://example.com/")
+            verifyUrl("http://permission.site/")
         }
 
         // Exception should persist
         navigationToolbar {
-        }.enterURLAndEnterToBrowser("example.com".toUri()) {
-            verifyPageContent("Example Domain")
+        }.enterURLAndEnterToBrowser("permission.site".toUri()) {
+            verifyPageContent("permission.site")
         }.openNavigationToolbar {
-            verifyUrl("http://example.com/")
+            verifyUrl("http://permission.site/")
         }
     }
 }

@@ -57,7 +57,10 @@ static nsresult SchemeIsHTTPS(const nsACString& originScheme,
 }
 
 bool AltSvcMapping::AcceptableProxy(nsProxyInfo* proxyInfo) {
-  return !proxyInfo || proxyInfo->IsDirect() || proxyInfo->IsSOCKS();
+  // TODO: We also need to make sure the inner connection will connect to the
+  // routed host.
+  return !proxyInfo || proxyInfo->IsDirect() || proxyInfo->IsSOCKS() ||
+         proxyInfo->IsHttp3Proxy();
 }
 
 void AltSvcMapping::ProcessHeader(
@@ -120,7 +123,6 @@ void AltSvcMapping::ProcessHeader(
 
   LOG(("Alt-Svc Response Header %s\n", buf.get()));
   ParsedHeaderValueListList parsedAltSvc(buf);
-  int32_t numEntriesInHeader = parsedAltSvc.mValues.Length();
 
   nsTArray<RefPtr<AltSvcMapping>> h3Mappings;
   nsTArray<RefPtr<AltSvcMapping>> otherMappings;
@@ -143,8 +145,6 @@ void AltSvcMapping::ProcessHeader(
       if (!pairIndex) {
         if (currentName.EqualsLiteral("clear")) {
           clearEntry = true;
-          --numEntriesInHeader;  // Only want to keep track of actual alt-svc
-                                 // maps, not clearing
           break;
         }
 
@@ -259,11 +259,6 @@ void AltSvcMapping::ProcessHeader(
 
   std::for_each(otherMappings.begin(), otherMappings.end(),
                 doUpdateAltSvcMapping);
-
-  if (numEntriesInHeader) {  // Ignore headers that were just "alt-svc: clear"
-    glean::http::altsvc_entries_per_header.AccumulateSingleSample(
-        numEntriesInHeader);
-  }
 }
 
 AltSvcMapping::AltSvcMapping(nsIDataStorage* storage, int32_t epoch,
@@ -807,15 +802,11 @@ class WellKnownChecker {
   nsresult MakeChannel(nsHttpChannel* chan, TransactionObserver* obs,
                        nsHttpConnectionInfo* ci, nsIURI* uri, uint32_t caps,
                        nsILoadInfo* loadInfo) {
-    uint64_t channelId;
     nsLoadFlags flags;
 
-    ExtContentPolicyType contentPolicyType =
-        loadInfo->GetExternalContentPolicyType();
-
-    if (NS_FAILED(gHttpHandler->NewChannelId(channelId)) ||
-        NS_FAILED(chan->Init(uri, caps, nullptr, 0, nullptr, channelId,
-                             contentPolicyType, loadInfo)) ||
+    uint64_t channelId = gHttpHandler->NewChannelId();
+    if (NS_FAILED(
+            chan->Init(uri, caps, nullptr, 0, nullptr, channelId, loadInfo)) ||
         NS_FAILED(chan->SetAllowAltSvc(false)) ||
         NS_FAILED(chan->SetRedirectMode(
             nsIHttpChannelInternal::REDIRECT_MODE_ERROR)) ||

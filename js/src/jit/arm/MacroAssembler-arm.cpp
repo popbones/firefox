@@ -2362,6 +2362,39 @@ void MacroAssemblerARMCompat::minMaxDouble(FloatRegister srcDest,
   bind(&done);
 }
 
+void MacroAssemblerARMCompat::minMax32(Register lhs, Register rhs,
+                                       Register dest, bool isMax) {
+  if (rhs == dest) {
+    std::swap(lhs, rhs);
+  }
+
+  auto cond = isMax ? Assembler::LessThan : Assembler::GreaterThan;
+  if (lhs != dest) {
+    move32(lhs, dest);
+  }
+  cmp32(lhs, rhs);
+  ma_mov(rhs, dest, LeaveCC, cond);
+}
+
+void MacroAssemblerARMCompat::minMax32(Register lhs, Imm32 rhs, Register dest,
+                                       bool isMax) {
+  // We need a scratch register when |rhs| can't be encoded in the compare
+  // instruction.
+  if (Imm8(rhs.value).invalid() && Imm8(~rhs.value).invalid()) {
+    ScratchRegisterScope scratch(asMasm());
+    move32(rhs, scratch);
+    minMax32(lhs, scratch, dest, isMax);
+    return;
+  }
+
+  auto cond = isMax ? Assembler::LessThan : Assembler::GreaterThan;
+  if (lhs != dest) {
+    move32(lhs, dest);
+  }
+  cmp32(lhs, rhs);
+  ma_mov(rhs, dest, cond);
+}
+
 void MacroAssemblerARMCompat::minMaxFloat32(FloatRegister srcDest,
                                             FloatRegister second, bool canBeNaN,
                                             bool isMax) {
@@ -2903,10 +2936,67 @@ void MacroAssemblerARMCompat::boxDouble(FloatRegister src,
 
 void MacroAssemblerARMCompat::boxNonDouble(JSValueType type, Register src,
                                            const ValueOperand& dest) {
+  MOZ_ASSERT(type != JSVAL_TYPE_UNDEFINED && type != JSVAL_TYPE_NULL);
+  MOZ_ASSERT(dest.typeReg() != dest.payloadReg());
+
+#ifdef DEBUG
+  if (type == JSVAL_TYPE_BOOLEAN) {
+    Label upperBitsZeroed;
+    as_cmp(src, Imm8(1));
+    ma_b(&upperBitsZeroed, Assembler::BelowOrEqual);
+    breakpoint();
+    bind(&upperBitsZeroed);
+  }
+#endif
+
   if (src != dest.payloadReg()) {
     ma_mov(src, dest.payloadReg());
   }
   ma_mov(ImmType(type), dest.typeReg());
+}
+
+void MacroAssemblerARMCompat::boxNonDouble(Register type, Register src,
+                                           const ValueOperand& dest) {
+  MOZ_ASSERT(type != dest.payloadReg() && src != dest.typeReg());
+
+#ifdef DEBUG
+  Label ok, isNullOrUndefined, isBoolean;
+
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_NULL),
+                    &isNullOrUndefined);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_UNDEFINED),
+                    &isNullOrUndefined);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_BOOLEAN),
+                    &isBoolean);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_INT32), &ok);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_MAGIC), &ok);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_STRING), &ok);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_SYMBOL), &ok);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_PRIVATE_GCTHING),
+                    &ok);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_BIGINT), &ok);
+  asMasm().branch32(Assembler::Equal, type, Imm32(JSVAL_TYPE_OBJECT), &ok);
+  breakpoint();
+  {
+    bind(&isNullOrUndefined);
+    as_cmp(src, Imm8(0));
+    ma_b(&ok, Assembler::Zero);
+    breakpoint();
+  }
+  {
+    bind(&isBoolean);
+    as_cmp(src, Imm8(1));
+    ma_b(&ok, Assembler::BelowOrEqual);
+    breakpoint();
+  }
+  bind(&ok);
+#endif
+
+  if (src != dest.payloadReg()) {
+    ma_mov(src, dest.payloadReg());
+  }
+  ScratchRegisterScope scratch(asMasm());
+  ma_orr(Imm32(JSVAL_TAG_CLEAR), type, dest.typeReg(), scratch);
 }
 
 void MacroAssemblerARMCompat::loadConstantFloat32(float f, FloatRegister dest) {
@@ -3149,15 +3239,6 @@ void MacroAssemblerARMCompat::loadUnalignedValue(const Address& src,
     ma_ldr(type, dest.typeReg(), scratch2);
     ma_ldr(payload, dest.payloadReg(), scratch2);
   }
-}
-
-void MacroAssemblerARMCompat::tagValue(JSValueType type, Register payload,
-                                       ValueOperand dest) {
-  MOZ_ASSERT(dest.typeReg() != dest.payloadReg());
-  if (payload != dest.payloadReg()) {
-    ma_mov(payload, dest.payloadReg());
-  }
-  ma_mov(ImmType(type), dest.typeReg());
 }
 
 void MacroAssemblerARMCompat::pushValue(ValueOperand val) {
@@ -4831,16 +4912,17 @@ FaultingCodeOffset MacroAssembler::wasmTrapInstruction() {
 }
 
 void MacroAssembler::wasmBoundsCheck32(Condition cond, Register index,
-                                       Register boundsCheckLimit, Label* ok) {
+                                       Register boundsCheckLimit,
+                                       Label* label) {
   as_cmp(index, O2Reg(boundsCheckLimit));
-  as_b(ok, cond);
+  as_b(label, cond);
   if (JitOptions.spectreIndexMasking) {
     ma_mov(boundsCheckLimit, index, LeaveCC, cond);
   }
 }
 
 void MacroAssembler::wasmBoundsCheck32(Condition cond, Register index,
-                                       Address boundsCheckLimit, Label* ok) {
+                                       Address boundsCheckLimit, Label* label) {
   ScratchRegisterScope scratch(*this);
   // We want to do a word load from
   //   [boundsCheckLimit.base, #+boundsCheckLimit.offset],
@@ -4852,28 +4934,29 @@ void MacroAssembler::wasmBoundsCheck32(Condition cond, Register index,
                    boundsCheckLimit.base, Imm32(boundsCheckLimit.offset),
                    scratch, scratch);
   as_cmp(index, O2Reg(scratch));
-  as_b(ok, cond);
+  as_b(label, cond);
   if (JitOptions.spectreIndexMasking) {
     ma_mov(scratch, index, LeaveCC, cond);
   }
 }
 
 void MacroAssembler::wasmBoundsCheck64(Condition cond, Register64 index,
-                                       Register64 boundsCheckLimit, Label* ok) {
-  Label notOk;
+                                       Register64 boundsCheckLimit,
+                                       Label* label) {
+  Label ifFalse;
   cmp32(index.high, Imm32(0));
-  j(Assembler::NonZero, &notOk);
-  wasmBoundsCheck32(cond, index.low, boundsCheckLimit.low, ok);
-  bind(&notOk);
+  j(Assembler::NonZero, &ifFalse);
+  wasmBoundsCheck32(cond, index.low, boundsCheckLimit.low, label);
+  bind(&ifFalse);
 }
 
 void MacroAssembler::wasmBoundsCheck64(Condition cond, Register64 index,
-                                       Address boundsCheckLimit, Label* ok) {
-  Label notOk;
+                                       Address boundsCheckLimit, Label* label) {
+  Label ifFalse;
   cmp32(index.high, Imm32(0));
-  j(Assembler::NonZero, &notOk);
-  wasmBoundsCheck32(cond, index.low, boundsCheckLimit, ok);
-  bind(&notOk);
+  j(Assembler::NonZero, &ifFalse);
+  wasmBoundsCheck32(cond, index.low, boundsCheckLimit, label);
+  bind(&ifFalse);
 }
 
 void MacroAssembler::wasmTruncateDoubleToUInt32(FloatRegister input,

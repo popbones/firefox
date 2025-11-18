@@ -10,6 +10,11 @@
 #include "mozilla/Attributes.h"
 #include "mozilla/BasicEvents.h"
 #include "mozilla/EventDispatcher.h"
+#include "mozilla/MappedDeclarationsBuilder.h"
+#include "mozilla/Maybe.h"
+#include "mozilla/PresState.h"
+#include "mozilla/Unused.h"
+#include "mozilla/dom/Document.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/FormData.h"
 #include "mozilla/dom/HTMLOptGroupElement.h"
@@ -17,21 +22,16 @@
 #include "mozilla/dom/HTMLSelectElementBinding.h"
 #include "mozilla/dom/UnionTypes.h"
 #include "mozilla/dom/WindowGlobalChild.h"
-#include "mozilla/MappedDeclarationsBuilder.h"
-#include "mozilla/Maybe.h"
-#include "mozilla/Unused.h"
+#include "nsComboboxControlFrame.h"
 #include "nsContentCreatorFunctions.h"
 #include "nsContentList.h"
 #include "nsContentUtils.h"
 #include "nsError.h"
 #include "nsGkAtoms.h"
-#include "nsComboboxControlFrame.h"
-#include "mozilla/dom/Document.h"
 #include "nsIFrame.h"
-#include "nsListControlFrame.h"
 #include "nsISelectControlFrame.h"
 #include "nsLayoutUtils.h"
-#include "mozilla/PresState.h"
+#include "nsListControlFrame.h"
 #include "nsServiceManagerUtils.h"
 #include "nsStyleConsts.h"
 #include "nsTextNode.h"
@@ -240,25 +240,26 @@ void HTMLSelectElement::GetAutocompleteInfo(AutocompleteInfo& aInfo) {
       attributeVal, aInfo, mAutocompleteInfoState, true);
 }
 
-void HTMLSelectElement::InsertChildBefore(nsIContent* aKid,
-                                          nsIContent* aBeforeThis, bool aNotify,
-                                          ErrorResult& aRv) {
+void HTMLSelectElement::InsertChildBefore(
+    nsIContent* aKid, nsIContent* aBeforeThis, bool aNotify, ErrorResult& aRv,
+    nsINode* aOldParent, MutationEffectOnScript aMutationEffectOnScript) {
   const uint32_t index =
       aBeforeThis ? *ComputeIndexOf(aBeforeThis) : GetChildCount();
   SafeOptionListMutation safeMutation(this, this, aKid, index, aNotify);
-  nsGenericHTMLFormControlElementWithState::InsertChildBefore(aKid, aBeforeThis,
-                                                              aNotify, aRv);
+  nsGenericHTMLFormControlElementWithState::InsertChildBefore(
+      aKid, aBeforeThis, aNotify, aRv, aOldParent, aMutationEffectOnScript);
   if (aRv.Failed()) {
     safeMutation.MutationFailed();
   }
 }
 
-void HTMLSelectElement::RemoveChildNode(nsIContent* aKid, bool aNotify,
-                                        const BatchRemovalState* aState) {
+void HTMLSelectElement::RemoveChildNode(
+    nsIContent* aKid, bool aNotify, const BatchRemovalState* aState,
+    nsINode* aNewParent, MutationEffectOnScript aMutationEffectOnScript) {
   SafeOptionListMutation safeMutation(this, this, nullptr,
                                       *ComputeIndexOf(aKid), aNotify);
-  nsGenericHTMLFormControlElementWithState::RemoveChildNode(aKid, aNotify,
-                                                            aState);
+  nsGenericHTMLFormControlElementWithState::RemoveChildNode(
+      aKid, aNotify, aState, aNewParent, aMutationEffectOnScript);
 }
 
 void HTMLSelectElement::InsertOptionsIntoList(nsIContent* aOptions,
@@ -1234,8 +1235,8 @@ void HTMLSelectElement::MapAttributesIntoRule(
   nsGenericHTMLFormControlElementWithState::MapCommonAttributesInto(aBuilder);
 }
 
-nsChangeHint HTMLSelectElement::GetAttributeChangeHint(const nsAtom* aAttribute,
-                                                       int32_t aModType) const {
+nsChangeHint HTMLSelectElement::GetAttributeChangeHint(
+    const nsAtom* aAttribute, AttrModType aModType) const {
   nsChangeHint retval =
       nsGenericHTMLFormControlElementWithState::GetAttributeChangeHint(
           aAttribute, aModType);

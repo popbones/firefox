@@ -25,6 +25,7 @@ ALL_HARNESSES = [
     "jsreftest",
     "perftests",
     "fuzztest",
+    "trainhop",
 ]
 
 PACKAGE_SPECIFIED_HARNESSES = [
@@ -42,6 +43,7 @@ PACKAGE_SPECIFIED_HARNESSES = [
     "jsreftest",
     "perftests",
     "fuzztest",
+    "trainhop",
 ]
 
 # These packages are not present for every build configuration.
@@ -115,6 +117,7 @@ def generate_package_data(args):
             continue
         harness_requirements[harness].append(pkg_name)
         harness_requirements[harness].append("target.condprof.tests.tar.gz")
+        harness_requirements[harness].append("target.trainhop.tests.tar.gz")
     return harness_requirements
 
 

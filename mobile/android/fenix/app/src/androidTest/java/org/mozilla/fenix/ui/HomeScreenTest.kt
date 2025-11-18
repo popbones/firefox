@@ -5,12 +5,14 @@
 package org.mozilla.fenix.ui
 
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mozilla.fenix.customannotations.SmokeTest
 import org.mozilla.fenix.helpers.HomeActivityIntentTestRule
 import org.mozilla.fenix.helpers.RetryTestRule
 import org.mozilla.fenix.helpers.TestAssetHelper
+import org.mozilla.fenix.helpers.TestHelper.waitUntilSnackbarGone
 import org.mozilla.fenix.helpers.TestSetup
 import org.mozilla.fenix.helpers.perf.DetectMemoryLeaksRule
 import org.mozilla.fenix.ui.robots.homeScreen
@@ -51,7 +53,6 @@ class HomeScreenTest : TestSetup() {
             verifyExistingTopSitesTabs(activityTestRule, "Google")
             verifyCollectionsHeader(activityTestRule)
             verifyNoCollectionsText(activityTestRule)
-            scrollToPocketProvokingStories()
             verifyThoughtProvokingStories(true)
             verifyNavigationToolbar()
             verifyHomeMenuButton()
@@ -74,6 +75,7 @@ class HomeScreenTest : TestSetup() {
 
     // TestRail link: https://mozilla.testrail.io/index.php?/cases/view/1364362
     @SmokeTest
+    @Ignore("disabled - https://bugzilla.mozilla.org/show_bug.cgi?id=1989405")
     @Test
     fun verifyJumpBackInSectionTest() {
         activityTestRule.activityRule.applySettingsExceptions {
@@ -108,6 +110,8 @@ class HomeScreenTest : TestSetup() {
             verifyJumpBackInItemWithUrl(activityTestRule, secondWebPage.url.toString())
         }.openTabDrawer(activityTestRule) {
             closeTabWithTitle(secondWebPage.title)
+            waitUntilSnackbarGone()
+            verifyExistingOpenTabs(firstWebPage.title)
         }.closeTabDrawer {
         }
 

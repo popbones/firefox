@@ -56,6 +56,9 @@ newtab-topsites-add-shortcut-header = 새 바로 가기
 newtab-topsites-edit-topsites-header = 상위 사이트 편집
 newtab-topsites-edit-shortcut-header = 바로 가기 편집
 newtab-topsites-add-shortcut-label = 바로 가기 추가
+newtab-topsites-add-shortcut-title =
+    .title = 바로 가기 추가
+    .aria-label = 바로 가기 추가
 newtab-topsites-title-label = 제목
 newtab-topsites-title-input =
     .placeholder = 제목 입력
@@ -84,6 +87,14 @@ newtab-confirm-delete-history-p2 = 이 작업은 취소할 수 없습니다.
 ## Top Sites - Sponsored label
 
 newtab-topsite-sponsored = 스폰서
+
+## Label used by screen readers for pinned top sites
+
+# Variables:
+#   $title (string) - The label or hostname of the site.
+topsite-label-pinned =
+    .aria-label = { $title } (고정)
+    .title = { $title }
 
 ## Context Menu - Action Tooltips.
 
@@ -307,19 +318,32 @@ newtab-custom-pocket-subtitle = { -brand-product-name } 제품군의 일부인 {
 newtab-custom-stories-toggle =
     .label = 추천 이야기
     .description = { -brand-product-name } 제품군이 선별한 뛰어난 콘텐츠
+newtab-custom-stories-personalized-toggle =
+    .label = 이야기
+newtab-custom-stories-personalized-checkbox-label = 활동에 기반한 개인화된 이야기
 newtab-custom-pocket-sponsored = 스폰서 소식
 newtab-custom-pocket-show-recent-saves = 최근 저장한 항목 표시
 newtab-custom-recent-title = 최근 활동
 newtab-custom-recent-subtitle = 최근 사이트 및 콘텐츠 모음
-newtab-custom-recent-toggle =
-    .label = 최근 활동
-    .description = 최근 사이트 및 콘텐츠 모음
 newtab-custom-weather-toggle =
     .label = 날씨
     .description = 오늘의 일기예보를 한눈에 보기
 newtab-custom-trending-search-toggle =
     .label = 인기 검색어
     .description = 인기 있고 자주 검색되는 주제
+newtab-custom-widget-weather-toggle =
+    .label = 날씨
+newtab-custom-widget-trending-search-toggle =
+    .label = 인기 검색어
+newtab-custom-widget-lists-toggle =
+    .label = 목록
+newtab-custom-widget-timer-toggle =
+    .label = 타이머
+newtab-custom-widget-section-title = 위젯
+# Tooltip for close button
+newtab-custom-close-menu-button =
+    .title = 닫기
+    .aria-label = 메뉴 닫기
 newtab-custom-close-button = 닫기
 newtab-custom-settings = 추가 설정
 
@@ -332,6 +356,7 @@ newtab-wallpaper-custom-color = 색상 선택
 # Variables
 #   $file_size (number) - The number of the maximum image file size (in MB) that may be uploaded
 newtab-wallpaper-error-max-file-size = 이미지가 파일 크기 제한인 { $file_size }MB를 초과했습니다. 더 작은 파일을 업로드 해 주세요.
+newtab-wallpaper-error-upload-file-type = 파일을 업로드하지 못했습니다. 이미지 파일로 다시 시도해 주세요.
 newtab-wallpaper-error-file-type = 파일을 업로드하지 못했습니다. 다른 파일 형식으로 다시 시도하세요.
 newtab-wallpaper-light-red-panda = 레서판다
 newtab-wallpaper-light-mountain = 하얀 산
@@ -437,7 +462,6 @@ newtab-weather-menu-change-location = 위치 변경
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = 위치 검색
     .aria-label = 위치 검색
-newtab-weather-change-location-search-input = 위치 검색
 newtab-weather-menu-weather-display = 날씨 표시
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -503,6 +527,9 @@ newtab-topic-selection-button-pick-interests = 관심 분야를 선택하세요
 newtab-section-follow-button = 팔로우
 newtab-section-following-button = 팔로잉
 newtab-section-unfollow-button = 팔로우 취소
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = 피드를 미세 조정하세요
+newtab-section-follow-highlight-subtitle = 관심 분야를 팔로우하면 좋아하는 것을 더 많이 볼 수 있습니다.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -535,6 +562,12 @@ newtab-custom-wallpaper-title = 사용자 지정 배경 화면이 있습니다
 newtab-custom-wallpaper-subtitle = 자신만의 배경 화면을 업로드하거나 사용자 지정 색상을 선택하여 나만의 { -brand-product-name }로 만들 수 있습니다.
 newtab-custom-wallpaper-cta = 사용해 보기
 
+## Strings for new user activation custom wallpaper highlight
+
+newtab-new-user-custom-wallpaper-title = 나만의 { -brand-product-name }를 만들 배경 화면을 선택하세요
+newtab-new-user-custom-wallpaper-subtitle = 사용자 지정 배경화면과 색상으로 모든 새 탭을 내 집처럼 꾸며보세요.
+newtab-new-user-custom-wallpaper-cta = 지금 사용해보기
+
 ## Strings for download mobile highlight
 
 newtab-download-mobile-highlight-title = 모바일용 { -brand-product-name } 다운로드
@@ -544,6 +577,11 @@ newtab-download-mobile-highlight-body-variant-b = 탭, 비밀번호 등을 동�
 newtab-download-mobile-highlight-body-variant-c = 이동 중에도 { -brand-product-name }를 가져갈 수 있다는 사실을 알고 계셨나요? 같은 브라우저. 주머니에 넣고 다니세요.
 newtab-download-mobile-highlight-image =
     .aria-label = 모바일용 { -brand-product-name } 다운로드를 위한 QR 코드
+
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = 즐겨찾기를 간편하게
+newtab-shortcuts-highlight-subtitle = 바로 가기를 추가하여 한 번의 클릭으로 즐겨찾는 사이트를 이용하세요.
 
 ## Strings for reporting ads and content
 
@@ -570,11 +608,84 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
-# "Trending on Google" refers to the trending topics coming from Google Search, usually seen when a user is focused on the search bar
-newtab-trending-searches-trending-on-google = Google 트렌드
 newtab-trending-searches-show-trending =
     .title = 인기 검색어 표시
 newtab-trending-searches-hide-trending =
     .title = 인기 검색어 숨기기
 newtab-trending-searches-learn-more = 더 알아보기
 newtab-trending-searches-dismiss = 인기 검색어 숨기기
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = 인기 검색어
+
+## Strings for task / to-do list productivity widget
+
+# "Add one" means adding a new task to the list (e.g., "Walk the dog")
+newtab-widget-lists-empty-cta = 가능성은 무한합니다. 하나를 추가하세요.
+# A simple label next to the default list name letting users know this is a new / beta feature
+newtab-widget-lists-label-new =
+    .label = 신규
+newtab-widget-lists-label-beta =
+    .label = 베타
+# When tasks have been previous marked as complete, they will appear in their own separate list beneath incomplete items
+# Variables:
+#   $number (number) - Amount of list items marked complete
+newtab-widget-lists-completed-list = 완료 ({ $number }개)
+newtab-widget-task-list-menu-copy = 복사
+newtab-widget-lists-menu-edit = 목록 이름 편집
+newtab-widget-lists-menu-create = 새 목록 만들기
+newtab-widget-lists-menu-delete = 이 목록 삭제
+newtab-widget-lists-menu-copy = 클립보드에 목록 복사
+newtab-widget-lists-menu-hide = 모든 목록 숨기기
+newtab-widget-lists-menu-learn-more = 더 알아보기
+newtab-widget-lists-input-add-an-item =
+    .placeholder = 항목 추가
+newtab-widget-lists-input-error = 항목을 추가하려면 텍스트를 포함하세요.
+newtab-widget-lists-input-menu-open-link = 링크 열기
+newtab-widget-lists-input-menu-move-up = 위로 이동
+newtab-widget-lists-input-menu-move-down = 아래로 이동
+newtab-widget-lists-input-menu-delete = 삭제
+newtab-widget-lists-input-menu-edit = 편집
+newtab-widget-lists-name-label-default =
+    .label = 작업 목록
+newtab-widget-lists-name-placeholder-default =
+    .placeholder = 작업 목록
+# The placeholder value of the name field for a newly created list
+newtab-widget-lists-name-placeholder-new =
+    .placeholder = 새 목록
+
+## Strings for timer productivity widget
+## When the timer ends, a system notification may be shown. Depending on which mode the timer is in, that message would be shown
+
+newtab-widget-timer-notification-title = 타이머
+newtab-widget-timer-notification-focus = 집중 시간이 다 되었습니다. 잘 하셨습니다. 휴식이 필요하신가요?
+newtab-widget-timer-notification-break = 휴식 시간이 종료되었습니다. 집중할 준비가 되셨나요?
+newtab-widget-timer-notification-warning = 알림 꺼짐
+newtab-widget-timer-mode-focus =
+    .label = 집중
+newtab-widget-timer-mode-break =
+    .label = 휴식
+newtab-widget-timer-play =
+    .title = 재생
+newtab-widget-timer-pause =
+    .title = 일시 중지
+newtab-widget-timer-label-play =
+    .label = 재생
+newtab-widget-timer-label-pause =
+    .label = 일시 중지
+newtab-widget-timer-reset =
+    .title = 초기화
+newtab-widget-timer-menu-notifications = 알림 끄기
+newtab-widget-timer-menu-notifications-on = 알림 켜기
+newtab-widget-timer-menu-hide = 타이머 숨기기
+newtab-widget-timer-menu-learn-more = 더 알아보기
+# Message that appears when widgets are full-height. This reminds users that there is more New Tab content to see if they scroll
+newtab-widget-keep-scrolling = 더 보려면 스크롤하세요
+newtab-widget-message-title = 목록과 내장 타이머로 집중하기
+# to-dos stands for "things to do".
+newtab-widget-message-copy = 빠른 알림부터 매일 할 일 목록, 집중 세션부터 스트레칭 휴식까지 — 업무에 집중하고 시간을 준수하세요.
+newtab-promo-card-title = { -brand-product-name } 지원
+newtab-promo-card-body = 스폰서는 더 나은 웹을 만들려는 우리의 사명을 지원합니다
+newtab-promo-card-cta = 더 알아보기
+newtab-promo-card-dismiss-button =
+    .title = 닫기
+    .aria-label = 닫기

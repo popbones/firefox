@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 import mozpack.path as mozpath
+from buildconfig import topsrcdir
 from mach.decorators import Command, CommandArgument
 from mozfile import which
 
@@ -21,7 +22,7 @@ from mozbuild.util import cpu_count
     description="Generate a project and launch an IDE.",
     virtualenv_name="ide",
 )
-@CommandArgument("ide", choices=["eclipse", "visualstudio", "vscode"])
+@CommandArgument("ide", choices=["eclipse", "visualstudio", "vscode", "vscodium"])
 @CommandArgument(
     "--no-interactive",
     default=False,
@@ -48,7 +49,7 @@ def run(command_context, ide, no_interactive, args):
         return 1
 
     if ide == "vscode":
-        result = subprocess.run([sys.executable, "mach", "configure"])
+        result = subprocess.run([sys.executable, "mach", "configure"], cwd=topsrcdir)
         if result.returncode:
             return result.returncode
 
@@ -56,7 +57,8 @@ def run(command_context, ide, no_interactive, args):
         # Then build the rest of the build dependencies by running the full
         # export target, because we can't do anything better.
         result = subprocess.run(
-            [sys.executable, "mach", "build", "pre-export", "export", "pre-compile"]
+            [sys.executable, "mach", "build", "pre-export", "export", "pre-compile"],
+            cwd=topsrcdir,
         )
         if result.returncode:
             return result.returncode
@@ -64,7 +66,7 @@ def run(command_context, ide, no_interactive, args):
         # Here we refresh the whole build. 'build export' is sufficient here and is
         # probably more correct but it's also nice having a single target to get a fully
         # built and indexed project (gives a easy target to use before go out to lunch).
-        result = subprocess.run([sys.executable, "mach", "build"])
+        result = subprocess.run([sys.executable, "mach", "build"], cwd=topsrcdir)
         if result.returncode:
             return result.returncode
 
@@ -73,14 +75,14 @@ def run(command_context, ide, no_interactive, args):
         backend = "CppEclipse"
     elif ide == "visualstudio":
         backend = "VisualStudio"
-    elif ide == "vscode":
+    elif ide == "vscode" or ide == "vscodium":
         if not command_context.config_environment.is_artifact_build:
             backend = "Clangd"
 
     if backend:
         # Generate or refresh the IDE backend.
         result = subprocess.run(
-            [sys.executable, "mach", "build-backend", "-b", backend]
+            [sys.executable, "mach", "build-backend", "-b", backend], cwd=topsrcdir
         )
         if result.returncode:
             return result.returncode
@@ -91,8 +93,8 @@ def run(command_context, ide, no_interactive, args):
     elif ide == "visualstudio":
         visual_studio_workspace_dir = get_visualstudio_workspace_path(command_context)
         subprocess.call(["explorer.exe", visual_studio_workspace_dir])
-    elif ide == "vscode":
-        return setup_vscode(command_context, interactive)
+    elif ide == "vscode" or ide == "vscodium":
+        return setup_vscode_or_vscodium(ide, command_context, interactive)
 
 
 def get_eclipse_workspace_path(command_context):
@@ -109,12 +111,12 @@ def get_visualstudio_workspace_path(command_context):
     )
 
 
-def setup_vscode(command_context, interactive):
-    from mozbuild.backend.clangd import find_vscode_cmd
+def setup_vscode_or_vscodium(ide, command_context, interactive):
+    from mozbuild.backend.clangd import find_vscode_or_vscodium_cmd
 
     # Check if platform has VSCode installed
     if interactive:
-        vscode_cmd = find_vscode_cmd()
+        vscode_cmd = find_vscode_or_vscodium_cmd(ide)
         if vscode_cmd is None:
             choice = prompt_bool(
                 "VSCode cannot be found, and may not be installed. Proceed?"

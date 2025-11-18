@@ -8,8 +8,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--arrowpanel-menuitem-margin-inline);
+}
+
+#ipprotection-header-title-and-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-small);
 
   h1 {
     margin: 0;
   }
+}
+
+#ipprotection-help-button {
+  position: absolute;
+  inset-inline-end: 0;
+  margin-inline-end: var(--space-medium);
 }

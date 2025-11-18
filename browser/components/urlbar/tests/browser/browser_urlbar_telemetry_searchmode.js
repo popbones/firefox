@@ -20,7 +20,7 @@ const SUGGEST_PREF = "browser.search.suggest.enabled";
 
 ChromeUtils.defineESModuleGetters(this, {
   UrlbarProviderTabToSearch:
-    "resource:///modules/UrlbarProviderTabToSearch.sys.mjs",
+    "moz-src:///browser/components/urlbar/UrlbarProviderTabToSearch.sys.mjs",
 });
 
 XPCOMUtils.defineLazyServiceGetter(
@@ -557,7 +557,7 @@ add_task(async function test_tabtosearch() {
   ).result;
   Assert.equal(
     tabToSearchResult.providerName,
-    "TabToSearch",
+    "UrlbarProviderTabToSearch",
     "The second result is a tab-to-search result."
   );
   Assert.equal(
@@ -615,7 +615,7 @@ add_task(async function test_tabtosearch_onboard() {
   ).result;
   Assert.equal(
     tabToSearchResult.providerName,
-    "TabToSearch",
+    "UrlbarProviderTabToSearch",
     "The second result is a tab-to-search result."
   );
   Assert.equal(

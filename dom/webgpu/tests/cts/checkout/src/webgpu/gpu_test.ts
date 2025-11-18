@@ -29,17 +29,17 @@ import {
   EncodableTextureFormat,
   isCompressedTextureFormat,
   getRequiredFeatureForTextureFormat,
-  isTextureFormatUsableAsStorageFormat,
   isTextureFormatUsableAsRenderAttachment,
   isTextureFormatMultisampled,
   is32Float,
   isSintOrUintFormat,
   isTextureFormatResolvable,
-  isTextureFormatUsableAsReadWriteStorageTexture,
   isDepthTextureFormat,
   isStencilTextureFormat,
   textureViewDimensionAndFormatCompatibleForDevice,
   textureDimensionAndFormatCompatibleForDevice,
+  isTextureFormatUsableWithStorageAccessMode,
+  isTextureFormatUsableWithCopyExternalImageToTexture,
 } from './format_info.js';
 import { checkElementsEqual, checkElementsBetween } from './util/check_contents.js';
 import { CommandBufferMaker, EncoderType } from './util/command_buffer_maker.js';
@@ -565,22 +565,17 @@ export class GPUTestBase extends Fixture<GPUTestSubcaseBatchState> {
     }
   }
 
-  skipIfTextureFormatNotUsableAsStorageTexture(...formats: (GPUTextureFormat | undefined)[]) {
-    for (const format of formats) {
-      if (format && !isTextureFormatUsableAsStorageFormat(this.device, format)) {
-        this.skip(`Texture with ${format} is not usable as a storage texture`);
-      }
-    }
-  }
-
-  skipIfTextureFormatNotUsableAsReadWriteStorageTexture(
+  skipIfTextureFormatNotUsableWithStorageAccessMode(
+    access: GPUStorageTextureAccess | 'read' | 'write' | 'read_write',
     ...formats: (GPUTextureFormat | undefined)[]
   ) {
     for (const format of formats) {
       if (!format) continue;
 
-      if (!isTextureFormatUsableAsReadWriteStorageTexture(this.device, format)) {
-        this.skip(`Texture with ${format} is not usable as a storage texture`);
+      if (!isTextureFormatUsableWithStorageAccessMode(this.device, format, access)) {
+        this.skip(
+          `Texture with ${format} is not usable as a storage texture with access ${access}`
+        );
       }
     }
   }
@@ -638,9 +633,23 @@ export class GPUTestBase extends Fixture<GPUTestSubcaseBatchState> {
         this.skipIfTextureFormatNotUsableAsRenderAttachment(format);
       }
       if (usage & GPUTextureUsage.STORAGE_BINDING) {
-        this.skipIfTextureFormatNotUsableAsStorageTexture(format);
+        this.skipIfTextureFormatNotUsableWithStorageAccessMode('write-only', format);
       }
     }
+  }
+
+  skipIfTextureFormatDoesNotSupportCopyTextureToBuffer(format: GPUTextureFormat) {
+    this.skipIf(
+      !this.canCallCopyTextureToBufferWithTextureFormat(format),
+      `can not use copyTextureToBuffer with ${format}`
+    );
+  }
+
+  skipIfTextureFormatPossiblyNotUsableWithCopyExternalImageToTexture(format: GPUTextureFormat) {
+    this.skipIf(
+      !isTextureFormatUsableWithCopyExternalImageToTexture(this.device, format),
+      `can not use copyExternalImageToTexture with ${format}`
+    );
   }
 
   /** Skips this test case if the `langFeature` is *not* supported. */
@@ -1207,6 +1216,23 @@ export class GPUTestBase extends Fixture<GPUTestSubcaseBatchState> {
           this.rec.debug(niceStack);
         }
       });
+    }
+  }
+
+  /**
+   * Expect a validation error or exception inside the callback.
+   *
+   * Tests should always do just one WebGPU call in the callback, to make sure that's what's tested.
+   */
+  expectValidationErrorOrException(
+    fn: () => void,
+    shouldError: boolean = true,
+    shouldThrow: boolean = true
+  ): void {
+    if (shouldThrow) {
+      this.shouldThrow(shouldError, fn);
+    } else {
+      this.expectValidationError(fn, shouldError);
     }
   }
 

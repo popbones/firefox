@@ -57,6 +57,23 @@ INSTANCE_RESERVED_SLOTS = 1
 # smaller for very large sets).
 GLOBAL_NAMES_PHF_SIZE = 256
 
+# If you have to change this list (which you shouldn't!), make sure it
+# continues to match the list in test_Object.prototype_props.html
+JS_OBJECT_PROTOTYPE_PROPERTIES = [
+    "constructor",
+    "toString",
+    "toLocaleString",
+    "valueOf",
+    "hasOwnProperty",
+    "isPrototypeOf",
+    "propertyIsEnumerable",
+    "__defineGetter__",
+    "__defineSetter__",
+    "__lookupGetter__",
+    "__lookupSetter__",
+    "__proto__",
+]
+
 
 def reservedSlot(slotIndex, forXray):
     base = "DOM_EXPANDO_RESERVED_SLOTS" if forXray else "DOM_INSTANCE_RESERVED_SLOTS"
@@ -15296,7 +15313,7 @@ class CGCountMaybeMissingProperty(CGAbstractPropertySwitchMethod):
         )
 
 
-class CGInterfaceHasNonEventHandlerProperty(CGAbstractPropertySwitchMethod):
+class CGInterfaceHasProperty(CGAbstractPropertySwitchMethod):
     def __init__(self, descriptor):
         """
         Returns whether the given string a property of this or any of its
@@ -15305,7 +15322,7 @@ class CGInterfaceHasNonEventHandlerProperty(CGAbstractPropertySwitchMethod):
         CGAbstractPropertySwitchMethod.__init__(
             self,
             descriptor,
-            "InterfaceHasNonEventHandlerProperty",
+            "InterfaceHasProperty",
             "bool",
             [
                 Argument("const nsAString&", "name"),
@@ -15313,21 +15330,16 @@ class CGInterfaceHasNonEventHandlerProperty(CGAbstractPropertySwitchMethod):
         )
 
     def definition_body(self):
-        names = set()
+        # Include all properties of the Object.prototype.
+        names = set(JS_OBJECT_PROTOTYPE_PROPERTIES)
 
         iface = self.descriptor.interface
         while iface:
             for m in iface.members:
-                if not m.isAttr() or isChromeOnly(m):
+                if isChromeOnly(m):
                     continue
 
-                name = m.identifier.name
-                # Skip event handler attributes, because they are always function objects (or null)
-                # which means it's unlikely they are used in a confusable manner.
-                if name.startswith("on"):
-                    continue
-
-                names.add(name)
+                names.add(m.identifier.name)
 
             iface = iface.parent
 
@@ -17383,8 +17395,8 @@ class CGDescriptor(CGThing):
         if descriptor.needsMissingPropUseCounters:
             cgThings.append(CGCountMaybeMissingProperty(descriptor))
 
-        if descriptor.interface.identifier.name == "HTMLDocument":
-            cgThings.append(CGInterfaceHasNonEventHandlerProperty(descriptor))
+        if descriptor.interface.identifier.name in ("HTMLDocument", "HTMLFormElement"):
+            cgThings.append(CGInterfaceHasProperty(descriptor))
 
         # CGDOMProxyJSClass/CGDOMJSClass need GetProtoObjectHandle, but we don't
         # want to export it for the iterator interfaces, or if we don't need it
@@ -18477,22 +18489,7 @@ class CGDictionary(CGThing):
             # The data is inside the Optional<>
             memberData = "%s.InternalValue()" % memberLoc
 
-        # If you have to change this list (which you shouldn't!), make sure it
-        # continues to match the list in test_Object.prototype_props.html
-        if member.identifier.name in [
-            "constructor",
-            "toString",
-            "toLocaleString",
-            "valueOf",
-            "hasOwnProperty",
-            "isPrototypeOf",
-            "propertyIsEnumerable",
-            "__defineGetter__",
-            "__defineSetter__",
-            "__lookupGetter__",
-            "__lookupSetter__",
-            "__proto__",
-        ]:
+        if member.identifier.name in JS_OBJECT_PROTOTYPE_PROPERTIES:
             raise TypeError(
                 "'%s' member of %s dictionary shadows "
                 "a property of Object.prototype, and Xrays to "

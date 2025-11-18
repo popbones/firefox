@@ -8,13 +8,13 @@
 #define DOM_SVG_DOMSVGLENGTHLIST_H_
 
 #include "DOMSVGAnimatedLengthList.h"
+#include "SVGLengthList.h"
 #include "mozAutoDocUpdate.h"
+#include "mozilla/Attributes.h"
+#include "mozilla/Unused.h"
 #include "nsCycleCollectionParticipant.h"
 #include "nsDebug.h"
 #include "nsTArray.h"
-#include "SVGLengthList.h"
-#include "mozilla/Attributes.h"
-#include "mozilla/Unused.h"
 
 // {cbecb7a4-d6f3-47b5-b5a3-3e5bdbf5b2f9}
 #define MOZILLA_DOMSVGLENGTHLIST_IID \
@@ -38,13 +38,11 @@ class MOZ_RAII AutoChangeLengthListNotifier : public mozAutoDocUpdate {
       : mozAutoDocUpdate(aValue->Element()->GetComposedDoc(), true),
         mValue(aValue) {
     MOZ_ASSERT(aValue, "Expecting non-null value");
-    mEmptyOrOldValue =
-        mValue->Element()->WillChangeLengthList(mValue->AttrEnum(), *this);
+    mValue->Element()->WillChangeLengthList(mValue->AttrEnum(), *this);
   }
 
   ~AutoChangeLengthListNotifier() {
-    mValue->Element()->DidChangeLengthList(mValue->AttrEnum(), mEmptyOrOldValue,
-                                           *this);
+    mValue->Element()->DidChangeLengthList(mValue->AttrEnum(), *this);
     if (mValue->IsAnimating()) {
       mValue->Element()->AnimationNeedsResample();
     }
@@ -52,7 +50,6 @@ class MOZ_RAII AutoChangeLengthListNotifier : public mozAutoDocUpdate {
 
  private:
   T* const mValue;
-  nsAttrValue mEmptyOrOldValue;
 };
 
 /**

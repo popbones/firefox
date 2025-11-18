@@ -10,6 +10,8 @@
 #include <linux/limits.h>
 #include <semaphore.h>
 
+#include "base/trace_event/common/trace_event_common.h"
+
 #include "mozilla/UniquePtr.h"
 #include "ProfilerNativeStack.h"
 #include "MicroGeckoProfiler.h"
@@ -19,16 +21,12 @@
 
 #include "mozilla/ArrayUtils.h"
 
-#include "mozilla/MPSCQueue.h"
+#include "mozilla/BoundedMPSCQueue.h"
 
 #if defined(HAVE_REPORT_UPROFILER_PARENT) && \
     defined(HAVE_REPORT_UPROFILER_CHILD)
 #  error Cannot include SandboxProfilerChild.h AND SandboxProfilerParent.h
 #endif
-
-// stolen from GeckoTraceEvent.h which is not public
-static constexpr uint8_t TRACE_VALUE_TYPE_UINT = 2;
-static constexpr uint8_t TRACE_VALUE_TYPE_STRING = 6;
 
 namespace mozilla {
 
@@ -55,7 +53,7 @@ using SandboxProfilerPayload = struct {
   SandboxProfilerPayloadType mType;
 };
 
-using SandboxProfilerQueue = MPSCQueue<SandboxProfilerPayload>;
+using SandboxProfilerQueue = BoundedMPSCQueue<SandboxProfilerPayload>;
 
 extern struct UprofilerFuncPtrs uprofiler;
 extern bool uprofiler_initted;

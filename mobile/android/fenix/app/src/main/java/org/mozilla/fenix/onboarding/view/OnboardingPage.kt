@@ -32,11 +32,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import mozilla.components.compose.base.annotation.FlexibleWindowLightDarkPreview
-import mozilla.components.compose.base.button.PrimaryButton
-import mozilla.components.compose.base.button.SecondaryButton
+import mozilla.components.compose.base.button.FilledButton
+import mozilla.components.compose.base.button.OutlinedButton
 import org.mozilla.fenix.R
 import org.mozilla.fenix.compose.LinkText
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * The ratio of the image height to the parent height. This was determined from the designs in figma
@@ -99,7 +100,7 @@ fun OnboardingPage(
                     modifier = Modifier.align(Alignment.End),
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.mozac_ic_cross_24),
+                        painter = painterResource(id = iconsR.drawable.mozac_ic_cross_24),
                         contentDescription = stringResource(R.string.onboarding_home_content_description_close_button),
                         tint = FirefoxTheme.colors.iconPrimary,
                     )
@@ -150,7 +151,7 @@ fun OnboardingPage(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(horizontal = 16.dp),
             ) {
-                PrimaryButton(
+                FilledButton(
                     modifier = Modifier
                         .width(width = FirefoxTheme.layout.size.maxWidth.small)
                         .semantics {
@@ -162,7 +163,7 @@ fun OnboardingPage(
 
                 if (pageState.secondaryButton != null) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    SecondaryButton(
+                    OutlinedButton(
                         modifier = Modifier
                             .width(width = FirefoxTheme.layout.size.maxWidth.small)
                             .semantics {
@@ -201,21 +202,19 @@ private fun OnboardingPagePreview() {
             pageState = OnboardingPageState(
                 imageRes = R.drawable.ic_notification_permission,
                 title = stringResource(
-                    id = R.string.onboarding_home_welcome_title_2,
-                    formatArgs = arrayOf(stringResource(R.string.app_name)),
+                    id = R.string.juno_onboarding_default_browser_title_nimbus_2,
                 ),
                 description = stringResource(
-                    id = R.string.onboarding_home_welcome_description,
-                    formatArgs = arrayOf(stringResource(R.string.app_name)),
+                    id = R.string.juno_onboarding_default_browser_description_nimbus_3,
                 ),
                 primaryButton = Action(
                     text = stringResource(
-                        id = R.string.onboarding_home_get_started_button,
+                        id = R.string.juno_onboarding_default_browser_positive_button,
                     ),
                     onClick = {},
                 ),
                 secondaryButton = Action(
-                    text = stringResource(id = R.string.onboarding_home_skip_button),
+                    text = stringResource(id = R.string.juno_onboarding_default_browser_negative_button),
                     onClick = {},
                 ),
                 onRecordImpressionEvent = {},

@@ -6,6 +6,8 @@
 #ifndef MOZILLA_MEDIATRACKGRAPH_H_
 #define MOZILLA_MEDIATRACKGRAPH_H_
 
+#include <speex/speex_resampler.h>
+
 #include "AudioSampleFormat.h"
 #include "CubebUtils.h"
 #include "MainThreadUtils.h"
@@ -18,7 +20,6 @@
 #include "nsAutoRef.h"
 #include "nsIRunnable.h"
 #include "nsTArray.h"
-#include <speex/speex_resampler.h>
 
 class nsIRunnable;
 class nsIGlobalObject;
@@ -1231,6 +1232,13 @@ class MediaTrackGraph {
    * reverse stream might drift from the clock for this MediaTrackGraph.
    * Graph thread only. */
   bool OutputForAECMightDrift();
+  /* Return whether the audio output device used for the aec reverse stream
+   * corresponds to the primary output device, explicitly or implicitly,
+   * implicitly meaning when the primary output device is the system default
+   * output device, and the output device used for the aec reverse stream is
+   * explicit and matches the current system default output device.
+   * Graph thread only. */
+  bool OutputForAECIsPrimary();
 
   void RegisterCaptureTrackForWindow(uint64_t aWindowId,
                                      ProcessedMediaTrack* aCaptureTrack);

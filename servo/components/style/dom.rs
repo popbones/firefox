@@ -14,7 +14,7 @@ use crate::context::UpdateAnimationsTasks;
 use crate::data::ElementData;
 use crate::media_queries::Device;
 use crate::properties::{AnimationDeclarations, ComputedValues, PropertyDeclarationBlock};
-use crate::selector_parser::{AttrValue, Lang, PseudoElement, SelectorImpl};
+use crate::selector_parser::{AttrValue, Lang, PseudoElement, RestyleDamage, SelectorImpl};
 use crate::shared_lock::{Locked, SharedRwLock};
 use crate::stylesheets::scope_rule::ImplicitScopeRoot;
 use crate::stylist::CascadeData;
@@ -434,21 +434,6 @@ pub trait TElement:
         self.parent_element()
     }
 
-    /// The ::before pseudo-element of this element, if it exists.
-    fn before_pseudo_element(&self) -> Option<Self> {
-        None
-    }
-
-    /// The ::after pseudo-element of this element, if it exists.
-    fn after_pseudo_element(&self) -> Option<Self> {
-        None
-    }
-
-    /// The ::marker pseudo-element of this element, if it exists.
-    fn marker_pseudo_element(&self) -> Option<Self> {
-        None
-    }
-
     /// Execute `f` for each anonymous content child (apart from ::before and
     /// ::after) whose originating element is `self`.
     fn each_anonymous_content_child<F>(&self, _f: F)
@@ -477,14 +462,14 @@ pub trait TElement:
     }
 
     /// Get this element's style attribute.
-    fn style_attribute(&self) -> Option<ArcBorrow<Locked<PropertyDeclarationBlock>>>;
+    fn style_attribute(&self) -> Option<ArcBorrow<'_, Locked<PropertyDeclarationBlock>>>;
 
     /// Unset the style attribute's dirty bit.
     /// Servo doesn't need to manage ditry bit for style attribute.
     fn unset_dirty_style_attribute(&self) {}
 
     /// Get this element's SMIL override declarations.
-    fn smil_override(&self) -> Option<ArcBorrow<Locked<PropertyDeclarationBlock>>> {
+    fn smil_override(&self) -> Option<ArcBorrow<'_, Locked<PropertyDeclarationBlock>>> {
         None
     }
 
@@ -669,8 +654,6 @@ pub trait TElement:
     ///
     /// Note that we still need to compute the pseudo-elements before-hand,
     /// given otherwise we don't know if we need to create an element or not.
-    ///
-    /// Servo doesn't have to deal with this.
     fn implemented_pseudo_element(&self) -> Option<PseudoElement> {
         None
     }
@@ -687,7 +670,7 @@ pub trait TElement:
     ///
     /// Unsafe because it can race to allocate and leak if not used with
     /// exclusive access to the element.
-    unsafe fn ensure_data(&self) -> AtomicRefMut<ElementData>;
+    unsafe fn ensure_data(&self) -> AtomicRefMut<'_, ElementData>;
 
     /// Clears the element data reference, if any.
     ///
@@ -698,10 +681,10 @@ pub trait TElement:
     fn has_data(&self) -> bool;
 
     /// Immutably borrows the ElementData.
-    fn borrow_data(&self) -> Option<AtomicRef<ElementData>>;
+    fn borrow_data(&self) -> Option<AtomicRef<'_, ElementData>>;
 
     /// Mutably borrows the ElementData.
-    fn mutate_data(&self) -> Option<AtomicRefMut<ElementData>>;
+    fn mutate_data(&self) -> Option<AtomicRefMut<'_, ElementData>>;
 
     /// Whether we should skip any root- or item-based display property
     /// blockification on this element.  (This function exists so that Gecko
@@ -766,12 +749,13 @@ pub trait TElement:
     /// element-backed pseudo-element, in which case we return the originating
     /// element.
     fn rule_hash_target(&self) -> Self {
-        if self.is_pseudo_element() {
-            self.pseudo_element_originating_element()
+        let mut cur = *self;
+        while cur.is_pseudo_element() {
+            cur = cur
+                .pseudo_element_originating_element()
                 .expect("Trying to collect rules for a detached pseudo-element")
-        } else {
-            *self
         }
+        cur
     }
 
     /// Executes the callback for each applicable style rule data which isn't
@@ -894,8 +878,9 @@ pub trait TElement:
     /// https://drafts.csswg.org/css-view-transitions-1/#document-dynamic-view-transition-style-sheet
     fn synthesize_view_transition_dynamic_rules<V>(&self, _rules: &mut V)
     where
-        V: Push<ApplicableDeclarationBlock>
-    {}
+        V: Push<ApplicableDeclarationBlock>,
+    {
+    }
 
     /// Returns element's local name.
     fn local_name(&self) -> &<SelectorImpl as selectors::parser::SelectorImpl>::BorrowedLocalName;
@@ -924,6 +909,11 @@ pub trait TElement:
         _sheet_index: usize,
     ) -> Option<ImplicitScopeRoot> {
         None
+    }
+
+    /// Compute the damage incurred by the change from the `_old` to `_new`.
+    fn compute_layout_damage(_old: &ComputedValues, _new: &ComputedValues) -> RestyleDamage {
+        Default::default()
     }
 }
 

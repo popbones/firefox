@@ -71,6 +71,8 @@ js_source_path = [
     "../browser/components/extensions",
     "../browser/components/migration",
     "../browser/components/migration/content",
+    "../browser/components/mozcachedohttp",
+    "../browser/components/mozcachedohttp/actors",
     "../browser/components/uitour",
     "../browser/components/urlbar",
     "../js/xpconnect/loader",
@@ -89,7 +91,11 @@ js_source_path = [
     "../toolkit/components/prompts/src",
     "../toolkit/components/pictureinpicture",
     "../toolkit/components/pictureinpicture/content",
-    "../toolkit/components/search",
+    # This is limited to SearchService.sys.mjs for now, as we only need to
+    # generate docs for that file currently. Other search files
+    # (e.g. SearchEngineSelector) are failing due to
+    # https://github.com/pyodide/sphinx-js/issues/242 or a variant of it.
+    "../toolkit/components/search/SearchService.sys.mjs",
     "../toolkit/components/uniffi-bindgen-gecko-js/components/generated",
 ]
 root_for_relative_js_paths = ".."

@@ -10,6 +10,9 @@ skip script non262/String/normalize-generateddata-input.js # input data for othe
 slow script test262/built-ins/decodeURI/S15.1.3.1_A2.5_T1.js
 slow script test262/built-ins/decodeURIComponent/S15.1.3.2_A2.5_T1.js
 
+# x86 NaN generation rules are different from those of riscv64 (bug 1983202)
+skip-if(this.hasOwnProperty("getBuildConfiguration")&&getBuildConfiguration("riscv64-simulator")) script test262/built-ins/TypedArray/prototype/map/return-new-typedarray-conversion-operation-consistent-nan.js
+
 
 ###########################################################################
 # Generated jstests.list for test262 when inline |reftest| isn't possible #
@@ -47,12 +50,6 @@ skip-if(!this.hasOwnProperty("Intl")) include test262/intl402/jstests.list
 # https://bugzilla.mozilla.org/show_bug.cgi?id=1415303
 skip-if(!this.hasOwnProperty("Atomics")) include test262/built-ins/Atomics/jstests.list
 skip-if(!this.hasOwnProperty("SharedArrayBuffer")) include test262/built-ins/SharedArrayBuffer/jstests.list
-
-# https://bugzilla.mozilla.org/show_bug.cgi?id=1863140
-skip script test262/built-ins/FinalizationRegistry/prototype/register/return-undefined-register-symbol.js
-skip script test262/built-ins/FinalizationRegistry/prototype/unregister/unregister-symbol-token.js
-skip script test262/built-ins/WeakRef/returns-new-object-from-constructor-with-symbol-target.js
-skip script test262/built-ins/WeakRef/prototype/deref/return-symbol-target.js
 
 #####################################
 # Test262 tests disabled on browser #
@@ -646,11 +643,6 @@ ignore-flag(--more-compartments) script test262/built-ins/Proxy/construct/return
 ignore-flag(--more-compartments) script test262/built-ins/Proxy/construct/return-not-object-throws-boolean-realm.js
 ignore-flag(--more-compartments) script test262/built-ins/Proxy/construct/return-not-object-throws-boolean-realm.js
 
-# https://bugzilla.mozilla.org/show_bug.cgi?id=1761993
-skip script test262/built-ins/AsyncGeneratorPrototype/return/return-state-completed-broken-promise.js
-skip script test262/built-ins/AsyncGeneratorPrototype/return/return-suspendedStart-broken-promise.js
-skip script test262/built-ins/AsyncGeneratorPrototype/return/return-suspendedYield-broken-promise-try-catch.js
-
 # Time zone canonicalization proposal.
 skip script test262/intl402/DateTimeFormat/timezone-not-canonicalized.js
 skip script test262/intl402/DateTimeFormat/timezone-case-insensitive.js
@@ -705,16 +697,6 @@ skip script test262/intl402/PluralRules/prototype/resolvedOptions/order.js
 skip script test262/intl402/PluralRules/prototype/constructor/notation.js
 skip script test262/intl402/PluralRules/notation.js
 
-# https://github.com/tc39/proposal-temporal/pull/3107
-skip script test262/intl402/Temporal/ZonedDateTime/from/zoneddatetime-sub-minute-offset.js
-skip script test262/intl402/Temporal/ZonedDateTime/compare/sub-minute-offset.js
-skip script test262/intl402/Temporal/ZonedDateTime/prototype/equals/sub-minute-offset.js
-skip script test262/intl402/Temporal/ZonedDateTime/prototype/since/sub-minute-offset.js
-skip script test262/intl402/Temporal/ZonedDateTime/prototype/until/sub-minute-offset.js
-skip script test262/intl402/Temporal/Duration/compare/relativeto-sub-minute-offset.js
-skip script test262/intl402/Temporal/Duration/prototype/round/relativeto-sub-minute-offset.js
-skip script test262/intl402/Temporal/Duration/prototype/total/relativeto-sub-minute-offset.js
-
 
 ###########################################################
 # Tests disabled due to issues in test262 importer script #
@@ -739,6 +721,9 @@ skip-if(!xulRuntime.shell) script test262/language/module-code/top-level-await/a
 ####################################################
 # Tests disabled due to invalid test expectations  #
 ####################################################
+
+# This test is lacking the feature "symbols-as-weakmap-keys", see https://github.com/tc39/test262/pull/4579
+skip script test262/built-ins/WeakMap/prototype/getOrInsertComputed/check-state-after-callback-fn-throws.js
 
 # These tests seem incorrect, see https://github.com/tc39/test262/pull/3907
 skip script test262/language/statements/class/decorator/syntax/class-valid/decorator-member-expr-private-identifier.js
@@ -958,3 +943,26 @@ skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-ethiopic.js
 
 # https://github.com/tc39/proposal-intl-era-monthcode/issues/23 and https://github.com/tc39/proposal-intl-era-monthcode/issues/4
 skip script test262/staging/sm/Temporal/PlainDate/non-positive-era-year.js
+
+# Canonical era names have changed.
+skip script test262/intl402/Temporal/ZonedDateTime/from/canonicalize-era-codes.js
+skip script test262/staging/Intl402/Temporal/old/japanese-before-era.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-gregory.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-islamicc.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-islamic-civil.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-islamic-tbla.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-islamic-umalqura.js
+skip script test262/staging/Intl402/Temporal/old/islamic-calendars-islamic.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-ethioaa.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-hebrew.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-buddhist.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-indian.js
+skip script test262/staging/Intl402/Temporal/old/non-iso-calendars-persian.js
+skip script test262/intl402/Temporal/PlainYearMonth/from/calendar-not-supporting-eras.js
+skip script test262/intl402/Temporal/PlainYearMonth/from/reference-day-chinese.js
+skip script test262/intl402/Temporal/PlainYearMonth/from/reference-day-hebrew.js
+skip script test262/intl402/Temporal/PlainDate/from/calendar-not-supporting-eras.js
+skip script test262/intl402/Temporal/PlainDateTime/from/calendar-not-supporting-eras.js
+
+# See https://bugzilla.mozilla.org/show_bug.cgi?id=1983837
+skip script test262/staging/top-level-await/tla-hang-entry.js

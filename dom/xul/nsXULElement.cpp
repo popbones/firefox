@@ -7,14 +7,15 @@
 
 #include <new>
 #include <utility>
+
 #include "AttrArray.h"
 #include "MainThreadUtils.h"
 #include "ReferrerInfo.h"
 #include "Units.h"
 #include "XULButtonElement.h"
 #include "XULFrameElement.h"
-#include "XULMenuElement.h"
 #include "XULMenuBarElement.h"
+#include "XULMenuElement.h"
 #include "XULPopupElement.h"
 #include "XULResizerElement.h"
 #include "XULTextElement.h"
@@ -22,14 +23,14 @@
 #include "XULTreeElement.h"
 #include "js/CompilationAndEvaluation.h"
 #include "js/CompileOptions.h"  // JS::CompileOptions, JS::OwningCompileOptions, , JS::ReadOnlyCompileOptions, JS::ReadOnlyDecodeOptions, JS::DecodeOptions
-#include "js/experimental/CompileScript.h"  // JS::NewFrontendContext, JS::DestroyFrontendContext, JS::SetNativeStackQuota, JS::ThreadStackQuotaForSize, JS::CompileGlobalScriptToStencil, JS::CompilationStorage
-#include "js/experimental/JSStencil.h"      // JS::Stencil, JS::FrontendContext
 #include "js/SourceText.h"
 #include "js/Transcoding.h"
 #include "js/Utility.h"
+#include "js/experimental/CompileScript.h"  // JS::NewFrontendContext, JS::DestroyFrontendContext, JS::SetNativeStackQuota, JS::ThreadStackQuotaForSize, JS::CompileGlobalScriptToStencil, JS::CompilationStorage
+#include "js/experimental/JSStencil.h"      // JS::Stencil, JS::FrontendContext
 #include "jsapi.h"
-#include "mozilla/Assertions.h"
 #include "mozilla/ArrayIterator.h"
+#include "mozilla/Assertions.h"
 #include "mozilla/ClearOnShutdown.h"
 #include "mozilla/DeclarationBlock.h"
 #include "mozilla/EventDispatcher.h"
@@ -52,10 +53,9 @@
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/StaticPrefs_javascript.h"
 #include "mozilla/StaticPtr.h"
-#include "mozilla/FocusModel.h"
 #include "mozilla/TaskController.h"
-#include "mozilla/UniquePtr.h"
 #include "mozilla/URLExtraData.h"
+#include "mozilla/UniquePtr.h"
 #include "mozilla/dom/BindContext.h"
 #include "mozilla/dom/BorrowedAttrInfo.h"
 #include "mozilla/dom/CSSRuleBinding.h"
@@ -67,7 +67,6 @@
 #include "mozilla/dom/FragmentOrElement.h"
 #include "mozilla/dom/FromParser.h"
 #include "mozilla/dom/MouseEventBinding.h"
-#include "mozilla/dom/MutationEventBinding.h"
 #include "mozilla/dom/NodeInfo.h"
 #include "mozilla/dom/ReferrerPolicyBinding.h"
 #include "mozilla/dom/ScriptSettings.h"
@@ -78,9 +77,9 @@
 #include "mozilla/fallible.h"
 #include "nsAtom.h"
 #include "nsAttrValueInlines.h"
+#include "nsCOMPtr.h"
 #include "nsCaseTreatment.h"
 #include "nsChangeHint.h"
-#include "nsCOMPtr.h"
 #include "nsCompatibility.h"
 #include "nsContentCreatorFunctions.h"
 #include "nsContentUtils.h"
@@ -819,7 +818,7 @@ bool nsXULElement::IsEventStoppedFromAnonymousScrollbar(EventMessage aMessage) {
   return (IsRootOfNativeAnonymousSubtree() &&
           IsAnyOfXULElements(nsGkAtoms::scrollbar, nsGkAtoms::scrollcorner) &&
           (aMessage == ePointerClick || aMessage == eMouseDoubleClick ||
-           aMessage == eXULCommand || aMessage == eContextMenu ||
+           aMessage == eCommand || aMessage == eContextMenu ||
            aMessage == eDragStart || aMessage == ePointerAuxClick));
 }
 
@@ -867,7 +866,8 @@ void nsXULElement::GetEventTargetParent(EventChainPreVisitor& aVisitor) {
     aVisitor.SetParentTarget(nullptr, false);
     return;
   }
-  if (aVisitor.mEvent->mMessage == eXULCommand &&
+  if (aVisitor.mEvent->mMessage == eUnidentifiedEvent &&
+      aVisitor.mEvent->mSpecifiedEventType == nsGkAtoms::oncommand &&
       aVisitor.mEvent->mClass == eInputEventClass &&
       aVisitor.mEvent->mOriginalTarget == static_cast<nsIContent*>(this) &&
       !IsXULElement(nsGkAtoms::command)) {
@@ -910,14 +910,12 @@ nsXULElement::IsAttributeMapped(const nsAtom* aAttribute) const {
   return false;
 }
 
-nsIControllers* nsXULElement::GetControllers(ErrorResult& rv) {
-  if (!Controllers()) {
-    nsExtendedDOMSlots* slots = ExtendedDOMSlots();
-
+nsIControllers* nsXULElement::EnsureControllers() {
+  auto* slots = ExtendedDOMSlots();
+  if (!slots->mControllers) {
     slots->mControllers = new nsXULControllers();
   }
-
-  return Controllers();
+  return slots->mControllers;
 }
 
 void nsXULElement::Click(CallerType aCallerType) {

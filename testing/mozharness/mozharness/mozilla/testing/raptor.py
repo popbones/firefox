@@ -1331,7 +1331,11 @@ class Raptor(
                     installer_path = self.installer_path
 
                 self.info(f"Installing APK from: {installer_path}")
-                self.install_android_app(str(installer_path))
+                if self.app == "fenix":
+                    self.info("Installing Fenix APK with baseline profile")
+                    self.device.install_app_baseline_profile(installer_path)
+                else:
+                    self.install_android_app(str(installer_path))
             else:
                 super(Raptor, self).install()
 
@@ -1396,6 +1400,13 @@ class Raptor(
             env["XPCSHELL_PATH"] = os.path.join(
                 self.obj_path, "dist", "bin", "xpcshell.exe"
             )
+
+        if not self.run_local:
+            env["MOZ_INTERNAL_UPLOAD_DIR"] = os.path.join(
+                os.path.dirname(env["MOZ_UPLOAD_DIR"]), "perftest"
+            )
+            if not os.path.exists(env["MOZ_INTERNAL_UPLOAD_DIR"]):
+                os.makedirs(env["MOZ_INTERNAL_UPLOAD_DIR"])
 
         # Needed to load unsigned Raptor WebExt on release builds
         if self.is_release_build:

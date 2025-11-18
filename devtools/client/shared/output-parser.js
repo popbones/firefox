@@ -17,8 +17,15 @@ const {
 
 const STYLE_INSPECTOR_PROPERTIES =
   "devtools/shared/locales/styleinspector.properties";
-const { LocalizationHelper } = require("resource://devtools/shared/l10n.js");
-const STYLE_INSPECTOR_L10N = new LocalizationHelper(STYLE_INSPECTOR_PROPERTIES);
+
+loader.lazyGetter(this, "STYLE_INSPECTOR_L10N", function () {
+  const { LocalizationHelper } = require("resource://devtools/shared/l10n.js");
+  return new LocalizationHelper(STYLE_INSPECTOR_PROPERTIES);
+});
+
+loader.lazyGetter(this, "VARIABLE_JUMP_DEFINITION_TITLE", function () {
+  return STYLE_INSPECTOR_L10N.getStr("rule.variableJumpDefinition.title");
+});
 
 // Functions that accept an angle argument.
 const ANGLE_TAKING_FUNCTIONS = new Set([
@@ -171,10 +178,7 @@ class OutputParser {
             options.getVariableData?.(name).computedValue
           )));
 
-    // The filter property is special in that we want to show the
-    // swatch even if the value is invalid, because this way the user
-    // can easily use the editor to fix it.
-    if (options.expectFilter || this.#cssPropertySupportsValue(name, value)) {
+    if (this.#cssPropertySupportsValue(name, value, options)) {
       return this.#parse(value, options);
     }
     this.#appendTextNode(value);
@@ -305,10 +309,12 @@ class OutputParser {
     let varFallbackValue;
     let varSubstitutedValue;
     let varComputedValue;
+    let varName;
 
     // Get the variable value if it is in use.
     if (tokens && tokens.length === 1) {
-      varData = options.getVariableData(tokens[0].text);
+      varName = tokens[0].text;
+      varData = options.getVariableData(varName);
       const varValue =
         typeof varData.value === "string"
           ? varData.value
@@ -361,22 +367,29 @@ class OutputParser {
         // createNode does not handle `false`, let's stringify the boolean.
         firstOpts["data-registered-property-inherits"] = `${inherits}`;
       }
-    } else {
+
+      const customPropNode = this.#createNode("span", firstOpts, result);
+      if (options.showJumpToVariableButton) {
+        customPropNode.append(
+          this.#createNode("button", {
+            class: "ruleview-variable-link jump-definition",
+            "data-variable-name": varName,
+            title: VARIABLE_JUMP_DEFINITION_TITLE,
+          })
+        );
+      }
+
+      variableNode.appendChild(customPropNode);
+    } else if (varName) {
       // The variable is not set and does not have an initial value, mark it unmatched.
       firstOpts.class = options.unmatchedClass;
 
-      // Get the variable name.
-      const varName = text.substring(
-        tokens[0].startOffset,
-        tokens[0].endOffset
-      );
       firstOpts["data-variable"] = STYLE_INSPECTOR_L10N.getFormatStr(
         "rule.variableUnset",
         varName
       );
+      variableNode.appendChild(this.#createNode("span", firstOpts, result));
     }
-
-    variableNode.appendChild(this.#createNode("span", firstOpts, result));
 
     // If we saw a ",", then append it and show the remainder using
     // the correct highlighting.
@@ -1822,8 +1835,19 @@ class OutputParser {
    *         CSS Property name to check
    * @param  {String} value
    *         CSS Property value to check
+   * @param  {Object} options
+   *         Options object. For valid options and default values see #mergeOptions().
    */
-  #cssPropertySupportsValue(name, value) {
+  #cssPropertySupportsValue(name, value, options) {
+    if (
+      options.isValid ||
+      // The filter property is special in that we want to show the swatch even if the
+      // value is invalid, because this way the user can easily use the editor to fix it.
+      options.expectFilter
+    ) {
+      return true;
+    }
+
     // Checking pair as a CSS declaration string to account for "!important" in value.
     const declaration = `${name}:${value}`;
     return this.#doc.defaultView.CSS.supports(declaration);
@@ -1969,6 +1993,9 @@ class OutputParser {
 
     // Prevent click event to be fired to not show the tooltip
     event.stopPropagation();
+    // Prevent text selection but switch the focus
+    event.preventDefault();
+    event.target.focus({ focusVisible: false });
 
     const swatch = event.target;
     const color = this.#colorSwatches.get(swatch);
@@ -2259,7 +2286,10 @@ class OutputParser {
    *          - {RegisteredPropertyResource|undefined} registeredProperty: The registered
    *            property data (syntax, initial value, inherits). Undefined if the variable
    *            is not a registered property.
+   * @param {Boolean} overrides.showJumpToVariableButton: Should we show a jump to
+   *        definition for CSS variables. Defaults to true.
    * @param {Boolean} overrides.isDarkColorScheme: Is the currently applied color scheme dark.
+   * @param {Boolean} overrides.isValid: Is the name+value valid.
    * @return {Object} Overridden options object
    */
   #mergeOptions(overrides) {
@@ -2283,6 +2313,7 @@ class OutputParser {
       fontFamilyClass: null,
       baseURI: undefined,
       getVariableData: null,
+      showJumpToVariableButton: true,
       unmatchedClass: null,
       inStartingStyleRule: false,
       isDarkColorScheme: null,

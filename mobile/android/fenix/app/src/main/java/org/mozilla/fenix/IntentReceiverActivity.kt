@@ -8,12 +8,12 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.StrictMode
 import androidx.annotation.VisibleForTesting
 import mozilla.components.feature.intent.ext.sanitize
 import mozilla.components.feature.intent.processing.IntentProcessor
+import mozilla.components.feature.intent.processing.TabIntentProcessor.Companion.EXTRA_APP_LINK_LAUNCH_TYPE
 import mozilla.components.support.base.log.logger.Logger
 import mozilla.components.support.utils.EXTRA_ACTIVITY_REFERRER_CATEGORY
 import mozilla.components.support.utils.EXTRA_ACTIVITY_REFERRER_PACKAGE
@@ -27,6 +27,7 @@ import org.mozilla.fenix.components.getType
 import org.mozilla.fenix.ext.components
 import org.mozilla.fenix.ext.isIntentInternal
 import org.mozilla.fenix.ext.settings
+import org.mozilla.fenix.perf.AppLinkIntentLaunchTypeProvider
 import org.mozilla.fenix.perf.MarkersActivityLifecycleCallbacks
 import org.mozilla.fenix.perf.StartupTimeline
 import org.mozilla.fenix.shortcut.NewTabShortcutIntentProcessor
@@ -42,6 +43,15 @@ class IntentReceiverActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // DO NOT MOVE ANYTHING ABOVE THIS getProfilerTime CALL.
         val startTimeProfiler = components.core.engine.profiler?.getProfilerTime()
+
+        // DO NOT MOVE the app link intent launch type setting below the super.onCreate call
+        // as it impacts the activity lifecycle observer and causes false launch type detection.
+        // e.g. COLD launch is interpreted as WARM due to [Activity.onActivityCreated] being called
+        // earlier.
+        if (intent.dataString != null) { // data is null when there's no URI to load, e.g. Search widget.
+            val type = AppLinkIntentLaunchTypeProvider.getExternalIntentLaunchType(HomeActivity::class.java)
+            intent.putExtra(EXTRA_APP_LINK_LAUNCH_TYPE, type)
+        }
 
         // StrictMode violation on certain devices such as Samsung
         components.strictMode.resetAfter(StrictMode.allowThreadDiskReads()) {
@@ -145,10 +155,6 @@ class IntentReceiverActivity : Activity() {
 
     private fun addReferrerInformation(intent: Intent) {
         // Pass along referrer information when possible.
-        // Referrer is supported for API>=22.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP_MR1) {
-            return
-        }
         // unfortunately you can get a RuntimeException thrown from android here
         @Suppress("TooGenericExceptionCaught")
         val r = try {
@@ -159,15 +165,12 @@ class IntentReceiverActivity : Activity() {
             return
         } ?: return
         intent.putExtra(EXTRA_ACTIVITY_REFERRER_PACKAGE, r.host)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Category is supported for API>=26.
-            r.host?.let { host ->
-                try {
-                    val category = packageManager.getApplicationInfoCompat(host, 0).category
-                    intent.putExtra(EXTRA_ACTIVITY_REFERRER_CATEGORY, category)
-                } catch (e: PackageManager.NameNotFoundException) {
-                    // At least we tried.
-                }
+        r.host?.let { host ->
+            try {
+                val category = packageManager.getApplicationInfoCompat(host, 0).category
+                intent.putExtra(EXTRA_ACTIVITY_REFERRER_CATEGORY, category)
+            } catch (_: PackageManager.NameNotFoundException) {
+                // At least we tried.
             }
         }
     }

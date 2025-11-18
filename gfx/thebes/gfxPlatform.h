@@ -28,6 +28,7 @@
 #include "mozilla/layers/MemoryPressureObserver.h"
 #include "mozilla/layers/OverlayInfo.h"
 
+class FontVisibilityProvider;
 class gfxASurface;
 class gfxFont;
 class gfxFontGroup;
@@ -39,7 +40,6 @@ class gfxTextRun;
 class nsIURI;
 class nsAtom;
 class nsIObserver;
-class nsPresContext;
 class SRGBOverrideObserver;
 class gfxTextPerfMetrics;
 typedef struct FT_LibraryRec_* FT_Library;
@@ -398,7 +398,7 @@ class gfxPlatform : public mozilla::layers::MemoryPressureListener {
    * Ownership of the returned gfxFontEntry is passed to the caller,
    * who must either AddRef() or delete.
    */
-  gfxFontEntry* LookupLocalFont(nsPresContext* aPresContext,
+  gfxFontEntry* LookupLocalFont(FontVisibilityProvider* aFontVisibilityProvider,
                                 const nsACString& aFontName,
                                 WeightRange aWeightForEntry,
                                 StretchRange aStretchForEntry,
@@ -953,6 +953,8 @@ class gfxPlatform : public mozilla::layers::MemoryPressureListener {
 
   static void VideoDecodingFailedChangedCallback(const char* aPref, void*);
 
+  static void HWDRMFailedChangedCallback(const char* aPref, void*);
+
   static gfxPlatform* gPlatform;
 
   void InitializeCMS();
@@ -967,6 +969,7 @@ class gfxPlatform : public mozilla::layers::MemoryPressureListener {
   void InitGPUProcessPrefs();
   virtual void InitPlatformGPUProcessPrefs() {}
   virtual void InitPlatformHardwareVideoConfig() {}
+  virtual void InitPlatformHardwarDRMConfig() {}
 
   // Gather telemetry data about the Gfx Platform and send it
   static void ReportTelemetry();

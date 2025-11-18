@@ -16,6 +16,7 @@
 #include "mozilla/dom/MediaKeyError.h"
 #include "mozilla/dom/MediaKeyMessageEvent.h"
 #include "mozilla/dom/MediaKeySession.h"
+#include "mozilla/dom/MediaKeySessionBinding.h"
 #include "mozilla/dom/MediaKeyStatusMap.h"
 #include "mozilla/dom/MediaKeySystemAccess.h"
 #include "mozilla/dom/MediaKeysBinding.h"
@@ -29,7 +30,11 @@
 #include "nsServiceManagerUtils.h"
 
 #ifdef MOZ_WIDGET_ANDROID
+#  include "AndroidDecoderModule.h"
 #  include "mozilla/MediaDrmCDMProxy.h"
+#  include "mozilla/RemoteCDMChild.h"
+#  include "mozilla/RemoteMediaManagerChild.h"
+#  include "mozilla/StaticPrefs_media.h"
 #endif
 #ifdef XP_WIN
 #  include "mozilla/WindowsVersion.h"
@@ -173,7 +178,7 @@ void MediaKeys::Terminated() {
     keySessions.InsertOrUpdate(session->GetSessionId(), RefPtr{session});
   }
   for (const RefPtr<MediaKeySession>& session : keySessions.Values()) {
-    session->OnClosed();
+    session->OnClosed(MediaKeySessionClosedReason::Internal_error);
   }
   keySessions.Clear();
   MOZ_ASSERT(mKeySessions.Count() == 0);
@@ -434,10 +439,17 @@ already_AddRefed<CDMProxy> MediaKeys::CreateCDMProxy() {
   RefPtr<CDMProxy> proxy;
 #ifdef MOZ_WIDGET_ANDROID
   if (IsWidevineKeySystem(mKeySystem)) {
-    proxy = new MediaDrmCDMProxy(
-        this, mKeySystem,
-        mConfig.mDistinctiveIdentifier == MediaKeysRequirement::Required,
-        mConfig.mPersistentState == MediaKeysRequirement::Required);
+    if (AndroidDecoderModule::IsJavaDecoderModuleAllowed()) {
+      proxy = new MediaDrmCDMProxy(
+          this, mKeySystem,
+          mConfig.mDistinctiveIdentifier == MediaKeysRequirement::Required,
+          mConfig.mPersistentState == MediaKeysRequirement::Required);
+    } else {
+      proxy = RemoteMediaManagerChild::CreateCDM(
+          RemoteMediaIn::RddProcess, this, mKeySystem,
+          mConfig.mDistinctiveIdentifier == MediaKeysRequirement::Required,
+          mConfig.mPersistentState == MediaKeysRequirement::Required);
+    }
   } else
 #endif
 #ifdef MOZ_WMF_CDM

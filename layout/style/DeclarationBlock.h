@@ -14,7 +14,6 @@
 
 #include "mozilla/Atomics.h"
 #include "mozilla/ServoBindings.h"
-
 #include "nsCSSPropertyID.h"
 #include "nsString.h"
 
@@ -186,6 +185,12 @@ class DeclarationBlock final {
 
   bool GetPropertyIsImportant(const nsACString& aProperty) const {
     return Servo_DeclarationBlock_GetPropertyIsImportant(mRaw, &aProperty);
+  }
+
+  bool GetPropertyTypedValue(const nsACString& aProperty,
+                             StylePropertyTypedValueResult& aResult) const {
+    return Servo_DeclarationBlock_GetPropertyTypedValue(mRaw, &aProperty,
+                                                        &aResult);
   }
 
   // Returns whether the property was removed.

@@ -49,6 +49,8 @@
     <menuitem id="context_duplicateTab" data-lazy-l10n-id="duplicate-tab"/>
     <menuitem id="context_duplicateTabs" data-lazy-l10n-id="duplicate-tabs"/>
     <menuseparator/>
+    <menu id="context_askChat"/>
+    <menuseparator/>
     <menuitem id="context_bookmarkSelectedTabs"
               hidden="true"
               data-lazy-l10n-id="bookmark-selected-tabs"/>
@@ -315,6 +317,10 @@
     <menuitem data-l10n-id="sidebar-context-menu-report-extension"
               id="sidebar-context-menu-report-extension"
               contexttype="extension-action"/>
+    <menuseparator/>
+    <menuitem data-l10n-id="sidebar-context-menu-unpin-extension"
+              id="sidebar-context-menu-unpin-extension"
+              contexttype="extension-action"/>
     <menuitem id="sidebar-context-menu-hide-sidebar"
               data-l10n-id="sidebar-context-menu-hide-sidebar"/>
     <menuitem id="sidebar-context-menu-customize-sidebar"
@@ -482,10 +488,11 @@
   <menupopup id="blockedPopupOptions">
     <menuitem id="blockedPopupAllowSite"/>
     <menuitem id="blockedPopupEdit"
-              data-l10n-id="edit-popup-settings"/>
+              data-l10n-id="edit-popup-settings2"/>
     <menuitem id="blockedPopupDontShowMessage"
-              data-l10n-id="popups-infobar-dont-show-message"
+              data-l10n-id="popups-infobar-dont-show-message2"
               type="checkbox"/>
+    <menuseparator id="blockedRedirectSeparator"/>
     <menuseparator id="blockedPopupsSeparator"/>
   </menupopup>
 
@@ -527,6 +534,11 @@
     </html:div>
     <html:div class="tab-preview-thumbnail-container"></html:div>
   </panel>
+
+  <menupopup id="tabgroup-preview-panel"
+             class="toolbar-menupopup"
+             consumeoutsideclicks="never">
+  </menupopup>
 
   <html:template id="pageActionPanelTemplate">
     <panel id="pageActionPanel"
@@ -605,6 +617,7 @@
 #include ../../components/customizableui/content/panelUI.inc.xhtml
 #include ../../components/controlcenter/content/identityPanel.inc.xhtml
 #include ../../components/controlcenter/content/permissionPanel.inc.xhtml
+#include ../../components/controlcenter/content/trustPanel.inc.xhtml
 #include ../../components/controlcenter/content/protectionsPanel.inc.xhtml
 #include ../../components/downloads/content/downloadsPanel.inc.xhtml
 #include ../../components/translations/content/selectTranslationsPanel.inc.xhtml

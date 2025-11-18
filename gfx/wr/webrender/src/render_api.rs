@@ -11,7 +11,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::u32;
 use api::{MinimapData, SnapshotImageKey};
-use time::precise_time_ns;
 use crate::api::channel::{Sender, single_msg_channel, unbounded_channel};
 use crate::api::{BuiltDisplayList, IdNamespace, ExternalScrollId, Parameter, BoolParameter};
 use crate::api::{FontKey, FontInstanceKey, NativeFontHandle};
@@ -29,6 +28,8 @@ use glyph_rasterizer::SharedFontResources;
 use crate::scene_builder_thread::{SceneBuilderRequest, SceneBuilderResult};
 use crate::intern::InterningMemoryReport;
 use crate::profiler::{self, TransactionProfile};
+#[cfg(feature = "debugger")]
+use crate::debugger::{DebugQuery, DebuggerClient};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -223,7 +224,7 @@ impl Transaction {
             notifications: Vec::new(),
             use_scene_builder_thread: true,
             generate_frame: GenerateFrame::No,
-            creation_time: precise_time_ns(),
+            creation_time: zeitstempel::now(),
             invalidate_rendered_frame: false,
             low_priority: false,
             render_reasons: RenderReasons::empty(),
@@ -311,7 +312,7 @@ impl Transaction {
         epoch: Epoch,
         (pipeline_id, mut display_list): (PipelineId, BuiltDisplayList),
     ) {
-        display_list.set_send_time_ns(precise_time_ns());
+        display_list.set_send_time_ns(zeitstempel::now());
         self.scene_ops.push(
             SceneMsg::SetDisplayList {
                 display_list,
@@ -953,10 +954,11 @@ pub struct CapturedDocument {
 }
 
 /// Update of the state of built-in debugging facilities.
-#[derive(Clone)]
 pub enum DebugCommand {
     /// Sets the provided debug flags.
     SetFlags(DebugFlags),
+    /// Get current debug flags
+    GetDebugFlags(Sender<DebugFlags>),
     /// Save a capture of all the documents state.
     SaveCapture(PathBuf, CaptureBits),
     /// Load a capture of all the documents state.
@@ -980,6 +982,14 @@ pub enum DebugCommand {
     SetPictureTileSize(Option<DeviceIntSize>),
     /// Set an override for max off-screen surface size
     SetMaximumSurfaceSize(Option<usize>),
+    /// Generate a frame to force a redraw / recomposite
+    GenerateFrame,
+    #[cfg(feature = "debugger")]
+    /// Query internal information about WR
+    Query(DebugQuery),
+    #[cfg(feature = "debugger")]
+    /// Add a new profiler consumer
+    AddDebugClient(DebuggerClient),
 }
 
 /// Message sent by the `RenderApi` to the render backend thread.
@@ -1418,6 +1428,14 @@ impl RenderApi {
     pub fn stop_capture_sequence(&self) {
         let msg = ApiMsg::DebugCommand(DebugCommand::StopCaptureSequence);
         self.send_message(msg);
+    }
+
+    /// Get the current debug flags
+    pub fn get_debug_flags(&self) -> DebugFlags {
+        let (tx, rx) = unbounded_channel();
+        let msg = ApiMsg::DebugCommand(DebugCommand::GetDebugFlags(tx));
+        self.send_message(msg);
+        rx.recv().unwrap()
     }
 
     /// Update the state of builtin debugging facilities.

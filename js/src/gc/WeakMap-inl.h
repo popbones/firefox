@@ -21,6 +21,7 @@
 #include "js/Prefs.h"
 #include "js/TraceKind.h"
 #include "vm/JSContext.h"
+#include "vm/SymbolType.h"
 
 #include "gc/AtomMarking-inl.h"
 #include "gc/Marking-inl.h"
@@ -369,7 +370,6 @@ bool WeakMap<K, V>::findSweepGroupEdges(Zone* atomsZone) {
   }
 #endif
 
-#ifdef NIGHTLY_BUILD
   if (mayHaveSymbolKeys) {
     MOZ_ASSERT(JS::Prefs::experimental_symbols_as_weakmap_keys());
     if (atomsZone->isGCMarking()) {
@@ -378,7 +378,6 @@ bool WeakMap<K, V>::findSweepGroupEdges(Zone* atomsZone) {
       }
     }
   }
-#endif
 
   if (mayHaveKeyDelegates) {
     for (Range r = all(); !r.empty(); r.popFront()) {
@@ -459,6 +458,26 @@ void WeakMap<K, V>::checkAfterMovingGC() const {
   }
 }
 #endif  // JSGC_HASH_TABLE_CHECKS
+
+// https://tc39.es/ecma262/#sec-canbeheldweakly
+static MOZ_ALWAYS_INLINE bool CanBeHeldWeakly(Value value) {
+  // 1. If v is an Object, return true.
+  if (value.isObject()) {
+    return true;
+  }
+
+  bool symbolsAsWeakMapKeysEnabled =
+      JS::Prefs::experimental_symbols_as_weakmap_keys();
+
+  // 2. If v is a Symbol and KeyForSymbol(v) is undefined, return true.
+  if (symbolsAsWeakMapKeysEnabled && value.isSymbol() &&
+      value.toSymbol()->code() != JS::SymbolCode::InSymbolRegistry) {
+    return true;
+  }
+
+  // 3. Return false.
+  return false;
+}
 
 inline HashNumber GetSymbolHash(JS::Symbol* sym) { return sym->hash(); }
 

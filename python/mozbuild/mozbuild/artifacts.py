@@ -131,11 +131,22 @@ class ThunderbirdJobConfiguration:
     esr_candidate_trees = [
         "releases/comm-esr115",
         "releases/comm-esr128",
+        "releases/comm-esr140",
     ]
     try_tree = "try-comm-central"
 
 
 class ArtifactJob:
+    def _get_orig_basename(self, filename):
+        """Extract the original basename from a filename, removing hash prefixes if present."""
+        orig_basename = os.path.basename(filename)
+        # Turn 'HASH-target...' into 'target...' if possible.  It might not
+        # be possible if the file is given directly on the command line.
+        before, _sep, after = orig_basename.partition("-")
+        if re.match(r"[0-9a-fA-F]{16}$", before):
+            orig_basename = after
+        return orig_basename
+
     # These are a subset of TEST_HARNESS_BINS in testing/mochitest/Makefile.in.
     # Each item is a pair of (pattern, (src_prefix, dest_prefix), where src_prefix
     # is the prefix of the pattern relevant to its location in the archive, and
@@ -287,6 +298,20 @@ class ArtifactJob:
         if self._symbols_archive_suffix and filename.endswith(
             self._symbols_archive_suffix
         ):
+            # If UPLOAD_DIR is set, copy the symbol archive
+            # directly to the upload directory to avoid repackaging the symbols.
+            upload_dir = os.environ.get("UPLOAD_DIR")
+            if upload_dir:
+                dest_filename = self._get_orig_basename(filename)
+                dest_path = mozpath.join(upload_dir, dest_filename)
+                ensureParentDir(dest_path)
+                shutil.copy2(filename, dest_path)
+                self.log(
+                    logging.INFO,
+                    "artifact",
+                    {"src": filename, "dest": dest_path},
+                    "Copied symbols archive from {src} to {dest} for direct upload",
+                )
             return self.process_symbols_archive(filename, processed_filename)
         if filename.endswith(self._extra_archive_suffixes):
             return self.process_extra_archive(filename, processed_filename)
@@ -811,7 +836,7 @@ class WinArtifactJob(ArtifactJob):
     _package_artifact_patterns = {
         "{product}/dependentlibs.list",
         "{product}/**/*.dll",
-        "{product}/*.exe",
+        "{product}/**/*.exe",
         "{product}/*.tlb",
     }
 
@@ -1165,6 +1190,7 @@ class Artifacts:
         cache_dir=".",
         hg=None,
         git=None,
+        jj=None,
         skip_cache=False,
         topsrcdir=None,
         download_tests=True,
@@ -1189,6 +1215,13 @@ class Artifacts:
         self._log = log
         self._hg = hg
         self._git = git
+        self._jj = jj
+        if self._jj:
+            self._git_root = subprocess.check_output(
+                [self._jj, "git", "root"], universal_newlines=True
+            ).strip()
+        else:
+            self._git_root = None
         self._cache_dir = cache_dir
         self._skip_cache = skip_cache
         self._topsrcdir = topsrcdir
@@ -1248,19 +1281,30 @@ class Artifacts:
         kwargs["universal_newlines"] = True
         return subprocess.check_output([self._hg] + list(args), **kwargs)
 
+    def check_git_output(self, cmd, *args, **kwargs):
+        env = os.environ.copy()
+        if self._git_root:
+            env["GIT_DIR"] = self._git_root
+        kwargs["universal_newlines"] = True
+        return subprocess.check_output([self._git] + cmd, *args, **kwargs, env=env)
+
+    def call_git(self, cmd, *args, **kwargs):
+        env = os.environ.copy()
+        if self._git_root:
+            env["GIT_DIR"] = self._git_root
+        return subprocess.call([self._git] + cmd, *args, **kwargs, env=env)
+
     @property
     @functools.cache
     def _is_git_cinnabar(self):
         if self._git:
             try:
-                metadata = subprocess.check_output(
+                metadata = self.check_git_output(
                     [
-                        self._git,
                         "rev-parse",
                         "--revs-only",
                         "refs/cinnabar/metadata",
                     ],
-                    universal_newlines=True,
                     cwd=self._topsrcdir,
                 )
                 return bool(metadata.strip())
@@ -1278,9 +1322,8 @@ class Artifacts:
             ("pure-cinnabar", "028d2077b6267f634c161a8a68e2feeee0cfb663"),
         ):
             if (
-                subprocess.call(
+                self.call_git(
                     [
-                        self._git,
                         "cat-file",
                         "-e",
                         f"{commit}^{{commit}}",
@@ -1306,8 +1349,6 @@ class Artifacts:
         if self._substs.get("MOZ_BUILD_APP", "") == "mobile/android":
             if self._substs["ANDROID_CPU_ARCH"] == "x86_64":
                 return "android-x86_64" + target_suffix
-            if self._substs["ANDROID_CPU_ARCH"] == "x86":
-                return "android-x86" + target_suffix
             if self._substs["ANDROID_CPU_ARCH"] == "arm64-v8a":
                 return "android-aarch64" + target_suffix
             return "android-arm" + target_suffix
@@ -1384,22 +1425,19 @@ class Artifacts:
         return candidate_pushheads
 
     def _get_revisions_from_git(self):
-        rev_list = subprocess.check_output(
+        rev_list = self.check_git_output(
             [
-                self._git,
                 "rev-list",
                 "--topo-order",
                 f"--max-count={NUM_REVISIONS_TO_QUERY}",
                 "HEAD",
             ],
-            universal_newlines=True,
             cwd=self._topsrcdir,
         )
 
         if self._is_git_cinnabar:
-            hash_list = subprocess.check_output(
-                [self._git, "cinnabar", "git2hg"] + rev_list.splitlines(),
-                universal_newlines=True,
+            hash_list = self.check_git_output(
+                ["cinnabar", "git2hg"] + rev_list.splitlines(),
                 cwd=self._topsrcdir,
             )
         elif self._git_repo_kind == "firefox":
@@ -1560,12 +1598,7 @@ https://firefox-source-docs.mozilla.org/contributing/vcs/mercurial_bundles.html
         ensureParentDir(mozpath.join(distdir, ".dummy"))
 
         if self._no_process:
-            orig_basename = os.path.basename(filename)
-            # Turn 'HASH-target...' into 'target...' if possible.  It might not
-            # be possible if the file is given directly on the command line.
-            before, _sep, after = orig_basename.rpartition("-")
-            if re.match(r"[0-9a-fA-F]{16}$", before):
-                orig_basename = after
+            orig_basename = self._artifact_job._get_orig_basename(filename)
             path = mozpath.join(distdir, orig_basename)
             with FileAvoidWrite(path, readmode="rb") as fh:
                 shutil.copyfileobj(open(filename, mode="rb"), fh)
@@ -1703,10 +1736,9 @@ https://firefox-source-docs.mozilla.org/contributing/vcs/mercurial_bundles.html
                     "log", "--template", "{node}\n", "-r", revset, cwd=self._topsrcdir
                 ).strip()
             elif self._git:
-                revset = subprocess.check_output(
-                    [self._git, "rev-parse", "%s^{commit}" % revset],
+                revset = self.check_git_output(
+                    ["rev-parse", "%s^{commit}" % revset],
                     stderr=open(os.devnull, "w"),
-                    universal_newlines=True,
                     cwd=self._topsrcdir,
                 ).strip()
             else:
@@ -1722,9 +1754,8 @@ https://firefox-source-docs.mozilla.org/contributing/vcs/mercurial_bundles.html
 
         if revision is None and self._git:
             if self._is_git_cinnabar:
-                revision = subprocess.check_output(
-                    [self._git, "cinnabar", "git2hg", revset],
-                    universal_newlines=True,
+                revision = self.check_git_output(
+                    ["cinnabar", "git2hg", revset],
                     cwd=self._topsrcdir,
                 ).strip()
             elif self._git_repo_kind == "firefox":
@@ -1749,7 +1780,8 @@ https://firefox-source-docs.mozilla.org/contributing/vcs/mercurial_bundles.html
         # Include try in our search to allow pulling from a specific push.
         pushheads = [
             (
-                self._artifact_job.candidate_trees + [self._artifact_job.try_tree],
+                self._artifact_job.candidate_trees
+                + [self._artifact_job.job_configuration.try_tree],
                 revision,
             )
         ]

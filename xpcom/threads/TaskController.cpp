@@ -101,7 +101,7 @@ struct TaskMarker : BaseMarkerType<TaskMarker> {
                                                MS::Location::MarkerTable};
   static constexpr const char* ChartLabel = "{marker.data.name}";
   static constexpr const char* TableLabel =
-      "{marker.name} - {marker.data.name} - priority: "
+      "{marker.data.name} - priority: "
       "{marker.data.priorityName} ({marker.data.priority})"
       " task: {marker.data.task}";
 
@@ -156,7 +156,7 @@ struct IncompleteTaskMarker : BaseMarkerType<IncompleteTaskMarker> {
                                                MS::Location::MarkerTable};
   static constexpr const char* ChartLabel = "{marker.data.name}";
   static constexpr const char* TableLabel =
-      "{marker.name} - {marker.data.name} - priority: "
+      "{marker.data.name} - priority: "
       "{marker.data.priorityName} ({marker.data.priority})"
       " task: {marker.data.task}";
 
@@ -517,8 +517,10 @@ void TaskController::AddTask(already_AddRefed<Task>&& aTask) {
 #endif
 
   LogTask::LogDispatch(task);
-  PROFILER_MARKER("TaskController::AddTask", OTHER, {}, FlowMarker,
-                  Flow::FromPointer(task.get()));
+  PROFILER_MARKER("TaskController::AddTask", OTHER,
+                  {MarkerStack::MaybeCapture(
+                      profiler_feature_active(ProfilerFeature::Flows))},
+                  FlowMarker, Flow::FromPointer(task.get()));
 
   std::pair<std::set<RefPtr<Task>, Task::PriorityCompare>::iterator, bool>
       insertion;
@@ -888,24 +890,37 @@ void ScheduleWantsLaterTimer(uint32_t aWantsLaterDelay) {
     sIdleMemoryCleanupRunner->Cancel();
     sIdleMemoryCleanupRunner = nullptr;
   }
+  nsresult timerInitOK = NS_OK;
   if (!sIdleMemoryCleanupWantsLater) {
     auto res = NS_NewTimerWithFuncCallback(
         CheckIdleMemoryCleanupNeeded, (void*)"IdleMemoryCleanupWantsLaterCheck",
         aWantsLaterDelay, nsITimer::TYPE_ONE_SHOT_LOW_PRIORITY,
-        "IdleMemoryCleanupWantsLaterCheck");
+        "IdleMemoryCleanupWantsLaterCheck"_ns);
     if (res.isOk()) {
       sIdleMemoryCleanupWantsLater = res.unwrap().forget();
+    } else {
+      timerInitOK = res.unwrapErr();
     }
   } else {
     if (sIdleMemoryCleanupWantsLaterScheduled) {
       sIdleMemoryCleanupWantsLater->Cancel();
     }
-    sIdleMemoryCleanupWantsLater->InitWithNamedFuncCallback(
+    timerInitOK = sIdleMemoryCleanupWantsLater->InitWithNamedFuncCallback(
         CheckIdleMemoryCleanupNeeded, (void*)"IdleMemoryCleanupWantsLaterCheck",
         aWantsLaterDelay, nsITimer::TYPE_ONE_SHOT_LOW_PRIORITY,
-        "IdleMemoryCleanupWantsLaterCheck");
+        "IdleMemoryCleanupWantsLaterCheck"_ns);
   }
-  sIdleMemoryCleanupWantsLaterScheduled = true;
+  if (NS_SUCCEEDED(timerInitOK)) {
+    sIdleMemoryCleanupWantsLaterScheduled = true;
+  } else {
+    // Under normal conditions, we would never expect this to fail.
+    MOZ_ASSERT_UNREACHABLE(
+        "ScheduleWantsLaterTimer could not create the timer.");
+    // If we were not able to create/init the timer, we will retry the next
+    // time the main thread is about to fall idle. But if we were to stay
+    // idle, we would never purge without this emergency purge.
+    jemalloc_free_dirty_pages();
+  }
 }
 
 void ScheduleIdleMemoryCleanup(uint32_t aWantsLaterDelay) {
@@ -919,7 +934,7 @@ void ScheduleIdleMemoryCleanup(uint32_t aWantsLaterDelay) {
       [aWantsLaterDelay](TimeStamp aDeadline) {
         return RunIdleMemoryCleanup(aDeadline, aWantsLaterDelay);
       },
-      "TaskController::IdlePurgeRunner", TimeDuration(), maxPurgeDelay,
+      "TaskController::IdlePurgeRunner"_ns, TimeDuration(), maxPurgeDelay,
       minPurgeBudget, true, nullptr, nullptr);
 }
 }  // namespace mozilla

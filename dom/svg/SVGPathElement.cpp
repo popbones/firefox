@@ -8,22 +8,22 @@
 
 #include <algorithm>
 
+#include "SVGArcConverter.h"
 #include "SVGGeometryProperty.h"
+#include "SVGPathSegUtils.h"
 #include "gfx2DGlue.h"
 #include "gfxPlatform.h"
 #include "mozAutoDocUpdate.h"
+#include "mozilla/RefPtr.h"
+#include "mozilla/SVGContentUtils.h"
+#include "mozilla/dom/SVGPathElementBinding.h"
+#include "mozilla/dom/SVGPathSegment.h"
+#include "mozilla/gfx/2D.h"
 #include "nsGkAtoms.h"
 #include "nsIFrame.h"
 #include "nsStyleConsts.h"
 #include "nsStyleStruct.h"
 #include "nsWindowSizes.h"
-#include "mozilla/dom/SVGPathElementBinding.h"
-#include "mozilla/dom/SVGPathSegment.h"
-#include "mozilla/gfx/2D.h"
-#include "mozilla/RefPtr.h"
-#include "mozilla/SVGContentUtils.h"
-#include "SVGArcConverter.h"
-#include "SVGPathSegUtils.h"
 
 NS_IMPL_NS_NEW_SVG_ELEMENT(Path)
 
@@ -41,11 +41,11 @@ class MOZ_RAII AutoChangePathSegListNotifier : public mozAutoDocUpdate {
       : mozAutoDocUpdate(aSVGPathElement->GetComposedDoc(), true),
         mSVGElement(aSVGPathElement) {
     MOZ_ASSERT(mSVGElement, "Expecting non-null value");
-    mEmptyOrOldValue = mSVGElement->WillChangePathSegList(*this);
+    mSVGElement->WillChangePathSegList(*this);
   }
 
   ~AutoChangePathSegListNotifier() {
-    mSVGElement->DidChangePathSegList(mEmptyOrOldValue, *this);
+    mSVGElement->DidChangePathSegList(*this);
     if (mSVGElement->GetAnimPathSegList()->IsAnimating()) {
       mSVGElement->AnimationNeedsResample();
     }
@@ -53,7 +53,6 @@ class MOZ_RAII AutoChangePathSegListNotifier : public mozAutoDocUpdate {
 
  private:
   SVGPathElement* const mSVGElement;
-  nsAttrValue mEmptyOrOldValue;
 };
 
 JSObject* SVGPathElement::WrapNode(JSContext* aCx,

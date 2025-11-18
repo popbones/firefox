@@ -8,12 +8,19 @@ ChromeUtils.defineESModuleGetters(this, {
 // Used in multiple tests for loading a page in the sidebar
 const TEST_CHAT_PROVIDER_URL = "http://mochi.test:8888/";
 
+registerCleanupFunction(() => {
+  Services.prefs.clearUserPref("sidebar.old-sidebar.has-used");
+});
+
 /**
  * Check that chat sidebar renders
  */
 add_task(async function test_sidebar_render() {
   await SpecialPowers.pushPrefEnv({
-    set: [["browser.ml.chat.provider", TEST_CHAT_PROVIDER_URL]],
+    set: [
+      ["browser.ml.chat.provider", TEST_CHAT_PROVIDER_URL],
+      ["browser.ml.chat.page", false],
+    ],
   });
 
   await SidebarController.show("viewGenaiChatSidebar");
@@ -110,13 +117,6 @@ add_task(async function test_sidebar_onboarding() {
     "Should have previewed provider"
   );
 
-  Assert.notEqual(
-    document.querySelector(":has(> .selected) [style]").style.maxHeight,
-    "0px",
-    "Selected provider expanded"
-  );
-  Assert.ok(browser.currentURI.spec, "Provider previewed");
-
   const pickButton = await TestUtils.waitForCondition(() =>
     document.querySelector(".chat_pick .primary:not([disabled])")
   );
@@ -128,41 +128,17 @@ add_task(async function test_sidebar_onboarding() {
 
   pickButton.click();
 
-  const startButton = await TestUtils.waitForCondition(() =>
-    document.querySelector(".chat_suggest .primary")
-  );
-  Assert.ok(startButton, "Got button to start");
   Assert.equal(
     Services.prefs.getStringPref("browser.ml.chat.provider"),
     "http://localhost:8080",
     "Provider pref changed during onboarding"
   );
-  events = Glean.genaiChatbot.onboardingContinue.testGetValue();
-  Assert.equal(events.length, 1, "Continued once");
-  Assert.equal(
-    events[0].extra.provider,
-    "localhost",
-    "Continued with localhost"
-  );
-  Assert.equal(events[0].extra.step, "1", "First step");
-  events = await TestUtils.waitForCondition(() =>
-    Glean.genaiChatbot.onboardingTextHighlightDisplayed.testGetValue()
-  );
-  Assert.equal(events.length, 1, "Displayed highlight once");
-  Assert.equal(
-    events[0].extra.provider,
-    "localhost",
-    "Continued with localhost"
-  );
-  Assert.equal(events[0].extra.step, "2", "Second step");
-
-  Services.prefs.clearUserPref("browser.ml.chat.provider");
-  startButton.click();
 
   const noOnboarding = await TestUtils.waitForCondition(
     () => !document.getElementById("multi-stage-message-root")
   );
   Assert.ok(noOnboarding, "Onboarding container went away");
+
   events = Glean.genaiChatbot.onboardingFinish.testGetValue();
   Assert.equal(events.length, 1, "Finished once");
   Assert.equal(
@@ -170,8 +146,9 @@ add_task(async function test_sidebar_onboarding() {
     "localhost",
     "Finished with localhost"
   );
-  Assert.equal(events[0].extra.step, "2", "Second step");
+  Assert.equal(events[0].extra.step, "1", "First step");
 
+  Services.prefs.clearUserPref("browser.ml.chat.provider");
   SidebarController.hide();
 });
 
@@ -343,4 +320,35 @@ add_task(async function test_keyboard_shortcut() {
     "viewGenaiChatSidebar",
     "Already opened"
   );
+});
+
+/**
+ * Check Picture in Picture actors are not attached in sidebar chatbot
+ */
+add_task(async function test_pip_actor_not_chat_sidebar() {
+  await BrowserTestUtils.withNewTab("about:blank", async browser => {
+    const wgp = browser.browsingContext.currentWindowGlobal;
+    const actor = wgp.getActor("PictureInPicture");
+    Assert.ok(actor, "PiP actor is attached in the tab content");
+
+    await SidebarController.show("viewGenaiChatSidebar");
+
+    const chatbotBrowser = await TestUtils.waitForCondition(() => {
+      const { document } = SidebarController.browser.contentWindow;
+      const chatbotBrowserContainer =
+        document.getElementById("browser-container");
+      return chatbotBrowserContainer.querySelector("browser");
+    }, "Chatbot <browser> is loaded in the sidebar");
+
+    Assert.throws(
+      () =>
+        chatbotBrowser.browsingContext.currentWindowGlobal.getActor(
+          "PictureInPicture"
+        ),
+      /doesn't match message manager group/i,
+      "Getting PiP actor in sidebar chatbot should throw"
+    );
+
+    await SidebarController.hide();
+  });
 });

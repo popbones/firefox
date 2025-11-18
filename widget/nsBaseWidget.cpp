@@ -45,6 +45,7 @@
 #include "mozilla/gfx/GPUProcessManager.h"
 #include "mozilla/gfx/gfxVars.h"
 #include "mozilla/layers/APZCCallbackHelper.h"
+#include "mozilla/layers/AsyncDragMetrics.h"
 #include "mozilla/layers/TouchActionHelper.h"
 #include "mozilla/layers/APZEventState.h"
 #include "mozilla/layers/APZInputBridge.h"
@@ -1649,13 +1650,6 @@ void nsBaseWidget::ClearCachedWebrenderResources() {
   mWindowRenderer->AsWebRender()->ClearCachedResources();
 }
 
-void nsBaseWidget::ClearWebrenderAnimationResources() {
-  if (!mWindowRenderer || !mWindowRenderer->AsWebRender()) {
-    return;
-  }
-  mWindowRenderer->AsWebRender()->ClearAnimationResources();
-}
-
 bool nsBaseWidget::SetNeedFastSnaphot() {
   MOZ_ASSERT(XRE_IsParentProcess());
   MOZ_ASSERT(!mCompositorSession);
@@ -2173,7 +2167,7 @@ nsresult nsIWidget::SynthesizeNativeTouchTap(
     }
     mLongTapTimer->InitWithNamedFuncCallback(
         OnLongTapTimerCallback, this, timeout, nsITimer::TYPE_REPEATING_SLACK,
-        "nsIWidget::SynthesizeNativeTouchTap");
+        "nsIWidget::SynthesizeNativeTouchTap"_ns);
   }
 
   // If we already have a long tap pending, cancel it. We only allow one long

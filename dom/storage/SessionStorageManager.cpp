@@ -6,10 +6,10 @@
 
 #include "SessionStorageManager.h"
 
-#include "StorageIPC.h"
 #include "SessionStorage.h"
 #include "SessionStorageCache.h"
 #include "SessionStorageObserver.h"
+#include "StorageIPC.h"
 #include "StorageUtils.h"
 #include "mozilla/ClearOnShutdown.h"
 #include "mozilla/OriginAttributes.h"
@@ -939,7 +939,7 @@ void BackgroundSessionStorageManager::MaybeScheduleSessionStoreUpdate() {
       },
       this, StaticPrefs::browser_sessionstore_interval(),
       nsITimer::TYPE_ONE_SHOT,
-      "BackgroundSessionStorageManager::DispatchSessionStoreUpdate");
+      "BackgroundSessionStorageManager::DispatchSessionStoreUpdate"_ns);
 
   if (result.isErr()) {
     return;

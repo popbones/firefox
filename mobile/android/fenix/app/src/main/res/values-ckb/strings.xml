@@ -10,10 +10,6 @@
     Content description (not visible, for screen readers etc.): "Three dot" menu button.
   -->
   <string name="content_description_menu">هەڵبژاردەی زیاتر</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">گەڕانی تایبەتی شاراوە کارابکە</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_disable_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">گەڕانی تایبەتی شاراوە ناچالاک بکە</string>
   <!-- Placeholder text shown in the search bar before a user enters text for the default engine -->
   <string name="search_hint">بگەڕێ یان ناونیشان بنووسە</string>
   <!-- No Open Tabs Message Description -->
@@ -34,11 +30,14 @@
   <string name="tab_tray_collection_button_multiselect_content_description">بازدەرە دیاریکراوەکان هەڵبگرە لە کۆمەڵەکە</string>
   <!-- About content. %1$s is the name of the app (for example "Firefox"). -->
   <string name="about_content">%1$s بەرهەم هێنراوە لە لایەن مۆزیلاوە.</string>
+  <!-- Private Browsing -->
   <string name="private_browsing_common_myths">چەند ئەفسانەییەک دەربارەی گەڕانی تایبەتیی</string>
   <!-- Text for the positive action button -->
   <string name="open_in_app_cfr_positive_button_text">بڕۆ بۆ ڕێکخستن</string>
   <!-- Text for the negative action button -->
   <string name="open_in_app_cfr_negative_button_text">پشتگوێخستن</string>
+  <!-- Private browsing erase action "contextual feature recommendation" (CFR) -->
+
   <!-- Text for the info dialog when camera permissions have been denied but user tries to access a camera feature. -->
   <string name="camera_permissions_needed_message">داواکاری کامێرا چالاک کرا. بڕۆ بۆ ڕێکخستنەکانی ئاندرۆید، پەنجەبنێ بە دەسەڵاتەکان و ئینجا ڕێگەپێدان هەڵبژێرە.</string>
   <!-- Text for the positive action button to go to Android Settings to grant permissions. -->
@@ -178,9 +177,9 @@
   <!-- Preference for opening links in a private tab -->
   <string name="preferences_open_links_in_a_private_tab">کردنەوەی بەستەر لە بازدەری تایبەت</string>
   <!-- Preference for allowing screenshots to be taken while in a private tab -->
-  <string name="preferences_allow_screenshots_in_private_mode">ڕێگە بە وێنەگرتنی شاشە بدە لە وێبگەڕانی تایبەتی</string>
+  <string name="preferences_allow_screenshots_in_private_mode" tools:ignore="UnusedResources" moz:removedIn="144">ڕێگە بە وێنەگرتنی شاشە بدە لە وێبگەڕانی تایبەتی</string>
   <!-- Will inform the user of the risk of activating Allow screenshots in private browsing option -->
-  <string name="preferences_screenshots_in_private_mode_disclaimer">ئەگەر ڕێگەدرا، بازدەرە تایبەتەکانیش بینراو دەبن کاتێک چەند بەرنامەیەک کراونەتەوە</string>
+  <string name="preferences_screenshots_in_private_mode_disclaimer" tools:ignore="UnusedResources" moz:removedIn="144">ئەگەر ڕێگەدرا، بازدەرە تایبەتەکانیش بینراو دەبن کاتێک چەند بەرنامەیەک کراونەتەوە</string>
   <!-- Preference for adding private browsing shortcut -->
   <string name="preferences_add_private_browsing_shortcut">قەدبڕێ وێبگەڕانی تایبەتی زیاد بکە</string>
   <!-- Preference for accessibility -->
@@ -199,8 +198,6 @@
   <string name="preferences_account_sync_error">دووبارە پەیوەندی بکەرەوە بۆ هێنانەوەی هاوکاتگەری</string>
   <!-- Preference for language -->
   <string name="preferences_language">زمان</string>
-  <!-- Preference for data choices -->
-  <string name="preferences_data_choices">هەڵبژاردنەکانی زانیاری</string>
   <!-- Preference for data collection -->
   <string name="preferences_data_collection">کۆمەڵی زانیاری</string>
   <!-- Preference for developers -->
@@ -223,8 +220,6 @@
   <string name="preferences_enable_autocomplete_urls">تەواوکەری خۆکاری URLs</string>
   <!-- Preference for open links in third party apps -->
   <string name="preferences_open_links_in_apps">کردنەوەی بەستەر لە بەرنامەکان</string>
-  <!-- Preference for open download with an external download manager app -->
-  <string name="preferences_external_download_manager" tools:ignore="UnusedResources" moz:removedIn="141">بەڕێوەبردنی داگرتنی دەرەکی</string>
   <!-- Preference for notifications -->
   <string name="preferences_notifications">ئاگانامەکان</string>
   <!-- Button caption to confirm the add-on collection configuration -->
@@ -462,9 +457,9 @@
   <!-- Text for the button to clear all history -->
   <string name="history_delete_all">مێژووی کار بسڕەوە</string>
   <!-- Text for the snackbar to confirm that multiple browsing history items has been deleted -->
-  <string name="history_delete_multiple_items_snackbar">مێژوو سڕایەوە</string>
+  <string name="history_delete_multiple_items_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">مێژوو سڕایەوە</string>
   <!-- Text for the snackbar to confirm that a single browsing history item has been deleted. %1$s is the shortened URL of the deleted history item. -->
-  <string name="history_delete_single_item_snackbar">%1$s سڕایەوە</string>
+  <string name="history_delete_single_item_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">%1$s سڕایەوە</string>
   <!-- Context description text for the button to delete a single history item -->
   <string name="history_delete_item">سڕینەوە</string>
   <!--
@@ -506,9 +501,9 @@
 
     Confirmation message for a dialog confirming if the user wants to delete the selected folder
   -->
-  <string name="bookmark_delete_folder_confirmation_dialog">ئایا تۆ دڵنیایت دەتەوێت ئەم بوخچەیە بسریتەوە؟</string>
+  <string name="bookmark_delete_folder_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">ئایا تۆ دڵنیایت دەتەوێت ئەم بوخچەیە بسریتەوە؟</string>
   <!-- Confirmation message for a dialog confirming if the user wants to delete multiple items including folders. %s is the name of the app (for example "Firefox"). -->
-  <string name="bookmark_delete_multiple_folders_confirmation_dialog">%s برگە دیاریکراوەکان دەسڕێتەوە.</string>
+  <string name="bookmark_delete_multiple_folders_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">%s برگە دیاریکراوەکان دەسڕێتەوە.</string>
   <!-- Screen title for adding a bookmarks folder -->
   <string name="bookmark_add_folder">بوخچە زیادبکە</string>
   <!-- Snackbar edit button shown after a bookmark has been created. -->
@@ -526,7 +521,7 @@
   <!-- Bookmark overflow menu delete button -->
   <string name="bookmark_menu_delete_button">سڕینەوە</string>
   <!-- Bookmark overflow menu save button -->
-  <string name="bookmark_menu_save_button">پاشەکەوتکردن</string>
+  <string name="bookmark_menu_save_button" tools:ignore="UnusedResources" moz:removedIn="143">پاشەکەوتکردن</string>
   <!--
     Bookmark multi select title in app bar
     %1$d is the number of bookmarks selected
@@ -537,7 +532,7 @@
   <!-- Bookmark folder editing screen title -->
   <string name="edit_bookmark_folder_fragment_title">بوخچە دەستکاریبکە</string>
   <!-- Bookmark sign in button message -->
-  <string name="bookmark_sign_in_button">بچۆ ژوورەوە بۆ بینینی نیشانکراوە هاوکاتگەری پێکراوەکان</string>
+  <string name="bookmark_sign_in_button" tools:ignore="UnusedResources" moz:removedIn="143">بچۆ ژوورەوە بۆ بینینی نیشانکراوە هاوکاتگەری پێکراوەکان</string>
   <!-- Bookmark URL editing field label -->
   <string name="bookmark_url_label">بەستەر</string>
   <!-- Bookmark FOLDER editing field label -->
@@ -545,24 +540,24 @@
   <!-- Bookmark NAME editing field label -->
   <string name="bookmark_name_label">ناو</string>
   <!-- Bookmark add folder screen title -->
-  <string name="bookmark_add_folder_fragment_label">بوخچە زیادبکە</string>
+  <string name="bookmark_add_folder_fragment_label" tools:ignore="UnusedResources" moz:removedIn="143">بوخچە زیادبکە</string>
   <!-- Bookmark select folder screen title -->
   <string name="bookmark_select_folder_fragment_label">بوخچە هەڵبژێرە</string>
   <!-- Bookmark editing error missing title -->
-  <string name="bookmark_empty_title_error">پێویستە ناونیشانی هەبێت</string>
+  <string name="bookmark_empty_title_error" tools:ignore="UnusedResources" moz:removedIn="143">پێویستە ناونیشانی هەبێت</string>
   <!-- Bookmark editing error missing or improper URL -->
   <string name="bookmark_invalid_url_error">بەستەر نەگونجاوە</string>
   <!-- Bookmark screen message for empty bookmarks folder -->
-  <string name="bookmarks_empty_message">هیچ نیشانکراوێک نیە لێرە</string>
+  <string name="bookmarks_empty_message" tools:ignore="UnusedResources" moz:removedIn="143">هیچ نیشانکراوێک نیە لێرە</string>
   <!--
     Bookmark snackbar message on deletion
     %1$s is the host part of the URL of the bookmark deleted, if any
   -->
   <string name="bookmark_deletion_snackbar_message">%1$s سڕایەوە</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks not including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_2">نیشانکراوەکان سڕانەوە</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_2" tools:ignore="UnusedResources" moz:removedIn="143">نیشانکراوەکان سڕانەوە</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_3">بوخچەی دیاریکراو دەسڕدرێتەوە</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_3" tools:ignore="UnusedResources" moz:removedIn="143">بوخچەی دیاریکراو دەسڕدرێتەوە</string>
   <!-- Bookmark undo button for deletion snackbar action -->
   <string name="bookmark_undo_deletion">گێڕانەوە</string>
   <!--
@@ -663,12 +658,10 @@
     %d is a placeholder for the number of tabs selected.
   -->
   <string name="create_collection_save_to_collection_tab_selected">%d بازدەر دیاریکراوە</string>
-  <!-- Text shown in snackbar when multiple tabs have been saved in a collection -->
-  <string name="create_collection_tabs_saved">بازدەرەکان پاشەکەوتکرا!</string>
   <!-- Text shown in snackbar when one or multiple tabs have been saved in a new collection -->
-  <string name="create_collection_tabs_saved_new_collection">کۆکەرەوە پاشەکەوتکرا!</string>
+  <string name="create_collection_tabs_saved_new_collection" tools:ignore="UnusedResources" moz:removedIn="144">کۆکەرەوە پاشەکەوتکرا!</string>
   <!-- Text shown in snackbar when one tab has been saved in a collection -->
-  <string name="create_collection_tab_saved">بازدەر پاشەکەوتکرا!</string>
+  <string name="create_collection_tab_saved" tools:ignore="UnusedResources" moz:removedIn="144">بازدەر پاشەکەوتکرا!</string>
   <!-- Content description (not visible, for screen readers etc.): button to close the collection creator -->
   <string name="create_collection_close">داخستن</string>
   <!-- Button to save currently selected tabs in the "select tabs" step of the collection creator -->
@@ -729,21 +722,17 @@
 
     Text shown in snackbar when user deletes a collection
   -->
-  <string name="snackbar_collection_deleted">کۆکەرەوە سڕایەوە</string>
-  <!-- Text shown in snackbar when user renames a collection -->
-  <string name="snackbar_collection_renamed">کۆکەرەوە ناولێنرایەوە</string>
+  <string name="snackbar_collection_deleted" tools:ignore="UnusedResources" moz:removedIn="143">کۆکەرەوە سڕایەوە</string>
   <!-- Text shown in snackbar when user closes a tab -->
   <string name="snackbar_tab_closed">بازدەر داخرا</string>
   <!-- Text shown in snackbar when user closes all tabs -->
   <string name="snackbar_tabs_closed">بازدەرەکان داخران</string>
   <!-- Text shown in snackbar when user closes a private tab -->
   <string name="snackbar_private_tab_closed">بازدەری تایبەت داخرا</string>
-  <!-- Text shown in snackbar when user closes all private tabs -->
-  <string name="snackbar_private_tabs_closed" moz:removedIn="141" tools:ignore="UnusedResources">بازدەرە تایبەتەکان داخران</string>
   <!-- Text shown in snackbar to undo deleting a tab, top site or collection -->
   <string name="snackbar_deleted_undo">گێڕانەوە</string>
   <!-- Text shown in snackbar when user removes a top site -->
-  <string name="snackbar_top_site_removed">ماڵپەڕ سڕایەوە</string>
+  <string name="snackbar_top_site_removed" moz:removedIn="144" tools:ignore="UnusedResources">ماڵپەڕ سڕایەوە</string>
   <!--
     QR code scanner prompt which appears after scanning a code, but before navigating to it
     %1$s is the name of the app (for example "Firefox"), %2$s is the URL or text scanned
@@ -756,9 +745,7 @@
   <!-- Tab collection deletion prompt dialog message. %1$s is the collection name. -->
   <string name="tab_collection_dialog_message">ئایا تۆ دڵنیایت کە دەتەوێت %1$s بسڕیتەوە؟</string>
   <!-- Tab collection deletion prompt dialog option to delete the collection -->
-  <string name="tab_collection_dialog_positive">سڕینەوە</string>
-  <!-- Message for copying the URL via long press on the toolbar -->
-  <string name="url_copied">بەستەر لەبەرگیرا</string>
+  <string name="tab_collection_dialog_positive" tools:ignore="UnusedResources" moz:removedIn="143">سڕینەوە</string>
   <!-- Sample text for accessibility font size -->
   <string name="accessibility_text_size_sample_text_1">ئەم دەقێکی نمونەییە. لێرە پیشان دەدرێت بۆ ئەوەی بزانی چۆن دەردەچێت کاتێک قەبارەی نووسدینەکە زیاد و کەم دەکەیت.</string>
   <!-- Summary for Accessibility Text Size Scaling Preference -->
@@ -819,9 +806,9 @@
 
     Text shown in snackbar when multiple tabs have been sent to device
   -->
-  <string name="sync_sent_tabs_snackbar">بازدەرەکان نێردران!</string>
+  <string name="sync_sent_tabs_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">بازدەرەکان نێردران!</string>
   <!-- Text shown in snackbar when one tab has been sent to device -->
-  <string name="sync_sent_tab_snackbar">بازدەر نێردرا!</string>
+  <string name="sync_sent_tab_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">بازدەر نێردرا!</string>
   <!-- Text shown in snackbar when sharing tabs failed -->
   <string name="sync_sent_tab_error_snackbar">نەتوانرا بنێردرێت</string>
   <!-- Text shown in snackbar for the "retry" action that the user has after sharing tabs failed -->
@@ -1026,14 +1013,6 @@
   <string name="search_add_custom_engine_error_empty_search_string">دەقێکی گەڕان بنووسە</string>
   <!-- Text shown when a user leaves out the required template string -->
   <string name="search_add_custom_engine_error_missing_template">دڵنیابە کە دەقی نووسراو دەگنوجێت لەگەڵ شێوازی نموونەکە</string>
-  <!-- Text shown when we aren't able to validate the custom search query. %s is the url of the custom search engine. -->
-  <string name="search_add_custom_engine_error_cannot_reach" moz:removedIn="140" tools:ignore="UnusedResources">هەڵە لە پەیوەندیکردن بە “%s”</string>
-  <!-- Text shown when a user creates a new search engine. %s is the url of the custom search engine. -->
-  <string name="search_add_custom_engine_success_message">%s درووستکرا</string>
-  <!-- Text shown when a user successfully edits a custom search engine. %s is the url of the custom search engine. -->
-  <string name="search_edit_custom_engine_success_message">%s پاشەکەوتکرا</string>
-  <!-- Text shown when a user successfully deletes a custom search engine. %s is the url of the custom search engine. -->
-  <string name="search_delete_search_engine_success_message">%s سڕایەوە</string>
   <!-- Heading for the instructions to allow a permission -->
   <string name="phone_feature_blocked_intro">بۆ ڕێگەدا:</string>
   <!-- First step for the allowing a permission -->
@@ -1051,7 +1030,7 @@
   <!-- label shown when there are not site exceptions to show in the site exception settings -->
   <string name="no_site_exceptions">هیچ ماڵپەڕێک بەدەر نەبێت</string>
   <!-- Bookmark deletion confirmation -->
-  <string name="bookmark_deletion_confirmation">ئایا تۆ دڵنیاییت کە دەتەوێت ئەم نیشانکراوە بسڕیتەوە؟</string>
+  <string name="bookmark_deletion_confirmation" tools:ignore="UnusedResources" moz:removedIn="143">ئایا تۆ دڵنیاییت کە دەتەوێت ئەم نیشانکراوە بسڕیتەوە؟</string>
   <!--
     text shown before the issuer name to indicate who its verified by, %1$s is the name of
     the certificate authority that verified the ticket
@@ -1100,7 +1079,7 @@
   <!-- Content description for the action bar "up" button -->
   <string name="action_bar_up_description">بچۆ سەرەوە</string>
   <!-- Content description for privacy content close button -->
-  <string name="privacy_content_close_button_content_description">داخستن</string>
+  <string name="privacy_content_close_button_content_description" tools:ignore="UnusedResources" moz:removedIn="143">داخستن</string>
   <!-- Translations feature -->
 
   <!-- TextField Design System Component -->

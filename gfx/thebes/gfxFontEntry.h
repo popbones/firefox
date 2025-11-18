@@ -410,7 +410,7 @@ class gfxFontEntry {
   // unregisters the table from the font entry.
   //
   // Pass nullptr for aBuffer to indicate that the table is not present and
-  // nullptr will be returned.  Also returns nullptr on OOM.
+  // nullptr will be returned.
   hb_blob_t* ShareFontTableAndGetBlob(uint32_t aTag, nsTArray<uint8_t>* aTable);
 
   // Get the font's unitsPerEm from the 'head' table, in the case of an
@@ -606,9 +606,10 @@ class gfxFontEntry {
 
   // bitvector of substitution space features per script, one each
   // for default and non-default features
-  uint32_t mDefaultSubSpaceFeatures[(int(Script::NUM_SCRIPT_CODES) + 31) / 32];
-  uint32_t
-      mNonDefaultSubSpaceFeatures[(int(Script::NUM_SCRIPT_CODES) + 31) / 32];
+  uint32_t mDefaultSubSpaceFeatures[(int(Script::NUM_SCRIPT_CODES) + 31) /
+                                    32] MOZ_GUARDED_BY(mFeatureInfoLock);
+  uint32_t mNonDefaultSubSpaceFeatures[(int(Script::NUM_SCRIPT_CODES) + 31) /
+                                       32] MOZ_GUARDED_BY(mFeatureInfoLock);
 
   mozilla::Atomic<uint32_t> mUVSOffset;
 

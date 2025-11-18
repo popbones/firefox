@@ -53,6 +53,9 @@ newtab-topsites-add-shortcut-header = Pintasan Baru
 newtab-topsites-edit-topsites-header = Ubah Situs Pilihan
 newtab-topsites-edit-shortcut-header = Edit Pintasan
 newtab-topsites-add-shortcut-label = Tambahkan Pintasan
+newtab-topsites-add-shortcut-title =
+    .title = Tambahkan Pintasan
+    .aria-label = Tambahkan Pintasan
 newtab-topsites-title-label = Judul
 newtab-topsites-title-input =
     .placeholder = Masukkan judul
@@ -300,9 +303,6 @@ newtab-custom-pocket-sponsored = Konten bersponsor
 newtab-custom-pocket-show-recent-saves = Tampilkan penyimpanan terbaru
 newtab-custom-recent-title = Aktivitas terbaru
 newtab-custom-recent-subtitle = Pilihan situs dan konten terbaru
-newtab-custom-recent-toggle =
-    .label = Aktivitas terbaru
-    .description = Pilihan situs dan konten terbaru
 newtab-custom-weather-toggle =
     .label = Cuaca
     .description = Sekilas prakiraan cuaca hari ini
@@ -423,7 +423,6 @@ newtab-weather-menu-change-location = Ubah lokasi
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Cari lokasi
     .aria-label = Cari lokasi
-newtab-weather-change-location-search-input = Cari lokasi
 newtab-weather-menu-weather-display = Tampilan cuaca
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -521,9 +520,6 @@ newtab-custom-wallpaper-title = Wallpaper kustom ada di sini
 newtab-custom-wallpaper-subtitle = Unggah wallpaper sendiri atau pilih warna kustom untuk menjadikan { -brand-product-name } lebih personal.
 newtab-custom-wallpaper-cta = Coba sekarang
 
-## Strings for download mobile highlight
-
-
 ## Strings for reporting ads and content
 
 newtab-report-content-why-reporting-this =
@@ -534,6 +530,3 @@ newtab-report-ads-reason-inappropriate =
     .label = Tidak pantas
 newtab-report-cancel = Batal
 newtab-report-submit = Kirim
-
-## Strings for trending searches
-

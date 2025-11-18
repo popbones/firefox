@@ -10,14 +10,15 @@
 import {
   UrlbarProvider,
   UrlbarUtils,
-} from "resource:///modules/UrlbarUtils.sys.mjs";
+} from "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs";
 
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
   PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
-  UrlbarProvidersManager: "resource:///modules/UrlbarProvidersManager.sys.mjs",
-  UrlbarResult: "resource:///modules/UrlbarResult.sys.mjs",
+  ProvidersManager:
+    "moz-src:///browser/components/urlbar/UrlbarProvidersManager.sys.mjs",
+  UrlbarResult: "moz-src:///browser/components/urlbar/UrlbarResult.sys.mjs",
 });
 
 ChromeUtils.defineLazyGetter(lazy, "logger", () =>
@@ -39,15 +40,6 @@ var gOpenTabUrls = new Map();
 export class UrlbarProviderOpenTabs extends UrlbarProvider {
   constructor() {
     super();
-  }
-
-  /**
-   * Returns the name of this provider.
-   *
-   * @returns {string} the name of this provider.
-   */
-  get name() {
-    return "OpenTabs";
   }
 
   /**
@@ -155,7 +147,8 @@ export class UrlbarProviderOpenTabs extends UrlbarProvider {
   static async getDatabaseRegisteredOpenTabsForTests() {
     let conn = await lazy.PlacesUtils.promiseLargeCacheDBConnection();
     let rows = await conn.execute(
-      "SELECT url, userContextId, groupId, open_count FROM moz_openpages_temp"
+      "SELECT url, userContextId, NULLIF(groupId, '') groupId, open_count" +
+        " FROM moz_openpages_temp ORDER BY url, userContextId, groupId"
     );
     return rows.map(r => ({
       url: r.getResultByName("url"),
@@ -338,7 +331,7 @@ export class UrlbarProviderOpenTabs extends UrlbarProvider {
     await UrlbarProviderOpenTabs.promiseDBPopulated;
     await conn.executeCached(
       `
-      SELECT url, userContextId, groupId
+      SELECT url, userContextId, NULLIF(groupId, '') groupId
       FROM moz_openpages_temp
     `,
       {},
@@ -349,15 +342,15 @@ export class UrlbarProviderOpenTabs extends UrlbarProvider {
         }
         addCallback(
           this,
-          new lazy.UrlbarResult(
-            UrlbarUtils.RESULT_TYPE.TAB_SWITCH,
-            UrlbarUtils.RESULT_SOURCE.TABS,
-            {
+          new lazy.UrlbarResult({
+            type: UrlbarUtils.RESULT_TYPE.TAB_SWITCH,
+            source: UrlbarUtils.RESULT_SOURCE.TABS,
+            payload: {
               url: row.getResultByName("url"),
               userContextId: row.getResultByName("userContextId"),
               tabGroup: row.getResultByName("groupId"),
-            }
-          )
+            },
+          })
         );
       }
     );
@@ -377,22 +370,17 @@ async function addToMemoryTable(url, userContextId, groupId, count = 1) {
   if (!UrlbarProviderOpenTabs.memoryTableInitialized) {
     return;
   }
-  await lazy.UrlbarProvidersManager.runInCriticalSection(async () => {
+  await lazy.ProvidersManager.runInCriticalSection(async () => {
     let conn = await lazy.PlacesUtils.promiseLargeCacheDBConnection();
     await conn.executeCached(
       `
-      INSERT OR REPLACE INTO moz_openpages_temp (url, userContextId, groupId, open_count)
+      INSERT INTO moz_openpages_temp (url, userContextId, groupId, open_count)
       VALUES ( :url,
-                :userContextId,
-                :groupId,
-                IFNULL( ( SELECT open_count + 1
-                          FROM moz_openpages_temp
-                          WHERE url = :url
-                          AND userContextId = :userContextId
-                          AND groupId IS :groupId ),
-                        :count
-                      )
-              )
+               :userContextId,
+               IFNULL(:groupId, ''),
+               :count
+             )
+      ON CONFLICT DO UPDATE SET open_count = open_count + 1
     `,
       { url, userContextId, groupId, count }
     );
@@ -411,7 +399,7 @@ async function removeFromMemoryTable(url, userContextId, groupId) {
   if (!UrlbarProviderOpenTabs.memoryTableInitialized) {
     return;
   }
-  await lazy.UrlbarProvidersManager.runInCriticalSection(async () => {
+  await lazy.ProvidersManager.runInCriticalSection(async () => {
     let conn = await lazy.PlacesUtils.promiseLargeCacheDBConnection();
     await conn.executeCached(
       `
@@ -419,7 +407,7 @@ async function removeFromMemoryTable(url, userContextId, groupId) {
       SET open_count = open_count - 1
       WHERE url = :url
         AND userContextId = :userContextId
-        AND groupId IS :groupId
+        AND groupId = IFNULL(:groupId, '')
     `,
       { url, userContextId, groupId }
     );

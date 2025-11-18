@@ -322,11 +322,11 @@ add_task(async function maxResults_exposuresHistory() {
       makeExpectedResult({ rsSuggestionType: "test-exposure-maxresults-" + i })
     );
     historyResults.push(
-      new UrlbarResult(
-        UrlbarUtils.RESULT_TYPE.URL,
-        UrlbarUtils.RESULT_SOURCE.HISTORY,
-        { url: "http://example.com/history/" + i }
-      )
+      new UrlbarResult({
+        type: UrlbarUtils.RESULT_TYPE.URL,
+        source: UrlbarUtils.RESULT_SOURCE.HISTORY,
+        payload: { url: "http://example.com/history/" + i },
+      })
     );
   }
 
@@ -356,6 +356,7 @@ add_task(async function maxResults_exposuresAmp() {
         keyword: "maxresults",
         title: "maxresults 0",
         url: "https://example.com/maxresults/0",
+        suggestedIndex: -1,
       }),
       ...exposureResults,
     ],
@@ -375,11 +376,11 @@ add_task(async function maxResults_exposuresHistoryAmp() {
       makeExpectedResult({ rsSuggestionType: "test-exposure-maxresults-" + i })
     );
     historyResults.push(
-      new UrlbarResult(
-        UrlbarUtils.RESULT_TYPE.URL,
-        UrlbarUtils.RESULT_SOURCE.HISTORY,
-        { url: "http://example.com/history/" + i }
-      )
+      new UrlbarResult({
+        type: UrlbarUtils.RESULT_TYPE.URL,
+        source: UrlbarUtils.RESULT_SOURCE.HISTORY,
+        payload: { url: "http://example.com/history/" + i },
+      })
     );
   }
 
@@ -387,12 +388,13 @@ add_task(async function maxResults_exposuresHistoryAmp() {
     includeAmp: true,
     includeHistory: true,
     expectedResults: [
+      ...historyResults.slice(0, maxResults - 1),
       QuickSuggestTestUtils.ampResult({
         keyword: "maxresults",
         title: "maxresults 0",
         url: "https://example.com/maxresults/0",
+        suggestedIndex: -1,
       }),
-      ...historyResults.slice(0, maxResults - 1),
       ...exposureResults,
     ],
   });
@@ -413,11 +415,11 @@ async function doMaxResultsTest({
   if (includeHistory) {
     for (let i = 0; i < maxResults; i++) {
       historyResults.push(
-        new UrlbarResult(
-          UrlbarUtils.RESULT_TYPE.URL,
-          UrlbarUtils.RESULT_SOURCE.HISTORY,
-          { url: "http://example.com/history/" + i }
-        )
+        new UrlbarResult({
+          type: UrlbarUtils.RESULT_TYPE.URL,
+          source: UrlbarUtils.RESULT_SOURCE.HISTORY,
+          payload: { url: "http://example.com/history/" + i },
+        })
       );
     }
     historyProvider = new UrlbarTestUtils.TestProvider({
@@ -575,6 +577,7 @@ function makeExpectedResult({ rsSuggestionType, telemetryType = "exposure" }) {
       source: "rust",
       dynamicType: "exposure",
       provider: "Dynamic",
+      suggestionType: rsSuggestionType,
       isSponsored: false,
     },
   };

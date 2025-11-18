@@ -19,6 +19,7 @@
 #include "mozilla/dom/BindingDeclarations.h"
 #include "mozilla/dom/LocationBase.h"
 #include "mozilla/dom/MaybeDiscarded.h"
+#include "mozilla/dom/NavigationBinding.h"
 #include "mozilla/dom/PopupBlocker.h"
 #include "mozilla/dom/UserActivation.h"
 #include "mozilla/dom/BrowsingContextBinding.h"
@@ -207,6 +208,7 @@ struct EmbedderColorSchemes {
   FIELD(CurrentOrientationAngle, float)                                       \
   FIELD(CurrentOrientationType, mozilla::dom::OrientationType)                \
   FIELD(OrientationLock, mozilla::hal::ScreenOrientation)                     \
+  FIELD(HasOrientationOverride, bool)                                         \
   FIELD(UserAgentOverride, nsString)                                          \
   FIELD(TouchEventsOverrideInternal, mozilla::dom::TouchEventsOverride)       \
   FIELD(EmbedderElementType, Maybe<nsString>)                                 \
@@ -218,6 +220,8 @@ struct EmbedderColorSchemes {
   FIELD(OverrideDPPX, float)                                                  \
   /* The current in-progress load. */                                         \
   FIELD(CurrentLoadIdentifier, Maybe<uint64_t>)                               \
+  /* The android load identifier. Used to map to applink type */              \
+  FIELD(AndroidAppLinkLoadIdentifier, Maybe<uint64_t>)                        \
   /* See nsIRequest for possible flags. */                                    \
   FIELD(DefaultLoadFlags, uint32_t)                                           \
   /* Signals that session history is enabled for this browsing context tree.  \
@@ -239,6 +243,8 @@ struct EmbedderColorSchemes {
   FIELD(MediumOverride, nsString)                                             \
   /* DevTools override for prefers-color-scheme */                            \
   FIELD(PrefersColorSchemeOverride, dom::PrefersColorSchemeOverride)          \
+  FIELD(LanguageOverride, nsCString)                                          \
+  FIELD(TimezoneOverride, nsString)                                           \
   /* DevTools override for forced-colors */                                   \
   FIELD(ForcedColorsOverride, dom::ForcedColorsOverride)                      \
   /* prefers-color-scheme override based on the color-scheme style of our     \
@@ -450,6 +456,11 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
 
   nsresult InternalLoad(nsDocShellLoadState* aLoadState);
 
+  void Navigate(nsIURI* aURI, nsIPrincipal& aSubjectPrincipal, ErrorResult& aRv,
+                NavigationHistoryBehavior aHistoryHandling =
+                    NavigationHistoryBehavior::Auto,
+                bool aShouldNotForceReplaceInOnLoad = false);
+
   // Removes the root document for this BrowsingContext tree from the BFCache,
   // if it is cached, and returns true if it was.
   bool RemoveRootFromBFCacheSync();
@@ -458,6 +469,23 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   // to see if we are sandboxed from it as the result of an iframe or CSP
   // sandbox.
   nsresult CheckSandboxFlags(nsDocShellLoadState* aLoadState);
+
+  // If the current BrowsingContext is top-level, we run checks to see if
+  // the source BrowsingContext is allowed to perform the navigation.
+  nsresult CheckFramebusting(nsDocShellLoadState* aLoadState);
+
+  // Determines if the current BrowsingContext is allowed to navigate the
+  // target BrowsingContext (which should be top-level).
+  bool IsFramebustingAllowed(BrowsingContext* aTarget);
+
+  // A BrowsingContext is allowed to perform a top-level navigation if one
+  // of the following conditions is met:
+  // 1. It is top-level (implied by same-origin).
+  // 2. It is same-origin with the top-level.
+  // 3. Its associated document has been interacted with by the user.
+  // 4. Its associated document has explicit `allow-top-navigation`
+  //    sandbox flags.
+  bool IsFramebustingAllowedInner();
 
   void DisplayLoadError(const nsAString& aURI);
 
@@ -683,13 +711,37 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
     return txn.Commit(this);
   }
 
-  void SetRDMPaneOrientation(OrientationType aType, float aAngle,
-                             ErrorResult& aRv) {
-    if (InRDMPane()) {
-      if (NS_FAILED(SetCurrentOrientation(aType, aAngle))) {
-        aRv.ThrowInvalidStateError("Browsing context is discarded");
-      }
+  bool HasOrientationOverride() const {
+    return Top()->GetHasOrientationOverride();
+  }
+
+  [[nodiscard]] nsresult SetOrientationOverride(OrientationType aType,
+                                                float aAngle) {
+    if (GetHasOrientationOverride() && GetCurrentOrientationType() == aType &&
+        GetCurrentOrientationAngle() == aAngle) {
+      return NS_OK;
     }
+
+    Transaction txn;
+    txn.SetCurrentOrientationType(aType);
+    txn.SetCurrentOrientationAngle(aAngle);
+    txn.SetHasOrientationOverride(true);
+    return txn.Commit(this);
+  }
+
+  void SetOrientationOverride(OrientationType aType, float aAngle,
+                              ErrorResult& aRv) {
+    MOZ_ASSERT(IsTop());
+
+    if (NS_FAILED(SetOrientationOverride(aType, aAngle))) {
+      aRv.ThrowInvalidStateError("Browsing context is discarded");
+    }
+  }
+
+  void ResetOrientationOverride() {
+    MOZ_ASSERT(IsTop());
+
+    Unused << SetHasOrientationOverride(false);
   }
 
   void SetRDMPaneMaxTouchPoints(uint8_t aMaxTouchPoints, ErrorResult& aRv) {
@@ -877,8 +929,7 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
                             uint32_t aLoadType, nsIURI* aCurrentURI,
                             SessionHistoryInfo* aPreviousActiveEntry,
                             bool aCloneEntryChildren, bool aChannelExpired,
-                            uint32_t aCacheKey,
-                            nsIPrincipal* aPartitionedPrincipal);
+                            uint32_t aCacheKey);
 
   // Set a new active entry on this browsing context. This is used for
   // implementing history.pushState/replaceState and same document navigations.
@@ -916,10 +967,21 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   std::tuple<nsCOMPtr<nsIPrincipal>, nsCOMPtr<nsIPrincipal>>
   GetTriggeringAndInheritPrincipalsForCurrentLoad();
 
+  // HistoryGo is a content process entry point for #apply-the-history-step
   MOZ_CAN_RUN_SCRIPT
   void HistoryGo(int32_t aOffset, uint64_t aHistoryEpoch,
                  bool aRequireUserInteraction, bool aUserActivation,
                  std::function<void(Maybe<int32_t>&&)>&& aResolver);
+
+  // NavigationTraverse is a content process entry point for
+  // #apply-the-history-step. It differs mainly in that it's using a
+  // navigation entry key for navigation, and that it's possible to
+  // pass `aCheckForCancelation`, which controls if we should run
+  // the onbeforeunload and traversable onnavigate checks.
+  MOZ_CAN_RUN_SCRIPT
+  void NavigationTraverse(const nsID& aKey, uint64_t aHistoryEpoch,
+                          bool aUserActivation, bool aCheckForCancelation,
+                          std::function<void(nsresult)>&& aResolver);
 
   bool ShouldUpdateSessionHistory(uint32_t aLoadType);
 
@@ -963,6 +1025,14 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
     aOverride = GetMediumOverride();
   }
 
+  void GetLanguageOverride(nsACString& aLanguageOverride) const {
+    aLanguageOverride = GetLanguageOverride();
+  }
+
+  void GetTimezoneOverride(nsAString& aTimezoneOverride) const {
+    aTimezoneOverride = GetTimezoneOverride();
+  }
+
   dom::PrefersColorSchemeOverride PrefersColorSchemeOverride() const {
     return GetPrefersColorSchemeOverride();
   }
@@ -998,9 +1068,6 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   void LocationCreated(dom::Location* aLocation);
   void ClearCachedValuesOfLocations();
 
-  void GetContiguousHistoryEntries(SessionHistoryInfo& aActiveEntry,
-                                   Navigation* aNavigation);
-
   void ConsumeHistoryActivation();
 
  protected:
@@ -1020,6 +1087,12 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
                                        bool aHasPostData);
 
  private:
+  // Check whether it's OK to load the given url with the given subject
+  // principal, and if so construct the right nsDocShellLoadInfo for the load
+  // and return it.
+  already_AddRefed<nsDocShellLoadState> CheckURLAndCreateLoadState(
+      nsIURI* aURI, nsIPrincipal& aSubjectPrincipal, ErrorResult& aRv);
+
   bool AddSHEntryWouldIncreaseLength(SessionHistoryInfo* aCurrentEntry) const;
 
   // Assert that this BrowsingContext is coherent relative to related
@@ -1123,6 +1196,16 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
     return IsTop();
   }
 
+  bool CanSet(FieldIndex<IDX_LanguageOverride>, const nsCString&,
+              ContentParent*) {
+    return IsTop();
+  }
+
+  bool CanSet(FieldIndex<IDX_TimezoneOverride>, const nsString&,
+              ContentParent*) {
+    return IsTop();
+  }
+
   bool CanSet(FieldIndex<IDX_MediumOverride>, const nsString&, ContentParent*) {
     return IsTop();
   }
@@ -1143,6 +1226,7 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   }
 
   void DidSet(FieldIndex<IDX_InRDMPane>, bool aOldValue);
+  void DidSet(FieldIndex<IDX_HasOrientationOverride>, bool aOldValue);
   MOZ_CAN_RUN_SCRIPT_BOUNDARY void DidSet(FieldIndex<IDX_ForceDesktopViewport>,
                                           bool aOldValue);
 
@@ -1158,6 +1242,10 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   template <typename Callback>
   void WalkPresContexts(Callback&&);
   void PresContextAffectingFieldChanged();
+
+  void DidSet(FieldIndex<IDX_LanguageOverride>, nsCString&& aOldValue);
+
+  void DidSet(FieldIndex<IDX_TimezoneOverride>, nsString&& aOldValue);
 
   void DidSet(FieldIndex<IDX_MediumOverride>, nsString&& aOldValue);
 
@@ -1382,6 +1470,8 @@ class BrowsingContext : public nsILoadContext, public nsWrapperCache {
   RefPtr<WindowContext> mCurrentWindowContext;
 
   RefPtr<nsGeolocationService> mGeolocationServiceOverride;
+
+  JS::UniqueChars mDefaultLocale;
 
   // This is not a strong reference, but using a JS::Heap for that should be
   // fine. The JSObject stored in here should be a proxy with a

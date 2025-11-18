@@ -8,6 +8,9 @@
 newtab-page-title = لسان جديد
 newtab-settings-button =
     .title = خصص صفحة اللسان الجديد
+newtab-customize-panel-icon-button =
+    .title = خصّص هذه الصفحة
+newtab-customize-panel-icon-button-label = خصّص
 newtab-personalize-settings-icon-label =
     .title = خصّص صفحة اللسان الجديد
     .aria-label = إعدادات
@@ -53,6 +56,9 @@ newtab-topsites-add-shortcut-header = اختصار جديد
 newtab-topsites-edit-topsites-header = حرّر الموقع الشائع
 newtab-topsites-edit-shortcut-header = حرّر الاختصار
 newtab-topsites-add-shortcut-label = أضِف اختصارًا
+newtab-topsites-add-shortcut-title =
+    .title = أضِف اختصارًا
+    .aria-label = أضِف اختصارًا
 newtab-topsites-title-label = العنوان
 newtab-topsites-title-input =
     .placeholder = أدخل عنوانًا
@@ -117,6 +123,8 @@ newtab-menu-delete-pocket = احذف من { -pocket-brand-name }
 newtab-menu-archive-pocket = أرشِف في { -pocket-brand-name }
 newtab-menu-show-privacy-info = رُعاتنا الرسميّون وخصوصيّتك
 newtab-menu-about-fakespot = عن { -fakespot-brand-name }
+# Report is a verb (i.e. report issue with the content).
+newtab-menu-report = أبلِغ
 # Context menu option to personalize New Tab recommended stories by blocking a section of stories,
 # e.g. "Sports". "Block" is a verb here.
 newtab-menu-section-block = احجب
@@ -126,6 +134,8 @@ newtab-menu-section-unfollow = ألغِ متابعة الموضوع
 
 ## Context menu options for sponsored stories and new ad formats on New Tab.
 
+newtab-menu-manage-sponsored-content = أدر المحتوى المموّل
+newtab-menu-our-sponsors-and-your-privacy = ممولّينا وخصوصيتك
 newtab-menu-report-this-ad = أبلغ عن هذا الإعلان
 
 ## Message displayed in a modal window to explain privacy and provide context for sponsored content.
@@ -184,6 +194,8 @@ newtab-label-sponsored-by = برعاية { $sponsor }
 #   $source (string) - The name of a company or their domain
 #   $timeToRead (number) - The estimated number of minutes to read this story
 newtab-label-source-read-time = { $source } · { $timeToRead } دقيقة
+# This string is used under fixed size ads to indicate sponsored content
+newtab-label-sponsored-fixed = مموّل
 
 ## Section Menu: These strings are displayed in the section context menu and are
 ## meant as a call to action for the given section.
@@ -297,9 +309,14 @@ newtab-custom-pocket-sponsored = قصص مموّلة
 newtab-custom-pocket-show-recent-saves = أظهِر عمليات الحفظ الأخيرة
 newtab-custom-recent-title = أحدث الأنشطة
 newtab-custom-recent-subtitle = مختارات من المواقع والمحتويات الحديثة
-newtab-custom-recent-toggle =
-    .label = أحدث الأنشطة
-    .description = مختارات من المواقع والمحتويات الحديثة
+newtab-custom-widget-weather-toggle =
+    .label = الطقس
+newtab-custom-widget-trending-search-toggle =
+    .label = عمليات البحث المُتداولة
+newtab-custom-widget-lists-toggle =
+    .label = قوائم
+newtab-custom-widget-timer-toggle =
+    .label = المؤقت
 newtab-custom-close-button = أغلِق
 newtab-custom-settings = أدِر المزيد من الإعدادات
 
@@ -362,9 +379,6 @@ feature-highlight-wallpaper =
     .title = { -newtab-wallpaper-feature-highlight-header }
     .aria-label = { -newtab-wallpaper-feature-highlight-content }
 
-## Celestial
-
-
 ## New Tab Weather
 
 # Variables:
@@ -378,10 +392,22 @@ newtab-weather-menu-weather-display = عرض الطقس
 # - Detailed: Include simple information plus a short text summary: e.g. "Mostly cloudy"
 newtab-weather-menu-weather-display-option-simple = بسيط
 newtab-weather-menu-weather-display-option-detailed = مفصل
+newtab-weather-menu-change-weather-display-detailed = بدّل إلى العرض التفصيلي
+newtab-weather-menu-temperature-option-celsius = درجة مئوية
 newtab-weather-menu-learn-more = اطّلع على المزيد
 
 ## Topic Labels
 
+newtab-topic-label-education = تعليم
+newtab-topic-label-health = صحة
+newtab-topic-label-hobbies = الألعاب
+# ”Money” = “Personal Finance”, refers to articles and stories that help readers better manage
+# and understand their personal finances – from saving money to buying a home. See the
+# “Curated by our editors“ section at the top of https://getpocket.com/explore/personal-finance for more context
+newtab-topic-label-finance = مال
+newtab-topic-label-society-parenting = تربية الأبناء
+newtab-topic-label-government = سياسة
+newtab-topic-label-education-science = علوم
 
 ## Topic Selection Modal
 
@@ -393,6 +419,7 @@ newtab-topic-selection-button-maybe-later = ربما لاحقا
 ## "Follow", "unfollow", and "following" are social media terms that refer to subscribing to or unsubscribing from a section of stories.
 ## e.g. Following the travel section of stories.
 
+newtab-section-follow-button = تابع
 newtab-section-unfollow-button = ألغِ المتابعة
 
 ## Button to block/unblock listed topics
@@ -435,6 +462,3 @@ newtab-report-cancel = ألغِ
 newtab-report-submit = أرسِل
 newtab-toast-thanks-for-reporting =
     .message = شكرا لك على الإبلاغ عن هذا.
-
-## Strings for trending searches
-

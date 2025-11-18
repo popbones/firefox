@@ -67,6 +67,7 @@
   contain: inherit; /* needed if table has 'contain:layout' or 'paint' */
   container: inherit; /* Bug 1805588 */
   scroll-margin: inherit; /* Bug 1633192 */
+  view-transition-name: inherit; /* Bug 1985925 */
 }
 
 *|*::-moz-table-row {
@@ -133,8 +134,11 @@
 }
 
 /* https://drafts.csswg.org/css-lists-3/#ua-stylesheet */
-::marker {
+::marker,
+::before::marker,
+::after::marker {
   text-align: end;
+  text-align-last: end;
   text-transform: none;
   unicode-bidi: isolate;
   font-variant-numeric: tabular-nums;
@@ -234,8 +238,8 @@
      blocks with overflow: scroll; */
   unicode-bidi: inherit;
   text-overflow: inherit;
-  /* Please keep the declarations below in sync with ::-moz-fieldset-content /
-     ::-moz-button-content in forms.css */
+  /* Please keep the declarations below in sync with ::-moz-fieldset-content
+     in forms.css */
   content: inherit;
   /* Multicol container */
   column-count: inherit;
@@ -503,9 +507,7 @@ parsererror|sourcetext {
 }
 
 :root::view-transition {
-  /* This is confusing and we probably should use "position: absolute".
-   * https://github.com/w3c/csswg-drafts/issues/12116 */
-  position: fixed;
+  position: absolute;
   inset: 0;
 }
 
@@ -521,10 +523,6 @@ parsererror|sourcetext {
 :root::view-transition-image-pair(*) {
   position: absolute;
   inset: 0;
-
-  animation-duration: inherit;
-  animation-fill-mode: inherit;
-  animation-delay: inherit;
 }
 
 :root::view-transition-old(*),
@@ -533,10 +531,18 @@ parsererror|sourcetext {
   inset-block-start: 0;
   inline-size: 100%;
   block-size: auto;
+}
 
+:root::view-transition-image-pair(*),
+:root::view-transition-old(*),
+:root::view-transition-new(*) {
   animation-duration: inherit;
   animation-fill-mode: inherit;
   animation-delay: inherit;
+  animation-timing-function: inherit;
+  animation-iteration-count: inherit;
+  animation-direction: inherit;
+  animation-play-state: inherit;
 }
 
 /* Avoid exposing these keyframe names when view transitions are disabled */
@@ -562,5 +568,11 @@ parsererror|sourcetext {
     to {
       mix-blend-mode: plus-lighter;
     }
+  }
+}
+
+@media print {
+  :-moz-suppress-for-print-selection {
+    display: none !important;
   }
 }

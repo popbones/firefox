@@ -14,7 +14,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
   NormandyUtils: "resource://normandy/lib/NormandyUtils.sys.mjs",
   ProfilesDatastoreService:
     "moz-src:///toolkit/profile/ProfilesDatastoreService.sys.mjs",
-  ShellService: "resource:///modules/ShellService.sys.mjs",
+  ShellService: "moz-src:///browser/components/shell/ShellService.sys.mjs",
   UpdateUtils: "resource://gre/modules/UpdateUtils.sys.mjs",
 });
 
@@ -52,7 +52,9 @@ export class ShowHeartbeatAction extends BaseAction {
     this.log.debug(
       `Heartbeat for recipe ${recipe.id} showing prompt "${message}"`
     );
-    const targetWindow = lazy.BrowserWindowTracker.getTopWindow();
+    const targetWindow = lazy.BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
 
     if (!targetWindow) {
       throw new Error("No window to show heartbeat in");

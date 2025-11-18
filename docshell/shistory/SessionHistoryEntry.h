@@ -10,6 +10,7 @@
 #include "mozilla/dom/DocumentBinding.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/UniquePtr.h"
+#include "mozilla/dom/NavigationBinding.h"
 #include "nsILayoutHistoryState.h"
 #include "nsISHEntry.h"
 #include "nsSHEntryShared.h"
@@ -47,17 +48,18 @@ class SessionHistoryInfo {
   SessionHistoryInfo(nsIURI* aURI, nsIPrincipal* aTriggeringPrincipal,
                      nsIPrincipal* aPrincipalToInherit,
                      nsIPrincipal* aPartitionedPrincipalToInherit,
-                     nsIContentSecurityPolicy* aCsp,
+                     nsIPolicyContainer* aPolicyContainer,
                      const nsACString& aContentType);
   SessionHistoryInfo(nsIChannel* aChannel, uint32_t aLoadType,
                      nsIPrincipal* aPartitionedPrincipalToInherit,
-                     nsIContentSecurityPolicy* aCsp);
+                     nsIPolicyContainer* aPolicyContainer);
 
   void Reset(nsIURI* aURI, const nsID& aDocShellID, bool aDynamicCreation,
              nsIPrincipal* aTriggeringPrincipal,
              nsIPrincipal* aPrincipalToInherit,
              nsIPrincipal* aPartitionedPrincipalToInherit,
-             nsIContentSecurityPolicy* aCsp, const nsACString& aContentType);
+             nsIPolicyContainer* aPolicyContainer,
+             const nsACString& aContentType);
 
   bool operator==(const SessionHistoryInfo& aInfo) const {
     return false;  // FIXME
@@ -143,7 +145,7 @@ class SessionHistoryInfo {
   nsIPrincipal* GetPartitionedPrincipalToInherit() const;
   void SetPartitionedPrincipalToInherit(nsIPrincipal* aPrincipal);
 
-  nsIContentSecurityPolicy* GetCsp() const;
+  nsIPolicyContainer* GetPolicyContainer() const;
 
   uint32_t GetCacheKey() const;
   void SetCacheKey(uint32_t aCacheKey);
@@ -168,6 +170,8 @@ class SessionHistoryInfo {
   const nsID& NavigationId() const { return mNavigationId; }
 
   nsStructuredCloneContainer* GetNavigationState() const;
+
+  already_AddRefed<nsIURI> GetURIOrInheritedForAboutBlank() const;
 
  private:
   friend class SessionHistoryEntry;
@@ -218,7 +222,7 @@ class SessionHistoryInfo {
     static SharedState Create(nsIPrincipal* aTriggeringPrincipal,
                               nsIPrincipal* aPrincipalToInherit,
                               nsIPrincipal* aPartitionedPrincipalToInherit,
-                              nsIContentSecurityPolicy* aCsp,
+                              nsIPolicyContainer* aPolicyContainer,
                               const nsACString& aContentType);
 
    private:
@@ -252,6 +256,14 @@ struct LoadingSessionHistoryInfo {
   already_AddRefed<nsDocShellLoadState> CreateLoadInfo() const;
 
   SessionHistoryInfo mInfo;
+
+  // The same origin (to mInfo) preceeding entries.
+  CopyableTArray<SessionHistoryInfo> mContiguousEntries;
+
+  // The entry that triggered the navigation to this entry.
+  Maybe<SessionHistoryInfo> mTriggeringEntry;
+  // The type of navigation which triggered this load.
+  Maybe<NavigationType> mTriggeringNavigationType;
 
   uint64_t mLoadId = 0;
 
@@ -368,10 +380,9 @@ class HistoryEntryCounterForBrowsingContext {
 #define NS_SESSIONHISTORYENTRY_IID \
   {0x5b66a244, 0x8cec, 0x4caa, {0xaa, 0x0a, 0x78, 0x92, 0xfd, 0x17, 0xa6, 0x67}}
 
-class SessionHistoryEntry
-    : public nsISHEntry,
-      public nsSupportsWeakReference,
-      public LinkedListElement<RefPtr<SessionHistoryEntry>> {
+class SessionHistoryEntry : public nsISHEntry,
+                            public nsSupportsWeakReference,
+                            public LinkedListElement<SessionHistoryEntry> {
  public:
   SessionHistoryEntry(nsDocShellLoadState* aLoadState, nsIChannel* aChannel);
   SessionHistoryEntry();
@@ -448,6 +459,8 @@ class SessionHistoryEntry
   static void RemoveLoadId(uint64_t aLoadId);
 
   const nsTArray<RefPtr<SessionHistoryEntry>>& Children() { return mChildren; }
+
+  already_AddRefed<nsIURI> GetURIOrInheritedForAboutBlank() const;
 
  private:
   friend struct LoadingSessionHistoryInfo;

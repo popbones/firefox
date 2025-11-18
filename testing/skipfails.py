@@ -34,6 +34,11 @@ from manifestparser import ManifestParser
 from manifestparser.toml import add_skip_if, alphabetize_toml_str, sort_paths
 from mozci.task import Optional, TestTask
 from mozci.util.taskcluster import get_task
+from wpt_path_utils import (
+    WPT_META0,
+    WPT_META0_CLASSIC,
+    parse_wpt_path,
+)
 
 from taskcluster.exceptions import TaskclusterRestFailure
 
@@ -92,15 +97,6 @@ TEST = "test"
 TEST_TYPES = [EQEQ, NOTEQ]
 TOTAL_DURATION = "duration_total"
 TOTAL_RUNS = "runs_total"
-WP = "testing/web-platform/"
-WPT0 = WP + "tests/infrastructure"
-WPT_META0 = WP + "tests/infrastructure/metadata"
-WPT_META0_CLASSIC = WP + "meta/infrastructure"
-WPT1 = WP + "tests"
-WPT_META1 = WPT1.replace("tests", "meta")
-WPT2 = WP + "mozilla/tests"
-WPT_META2 = WPT2.replace("tests", "meta")
-WPT_MOZILLA = "/_mozilla"
 
 
 class Mock:
@@ -494,11 +490,24 @@ class Skipfails:
             try:
                 if len(task.results) == 0:
                     continue  # ignore aborted tasks
-                failure_types = task.failure_types  # call magic property once
-                if failure_types is None:
+                _fail_types = task.failure_types  # call magic property once
+                if _fail_types is None:
                     continue
                 if self.failure_types is None:
                     self.failure_types = {}
+
+                # This remove known failures
+                failure_types = {}
+                failing_groups = [r.group for r in task.results if not r.ok]
+                for ft in _fail_types:
+                    failtype = ft
+                    kind, manifest = self.get_kind_manifest(ft)
+                    if kind == Kind.WPT:
+                        failtype = parse_wpt_path(ft)[0]
+
+                    if [fg for fg in failing_groups if fg.endswith(failtype)]:
+                        failure_types[ft] = _fail_types[ft]
+
                 self.failure_types[task.id] = failure_types
                 self.vinfo(f"Getting failure_types from task: {task.id}")
                 for raw_manifest in failure_types:
@@ -1177,7 +1186,7 @@ class Skipfails:
         """Get mozinfo for each test variants"""
 
         if len(self.variants) == 0:
-            variants_file = "taskcluster/kinds/test/variants.yml"
+            variants_file = "taskcluster/test_configs/variants.yml"
             variants_path = self.full_path(variants_file)
             fp = open(variants_path, encoding="utf-8")
             raw_variants = load(fp, Loader=Loader)
@@ -1372,11 +1381,7 @@ class Skipfails:
         processor = extra.arch
         if skip_if is not None and kind != Kind.LIST:
             # Rosetta specific hack for macos 11.20
-            if (
-                extra.os == "mac"
-                and extra.os_version == "11.20"
-                and processor == "aarch64"
-            ):
+            if extra.os == "mac" and processor == "aarch64":
                 skip_if += aa + "arch" + eq + qq + processor + qq
             elif processor is not None:
                 skip_if += aa + "processor" + eq + qq + processor + qq
@@ -1681,25 +1686,6 @@ class Skipfails:
             except Fault:
                 pass  # Fault expected: Failed to fetch key 9372091 from network storage: The specified key does not exist.
 
-    def get_wpt_path_meta(self, shortpath: str):
-        if shortpath.startswith(WPT0):
-            path = shortpath
-            meta = shortpath.replace(WPT0, WPT_META0, 1)
-        elif shortpath.startswith(WPT1):
-            path = shortpath
-            meta = shortpath.replace(WPT1, WPT_META1, 1)
-        elif shortpath.startswith(WPT2):
-            path = shortpath
-            meta = shortpath.replace(WPT2, WPT_META2, 1)
-        elif shortpath.startswith(WPT_MOZILLA):
-            shortpath = shortpath[len(WPT_MOZILLA) :]
-            path = WPT2 + shortpath
-            meta = WPT_META2 + shortpath
-        else:
-            path = WPT1 + shortpath
-            meta = WPT_META1 + shortpath
-        return (path, meta)
-
     def wpt_paths(
         self, shortpath: str
     ) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
@@ -1711,35 +1697,8 @@ class Skipfails:
         query is the test file query paramters (or None)
         anyjs is the html test file as reported by mozci (or None)
         """
-        query: Optional[str] = None
-        anyjs: Optional[str] = None
-        i = shortpath.find("?")
-        if i > 0:
-            query = shortpath[i:]
-            shortpath = shortpath[0:i]
-        path, manifest = self.get_wpt_path_meta(shortpath)
-        failure_type = not self.isdir(path)
-        if failure_type:
-            i = path.find(".any.")
-            if i > 0:
-                anyjs = path  # orig path
-                manifest = manifest.replace(path[i:], ".any.js")
-                path = path[0:i] + ".any.js"
-            else:
-                i = path.find(".window.")
-                if i > 0:
-                    anyjs = path  # orig path
-                    manifest = manifest.replace(path[i:], ".window.js")
-                    path = path[0:i] + ".window.js"
-                else:
-                    i = path.find(".worker.")
-                    if i > 0:
-                        anyjs = path  # orig path
-                        manifest = manifest.replace(path[i:], ".worker.js")
-                        path = path[0:i] + ".worker.js"
-            manifest += ".ini"
-        manifest_classic = ""
-        if manifest.startswith(WPT_META0):
+        path, manifest, query, anyjs = parse_wpt_path(shortpath, self.isdir)
+        if manifest and manifest.startswith(WPT_META0):
             manifest_classic = manifest.replace(WPT_META0, WPT_META0_CLASSIC, 1)
             if self.exists(manifest_classic):
                 if self.exists(manifest):
@@ -1751,7 +1710,10 @@ class Skipfails:
                         f"Using the classic {manifest_classic} manifest as the metadata manifest {manifest} does not exist"
                     )
                     manifest = manifest_classic
-        if not self.exists(path):
+
+        self.vinfo(f"wpt_paths::{path},{manifest}")
+
+        if path and not self.exists(path):
             return (None, None, None, None)
         return (path, manifest, query, anyjs)
 
@@ -1785,7 +1747,7 @@ class Skipfails:
                     n += 2
                     anyjs[section] = True
                 section = line[1:-1]
-                if section in anyjs and not anyjs[section]:
+                if section and anyjs and section in anyjs and not anyjs[section]:
                     disabled_key = False
                 else:
                     section = None  # ignore section we are not interested in
@@ -1832,18 +1794,19 @@ class Skipfails:
             i += 2
             n += 2
             anyjs[section] = True
-        for section in anyjs:
-            if not anyjs[section]:
-                if i > 0 and i - 1 < n and lines[i - 1] != "":
-                    lines.append("")  # blank line before condition
-                    i += 1
-                    n += 1
-                lines.append("[" + section + "]")
-                lines.append(disabled)
-                lines.append(condition)
-                lines.append("")  # blank line after condition
-                i += 4
-                n += 4
+        if anyjs:
+            for section in anyjs:
+                if not anyjs[section]:
+                    if i > 0 and i - 1 < n and lines[i - 1] != "":
+                        lines.append("")  # blank line before condition
+                        i += 1
+                        n += 1
+                    lines.append("[" + section + "]")
+                    lines.append(disabled)
+                    lines.append(condition)
+                    lines.append("")  # blank line after condition
+                    i += 4
+                    n += 4
         manifest_str = "\n".join(lines) + "\n"
         return manifest_str, additional_comment
 

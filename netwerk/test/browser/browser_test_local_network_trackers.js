@@ -50,6 +50,13 @@ add_setup(async function () {
       ["network.websocket.delay-failed-reconnects", false],
       ["network.websocket.max-connections", 1000],
       ["network.lna.block_trackers", true],
+      ["network.lna.address_space.public.override", "127.0.0.1:4443"],
+      ["network.lna.blocking", true],
+      // always select allow actions for user prompts
+      ["network.localhost.prompt.testing", true],
+      ["network.localnetwork.prompt.testing", true],
+      ["network.localhost.prompt.testing.allow", true],
+      ["network.localnetwork.prompt.testing.allow", true],
     ],
   });
 

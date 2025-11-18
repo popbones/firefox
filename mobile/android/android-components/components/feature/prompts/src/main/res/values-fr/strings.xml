@@ -101,7 +101,7 @@
   <!-- Header for the suggest strong password prompt to allow users to fill a form with a suggested strong password -->
   <string name="mozac_feature_prompts_suggest_strong_password_2">Utilisez un mot de passe compliqué</string>
   <!-- Title for using the suggest strong password confirmation dialog. %1$s will be replaced with the generated password -->
-  <string name="mozac_feature_prompts_suggest_strong_password_message">Utiliser un mot de passe fort : %1$s</string>
+  <string name="mozac_feature_prompts_suggest_strong_password_message">Utiliser un mot de passe fort\u00a0: %1$s</string>
   <!-- Title for using the suggest strong password confirmation dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_title">Utiliser un mot de passe compliqué ?</string>
   <!-- Content description for the suggest strong password confirmation dialog -->
@@ -110,12 +110,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">Utiliser ce mot de passe</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">Plus tard</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">Mot de passe enregistré</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">Mot de passe mis à jour</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">Nom d’utilisateur mis à jour</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">Renvoyer les données à ce site ?</string>
   <string name="mozac_feature_prompt_repost_message">Actualiser cette page pourrait répéter des actions récentes, telles que l’envoi d’un paiement ou la publication d’un commentaire.</string>
@@ -125,6 +121,8 @@
   <string name="mozac_feature_prompt_repost_negative_button_text">Annuler</string>
   <!-- Strings show in a dialog that appear when user confirm folder upload -->
   <string name="mozac_feature_prompt_folder_upload_confirm_title">Envoyer les fichiers\u00a0?</string>
+  <!-- Prompt message displayed when user selects a specific folder. %1$s is a folder / directory name. -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_message">Assurez-vous de faire confiance à ce site avant d’effectuer un envoi depuis «\u00a0%1$s\u00a0».</string>
   <!-- Pressing this will dismiss the dialog and allow to upload folder -->
   <string name="mozac_feature_prompt_folder_upload_confirm_positive_button_text">Envoyer</string>
   <!-- Pressing this will dismiss the dialog and disallow to upload folder -->

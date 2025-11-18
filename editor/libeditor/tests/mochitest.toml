@@ -177,10 +177,7 @@ support-files = [
 ["test_bug625452.html"]
 
 ["test_bug629172.html"]
-skip-if = [
-  "os == 'android'",
-  "verify && os == 'mac'", # Due to resizer rendring issue of macOS
-]
+skip-if = ["os == 'android'"]
 
 ["test_bug629845.html"]
 
@@ -201,7 +198,9 @@ support-files = [
 ["test_bug668599.html"]
 
 ["test_bug674770-1.html"]
-skip-if = ["os == 'android'"]
+skip-if = [
+  "os == 'android'",
+]
 support-files = ["file_bug674770-1.html"]
 
 ["test_bug674770-2.html"]
@@ -444,7 +443,9 @@ skip-if = ["os == 'android'"] # Needs interaction with the scrollbar
 ["test_editing_UI_in_plaintext-only.html"]
 
 ["test_execCommandPaste_noTarget.html"]
-skip-if = ["display == 'wayland'"] # Bug 1935188
+skip-if = [
+  "os == 'linux' && os_version == '22.04' && display == 'wayland'", # Bug 1935188
+]
 
 ["test_focus_caret_navigation_between_nested_editors.html"]
 
@@ -609,7 +610,6 @@ skip-if = ["headless"] # The test calls `synthesizeKey`, see bug 1669923.
 ["test_resizers_appearance.html"]
 
 ["test_resizers_resizing_elements.html"]
-skip-if = ["verify && debug && os == 'win'"] # bug 1485293
 
 ["test_root_element_replacement.html"]
 
@@ -618,6 +618,9 @@ support-files = ["file_sanitizer_on_paste.sjs"]
 
 ["test_select_all_without_body.html"]
 support-files = ["file_select_all_without_body.html"]
+
+["test_selection_at_beforeinput_insertReplacementText.html"]
+skip-if = ["os == 'android'"] # using the spellchecker
 
 ["test_selection_move_commands.html"]
 support-files = ["!/gfx/layers/apz/test/mochitest/apz_test_utils.js"]

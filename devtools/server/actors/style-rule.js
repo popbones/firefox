@@ -12,14 +12,13 @@ const {
 const {
   InspectorCSSParserWrapper,
 } = require("resource://devtools/shared/css/lexer.js");
-const TrackChangeEmitter = require("resource://devtools/server/actors/utils/track-change-emitter.js");
 const {
   getRuleText,
   getTextAtLineColumn,
 } = require("resource://devtools/server/actors/utils/style-utils.js");
 
 const {
-  style: { ELEMENT_STYLE },
+  style: { ELEMENT_STYLE, PRES_HINTS },
 } = require("resource://devtools/shared/constants.js");
 
 loader.lazyRequireGetter(
@@ -41,7 +40,7 @@ loader.lazyRequireGetter(
 );
 loader.lazyRequireGetter(
   this,
-  "isPropertyUsed",
+  "getInactiveCssDataForProperty",
   "resource://devtools/server/actors/utils/inactive-property-helper.js",
   true
 );
@@ -110,6 +109,16 @@ class StyleRuleActor extends Actor {
         this.column = InspectorUtils.getRuleColumn(this.rawRule);
         this._parentSheet = this.rawRule.parentStyleSheet;
       }
+    } else if (item.declarationOrigin === "pres-hints") {
+      this.type = PRES_HINTS;
+      this.ruleClassName = PRES_HINTS;
+      this.rawNode = item;
+      this.rawRule = {
+        style: item.style,
+        toString() {
+          return "[element attribute styles " + this.style + "]";
+        },
+      };
     } else {
       // Fake a rule
       this.type = ELEMENT_STYLE;
@@ -389,13 +398,13 @@ class StyleRuleActor extends Actor {
     // synchronously compute the authored text, but |form| also cannot
     // return a promise.  See bug 1205868.
     form.authoredText = this.authoredText;
+    form.cssText = this._getCssText();
 
     switch (this.ruleClassName) {
       case "CSSNestedDeclarations":
         form.isNestedDeclarations = true;
         form.selectors = [];
         form.selectorsSpecificity = [];
-        form.cssText = this.rawStyle.cssText || "";
         break;
       case "CSSStyleRule":
         form.selectors = [];
@@ -416,7 +425,6 @@ class StyleRuleActor extends Actor {
         if (selectorWarnings.length) {
           form.selectorWarnings = selectorWarnings;
         }
-        form.cssText = this.rawStyle.cssText || "";
         break;
       case ELEMENT_STYLE:
         // Elements don't have a parent stylesheet, and therefore
@@ -424,8 +432,10 @@ class StyleRuleActor extends Actor {
         // those.
         const doc = this.rawNode.ownerDocument;
         form.href = doc.location ? doc.location.href : "";
-        form.cssText = this.rawStyle.cssText || "";
         form.authoredText = this.rawNode.getAttribute("style");
+        break;
+      case PRES_HINTS:
+        form.href = "";
         break;
       case "CSSCharsetRule":
         form.encoding = this.rawRule.encoding;
@@ -434,11 +444,9 @@ class StyleRuleActor extends Actor {
         form.href = this.rawRule.href;
         break;
       case "CSSKeyframesRule":
-        form.cssText = this.rawRule.cssText;
         form.name = this.rawRule.name;
         break;
       case "CSSKeyframeRule":
-        form.cssText = this.rawStyle.cssText || "";
         form.keyText = this.rawRule.keyText || "";
         break;
     }
@@ -447,16 +455,9 @@ class StyleRuleActor extends Actor {
     // and so that we can safely determine if a declaration is valid rather than
     // have the client guess it.
     if (form.authoredText || form.cssText) {
-      // authoredText may be an empty string when deleting all properties; it's ok to use.
-      const cssText =
-        typeof form.authoredText === "string"
-          ? form.authoredText
-          : form.cssText;
-      const declarations = parseNamedDeclarations(
-        isCssPropertyKnown,
-        cssText,
-        true
-      );
+      const declarations = this.parseRuleDeclarations({
+        parseComments: true,
+      });
       const el = this.currentlySelectedElement;
       const style = this.currentlySelectedElementComputedStyle;
 
@@ -497,20 +498,36 @@ class StyleRuleActor extends Actor {
         // InspectorUtils.supports only supports the 1-arg version, but that's
         // what we want to do anyways so that we also accept !important in the
         // value.
-        decl.isValid = InspectorUtils.supports(
-          `${decl.name}:${decl.value}`,
-          supportsOptions
+        decl.isValid =
+          // Always consider pres hints styles declarations valid. We need this because
+          // in some cases we might get quirks declarations for which we serialize the
+          // value to something meaningful for the user, but that can't be actually set.
+          // (e.g. for <table> in quirks mode, we get a `color: -moz-inherit-from-body-quirk`)
+          // In such case InspectorUtils.supports() would return false, but that would be
+          // odd to show "invalid" pres hints declaration in the UI.
+          this.ruleClassName === PRES_HINTS ||
+          InspectorUtils.supports(
+            `${decl.name}:${decl.value}`,
+            supportsOptions
+          );
+        const inactiveCssData = getInactiveCssDataForProperty(
+          el,
+          style,
+          this.rawRule,
+          decl.name
         );
-        // TODO: convert from Object to Boolean. See Bug 1574471
-        decl.isUsed = isPropertyUsed(el, style, this.rawRule, decl.name);
-        // Check property name. All valid CSS properties support "initial" as a value.
-        decl.isNameValid = InspectorUtils.supports(
-          `${decl.name}:initial`,
-          supportsOptions
-        );
+        if (inactiveCssData !== null) {
+          decl.inactiveCssData = inactiveCssData;
+        }
 
-        if (SharedCssLogic.isCssVariable(decl.name)) {
-          decl.isCustomProperty = true;
+        // Check property name. All valid CSS properties support "initial" as a value.
+        decl.isNameValid =
+          // InspectorUtils.supports can be costly, don't call it when the declaration
+          // is a CSS variable, it should always be valid
+          decl.isCustomProperty ||
+          InspectorUtils.supports(`${decl.name}:initial`, supportsOptions);
+
+        if (decl.isCustomProperty) {
           decl.computedValue = style.getPropertyValue(decl.name);
 
           // If the variable is a registered property, we check if the variable is
@@ -575,6 +592,48 @@ class StyleRuleActor extends Actor {
     }
 
     return form;
+  }
+
+  /**
+   * Return the rule cssText if applicable, null otherwise
+   *
+   * @returns {String|null}
+   */
+  _getCssText() {
+    switch (this.ruleClassName) {
+      case "CSSNestedDeclarations":
+      case "CSSStyleRule":
+      case ELEMENT_STYLE:
+      case PRES_HINTS:
+        return this.rawStyle.cssText || "";
+      case "CSSKeyframesRule":
+      case "CSSKeyframeRule":
+        return this.rawRule.cssText;
+    }
+    return null;
+  }
+
+  /**
+   * Parse the rule declarations from its text.
+   *
+   * @param {Object} options
+   * @param {Boolean} options.parseComments
+   * @returns {Array} @see parseNamedDeclarations
+   */
+  parseRuleDeclarations({ parseComments }) {
+    const authoredText =
+      this.ruleClassName === ELEMENT_STYLE
+        ? this.rawNode.getAttribute("style")
+        : this.authoredText;
+
+    // authoredText may be an empty string when deleting all properties; it's ok to use.
+    const cssText =
+      typeof authoredText === "string" ? authoredText : this._getCssText();
+    if (!cssText) {
+      return [];
+    }
+
+    return parseNamedDeclarations(isCssPropertyKnown, cssText, parseComments);
   }
 
   /**
@@ -1203,7 +1262,7 @@ class StyleRuleActor extends Actor {
         break;
     }
 
-    TrackChangeEmitter.trackChange(data);
+    this.pageStyle.inspector.targetActor.emit("track-css-change", data);
   }
 
   /**
@@ -1216,7 +1275,7 @@ class StyleRuleActor extends Actor {
    *        This rule's new selector.
    */
   logSelectorChange(oldSelector, newSelector) {
-    TrackChangeEmitter.trackChange({
+    this.pageStyle.inspector.targetActor.emit("track-css-change", {
       ...this.metadata,
       type: "selector-remove",
       add: null,
@@ -1224,7 +1283,7 @@ class StyleRuleActor extends Actor {
       selector: oldSelector,
     });
 
-    TrackChangeEmitter.trackChange({
+    this.pageStyle.inspector.targetActor.emit("track-css-change", {
       ...this.metadata,
       type: "selector-add",
       add: null,
@@ -1365,11 +1424,19 @@ class StyleRuleActor extends Actor {
     const style = this.currentlySelectedElementComputedStyle;
 
     for (const decl of this._declarations) {
-      // TODO: convert from Object to Boolean. See Bug 1574471
-      const isUsed = isPropertyUsed(el, style, this.rawRule, decl.name);
+      const inactiveCssData = getInactiveCssDataForProperty(
+        el,
+        style,
+        this.rawRule,
+        decl.name
+      );
 
-      if (decl.isUsed.used !== isUsed.used) {
-        decl.isUsed = isUsed;
+      if (!decl.inactiveCssData !== !inactiveCssData) {
+        if (inactiveCssData) {
+          decl.inactiveCssData = inactiveCssData;
+        } else {
+          delete decl.inactiveCssData;
+        }
         hasChanged = true;
       }
     }

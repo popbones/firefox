@@ -25,20 +25,13 @@ use crate::{
         TransportParametersHandler,
     },
     tracking::DEFAULT_LOCAL_ACK_DELAY,
-    version::{Version, VersionConfig},
-    CongestionControlAlgorithm, Res,
+    version::{self, Version},
+    CongestionControlAlgorithm, Res, DEFAULT_INITIAL_RTT,
 };
 
 const LOCAL_MAX_DATA: u64 = MAX_VARINT;
 const LOCAL_STREAM_LIMIT_BIDI: u64 = 16;
 const LOCAL_STREAM_LIMIT_UNI: u64 = 16;
-/// See `ConnectionParameters.ack_ratio` for a discussion of this value.
-pub const ACK_RATIO_SCALE: u8 = 10;
-/// By default, aim to have the peer acknowledge 4 times per round trip time.
-/// See `ConnectionParameters.ack_ratio` for more.
-pub const DEFAULT_ACK_RATIO: u8 = 4 * ACK_RATIO_SCALE;
-/// The local value for the idle timeout period.
-const DEFAULT_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_QUEUED_DATAGRAMS_DEFAULT: usize = 10;
 
 /// What to do with preferred addresses.
@@ -58,7 +51,7 @@ pub enum PreferredAddressConfig {
 #[expect(clippy::struct_excessive_bools, reason = "We need that many, sorry.")]
 #[derive(Debug, Clone)]
 pub struct ConnectionParameters {
-    versions: VersionConfig,
+    versions: version::Config,
     cc_algorithm: CongestionControlAlgorithm,
     /// Initial connection-level flow control limit.
     max_data: u64,
@@ -88,6 +81,7 @@ pub struct ConnectionParameters {
     datagram_size: u64,
     outgoing_datagram_queue: usize,
     incoming_datagram_queue: usize,
+    initial_rtt: Duration,
     fast_pto: u8,
     grease: bool,
     disable_migration: bool,
@@ -100,12 +94,14 @@ pub struct ConnectionParameters {
     sni_slicing: bool,
     /// Whether to enable mlkem768nistp256-sha256.
     mlkem: bool,
+    /// Whether to randomize the packet number of the first Initial packet.
+    randomize_first_pn: bool,
 }
 
 impl Default for ConnectionParameters {
     fn default() -> Self {
         Self {
-            versions: VersionConfig::default(),
+            versions: version::Config::default(),
             cc_algorithm: CongestionControlAlgorithm::Cubic,
             max_data: LOCAL_MAX_DATA,
             max_stream_data_bidi_remote: u64::try_from(INITIAL_RECV_WINDOW_SIZE)
@@ -116,12 +112,13 @@ impl Default for ConnectionParameters {
                 .expect("usize fits in u64"),
             max_streams_bidi: LOCAL_STREAM_LIMIT_BIDI,
             max_streams_uni: LOCAL_STREAM_LIMIT_UNI,
-            ack_ratio: DEFAULT_ACK_RATIO,
-            idle_timeout: DEFAULT_IDLE_TIMEOUT,
+            ack_ratio: Self::DEFAULT_ACK_RATIO,
+            idle_timeout: Self::DEFAULT_IDLE_TIMEOUT,
             preferred_address: PreferredAddressConfig::Default,
-            datagram_size: 0,
+            datagram_size: 1200,
             outgoing_datagram_queue: MAX_QUEUED_DATAGRAMS_DEFAULT,
             incoming_datagram_queue: MAX_QUEUED_DATAGRAMS_DEFAULT,
+            initial_rtt: DEFAULT_INITIAL_RTT,
             fast_pto: FAST_PTO_SCALE,
             grease: true,
             disable_migration: false,
@@ -130,17 +127,26 @@ impl Default for ConnectionParameters {
             pmtud_iface_mtu: true,
             sni_slicing: true,
             mlkem: true,
+            randomize_first_pn: true,
         }
     }
 }
 
 impl ConnectionParameters {
+    /// See `ConnectionParameters.ack_ratio` for a discussion of this value.
+    pub const ACK_RATIO_SCALE: u8 = 10;
+    /// By default, aim to have the peer acknowledge 4 times per round trip time.
+    /// See `ConnectionParameters.ack_ratio` for more.
+    pub const DEFAULT_ACK_RATIO: u8 = 4 * Self::ACK_RATIO_SCALE;
+    /// The local value for the idle timeout period.
+    pub const DEFAULT_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+
     #[must_use]
-    pub const fn get_versions(&self) -> &VersionConfig {
+    pub const fn get_versions(&self) -> &version::Config {
         &self.versions
     }
 
-    pub(crate) fn get_versions_mut(&mut self) -> &mut VersionConfig {
+    pub(crate) fn get_versions_mut(&mut self) -> &mut version::Config {
         &mut self.versions
     }
 
@@ -150,7 +156,7 @@ impl ConnectionParameters {
     /// before less preferred.
     #[must_use]
     pub fn versions(mut self, initial: Version, all: Vec<Version>) -> Self {
-        self.versions = VersionConfig::new(initial, all);
+        self.versions = version::Config::new(initial, all);
         self
     }
 
@@ -199,23 +205,6 @@ impl ConnectionParameters {
             }
         }
         self
-    }
-
-    /// Get the maximum stream data that we will accept on different types of streams.
-    ///
-    /// # Panics
-    ///
-    /// If `StreamType::UniDi` and `false` are passed as that is not a valid combination.
-    #[must_use]
-    pub fn get_max_stream_data(&self, stream_type: StreamType, remote: bool) -> u64 {
-        match (stream_type, remote) {
-            (StreamType::BiDi, false) => self.max_stream_data_bidi_local,
-            (StreamType::BiDi, true) => self.max_stream_data_bidi_remote,
-            (StreamType::UniDi, false) => {
-                panic!("Can't get receive limit on a stream that can only be sent")
-            }
-            (StreamType::UniDi, true) => self.max_stream_data_uni,
-        }
     }
 
     /// Set the maximum stream data that we will accept on different types of streams.
@@ -287,6 +276,17 @@ impl ConnectionParameters {
     #[must_use]
     pub const fn get_idle_timeout(&self) -> Duration {
         self.idle_timeout
+    }
+
+    #[must_use]
+    pub const fn get_initial_rtt(&self) -> Duration {
+        self.initial_rtt
+    }
+
+    #[must_use]
+    pub const fn initial_rtt(mut self, init_rtt: Duration) -> Self {
+        self.initial_rtt = init_rtt;
+        self
     }
 
     #[must_use]
@@ -395,6 +395,7 @@ impl ConnectionParameters {
         self.pmtud_iface_mtu
     }
 
+    // TODO: Not used in neqo, but Gecko calls it. Needs a test to call it.
     #[must_use]
     pub const fn pmtud_iface_mtu(mut self, pmtud_iface_mtu: bool) -> Self {
         self.pmtud_iface_mtu = pmtud_iface_mtu;
@@ -420,6 +421,17 @@ impl ConnectionParameters {
     #[must_use]
     pub const fn mlkem(mut self, mlkem: bool) -> Self {
         self.mlkem = mlkem;
+        self
+    }
+
+    #[must_use]
+    pub const fn randomize_first_pn_enabled(&self) -> bool {
+        self.randomize_first_pn
+    }
+
+    #[must_use]
+    pub const fn randomize_first_pn(mut self, randomize_first_pn: bool) -> Self {
+        self.randomize_first_pn = randomize_first_pn;
         self
     }
 

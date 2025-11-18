@@ -75,6 +75,8 @@ class FenixApplicationTest {
         browsersCache = mockk(relaxed = true)
         mozillaProductDetector = mockk(relaxed = true)
         browserStore = BrowserStore()
+
+        every { testContext.components.core } returns mockk(relaxed = true)
         every { testContext.components.distributionIdManager } returns DistributionIdManager(
             context = testContext,
             browserStoreProvider = DefaultDistributionBrowserStoreProvider(browserStore),
@@ -142,6 +144,7 @@ class FenixApplicationTest {
         every { settings.desktopBookmarksSize } returns 4
         every { settings.mobileBookmarksSize } returns 5
         every { settings.toolbarPosition } returns ToolbarPosition.BOTTOM
+        every { settings.shouldUseExpandedToolbar } returns true
         every { settings.getTabViewPingString() } returns "test"
         every { settings.getTabTimeoutPingString() } returns "test"
         every { settings.shouldShowSearchSuggestions } returns true
@@ -172,10 +175,12 @@ class FenixApplicationTest {
         every { application.reportHomeScreenMetrics(settings) } just Runs
         every { application.getDeviceTotalRAM() } returns 7L
         every { settings.inactiveTabsAreEnabled } returns true
+        every { settings.isIsolatedProcessEnabled } returns true
         every { application.isDeviceRamAboveThreshold } returns true
 
-        assertTrue(settings.contileContextId.isEmpty())
-        assertNull(TopSites.contextId.testGetValue())
+        assertTrue(settings.contileContextId.isNotEmpty())
+        assertNotNull(TopSites.contextId.testGetValue())
+        assertEquals(TopSites.contextId.testGetValue()!!.toString(), settings.contileContextId)
 
         application.setStartupMetrics(
             browserStore = browserStore,
@@ -203,6 +208,8 @@ class FenixApplicationTest {
         assertEquals(true, Addons.hasEnabledAddons.testGetValue())
         assertEquals(listOf("test1", "test2"), Addons.enabledAddons.testGetValue())
         assertEquals(true, Preferences.searchSuggestionsEnabled.testGetValue())
+        assertEquals(true, Preferences.showSponsorSuggestionsEnabled.testGetValue())
+        assertEquals(true, Preferences.showNonSponsorSuggestionsEnabled.testGetValue())
         assertEquals(true, Preferences.remoteDebuggingEnabled.testGetValue())
         assertEquals(true, Preferences.telemetryEnabled.testGetValue())
         assertEquals(true, Preferences.studiesEnabled.testGetValue())
@@ -215,9 +222,11 @@ class FenixApplicationTest {
         assertEquals(true, Preferences.signedInSync.testGetValue())
         assertEquals(emptyList<String>(), Preferences.syncItems.testGetValue())
         assertEquals("fixed_top", Preferences.toolbarPositionSetting.testGetValue())
+        assertEquals("expanded", Preferences.toolbarModeSetting.testGetValue())
         assertEquals("standard", Preferences.enhancedTrackingProtection.testGetValue())
         assertEquals(listOf("switch", "touch exploration"), Preferences.accessibilityServices.testGetValue())
         assertEquals(true, Preferences.inactiveTabsEnabled.testGetValue())
+        assertEquals(true, Preferences.isolatedContentProcessesEnabled.testGetValue())
         assertEquals(true, Metrics.defaultWallpaper.testGetValue())
         assertEquals(true, Metrics.ramMoreThanThreshold.testGetValue())
         assertEquals(7L, Metrics.deviceTotalRam.testGetValue())

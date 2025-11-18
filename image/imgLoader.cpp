@@ -163,8 +163,14 @@ class imgMemoryReporter final : public nsIMemoryReporter {
     size_t n = 0;
     for (uint32_t i = 0; i < imgLoader::sMemReporter->mKnownLoaders.Length();
          i++) {
+      nsTArray<RefPtr<imgCacheEntry>> entries(
+          imgLoader::sMemReporter->mKnownLoaders[i]->mCache.Count());
+
       for (imgCacheEntry* entry :
            imgLoader::sMemReporter->mKnownLoaders[i]->mCache.Values()) {
+        entries.AppendElement(entry);
+      }
+      for (imgCacheEntry* entry : entries) {
         if (entry->HasNoProxies()) {
           continue;
         }
@@ -1199,7 +1205,7 @@ class imgCacheExpirationTracker final
 
 imgCacheExpirationTracker::imgCacheExpirationTracker()
     : nsExpirationTracker<imgCacheEntry, 3>(TIMEOUT_SECONDS * 1000,
-                                            "imgCacheExpirationTracker") {}
+                                            "imgCacheExpirationTracker"_ns) {}
 
 void imgCacheExpirationTracker::NotifyExpired(imgCacheEntry* entry) {
   // Hold on to a reference to this entry, because the expiration tracker

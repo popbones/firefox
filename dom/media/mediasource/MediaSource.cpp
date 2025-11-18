@@ -27,18 +27,13 @@
 #include "mozilla/mozalloc.h"
 #include "nsDebug.h"
 #include "nsError.h"
+#include "nsGlobalWindowInner.h"
 #include "nsIRunnable.h"
 #include "nsIScriptObjectPrincipal.h"
 #include "nsMimeTypes.h"
 #include "nsPIDOMWindow.h"
-#include "nsGlobalWindowInner.h"
 #include "nsString.h"
 #include "nsThreadUtils.h"
-
-#ifdef MOZ_WIDGET_ANDROID
-#  include "AndroidBridge.h"
-#  include "mozilla/java/HardwareCodecCapabilityUtilsWrappers.h"
-#endif
 
 struct JSContext;
 class JSObject;
@@ -80,7 +75,7 @@ static bool IsVP9Forced(DecoderDoctorDiagnostics* aDiagnostics) {
   bool hwsupported = gfx::gfxVars::CanUseHardwareVideoDecoding();
 #ifdef MOZ_WIDGET_ANDROID
   return !mp4supported || !hwsupported ||
-         java::HardwareCodecCapabilityUtils::HasHWVP9(false /* aIsEncoder */);
+         gfx::gfxVars::VP9HwDecodeIsAccelerated();
 #else
   return !mp4supported || !hwsupported;
 #endif

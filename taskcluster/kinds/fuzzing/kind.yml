@@ -46,7 +46,7 @@ tasks:
                 - target.jsshell.zip
                 - target.fuzztest.tests.tar.gz
         worker:
-            docker-image: {in-tree: ubuntu1804-test}
+            docker-image: {in-tree: ubuntu2404-test}
             env:
                 LD_LIBRARY_PATH: /builds/worker/fetches
                 JSSHELL: ./js
@@ -56,49 +56,11 @@ tasks:
                 cd $MOZ_FETCHES_DIR &&
                 python3 tools/fuzzing/smoke/smoke.py
 
-    grizzly-linux32-opt:
-        platform: linux32/asan
-        worker-type: t-linux-docker
-        worker:
-            docker-image: {in-tree: ubuntu1804-test}
-            env:
-                GECKO_BINARY_PATH: "$MOZ_FETCHES_DIR/firefox/firefox"
-                ASAN_OPTIONS: "malloc_context_size=20:rss_limit_heap_profile=false:max_malloc_fill_size=4096:quarantine_size_mb=64"
-        require-build:
-            linux32/asan: build-linux-asan-fuzzing/opt
-        run:
-            using: python-test
-            subsuite: fuzzing
-        fetches:
-            build:
-                - artifact: target.tar.xz
-                - artifact: target.gtest.tests.tar.gz
-                - artifact: target.mozinfo.json
-
-    grizzly-linux32-debug:
-        platform: linux32/debug
-        worker-type: t-linux-docker
-        worker:
-            docker-image: {in-tree: ubuntu1804-test}
-            env:
-                GECKO_BINARY_PATH: "$MOZ_FETCHES_DIR/firefox/firefox"
-                ASAN_OPTIONS: "malloc_context_size=20:rss_limit_heap_profile=false:max_malloc_fill_size=4096:quarantine_size_mb=64"
-        require-build:
-            linux32/debug: build-linux-fuzzing/debug
-        run:
-            using: python-test
-            subsuite: fuzzing
-        fetches:
-            build:
-                - artifact: target.tar.xz
-                - artifact: target.gtest.tests.tar.gz
-                - artifact: target.mozinfo.json
-
     grizzly-linux64-opt:
         platform: linux64/asan
         worker-type: b-linux-gcp
         worker:
-            docker-image: {in-tree: ubuntu1804-test}
+            docker-image: {in-tree: ubuntu2404-test}
             env:
                 GECKO_BINARY_PATH: "$MOZ_FETCHES_DIR/firefox/firefox"
         require-build:
@@ -116,7 +78,7 @@ tasks:
         platform: linux64/debug
         worker-type: b-linux-gcp
         worker:
-            docker-image: {in-tree: ubuntu1804-test}
+            docker-image: {in-tree: ubuntu2404-test}
             env:
                 GECKO_BINARY_PATH: "$MOZ_FETCHES_DIR/firefox/firefox"
         require-build:
@@ -134,7 +96,7 @@ tasks:
         platform: linux64/tsan
         worker-type: b-linux-gcp
         worker:
-            docker-image: {in-tree: ubuntu1804-test}
+            docker-image: {in-tree: ubuntu2404-test}
             env:
                 GECKO_BINARY_PATH: "$MOZ_FETCHES_DIR/firefox/firefox"
         require-build:
@@ -159,9 +121,14 @@ tasks:
         run:
             using: python-test
             subsuite: fuzzing
+        run-on-projects: []
         fetches:
             build:
                 - target.zip
+                - artifact: target.crashreporter-symbols.zip
+                  dest: firefox/symbols
+            toolchain:
+                - win32-minidump-stackwalk
 
     grizzly-windows64-opt:
         platform: windows2012-64/asan
@@ -174,6 +141,7 @@ tasks:
         run:
             using: python-test
             subsuite: fuzzing
+        run-on-projects: []
         fetches:
             build:
                 - target.zip
@@ -189,9 +157,14 @@ tasks:
         run:
             using: python-test
             subsuite: fuzzing
+        run-on-projects: []
         fetches:
             build:
                 - target.zip
+                - artifact: target.crashreporter-symbols.zip
+                  dest: firefox/symbols
+            toolchain:
+                - win64-minidump-stackwalk
 
     grizzly-windows64-ccov:
         platform: windows2012-64/ccov
@@ -204,6 +177,7 @@ tasks:
         run:
             using: python-test
             subsuite: fuzzing
+        run-on-projects: []
         fetches:
             build:
                 - target.zip
@@ -219,6 +193,7 @@ tasks:
         run:
             using: python-test
             subsuite: fuzzing
+        run-on-projects: []
         fetches:
             build:
                 - target.dmg
@@ -234,6 +209,7 @@ tasks:
         run:
             using: python-test
             subsuite: fuzzing
+        run-on-projects: []
         fetches:
             build:
                 - target.dmg
@@ -249,6 +225,7 @@ tasks:
         run:
             using: python-test
             subsuite: fuzzing
+        run-on-projects: []
         fetches:
             build:
                 - target.dmg
@@ -264,6 +241,7 @@ tasks:
         run:
             using: python-test
             subsuite: fuzzing
+        run-on-projects: []
         fetches:
             build:
                 - target.dmg

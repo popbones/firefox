@@ -49,6 +49,11 @@
         app:destination="@id/microsurveyDialogFragment" />
 
     <action
+        android:id="@+id/action_global_terms_of_use_dialog"
+        app:destination="@+id/termsOfUseDialogFragment"
+        app:launchSingleTop="true" />
+
+    <action
         android:id="@+id/action_global_search_dialog"
         app:destination="@id/searchDialogFragment"
         app:popUpTo="@id/searchDialogFragment"
@@ -102,6 +107,12 @@
     <action
         android:id="@+id/action_global_historyFragment"
         app:destination="@id/historyFragment" />
+    <action
+        android:id="@+id/action_global_crashListFragment"
+        app:destination="@id/crashListFragment" />
+    <action
+        android:id="@+id/action_global_gleanDebugToolsFragment"
+        app:destination="@id/gleanDebugToolsFragment" />
 
     <action
         android:id="@+id/action_global_downloadsFragment"
@@ -164,6 +175,9 @@
         app:popUpTo="@id/tabsTrayFragment"
         app:popUpToInclusive="true" />
     <action
+        android:id="@+id/action_global_tabManagementFragment"
+        app:destination="@id/tabManagementFragment" />
+    <action
         android:id="@+id/action_global_savedLoginsAuthFragment"
         app:destination="@id/savedLoginsAuthFragment" />
     <action
@@ -189,10 +203,30 @@
     <action
         android:id="@+id/action_global_customReviewPromptDialogFragment"
         app:destination="@id/customReviewPromptDialogFragment" />
+    <action
+        android:id="@+id/action_global_to_installedAddonDetailsFragment"
+        app:destination="@id/installedAddonDetailsFragment" />
 
     <dialog
         android:id="@+id/tabsTrayFragment"
         android:name="org.mozilla.fenix.tabstray.TabsTrayFragment">
+        <argument
+            android:name="enterMultiselect"
+            android:defaultValue="false"
+            app:argType="boolean" />
+        <argument
+            android:name="page"
+            android:defaultValue="NormalTabs"
+            app:argType="org.mozilla.fenix.tabstray.Page" />
+        <argument
+            android:name="accessPoint"
+            android:defaultValue="None"
+            app:argType="org.mozilla.fenix.tabstray.TabsTrayAccessPoint" />
+    </dialog>
+
+    <dialog
+        android:id="@+id/tabManagementFragment"
+        android:name="org.mozilla.fenix.tabstray.ui.TabManagementFragment">
         <argument
             android:name="enterMultiselect"
             android:defaultValue="false"
@@ -249,10 +283,6 @@
             android:name="focusOnAddressBar"
             android:defaultValue="false"
             app:argType="boolean" />
-        <argument
-            android:name="scrollToCollection"
-            android:defaultValue="false"
-            app:argType="boolean" />
         <action
             android:id="@+id/action_homeFragment_to_loginsListFragment"
             app:destination="@id/savedLogins"
@@ -260,7 +290,27 @@
             app:exitAnim="@anim/slide_out_left"
             app:popEnterAnim="@anim/slide_in_left"
             app:popExitAnim="@anim/slide_out_right" />
+        <action
+            android:id="@+id/action_homeFragment_to_shortcutsFragment"
+            app:destination="@id/shortcutsFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_storiesFragment"
+            app:destination="@id/storiesFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/shortcutsFragment"
+        android:name="org.mozilla.fenix.home.topsites.ShortcutsFragment">
+        <action
+            android:id="@+id/action_shortcutsFragment_to_browserFragment"
+            app:destination="@id/browserFragment"
+            app:popUpTo="@id/shortcutsFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/storiesFragment"
+        android:name="org.mozilla.fenix.home.pocket.StoriesFragment" />
 
     <dialog
         android:id="@+id/researchSurfaceDialogFragment"
@@ -289,6 +339,15 @@
         <argument
             android:name="microsurvey_id"
             app:argType="string"
+            app:nullable="false" />
+    </dialog>
+
+    <dialog
+        android:id="@+id/termsOfUseDialogFragment"
+        android:name="org.mozilla.fenix.termsofuse.ui.TermsOfUseBottomSheetFragment">
+        <argument
+            android:name="surface"
+            app:argType="org.mozilla.fenix.termsofuse.store.Surface"
             app:nullable="false" />
     </dialog>
 
@@ -430,7 +489,7 @@
 
     <fragment
         android:id="@+id/bookmarkFragment"
-        android:name="org.mozilla.fenix.library.bookmarks.BookmarkFragment"
+        android:name="org.mozilla.fenix.bookmarks.BookmarkFragment"
         tools:layout="@layout/fragment_bookmark">
         <argument
             android:name="currentRoot"
@@ -441,58 +500,20 @@
         <action
             android:id="@+id/action_bookmarkFragment_to_bookmarkEditFragment"
             app:destination="@id/bookmarkEditFragment" />
-        <action
-            android:id="@+id/action_bookmarkFragment_to_bookmarkAddFolderFragment"
-            app:destination="@id/bookmarkAddFolderFragment" />
     </fragment>
 
     <fragment
         android:id="@+id/bookmarkEditFragment"
-        android:name="org.mozilla.fenix.library.bookmarks.edit.EditBookmarkFragment"
+        android:name="org.mozilla.fenix.bookmarks.EditBookmarkFragment"
         tools:layout="@layout/fragment_edit_bookmark">
         <argument
             android:name="guidToEdit"
             app:argType="string"
             app:nullable="false" />
-        <action
-            android:id="@+id/action_bookmarkEditFragment_to_bookmarkSelectFolderFragment"
-            app:destination="@id/bookmarkSelectFolderFragment" />
         <argument
             android:name="requiresSnackbarPaddingForToolbar"
             android:defaultValue="false"
             app:argType="boolean" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/bookmarkSelectFolderFragment"
-        android:name="org.mozilla.fenix.library.bookmarks.selectfolder.SelectBookmarkFolderFragment"
-        android:label="@string/bookmark_select_folder_fragment_label"
-        tools:layout="@layout/fragment_select_bookmark_folder">
-        <action
-            android:id="@+id/action_bookmarkSelectFolderFragment_self"
-            app:destination="@id/bookmarkSelectFolderFragment" />
-        <action
-            android:id="@+id/action_bookmarkSelectFolderFragment_to_bookmarkAddFolderFragment"
-            app:destination="@id/bookmarkAddFolderFragment" />
-        <argument
-            android:name="allowCreatingNewFolder"
-            android:defaultValue="false"
-            app:argType="boolean" />
-        <argument
-            android:name="hideFolderGuid"
-            android:defaultValue="@null"
-            app:nullable="true"
-            app:argType="string" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/bookmarkAddFolderFragment"
-        android:name="org.mozilla.fenix.library.bookmarks.addfolder.AddBookmarkFolderFragment"
-        android:label="@string/bookmark_add_folder_fragment_label"
-        tools:layout="@layout/fragment_edit_bookmark">
-        <action
-            android:id="@+id/action_bookmarkAddFolderFragment_to_bookmarkSelectFolderFragment"
-            app:destination="@id/bookmarkSelectFolderFragment" />
     </fragment>
 
     <fragment
@@ -799,7 +820,7 @@
         android:label="@string/customize_wallpapers"/>
     <fragment
         android:id="@+id/dataChoicesFragment"
-        android:name="org.mozilla.fenix.settings.DataChoicesFragment"
+        android:name="org.mozilla.fenix.settings.datachoices.DataChoicesFragment"
         android:label="@string/preferences_data_collection">
         <action
             android:id="@+id/action_dataChoicesFragment_to_studiesFragment"
@@ -852,7 +873,7 @@
     <fragment
         android:id="@+id/turnOnSyncFragment"
         android:name="org.mozilla.fenix.settings.account.TurnOnSyncFragment"
-        android:label="@string/preferences_sync_2"
+        android:label="@string/preferences_sign_in"
         tools:layout="@layout/fragment_turn_on_sync">
         <action
             android:id="@+id/action_turnOnSyncFragment_to_pairFragment"
@@ -865,7 +886,7 @@
     <fragment
         android:id="@+id/pairFragment"
         android:name="org.mozilla.fenix.settings.PairFragment"
-        android:label="@string/preferences_sync_2"
+        android:label="@string/preferences_sign_in"
         tools:layout="@layout/fragment_pair" >
         <argument
             android:name="entrypoint"
@@ -914,7 +935,15 @@
     <fragment
         android:id="@+id/customizationFragment"
         android:name="org.mozilla.fenix.settings.CustomizationFragment"
-        android:label="@string/preferences_customize" />
+        android:label="@string/preferences_customize">
+        <action
+            android:id="@+id/action_customizationFragment_appIconSelectionFragment"
+            app:destination="@+id/appIconSelectionFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
+    </fragment>
     <fragment
         android:id="@+id/privateBrowsingFragment"
         android:name="org.mozilla.fenix.settings.PrivateBrowsingFragment"
@@ -1235,11 +1264,15 @@
 
     <fragment
         android:id="@+id/unlockPrivateTabsFragment"
-        android:name="org.mozilla.fenix.biometricauthentication.UnlockPrivateTabsFragment">
+        android:name="org.mozilla.fenix.pbmlock.UnlockPrivateTabsFragment">
         <argument
             android:name="navigationOrigin"
-            app:argType="org.mozilla.fenix.biometricauthentication.NavigationOrigin" />
+            app:argType="org.mozilla.fenix.pbmlock.NavigationOrigin" />
     </fragment>
+
+    <fragment
+        android:id="@+id/appIconSelectionFragment"
+        android:name="org.mozilla.fenix.iconpicker.ui.AppIconSelectionFragment" />
 
     <navigation
         android:id="@+id/site_permissions_exceptions_graph"
@@ -1479,8 +1512,7 @@
         </fragment>
         <fragment
             android:id="@+id/addressEditorFragment"
-            android:name="org.mozilla.fenix.settings.address.AddressEditorFragment"
-            android:label="@string/addresses_add_address">
+            android:name="org.mozilla.fenix.settings.address.AddressEditorFragment">
             <argument
                 android:name="address"
                 android:defaultValue="@null"
@@ -1493,11 +1525,7 @@
             android:label="@string/addresses_manage_addresses">
             <action
                 android:id="@+id/action_addressManagementFragment_to_addressEditorFragment"
-                app:destination="@id/addressEditorFragment"
-                app:enterAnim="@anim/slide_in_right"
-                app:exitAnim="@anim/slide_out_left"
-                app:popEnterAnim="@anim/slide_in_left"
-                app:popExitAnim="@anim/slide_out_right" />
+                app:destination="@id/addressEditorFragment" />
         </fragment>
     </navigation>
     <navigation
@@ -1741,6 +1769,9 @@
         <argument
             android:name="cookieBannerUIMode"
             app:argType="org.mozilla.fenix.trackingprotection.CookieBannerUIMode" />
+        <argument
+            android:name="isLocalPdf"
+            app:argType="boolean" />
         <dialog
             android:id="@+id/trustPanelFragment"
             android:name="org.mozilla.fenix.settings.trustpanel.TrustPanelFragment">
@@ -1773,6 +1804,9 @@
             <argument
                 android:name="cookieBannerUIMode"
                 app:argType="org.mozilla.fenix.trackingprotection.CookieBannerUIMode" />
+            <argument
+                android:name="isLocalPdf"
+                app:argType="boolean" />
         </dialog>
     </navigation>
     <dialog

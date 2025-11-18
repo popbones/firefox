@@ -12,6 +12,10 @@
 
 #include <string.h>
 
+#include <atomic>
+#include <cstdint>
+#include <string>
+
 #if RTC_LOG_ENABLED()
 
 #if defined(WEBRTC_WIN)
@@ -168,7 +172,7 @@ LogMessage::LogMessage(const char* file,
   }
 
   if (log_thread_) {
-    log_line_.set_thread_id(rtc::CurrentThreadId());
+    log_line_.set_thread_id(CurrentThreadId());
   }
 
   if (file != nullptr) {
@@ -275,8 +279,8 @@ void LogMessage::LogTimestamps(bool on) {
 }
 
 void LogMessage::LogToDebug(LoggingSeverity min_sev) {
-  MutexLock lock(&GetLoggingLock());
   g_dbg_sev = min_sev;
+  MutexLock lock(&GetLoggingLock());
   UpdateMinLogSeverity();
 }
 
@@ -322,7 +326,7 @@ void LogMessage::ConfigureLogging(absl::string_view params) {
   LoggingSeverity debug_level = GetLogToDebug();
 
   std::vector<std::string> tokens;
-  rtc::tokenize(params, ' ', &tokens);
+  tokenize(params, ' ', &tokens);
 
   for (const std::string& token : tokens) {
     if (token.empty())
@@ -460,9 +464,6 @@ void LogMessage::OutputToDebug(const LogLineRef& log_line) {
 
 // static
 bool LogMessage::IsNoop(LoggingSeverity severity) {
-  // Added MutexLock to fix tsan warnings on accessing g_dbg_sev. (mjf)
-  // See https://bugs.chromium.org/p/chromium/issues/detail?id=1228729
-  webrtc::MutexLock lock(&GetLoggingLock());
   if (severity >= g_dbg_sev || severity >= g_min_sev)
     return false;
   return streams_empty_.load(std::memory_order_relaxed);
@@ -535,9 +536,6 @@ void Log(const LogArgType* fmt, ...) {
       case LogArgType::kDouble:
         log_message.stream() << va_arg(args, double);
         break;
-      case LogArgType::kLongDouble:
-        log_message.stream() << va_arg(args, long double);
-        break;
       case LogArgType::kCharP: {
         const char* s = va_arg(args, const char*);
         log_message.stream() << (s ? s : "(null)");
@@ -550,8 +548,8 @@ void Log(const LogArgType* fmt, ...) {
         log_message.stream() << *va_arg(args, const absl::string_view*);
         break;
       case LogArgType::kVoidP:
-        log_message.stream() << rtc::ToHex(
-            reinterpret_cast<uintptr_t>(va_arg(args, const void*)));
+        log_message.stream()
+            << ToHex(reinterpret_cast<uintptr_t>(va_arg(args, const void*)));
         break;
       default:
         RTC_DCHECK_NOTREACHED();

@@ -741,15 +741,18 @@ nsresult BounceTrackingState::OnResponseReceived(
         DebugOnly<nsresult> rv =
             bounceTrackingState->mBounceTrackingProtection
                 ->RecordStatefulBounces(bounceTrackingState);
-        NS_WARNING_ASSERTION(
-            NS_SUCCEEDED(rv),
-            "Running RecordStatefulBounces after a timeout failed.");
+#ifdef DEBUG
+        if (NS_FAILED(rv)) {
+          MOZ_LOG(gBounceTrackingProtectionLog, LogLevel::Debug,
+                  ("Running RecordStatefulBounces after a timeout failed."));
+        }
+#endif
 
         bounceTrackingState->mClientBounceDetectionTimeout = nullptr;
       },
       StaticPrefs::
           privacy_bounceTrackingProtection_clientBounceDetectionTimerPeriodMS(),
-      nsITimer::TYPE_ONE_SHOT, "mClientBounceDetectionTimeout");
+      nsITimer::TYPE_ONE_SHOT, "mClientBounceDetectionTimeout"_ns);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // For each URL in URLs: Insert host to the navigable’s bounce tracking

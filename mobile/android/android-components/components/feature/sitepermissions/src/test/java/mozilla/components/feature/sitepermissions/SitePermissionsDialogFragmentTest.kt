@@ -194,6 +194,32 @@ class SitePermissionsDialogFragmentTest {
     }
 
     @Test
+    fun `dialog with DO NOT ASK AGAIN checkbox label passed in should display that label`() {
+        val expectedCheckboxLabel = "Don't show anymore"
+        val fragment = spy(
+            SitePermissionsDialogFragment.newInstance(
+                sessionId = "sessionId",
+                title = "title",
+                titleIcon = titleIcon,
+                permissionRequestId = permissionRequestId,
+                feature = mock(),
+                shouldShowDoNotAskAgainCheckBox = true,
+                doNotAskAgainCheckBoxLabel = expectedCheckboxLabel,
+            ),
+        )
+
+        doReturn(testContext).`when`(fragment).requireContext()
+
+        val dialog = fragment.onCreateDialog(null)
+        dialog.show()
+
+        val checkbox = dialog.findViewById<CheckBox>(R.id.do_not_ask_again)
+
+        assertTrue("Checkbox should be visible", checkbox.isVisible)
+        assertEquals(expectedCheckboxLabel, checkbox.text)
+    }
+
+    @Test
     fun `dialog with a default shouldShowLearnMoreLink being equal to false should not have a Learn more link`() {
         val fragment = spy(
             SitePermissionsDialogFragment.newInstance(
@@ -227,7 +253,7 @@ class SitePermissionsDialogFragmentTest {
                 permissionRequestId = permissionRequestId,
                 feature = feature,
                 shouldShowDoNotAskAgainCheckBox = false,
-                shouldShowLearnMoreLink = true,
+                learnMoreLink = "https://mozilla.org",
             ),
         )
         doNothing().`when`(fragment).dismiss()
@@ -242,7 +268,11 @@ class SitePermissionsDialogFragmentTest {
         assertFalse("Learn more link should not be long clickable", learnMoreLink.isLongClickable)
         learnMoreLink.callOnClick()
         verify(fragment).dismiss()
-        verify(feature).onLearnMorePress(permissionRequestId, "sessionId")
+        verify(feature).onLearnMorePress(
+            permissionId = permissionRequestId,
+            sessionId = "sessionId",
+            learnMoreLink = "https://mozilla.org",
+        )
     }
 
     @Test

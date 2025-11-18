@@ -35,7 +35,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import mozilla.components.compose.base.Dropdown
-import mozilla.components.compose.base.button.PrimaryButton
+import mozilla.components.compose.base.button.FilledButton
 import mozilla.components.compose.base.button.TextButton
 import mozilla.components.compose.base.menu.MenuItem.CheckableItem
 import mozilla.components.compose.base.text.Text
@@ -49,6 +49,7 @@ import org.mozilla.fenix.compose.LinkText
 import org.mozilla.fenix.compose.LinkTextState
 import org.mozilla.fenix.theme.FirefoxTheme
 import java.util.Locale
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * Firefox Translations bottom sheet dialog.
@@ -471,7 +472,7 @@ private fun TranslationsDialogHeader(
                     modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.mozac_ic_settings_24),
+                        painter = painterResource(id = iconsR.drawable.mozac_ic_settings_24),
                         contentDescription = stringResource(
                             id = R.string.translation_option_bottom_sheet_title_heading,
                         ),
@@ -617,7 +618,6 @@ private fun TranslationsDialogActionButtons(
             text = negativeButtonText,
             modifier = Modifier,
             onClick = onNegativeButtonClicked,
-            upperCaseText = false,
         )
 
         Spacer(modifier = Modifier.width(10.dp))
@@ -629,12 +629,12 @@ private fun TranslationsDialogActionButtons(
                     contentDescription = stringResource(
                         id = R.string.translations_bottom_sheet_translating_in_progress_content_description,
                     ),
-                    icon = painterResource(id = R.drawable.mozac_ic_sync_24),
+                    icon = painterResource(id = iconsR.drawable.mozac_ic_sync_24),
                 )
             }
 
             PositiveButtonType.Enabled -> {
-                PrimaryButton(
+                FilledButton(
                     text = positiveButtonText,
                     modifier = Modifier.wrapContentSize(),
                 ) {
@@ -643,7 +643,7 @@ private fun TranslationsDialogActionButtons(
             }
 
             else -> {
-                PrimaryButton(
+                FilledButton(
                     text = positiveButtonText,
                     enabled = false,
                     modifier = Modifier.wrapContentSize(),

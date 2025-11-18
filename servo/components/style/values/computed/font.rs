@@ -143,6 +143,7 @@ pub type FontWeightFixedPoint = FixedPoint<u16, FONT_WEIGHT_FRACTION_BITS>;
     PartialEq,
     PartialOrd,
     ToResolvedValue,
+    ToTyped,
 )]
 #[cfg_attr(feature = "servo", derive(Deserialize, Serialize))]
 #[repr(C)]
@@ -249,6 +250,7 @@ impl FontWeight {
     PartialEq,
     ToAnimatedZero,
     ToCss,
+    ToTyped,
 )]
 #[cfg_attr(feature = "servo", derive(Serialize, Deserialize))]
 /// The computed value of font-size
@@ -336,7 +338,7 @@ impl ToResolvedValue for FontSize {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, ToComputedValue, ToResolvedValue)]
+#[derive(Clone, Debug, Eq, PartialEq, ToComputedValue, ToResolvedValue, ToTyped)]
 #[cfg_attr(feature = "servo", derive(Hash, Serialize, Deserialize))]
 /// Specifies a prioritized list of font family names or generic family names.
 #[repr(C)]
@@ -418,6 +420,7 @@ impl FontFamily {
         generic_font_family!(MONOSPACE, Monospace);
         generic_font_family!(CURSIVE, Cursive);
         generic_font_family!(FANTASY, Fantasy);
+        generic_font_family!(MATH, Math);
         #[cfg(feature = "gecko")]
         generic_font_family!(MOZ_EMOJI, MozEmoji);
         generic_font_family!(SYSTEM_UI, SystemUi);
@@ -432,6 +435,7 @@ impl FontFamily {
             GenericFontFamily::Monospace => &*MONOSPACE,
             GenericFontFamily::Cursive => &*CURSIVE,
             GenericFontFamily::Fantasy => &*FANTASY,
+            GenericFontFamily::Math => &*MATH,
             #[cfg(feature = "gecko")]
             GenericFontFamily::MozEmoji => &*MOZ_EMOJI,
             GenericFontFamily::SystemUi => &*SYSTEM_UI,
@@ -573,6 +577,10 @@ fn system_ui_enabled(_: &ParserContext) -> bool {
     static_prefs::pref!("layout.css.system-ui.enabled")
 }
 
+fn math_enabled(context: &ParserContext) -> bool {
+    context.chrome_rules_enabled() || static_prefs::pref!("mathml.font_family_math.enabled")
+}
+
 /// A generic font-family name.
 ///
 /// The order here is important, if you change it make sure that
@@ -611,6 +619,8 @@ pub enum GenericFontFamily {
     Monospace,
     Cursive,
     Fantasy,
+    #[parse(condition = "math_enabled")]
+    Math,
     #[parse(condition = "system_ui_enabled")]
     SystemUi,
     /// An internal value for emoji font selection.
@@ -625,7 +635,7 @@ impl GenericFontFamily {
     /// the user. See bug 789788 and bug 1730098.
     pub(crate) fn valid_for_user_font_prioritization(self) -> bool {
         match self {
-            Self::None | Self::Fantasy | Self::Cursive | Self::SystemUi => false,
+            Self::None | Self::Cursive | Self::Fantasy | Self::Math | Self::SystemUi => false,
             #[cfg(feature = "gecko")]
             Self::MozEmoji => false,
             Self::Serif | Self::SansSerif | Self::Monospace => true,
@@ -844,19 +854,54 @@ impl ToComputedValue for specified::FontSizeAdjust {
         match *self {
             Self::None => FontSizeAdjust::None,
             Self::ExHeight(val) => {
-                resolve!(ExHeight, val, false, x_height, 0.5, QueryFontMetricsFlags::empty())
+                resolve!(
+                    ExHeight,
+                    val,
+                    false,
+                    x_height,
+                    0.5,
+                    QueryFontMetricsFlags::empty()
+                )
             },
             Self::CapHeight(val) => {
-                resolve!(CapHeight, val, false, cap_height, -1.0 /* fall back to ascent */, QueryFontMetricsFlags::empty())
+                resolve!(
+                    CapHeight,
+                    val,
+                    false,
+                    cap_height,
+                    -1.0, /* fall back to ascent */
+                    QueryFontMetricsFlags::empty()
+                )
             },
             Self::ChWidth(val) => {
-                resolve!(ChWidth, val, false, zero_advance_measure, 0.5, QueryFontMetricsFlags::NEEDS_CH)
+                resolve!(
+                    ChWidth,
+                    val,
+                    false,
+                    zero_advance_measure,
+                    0.5,
+                    QueryFontMetricsFlags::NEEDS_CH
+                )
             },
             Self::IcWidth(val) => {
-                resolve!(IcWidth, val, false, ic_width, 1.0, QueryFontMetricsFlags::NEEDS_IC)
+                resolve!(
+                    IcWidth,
+                    val,
+                    false,
+                    ic_width,
+                    1.0,
+                    QueryFontMetricsFlags::NEEDS_IC
+                )
             },
             Self::IcHeight(val) => {
-                resolve!(IcHeight, val, true, ic_width, 1.0, QueryFontMetricsFlags::NEEDS_IC)
+                resolve!(
+                    IcHeight,
+                    val,
+                    true,
+                    ic_width,
+                    1.0,
+                    QueryFontMetricsFlags::NEEDS_IC
+                )
             },
         }
     }
@@ -925,13 +970,7 @@ where
     }
 
     fn from_computed_value(computed: &Self::ComputedValue) -> Self {
-        Self(
-            computed
-                .0
-                .iter()
-                .map(T::from_computed_value)
-                .collect()
-        )
+        Self(computed.0.iter().map(T::from_computed_value).collect())
     }
 }
 
@@ -950,6 +989,7 @@ where
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(C)]
 #[cfg_attr(feature = "servo", derive(Deserialize, Serialize))]
@@ -1087,6 +1127,7 @@ pub type FontStyleFixedPoint = FixedPoint<i16, FONT_STYLE_FRACTION_BITS>;
     PartialEq,
     PartialOrd,
     ToResolvedValue,
+    ToTyped,
 )]
 #[cfg_attr(feature = "servo", derive(Deserialize, Serialize))]
 #[repr(C)]
@@ -1196,7 +1237,15 @@ pub type FontStretchFixedPoint = FixedPoint<u16, FONT_STRETCH_FRACTION_BITS>;
 /// cbindgen:derive-gt
 /// cbindgen:derive-gte
 #[derive(
-    Clone, ComputeSquaredDistance, Copy, Debug, MallocSizeOf, PartialEq, PartialOrd, ToResolvedValue,
+    Clone,
+    ComputeSquaredDistance,
+    Copy,
+    Debug,
+    MallocSizeOf,
+    PartialEq,
+    PartialOrd,
+    ToResolvedValue,
+    ToTyped,
 )]
 #[cfg_attr(feature = "servo", derive(Deserialize, Hash, Serialize))]
 #[repr(C)]

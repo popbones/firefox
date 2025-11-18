@@ -11,6 +11,7 @@
 #include "mozilla/dom/NavigationBinding.h"
 #include "mozilla/dom/SessionHistoryEntry.h"
 #include "mozilla/dom/UserNavigationInvolvement.h"
+#include "mozilla/dom/LoadURIOptionsBinding.h"
 
 #include "nsIClassifiedChannel.h"
 #include "nsILoadInfo.h"
@@ -22,7 +23,6 @@
 #include "nsDocShellLoadTypes.h"
 #include "nsTArrayForwardDeclare.h"
 
-class nsIContentSecurityPolicy;
 class nsIInputStream;
 class nsISHEntry;
 class nsIURI;
@@ -32,8 +32,6 @@ class nsIReferrerInfo;
 struct HTTPSFirstDowngradeData;
 namespace mozilla {
 class OriginAttributes;
-template <typename, class>
-class UniquePtr;
 namespace dom {
 class FormData;
 class DocShellLoadStateInit;
@@ -132,9 +130,9 @@ class nsDocShellLoadState final {
   void SetTriggeringClassificationFlags(
       mozilla::net::ClassificationFlags aFlags);
 
-  nsIContentSecurityPolicy* Csp() const;
+  nsIPolicyContainer* PolicyContainer() const;
 
-  void SetCsp(nsIContentSecurityPolicy* aCsp);
+  void SetPolicyContainer(nsIPolicyContainer* aPolicyContainer);
 
   bool InheritPrincipal() const;
 
@@ -150,6 +148,10 @@ class nsDocShellLoadState final {
   bool NotifiedBeforeUnloadListeners() const;
 
   void SetNotifiedBeforeUnloadListeners(bool aNotifiedBeforeUnloadListeners);
+
+  bool ShouldNotForceReplaceInOnLoad() const;
+
+  void SetShouldNotForceReplaceInOnLoad(bool aShouldNotForceReplaceInOnLoad);
 
   bool ForceAllowDataURI() const;
 
@@ -362,6 +364,15 @@ class nsDocShellLoadState final {
     return mSchemelessInput;
   }
 
+  void SetForceMediaDocument(
+      mozilla::dom::ForceMediaDocument aForceMediaDocument) {
+    mForceMediaDocument = aForceMediaDocument;
+  }
+
+  mozilla::dom::ForceMediaDocument GetForceMediaDocument() const {
+    return mForceMediaDocument;
+  }
+
   void SetHttpsUpgradeTelemetry(
       nsILoadInfo::HTTPSUpgradeTelemetryType aHttpsUpgradeTelemetry) {
     mHttpsUpgradeTelemetry = aHttpsUpgradeTelemetry;
@@ -432,6 +443,11 @@ class nsDocShellLoadState final {
   mozilla::dom::FormData* GetFormDataEntryList();
   void SetFormDataEntryList(mozilla::dom::FormData* aFormDataEntryList);
 
+  // This is used as the getter/setter for the app link intent launch type
+  // for the load.
+  uint32_t GetAppLinkLaunchType() const;
+  void SetAppLinkLaunchType(uint32_t aAppLinkLaunchType);
+
  protected:
   // Destructor can't be defaulted or inlined, as header doesn't have all type
   // includes it needs to do so.
@@ -493,12 +509,13 @@ class nsDocShellLoadState final {
   // the load to start.
   mozilla::net::ClassificationFlags mTriggeringClassificationFlags;
 
-  // The CSP of the load, that is, the CSP of the entity responsible for causing
-  // the load to occur. Most likely this is the CSP of the document that started
-  // the load. In case the entity starting the load did not use a CSP, then mCsp
-  // can be null. Please note that this is also the CSP that will be applied to
-  // the load in case the load encounters a server side redirect.
-  nsCOMPtr<nsIContentSecurityPolicy> mCsp;
+  // The policyContainer of the load, that is, the policyContainer of the entity
+  // responsible for causing the load to occur. Most likely this is the
+  // policyContainer of the document that started the load. In case the entity
+  // starting the load did not use a policyContainer, then mpPolicyContainer can
+  // be null. Please note that this is also the policyContainer that will be
+  // applied to the load in case the load encounters a server side redirect.
+  nsCOMPtr<nsIPolicyContainer> mPolicyContainer;
 
   // If a refresh is caused by http-equiv="refresh" we want to set
   // aResultPrincipalURI, but we do not want to overwrite the channel's
@@ -521,7 +538,13 @@ class nsDocShellLoadState final {
   // for a content docshell the load fails.
   bool mPrincipalIsExplicit;
 
+  // If this attribute is true, any potential unload listeners have been
+  // notified if applicable.
   bool mNotifiedBeforeUnloadListeners;
+
+  // If this attribute is true, navigations for subframes taking place inside of
+  // an onload handler will not be changed to replace loads.
+  bool mShouldNotForceReplaceInOnLoad;
 
   // Principal we're inheriting. If null, this means the principal should be
   // inherited from the current document. If set to NullPrincipal, the channel
@@ -683,6 +706,10 @@ class nsDocShellLoadState final {
   nsILoadInfo::SchemelessInputType mSchemelessInput =
       nsILoadInfo::SchemelessInputTypeUnset;
 
+  // If not None, force the load to result in a specific media document kind.
+  mozilla::dom::ForceMediaDocument mForceMediaDocument =
+      mozilla::dom::ForceMediaDocument::None;
+
   // Solely for the use of collecting Telemetry for HTTPS upgrades.
   nsILoadInfo::HTTPSUpgradeTelemetryType mHttpsUpgradeTelemetry =
       nsILoadInfo::NOT_INITIALIZED;
@@ -692,6 +719,9 @@ class nsDocShellLoadState final {
   nsCOMPtr<nsIStructuredCloneContainer> mNavigationAPIState;
 
   RefPtr<mozilla::dom::FormData> mFormDataEntryList;
+
+  // App link intent launch type: 0 = unknown, 1 = cold, 2 = warm, 3 = hot.
+  uint32_t mAppLinkLaunchType = 0;
 };
 
 #endif /* nsDocShellLoadState_h__ */

@@ -18,6 +18,19 @@ import { TaskbarTabsWindowManager } from "resource:///modules/taskbartabs/Taskba
 import { TaskbarTabsPin } from "resource:///modules/taskbartabs/TaskbarTabsPin.sys.mjs";
 import { TaskbarTabsUtils } from "resource:///modules/taskbartabs/TaskbarTabsUtils.sys.mjs";
 
+let lazy = {};
+
+ChromeUtils.defineESModuleGetters(lazy, {
+  ManifestObtainer: "resource://gre/modules/ManifestObtainer.sys.mjs",
+});
+
+ChromeUtils.defineLazyGetter(lazy, "logConsole", () => {
+  return console.createInstance({
+    prefix: "TaskbarTabs",
+    maxLogLevel: "Warn",
+  });
+});
+
 /**
  * A Taskbar Tabs singleton which ensures the system has been initialized before
  * it can be interacted with. Methods on this object pass through to the Taskbar
@@ -44,6 +57,43 @@ export const TaskbarTabs = new (class {
   async findOrCreateTaskbarTab(...args) {
     await this.#ready;
     return this.#registry.findOrCreateTaskbarTab(...args);
+  }
+
+  /**
+   * Moves an existing tab into a new Taskbar Tab window.
+   *
+   * If there is already a Taskbar Tab for the tab's selected URL and container,
+   * opens the existing Taskbar Tab. If not, a new Taskbar Tab is created.
+   *
+   * @param {MozTabbrowserTab} aTab - The tab to move into a Taskbar Tab window.
+   * @returns {{window: DOMWindow, taskbarTab: TaskbarTab}} The created window
+   * and the Taskbar Tab it is associated with.
+   */
+  async moveTabIntoTaskbarTab(aTab) {
+    const browser = aTab.linkedBrowser;
+    let url = browser.currentURI;
+    let userContextId = aTab.userContextId;
+
+    let [, manifest] = await Promise.all([
+      this.#ready,
+      lazy.ManifestObtainer.browserObtainManifest(browser).catch(e => {
+        lazy.logConsole.error(e);
+        return {};
+      }),
+    ]);
+
+    let taskbarTab = await this.findOrCreateTaskbarTab(
+      url,
+      userContextId,
+      // 'manifest' can be null if the site doesn't have a manifest.
+      manifest ? { manifest } : {}
+    );
+
+    let win = await this.replaceTabWithWindow(taskbarTab, aTab);
+    return {
+      window: win,
+      taskbarTab,
+    };
   }
 
   async resetForTests(...args) {
@@ -100,6 +150,9 @@ async function initRegistry() {
   registry.on(kTaskbarTabsRegistryEvents.created, () => {
     storage.save();
   });
+  registry.on(kTaskbarTabsRegistryEvents.patched, () => {
+    storage.save();
+  });
   registry.on(kTaskbarTabsRegistryEvents.removed, () => {
     storage.save();
   });
@@ -125,9 +178,9 @@ function initWindowManager() {
  */
 function initPinManager(aRegistry) {
   aRegistry.on(kTaskbarTabsRegistryEvents.created, (_, taskbarTab) => {
-    return TaskbarTabsPin.pinTaskbarTab(taskbarTab);
+    return TaskbarTabsPin.pinTaskbarTab(taskbarTab, aRegistry);
   });
   aRegistry.on(kTaskbarTabsRegistryEvents.removed, (_, taskbarTab) => {
-    return TaskbarTabsPin.unpinTaskbarTab(taskbarTab);
+    return TaskbarTabsPin.unpinTaskbarTab(taskbarTab, aRegistry);
   });
 }

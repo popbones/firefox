@@ -86,10 +86,13 @@ static constexpr FloatRegister ft11{FloatRegisters::f31};
 static constexpr Register StackPointer{Registers::sp};
 static constexpr Register FramePointer{Registers::fp};
 static constexpr Register ReturnReg{Registers::a0};
-static constexpr Register ScratchRegister{Registers::s11};
+// Scratch register used for runtime call patching.
+// See MacroAssembler::patchNopToCall and MacroAssembler::PatchWrite_NearCall.
+static constexpr Register SavedScratchRegister{Registers::s11};
 static constexpr Register64 ReturnReg64(ReturnReg);
 
-static constexpr FloatRegister ReturnFloat32Reg{FloatRegisters::fa0};
+static constexpr FloatRegister ReturnFloat32Reg{FloatRegisters::fa0,
+                                                FloatRegisters::Single};
 static constexpr FloatRegister ReturnDoubleReg{FloatRegisters::fa0};
 #ifdef ENABLE_WASM_SIMD
 static constexpr FloatRegister ReturnSimd128Reg{FloatRegisters::invalid_reg};
@@ -97,8 +100,12 @@ static constexpr FloatRegister ScratchSimd128Reg{FloatRegisters::invalid_reg};
 #endif
 static constexpr FloatRegister InvalidFloatReg{};
 
-static constexpr FloatRegister ScratchFloat32Reg{FloatRegisters::ft10};
+static constexpr FloatRegister ScratchFloat32Reg{FloatRegisters::ft10,
+                                                 FloatRegisters::Single};
 static constexpr FloatRegister ScratchDoubleReg{FloatRegisters::ft10};
+
+static constexpr FloatRegister ScratchFloat32Reg2{FloatRegisters::fs11,
+                                                  FloatRegisters::Single};
 static constexpr FloatRegister ScratchDoubleReg2{FloatRegisters::fs11};
 
 static constexpr Register OsrFrameReg{Registers::a3};

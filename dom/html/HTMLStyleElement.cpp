@@ -4,17 +4,18 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "mozilla/dom/HTMLStyleElement.h"
-#include "mozilla/dom/HTMLStyleElementBinding.h"
-#include "nsGkAtoms.h"
-#include "nsStyleConsts.h"
+
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/FetchPriority.h"
+#include "mozilla/dom/HTMLStyleElementBinding.h"
 #include "mozilla/dom/ReferrerInfo.h"
-#include "nsUnicharUtils.h"
-#include "nsThreadUtils.h"
 #include "nsContentUtils.h"
-#include "nsStubMutationObserver.h"
 #include "nsDOMTokenList.h"
+#include "nsGkAtoms.h"
+#include "nsStubMutationObserver.h"
+#include "nsStyleConsts.h"
+#include "nsThreadUtils.h"
+#include "nsUnicharUtils.h"
 
 NS_IMPL_NS_NEW_HTML_ELEMENT(Style)
 
@@ -157,7 +158,8 @@ void HTMLStyleElement::SetInnerHTMLTrusted(const nsAString& aInnerHTML,
 
 void HTMLStyleElement::SetTextContentInternal(const nsAString& aTextContent,
                                               nsIPrincipal* aScriptedPrincipal,
-                                              ErrorResult& aError) {
+                                              ErrorResult& aError,
+                                              MutationEffectOnScript) {
   // Per spec, if we're setting text content to an empty string and don't
   // already have any children, we should not trigger any mutation observers, or
   // re-parse the stylesheet.
@@ -232,6 +234,13 @@ bool HTMLStyleElement::IsPotentiallyRenderBlocking() {
   // https://html.spec.whatwg.org/#implicitly-potentially-render-blocking
   // A style element is implicitly potentially render-blocking if the element
   // was created by its node document's parser.
+}
+
+nsresult HTMLStyleElement::CopyInnerTo(HTMLStyleElement* aDest) {
+  nsresult rv = Element::CopyInnerTo(aDest);
+  NS_ENSURE_SUCCESS(rv, rv);
+  MaybeStartCopyStyleSheetTo(aDest, aDest->OwnerDoc());
+  return NS_OK;
 }
 
 }  // namespace mozilla::dom

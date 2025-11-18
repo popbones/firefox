@@ -2,74 +2,20 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-## The main browser window's title
-
-# These are the default window titles everywhere except macOS.
-# .data-title-default and .data-title-private are used when the web content
-# opened has no title:
-#
-# default - "Mozilla Firefox"
-# private - "Mozilla Firefox (Private Browsing)"
-#
-# .data-content-title-default and .data-content-title-private are for use when
-# there *is* a content title.
-#
-# .data-title-default-with-profile, .data-title-private-with-profile,
-# .data-content-title-default-with-profile,
-# .data-content-title-private-with-profile are used when there a
-# SelectableProfileService.current profile exists.
-#
-# Variables:
-#  $content-title (String): the title of the web content.
-#  $profile-name (String): the name of the current profile.
-browser-main-window-titles =
-  .data-title-default = { -brand-full-name }
-  .data-title-private = { -brand-full-name } Private Browsing
-  .data-title-default-with-profile = { $profile-name } — { -brand-full-name }
-  .data-title-private-with-profile = { $profile-name } — { -brand-full-name } Private Browsing
-  .data-content-title-default = { $content-title } — { -brand-full-name }
-  .data-content-title-private = { $content-title } — { -brand-full-name } Private Browsing
-  .data-content-title-default-with-profile = { $content-title } — { $profile-name } — { -brand-full-name }
-  .data-content-title-private-with-profile = { $content-title } — { $profile-name } — { -brand-full-name } Private Browsing
-
-# These are the default window titles on macOS.
-# .data-title-default and .data-title-private are used when the web content
-# opened has no title:
-#
-#
-# "default" - "Mozilla Firefox"
-# "private" - "Mozilla Firefox — (Private Browsing)"
-#
-# .data-content-title-default and .data-content-title-private are for use when
-# there *is* a content title.
-# Do not use the brand name in these, as we do on non-macOS.
-#
-# .data-title-default-with-profile, .data-title-private-with-profile,
-# .data-content-title-default-with-profile,
-# .data-content-title-private-with-profile are used when there a
-# SelectableProfileService.current profile exists.
-#
-# Also note the other subtle difference here: we use a `-` to separate the
-# brand name from `(Private Browsing)`, which does not happen on other OSes.
-#
-# Variables:
-#  $content-title (String): the title of the web content.
-#  $profile-name (String): the name of the current profile.
-browser-main-window-titles-mac =
-  .data-title-default = { -brand-full-name }
-  .data-title-private = { -brand-full-name } — Private Browsing
-  .data-title-default-with-profile = { $profile-name } — { -brand-full-name }
-  .data-title-private-with-profile = { $profile-name } — { -brand-full-name } Private Browsing
-  .data-content-title-default = { $content-title }
-  .data-content-title-private = { $content-title } — Private Browsing
-  .data-content-title-default-with-profile = { $content-title } — { $profile-name }
-  .data-content-title-private-with-profile = { $content-title } — { $profile-name } — Private Browsing
-
-# This gets set as the initial title, and is overridden as soon as we start
-# updating the titlebar based on loaded tabs or private browsing state.
-# This should match the `data-title-default` attribute in both
-# `browser-main-window` and `browser-main-window-mac`.
+# This is the initial default title for the browser window.
+# It gets updated based on loaded tabs or private browsing state.
 browser-main-window-default-title = { -brand-full-name }
+
+# Note: only on macOS do we use a `-` separator between the brand name and the
+# "Private Browsing" suffix.
+browser-main-private-window-title = { PLATFORM() ->
+      [macos] { -brand-full-name } — Private Browsing
+     *[other] { -brand-full-name } Private Browsing
+  }
+
+# This is only used on macOS; on other OSes we use the full private window
+# title (so including the brand name) as a suffix
+browser-main-private-suffix-for-content = Private Browsing
 
 # The non-variable portion of this MUST match the translation of
 # "PRIVATE_BROWSING_SHORTCUT_TITLE" in custom.properties
@@ -100,6 +46,10 @@ urlbar-default-notification-anchor =
     .tooltiptext = Open message panel
 urlbar-geolocation-notification-anchor =
     .tooltiptext = Open location request panel
+urlbar-localhost-notification-anchor =
+    .tooltiptext = Manage local device access for this site
+urlbar-local-network-notification-anchor =
+    .tooltiptext = Manage sharing your local network access with this site
 urlbar-xr-notification-anchor =
     .tooltiptext = Open virtual reality permission panel
 urlbar-storage-access-anchor =
@@ -159,6 +109,10 @@ urlbar-result-menu-show-less-frequently =
 urlbar-result-menu-dont-show-weather-suggestions =
     .label = Don’t show weather suggestions
 
+# Used for Split Button.
+urlbar-splitbutton-dropmarker =
+    .title = Open menu
+
 # A message shown in the urlbar when the user submits feedback on a suggestion
 # (e.g., it shows an inaccurate location, it's shown too often, etc.).
 urlbar-feedback-acknowledgment = Thanks for your feedback
@@ -190,6 +144,10 @@ urlbar-search-mode-actions = Actions
 
 urlbar-geolocation-blocked =
     .tooltiptext = You have blocked location information for this website.
+urlbar-localhost-blocked =
+    .tooltiptext = You have blocked local device connections for this website.
+urlbar-local-network-blocked =
+    .tooltiptext = You have blocked local network connections for this website.
 urlbar-xr-blocked =
     .tooltiptext = You have blocked virtual reality device access for this website.
 urlbar-web-notifications-blocked =
@@ -202,8 +160,8 @@ urlbar-screen-blocked =
     .tooltiptext = You have blocked this website from sharing your screen.
 urlbar-persistent-storage-blocked =
     .tooltiptext = You have blocked persistent storage for this website.
-urlbar-popup-blocked =
-    .tooltiptext = You have blocked pop-ups for this website.
+urlbar-popup-blocked2 =
+    .tooltiptext = You have blocked pop-ups and third-party redirects for this website.
 urlbar-autoplay-media-blocked =
     .tooltiptext = You have blocked autoplay media with sound for this website.
 urlbar-canvas-blocked =
@@ -321,7 +279,7 @@ quickactions-cmd-downloads = downloads
 
 # Opens about:addons page in the extensions section
 quickactions-extensions = Manage extensions
-quickactions-cmd-extensions = extensions
+quickactions-cmd-extensions2 = extensions, addons, add-ons
 
 # Opens Firefox View
 quickactions-firefoxview = Open { -firefoxview-brand-name }
@@ -712,6 +670,82 @@ urlbar-result-weather-title-city-only = <strong>{ $temperature }°{ $unit }</str
 #       name of a company, organization, or service.
 urlbar-result-weather-provider-sponsored = { $provider } · Sponsored
 
+## These strings are used for Realtime suggestions in the urlbar.
+## Market refers to stocks, indexes, and funds.
+
+# This string is shown as title when Market suggestion are disabled.
+urlbar-result-market-opt-in-title = Get stock market data right in your search bar
+
+# This string is shown as description when Market suggestion are disabled.
+urlbar-result-market-opt-in-description = Show market updates and more from our partners when you share search query data with { -vendor-short-name }. <a data-l10n-name="learn-more-link">Learn more</a>
+
+# This string is shown as button to activate online when realtime suggestion are disabled.
+urlbar-result-realtime-opt-in-allow = Show suggestions
+
+# This string is shown in split button to dismiss activation the Realtime suggestion.
+urlbar-result-realtime-opt-in-not-now = Not now
+urlbar-result-realtime-opt-in-dismiss = Dismiss
+urlbar-result-realtime-opt-in-dismiss-all =
+    .label = Don’t show these suggestions
+
+# This string is shown in the result menu.
+urlbar-result-menu-dont-show-market =
+  .label = Don’t show market suggestions
+
+# A message that replaces a result when the user dismisses Market suggestions.
+urlbar-result-dismissal-acknowledgment-market = Thanks for your feedback. You won’t see market suggestions anymore.
+
+# A message that replaces a result when the user dismisses all suggestions of a
+# particular type.
+urlbar-result-dismissal-acknowledgment-all = Thanks for your feedback. You won’t see these suggestions anymore.
+
+## These strings are used for suggestions of important dates in the urlbar.
+
+# The name of an event and the number of days until it starts separated by a
+# middot.
+# Variables:
+#   $name (string) - The name of the event.
+#   $daysUntilStart (integer) - The number of days until the event starts.
+urlbar-result-dates-countdown =
+    { $daysUntilStart ->
+        [one] { $name } · In { $daysUntilStart } day
+        *[other] { $name } · In { $daysUntilStart } days
+    }
+
+# The name of a multiple day long event and the number of days until it starts
+# separated by a middot.
+# Variables:
+#   $name (string) - The name of the event.
+#   $daysUntilStart (integer) - The number of days until the event starts.
+urlbar-result-dates-countdown-range =
+    { $daysUntilStart ->
+        [one] { $name } · Starts in { $daysUntilStart } day
+        *[other] { $name } · Starts in { $daysUntilStart } days
+    }
+
+# The name of a multiple day long event and the number of days until it ends
+# separated by a middot.
+# Variables:
+#   $name (string) - The name of the event.
+#   $daysUntilEnd (integer) - The number of days until the event ends.
+urlbar-result-dates-ongoing =
+    { $daysUntilEnd ->
+        [one] { $name } · Ends in { $daysUntilEnd } day
+        *[other] { $name } · Ends in { $daysUntilEnd } days
+    }
+
+# The name of an event and a note that it is happening today separated by a
+# middot.
+# Variables:
+#   $name (string) - The name of the event.
+urlbar-result-dates-today = { $name } · Today
+
+# The name of multiple day long event and a note that it is ends today
+# separated by a middot.
+# Variables:
+#   $name (string) - The name of the event.
+urlbar-result-dates-ends-today = { $name } · Ends today
+
 ## Strings used for buttons in the urlbar
 
 # Searchmode Switcher button
@@ -743,6 +777,9 @@ urlbar-searchmode-default =
 urlbar-searchmode-popup-description = This time search with:
 urlbar-searchmode-popup-search-settings-menuitem =
     .label = Search Settings
+
+# Label shown next to a new search engine in the Searchmode Switcher popup to promote it.
+urlbar-searchmode-new = New
 
 # Label prompting user to search with a particular search engine.
 #  $engine (String): the name of a search engine that searches a specific site
@@ -1011,22 +1048,18 @@ ui-tour-info-panel-close =
 ## Variables:
 ##  $uriHost (String): URI host for which the popup was allowed or blocked.
 
-popups-infobar-allow =
-    .label = Allow pop-ups for { $uriHost }
-    .accesskey = p
-
-popups-infobar-block =
-    .label = Block pop-ups for { $uriHost }
+popups-infobar-allow2 =
+    .label = Allow pop-ups and third-party redirects for { $uriHost }
     .accesskey = p
 
 ##
 
-popups-infobar-dont-show-message =
-    .label = Don’t show this message when pop-ups are blocked
+popups-infobar-dont-show-message2 =
+    .label = Don’t show this message when pop-ups or third-party redirects are blocked
     .accesskey = D
 
-edit-popup-settings =
-    .label = Manage pop-up settings…
+edit-popup-settings2 =
+    .label = Manage pop-up and third-party redirect settings…
     .accesskey = M
 
 picture-in-picture-hide-toggle =
@@ -1089,6 +1122,10 @@ tabs-toolbar-new-tab =
 tabs-toolbar-list-all-tabs =
     .label = List all tabs
     .tooltiptext = List all tabs
+
+## Drop indicator text for pinned tabs when no tabs are pinned.
+
+pinned-tabs-drop-indicator = Drop tab here to pin
 
 ## Infobar shown at startup to suggest session-restore
 
@@ -1193,6 +1230,7 @@ firefox-relay-offer-why-to-use-relay = Our secure, easy-to-use masks protect you
 firefox-relay-offer-what-relay-provides = All emails sent to your email masks will be forwarded to <strong>{ $useremail }</strong> (unless you decide to block them).
 
 firefox-relay-offer-legal-notice = By clicking “Use email mask”, you agree to the <label data-l10n-name="tos-url">Terms of Service</label> and <label data-l10n-name="privacy-url">Privacy Notice</label>.
+firefox-relay-offer-legal-notice-1 = By signing up and creating an email mask, you agree to the <label data-l10n-name="tos-url">Terms of Service</label> and <label data-l10n-name="privacy-url">Privacy Notice</label>.
 
 ## Add-on Pop-up Notifications
 
@@ -1222,6 +1260,16 @@ popup-warning-message =
         [1] { -brand-short-name } prevented this site from opening a pop-up window.
        *[other] { -brand-short-name } prevented this site from opening { $popupCount } pop-up windows.
     }
+
+# Variables:
+#   $popupCount (Number): the number of pop-ups blocked.
+redirect-warning-with-popup-message =
+    { $popupCount ->
+        [0] { -brand-short-name } prevented this site from redirecting.
+        [1] { -brand-short-name } prevented this site from opening a pop-up window and redirecting.
+       *[other] { -brand-short-name } prevented this site from opening { $popupCount } pop-up windows and redirecting.
+    }
+
 # The singular form is left out for English, since the number of blocked pop-ups is always greater than 1.
 # Variables:
 #   $popupCount (Number): the number of pop-ups blocked.
@@ -1229,6 +1277,14 @@ popup-warning-exceeded-message =
     { $popupCount ->
        *[other] { -brand-short-name } prevented this site from opening more than { $popupCount } pop-up windows.
     }
+
+# Variables:
+#   $popupCount (Number): the number of pop-ups blocked.
+popup-warning-exceeded-with-redirect-message =
+    { $popupCount ->
+       *[other] { -brand-short-name } prevented this site from opening more than { $popupCount } pop-up windows and redirecting.
+    }
+
 popup-warning-button =
     .label =
         { PLATFORM() ->
@@ -1245,6 +1301,11 @@ popup-warning-button =
 #   $popupURI (String): the URI for the pop-up window
 popup-show-popup-menuitem =
     .label = Show “{ $popupURI }”
+
+# Variables:
+#   $redirectURI (String): the URI for the redirect
+popup-trigger-redirect-menuitem =
+    .label = Show “{ $redirectURI }”
 
 ## File-picker crash notification ("FilePickerCrashed.sys.mjs")
 
@@ -1273,3 +1334,139 @@ file-picker-crashed-show-in-folder =
 onboarding-aw-finish-setup-button =
     .label = Finish setup
     .tooltiptext = Finish setting up { -brand-short-name }
+
+onboarding-checklist-button-label = Finish setup
+
+## The urlbar trust panel
+
+trustpanel-etp-label-enabled = Enhanced Tracking Protection is on
+trustpanel-etp-label-disabled = Enhanced Tracking Protection is off
+
+# Variables
+#  $host (String): the hostname of the site that is being displayed.
+trustpanel-etp-toggle-on =
+  .aria-label = Enhanced Tracking Protection: On for { $host }
+# Variables
+#  $host (String): the hostname of the site that is being displayed.
+trustpanel-etp-toggle-off =
+  .aria-label = Enhanced Tracking Protection: Off for { $host }
+
+trustpanel-etp-description-enabled = If something looks broken on this site, try turning off protections.
+trustpanel-etp-description-disabled = { -brand-product-name } thinks companies should follow you less. We block as many trackers as we can when you turn on protections.
+
+trustpanel-connection-label-secure = Connection secure
+trustpanel-connection-label-insecure = Connection not secure
+
+trustpanel-header-enabled = { -brand-product-name } is on guard
+trustpanel-description-enabled2 = You’re protected. If we spot something, we’ll let you know.
+trustpanel-header-enabled-insecure = Be careful on this site
+trustpanel-description-enabled-insecure = { -brand-product-name } noticed something suspicious.
+
+trustpanel-header-disabled = You turned off protections
+trustpanel-description-disabled = { -brand-product-name } is off-duty. We suggest turning protections back on.
+
+trustpanel-clear-cookies-button = Clear cookies and site data
+trustpanel-privacy-link = Privacy Settings
+
+# Variables
+#  $host (String): the hostname of the site that is being displayed.
+trustpanel-clear-cookies-header =
+    .title = Clear cookies and site data for { $host }
+
+trustpanel-clear-cookies-description = Removing cookies and site data might log you out of websites and clear shopping carts.
+
+trustpanel-clear-cookies-subview-button-clear = Clear
+trustpanel-clear-cookies-subview-button-cancel = Cancel
+
+# Variables
+#  $host (String): the hostname of the site that is being displayed.
+trustpanel-site-information-header =
+    .title = Connection protections for { $host }
+
+trustpanel-siteinformation-morelink = More site information
+
+trustpanel-blocker-see-all = See All
+
+# Variables
+#  $host (String): the hostname of the site that is being displayed.
+trustpanel-blocker-header =
+    .title = Tracking protections for { $host }
+
+## Variables
+##  $count (String): the number of trackers blocked.
+
+trustpanel-blocker-section-header = { $count ->
+  [one] <span>{ $count }</span> Tracker blocked on this site
+  *[other] <span>{ $count }</span> Trackers blocked on this site
+}
+trustpanel-blocker-description = { -brand-product-name } thinks companies should follow you less. So we block as many as we can.
+trustpanel-blocked-header = { -brand-product-name } blocked these things for you:
+trustpanel-tracking-header = { -brand-product-name } allowed these things so sites don’t break:
+trustpanel-tracking-description = Without trackers, some buttons, forms, and login fields might not work.
+trustpanel-insecure-section-header = Your connection isn’t secure
+trustpanel-insecure-description = The data you’re sending to this site isn’t encrypted. It could be viewed, stolen, or altered.
+
+trustpanel-list-label-tracking-cookies = { $count ->
+  [one] { $count } Cross-site tracking cookie
+  *[other] { $count } Cross-site tracking cookies
+}
+trustpanel-list-label-tracking-content = Tracking content
+trustpanel-list-label-fingerprinter =  { $count ->
+  [one] { $count } Fingerprinters
+  *[other] { $count } Fingerprinters
+}
+trustpanel-list-label-social-tracking = { $count ->
+  [one] { $count } Social media tracker
+  *[other] { $count } Social media trackers
+}
+trustpanel-list-label-cryptominer = { $count ->
+  [one] { $count } Cryptominer
+  *[other] { $count } Cryptominers
+}
+trustpanel-social-tracking-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } blocked { $count } social media tracker
+  *[other] { -brand-product-name } blocked { $count } social media trackers
+}
+trustpanel-social-tracking-not-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } allowed { $count } social media tracker
+  *[other] { -brand-product-name } allowed { $count } social media trackers
+}
+
+trustpanel-tracking-cookies-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } blocked { $count } cross-site tracking cookie
+  *[other] { -brand-product-name } blocked { $count } cross-site tracking cookies
+}
+trustpanel-tracking-cookies-not-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } allowed { $count } cross-site tracking cookie
+  *[other] { -brand-product-name } allowed { $count } cross-site tracking cookies
+}
+
+trustpanel-tracking-content-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } blocked { $count } tracker
+  *[other] { -brand-product-name } blocked { $count } trackers
+}
+trustpanel-tracking-content-not-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } allowed { $count } tracker
+  *[other] { -brand-product-name } allowed { $count } trackers
+}
+trustpanel-tracking-content-tab-list-header = These sites are trying to track you:
+
+trustpanel-fingerprinter-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } blocked { $count } fingerprinter
+  *[other] { -brand-product-name } blocked { $count } fingerprinters
+}
+trustpanel-fingerprinter-not-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } allowed { $count } fingerprinter
+  *[other] { -brand-product-name } allowed { $count } fingerprinters
+}
+trustpanel-fingerprinter-list-header = These sites are trying to fingerprint you:
+
+trustpanel-cryptominer-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } blocked { $count } cryptominer
+  *[other] { -brand-product-name } blocked { $count } cryptominers
+}
+trustpanel-cryptominer-not-blocking-tab-header = { $count ->
+  [one] { -brand-product-name } allowed { $count } cryptominer
+  *[other] { -brand-product-name } allowed { $count } cryptominers
+}
+trustpanel-cryptominer-tab-list-header = These sites are trying to cryptomine:

@@ -5,7 +5,8 @@
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
-  PanelMultiView: "resource:///modules/PanelMultiView.sys.mjs",
+  PanelMultiView:
+    "moz-src:///browser/components/customizableui/PanelMultiView.sys.mjs",
   TabMetrics: "moz-src:///browser/components/tabbrowser/TabMetrics.sys.mjs",
 });
 
@@ -218,7 +219,9 @@ class TabsListBase {
           fragment.appendChild(this._createGroupRow(tab.group));
           currentGroupId = tab.group.id;
         }
-        if (!tab.group?.collapsed || this.onlyHiddenTabs) {
+
+        let tabHiddenByGroup = tab.group?.collapsed && !tab.selected;
+        if (!tabHiddenByGroup || this.onlyHiddenTabs) {
           // Don't show tabs in collapsed tab groups in the main tabs list.
           // However, in the hidden tabs lists, do show hidden tabs even if
           // they belong to collapsed tab groups.
@@ -608,8 +611,11 @@ export class TabsPanel extends TabsListBase {
       "all-tabs-group-button",
       "subviewbutton",
       "subviewbutton-iconic",
-      group.collapsed ? "tab-group-icon-collapsed" : "tab-group-icon"
+      "tab-group-icon"
     );
+    if (group.collapsed) {
+      button.classList.add("tab-group-icon-collapsed");
+    }
     button.setAttribute("flex", "1");
     button.setAttribute("crop", "end");
 
@@ -649,7 +655,6 @@ export class TabsPanel extends TabsListBase {
       label: tab.label,
       tooltiptext,
       image: !busy && tab.getAttribute("image"),
-      iconloadingprincipal: tab.getAttribute("iconloadingprincipal"),
     });
 
     this._setImageAttributes(row, tab);
@@ -701,9 +706,13 @@ export class TabsPanel extends TabsListBase {
         ? getTabGroupFromRow(row).labelElement
         : getTabFromRow(row);
 
-    this.gBrowser.tabContainer.startTabDrag(event, elementToDrag, {
-      fromTabList: true,
-    });
+    this.gBrowser.tabContainer.tabDragAndDrop.startTabDrag(
+      event,
+      elementToDrag,
+      {
+        fromTabList: true,
+      }
+    );
   }
 
   /**
@@ -719,7 +728,8 @@ export class TabsPanel extends TabsListBase {
    * @returns {boolean}
    */
   _isMovingTabs(event) {
-    var effects = this.gBrowser.tabContainer.getDropEffectForTabDrag(event);
+    var effects =
+      this.gBrowser.tabContainer.tabDragAndDrop.getDropEffectForTabDrag(event);
     return effects == "move";
   }
 

@@ -166,8 +166,8 @@ exports.WatcherActor = class WatcherActor extends Actor {
     return this._browserElement;
   }
 
-  getAllBrowsingContexts(options) {
-    return getAllBrowsingContextsForContext(this.sessionContext, options);
+  getAllBrowsingContexts() {
+    return getAllBrowsingContextsForContext(this.sessionContext);
   }
 
   /**
@@ -236,8 +236,6 @@ exports.WatcherActor = class WatcherActor extends Actor {
       traits: {
         ...this.sessionContext.supportedTargets,
         resources: this.sessionContext.supportedResources,
-        // @backward-compat { version 142 } Supports emitting of multiple network event updates.
-        multipleNetworkEventUpdates: true,
       },
     };
   }

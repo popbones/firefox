@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -21,7 +22,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import mozilla.components.compose.base.Divider
 import mozilla.components.feature.addons.Addon
 import mozilla.components.feature.addons.Addon.Companion.isAllURLsPermission
 import mozilla.components.feature.addons.Addon.Permission
@@ -35,6 +35,7 @@ import org.mozilla.fenix.compose.SwitchWithLabel
 import org.mozilla.fenix.compose.list.TextListItem
 import org.mozilla.fenix.settings.SupportUtils
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.feature.addons.R as addonsR
 
 /**
  * The permissions screen for an addon which allows a user to edit the optional permissions.
@@ -74,7 +75,7 @@ fun AddonPermissionsScreen(
             }
 
             item {
-                Divider()
+                HorizontalDivider()
             }
 
             item {
@@ -101,7 +102,7 @@ fun AddonPermissionsScreen(
             }
 
             item {
-                Divider()
+                HorizontalDivider()
             }
         }
 
@@ -168,7 +169,7 @@ fun AddonPermissionsScreen(
             }
 
             item {
-                Divider()
+                HorizontalDivider()
             }
         }
 
@@ -185,7 +186,7 @@ fun AddonPermissionsScreen(
             }
 
             item {
-                Divider()
+                HorizontalDivider()
             }
         }
 
@@ -210,7 +211,7 @@ fun AddonPermissionsScreen(
             }
 
             item {
-                Divider()
+                HorizontalDivider()
             }
         }
 
@@ -290,7 +291,7 @@ private fun SectionHeader(label: String, testTag: String = "") {
 
 @Composable
 private fun LearnMoreItem(onLearnMoreClick: (String) -> Unit) {
-    val learnMoreText = stringResource(R.string.mozac_feature_addons_learn_more)
+    val learnMoreText = stringResource(addonsR.string.mozac_feature_addons_learn_more)
     val learnMoreState = LinkTextState(
         text = learnMoreText,
         url = SupportUtils.getSumoURLForTopic(
@@ -366,7 +367,7 @@ private fun OptionalPermissionSwitch(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 6.dp),
-            description = stringResource(R.string.mozac_feature_addons_permissions_user_scripts_extra_warning),
+            description = stringResource(addonsR.string.mozac_feature_addons_permissions_user_scripts_extra_warning),
         )
     }
 }

@@ -16,7 +16,10 @@ from typing import Callable, Optional
 
 repos = ["autoland", "mozilla-central", "try", "mozilla-central", "mozilla-beta", "wpt"]
 
-default_fetch_task_filters = ["-web-platform-tests-|-spidermonkey-"]
+default_fetch_task_filters = {
+    "wpt": ["-firefox"],
+    None: ["-web-platform-tests-|-spidermonkey-"],
+}
 default_interop_task_filters = {
     "wpt": ["-firefox-"],
     None: [
@@ -30,6 +33,8 @@ default_interop_task_filters = {
 
 def get_parser_fetch_logs() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+    parser.register("type", "list", lambda s: s.split(","))
+
     parser.add_argument(
         "--log-dir", action="store", help="Directory into which to download logs"
     )
@@ -44,10 +49,17 @@ def get_parser_fetch_logs() -> argparse.Namespace:
         action="store_true",
         help="Only download logs if the task is complete",
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
         "commits",
-        nargs="+",
+        nargs="*",
         help="repo:commit e.g. mozilla-central:fae24810aef1 for the runs to include",
+    )
+    group.add_argument(
+        "--local-logs",
+        action="store",
+        type="list",
+        help="Comma separated list of local log files to use",
     )
     return parser
 
@@ -212,13 +224,23 @@ def fetch_logs(
     runs = get_runs(commits)
 
     if not task_filters:
-        task_filters = default_fetch_task_filters
+        repos = {item[0] for item in runs}
+        task_filters = []
+        need_default_filter = False
+        for repo in repos:
+            if repo in default_fetch_task_filters:
+                task_filters.extend(default_fetch_task_filters[repo])
+            else:
+                need_default_filter = True
+        if need_default_filter:
+            task_filters.extend(default_fetch_task_filters[None])
 
     if log_dir is None:
         log_dir = os.path.abspath(os.curdir)
 
     for repo, commit in runs:
-        get_wptreports(repo, commit, task_filters, log_dir, check_complete)
+        task_data = get_wptreports(repo, commit, task_filters, log_dir, check_complete)
+        print(f"Downloaded {len(task_data)} log files")
 
 
 def get_expected_failures(path: str) -> Mapping[str, set[Optional[str]]]:
@@ -253,6 +275,7 @@ def get_expected_failures(path: str) -> Mapping[str, set[Optional[str]]]:
 
 def score_runs(
     commits: list[str],
+    local_logs: list[str],
     task_filters: list[str],
     log_dir: Optional[str],
     year: int,
@@ -286,11 +309,17 @@ def score_runs(
             else:
                 filters = task_filters
 
-            log_paths = get_wptreports(repo, commit, filters, log_dir, check_complete)
-            if not log_paths:
+            task_data = get_wptreports(repo, commit, filters, log_dir, check_complete)
+            if not task_data:
                 print(f"Failed to get any logs for {repo}:{commit}", file=sys.stderr)
             else:
-                run_logs.append(log_paths)
+                run_logs.append([item.path for item in task_data])
+
+        if not run_logs and local_logs:
+            runs = []
+            for log in local_logs:
+                run_logs.append([log])
+                runs.append(("local", log))
 
         if not run_logs:
             print("No logs to process", file=sys.stderr)

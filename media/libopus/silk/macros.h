@@ -104,7 +104,7 @@ POSSIBILITY OF SUCH DAMAGE.
                                         (( (a) & ((b)^0x80000000) & 0x80000000) ? silk_int32_MIN : (a)-(b)) :    \
                                         ((((a)^0x80000000) & (b)  & 0x80000000) ? silk_int32_MAX : (a)-(b)) )
 
-#if defined(MIPSr1_ASM)
+#if defined(FIXED_POINT) && defined(__mips_dsp) && __mips == 32
 #include "mips/macros_mipsr1.h"
 #endif
 
@@ -152,4 +152,3 @@ static OPUS_INLINE opus_int32 silk_CLZ32(opus_int32 in32)
 #endif
 
 #endif /* SILK_MACROS_H */
-

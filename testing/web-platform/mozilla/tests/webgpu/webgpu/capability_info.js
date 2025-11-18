@@ -394,12 +394,12 @@ export const kPerStageBindingLimits =
 
 {
   'uniformBuf': { class: 'uniformBuf', maxLimits: { COMPUTE: 'maxUniformBuffersPerShaderStage', FRAGMENT: 'maxUniformBuffersPerShaderStage', VERTEX: 'maxUniformBuffersPerShaderStage' } },
-  'storageBuf': { class: 'storageBuf', maxLimits: { COMPUTE: 'maxStorageBuffersPerShaderStage', FRAGMENT: 'maxStorageBuffersInFragmentStage', VERTEX: 'maxStorageBuffersInVertexStage' } },
+  'storageBuf': { class: 'storageBuf', maxLimits: { COMPUTE: 'maxStorageBuffersPerShaderStage', FRAGMENT: 'maxStorageBuffersPerShaderStage', VERTEX: 'maxStorageBuffersPerShaderStage' } },
   'sampler': { class: 'sampler', maxLimits: { COMPUTE: 'maxSamplersPerShaderStage', FRAGMENT: 'maxSamplersPerShaderStage', VERTEX: 'maxSamplersPerShaderStage' } },
   'sampledTex': { class: 'sampledTex', maxLimits: { COMPUTE: 'maxSampledTexturesPerShaderStage', FRAGMENT: 'maxSampledTexturesPerShaderStage', VERTEX: 'maxSampledTexturesPerShaderStage' } },
-  'readonlyStorageTex': { class: 'readonlyStorageTex', maxLimits: { COMPUTE: 'maxStorageTexturesPerShaderStage', FRAGMENT: 'maxStorageTexturesInFragmentStage', VERTEX: 'maxStorageTexturesInVertexStage' } },
-  'writeonlyStorageTex': { class: 'writeonlyStorageTex', maxLimits: { COMPUTE: 'maxStorageTexturesPerShaderStage', FRAGMENT: 'maxStorageTexturesInFragmentStage', VERTEX: 'maxStorageTexturesInVertexStage' } },
-  'readwriteStorageTex': { class: 'readwriteStorageTex', maxLimits: { COMPUTE: 'maxStorageTexturesPerShaderStage', FRAGMENT: 'maxStorageTexturesInFragmentStage', VERTEX: 'maxStorageTexturesInVertexStage' } }
+  'readonlyStorageTex': { class: 'readonlyStorageTex', maxLimits: { COMPUTE: 'maxStorageTexturesPerShaderStage', FRAGMENT: 'maxStorageTexturesPerShaderStage', VERTEX: 'maxStorageTexturesPerShaderStage' } },
+  'writeonlyStorageTex': { class: 'writeonlyStorageTex', maxLimits: { COMPUTE: 'maxStorageTexturesPerShaderStage', FRAGMENT: 'maxStorageTexturesPerShaderStage', VERTEX: 'maxStorageTexturesPerShaderStage' } },
+  'readwriteStorageTex': { class: 'readwriteStorageTex', maxLimits: { COMPUTE: 'maxStorageTexturesPerShaderStage', FRAGMENT: 'maxStorageTexturesPerShaderStage', VERTEX: 'maxStorageTexturesPerShaderStage' } }
 };
 
 /**
@@ -740,8 +740,6 @@ const [kLimitInfoKeys, kLimitInfoDefaults, kLimitInfoData] =
   'maxDynamicStorageBuffersPerPipelineLayout': [, 4, 4],
   'maxSampledTexturesPerShaderStage': [, 16, 16],
   'maxSamplersPerShaderStage': [, 16, 16],
-  'maxStorageBuffersInFragmentStage': [, 8, 4],
-  'maxStorageBuffersInVertexStage': [, 8, 0],
   'maxStorageBuffersPerShaderStage': [, 8, 8],
   'maxStorageTexturesInFragmentStage': [, 4, 4],
   'maxStorageTexturesInVertexStage': [, 4, 0],
@@ -907,7 +905,8 @@ export const kFeatureNameInfo =
   'dual-source-blending': {},
   'subgroups': {},
   'core-features-and-limits': {},
-  'texture-formats-tier1': {}
+  'texture-formats-tier1': {},
+  'texture-formats-tier2': {}
 };
 /** List of all GPUFeatureName values. */
 export const kFeatureNames = keysOf(kFeatureNameInfo);

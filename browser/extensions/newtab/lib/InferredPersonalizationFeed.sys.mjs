@@ -26,7 +26,9 @@ import { MODEL_TYPE } from "./InferredModel/InferredConstants.sys.mjs";
 
 const CACHE_KEY = "inferred_personalization_feed";
 const DISCOVERY_STREAM_CACHE_KEY = "discovery_stream";
-const INTEREST_VECTOR_UPDATE_TIME = 4 * 60 * 60 * 1000; // 4 hours
+const INTEREST_VECTOR_UPDATE_HOURS = 8;
+const HOURS_TO_MS = 60 * 60 * 1000;
+
 const PREF_USER_INFERRED_PERSONALIZATION =
   "discoverystream.sections.personalization.inferred.user.enabled";
 const PREF_SYSTEM_INFERRED_PERSONALIZATION =
@@ -153,12 +155,14 @@ export class InferredPersonalizationFeed {
       });
 
       if (model.modelType === MODEL_TYPE.CTR) {
-        const inferredInterests = model.computeCTRInterestVectors(
-          interests.inferredInterests,
-          ivImpressions,
-          inferredModel.model_id
-        );
-        return { inferredInterests };
+        // eslint-disable-next-line no-unused-vars
+        const { model_id, ...clickTotals } = interests.inferredInterests;
+        const inferredInterests = model.computeCTRInterestVectors({
+          clicks: clickTotals,
+          impressions: ivImpressions,
+          model_id: inferredModel.model_id,
+        });
+        return inferredInterests;
       }
       const res = {
         c: interests.inferredInterests,
@@ -176,12 +180,17 @@ export class InferredPersonalizationFeed {
     const cachedData = (await this.cache.get()) || {};
     let { interest_vector } = cachedData;
 
+    const { values } = this.store.getState().Prefs;
+    const interestVectorRefreshHours =
+      values?.inferredPersonalizationConfig?.iv_refresh_frequency_hours ||
+      INTEREST_VECTOR_UPDATE_HOURS;
+
     // If we have nothing in cache, or cache has expired, we can make a fresh fetch.
     if (
       !interest_vector?.lastUpdated ||
       !(
         this.Date().now() - interest_vector.lastUpdated <
-        INTEREST_VECTOR_UPDATE_TIME
+        interestVectorRefreshHours * HOURS_TO_MS
       )
     ) {
       interest_vector = {

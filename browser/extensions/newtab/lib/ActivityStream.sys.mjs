@@ -26,6 +26,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
   DiscoveryStreamFeed: "resource://newtab/lib/DiscoveryStreamFeed.sys.mjs",
   FaviconFeed: "resource://newtab/lib/FaviconFeed.sys.mjs",
   HighlightsFeed: "resource://newtab/lib/HighlightsFeed.sys.mjs",
+  ListsFeed: "resource://newtab/lib/Widgets/ListsFeed.sys.mjs",
   NewTabInit: "resource://newtab/lib/NewTabInit.sys.mjs",
   NewTabMessaging: "resource://newtab/lib/NewTabMessaging.sys.mjs",
   NimbusFeatures: "resource://nimbus/ExperimentAPI.sys.mjs",
@@ -39,10 +40,11 @@ ChromeUtils.defineESModuleGetters(lazy, {
   Store: "resource://newtab/lib/Store.sys.mjs",
   SystemTickFeed: "resource://newtab/lib/SystemTickFeed.sys.mjs",
   TelemetryFeed: "resource://newtab/lib/TelemetryFeed.sys.mjs",
+  TimerFeed: "resource://newtab/lib/Widgets/TimerFeed.sys.mjs",
   TopSitesFeed: "resource://newtab/lib/TopSitesFeed.sys.mjs",
   TopStoriesFeed: "resource://newtab/lib/TopStoriesFeed.sys.mjs",
   TrendingSearchFeed: "resource://newtab/lib/TrendingSearchFeed.sys.mjs",
-  WallpaperFeed: "resource://newtab/lib/WallpaperFeed.sys.mjs",
+  WallpaperFeed: "resource://newtab/lib/Wallpapers/WallpaperFeed.sys.mjs",
   WeatherFeed: "resource://newtab/lib/WeatherFeed.sys.mjs",
 });
 
@@ -58,15 +60,14 @@ const REGION_INFERRED_PERSONALIZATION_CONFIG =
 const LOCALE_INFERRED_PERSONALIZATION_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.sections.personalization.inferred.locale-config";
 
-const REGION_SHORTCUTS_PERSONALIZATION_CONFIG =
-  "browser.newtabpage.activity-stream.discoverystream.shortcuts.personalization.region-config";
-const LOCALE_SHORTCUTS_PERSONALIZATION_CONFIG =
-  "browser.newtabpage.activity-stream.discoverystream.shortcuts.personalization.locale-config";
-
 const REGION_WEATHER_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.region-weather-config";
 const LOCALE_WEATHER_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.locale-weather-config";
+const REGION_OPTIN_WEATHER_CONFIG =
+  "browser.newtabpage.activity-stream.discoverystream.optIn-region-weather-config";
+const LOCALE_OPTIN_WEATHER_CONFIG =
+  "browser.newtabpage.activity-stream.discoverystream.optIn-locale-weather-config";
 
 const REGION_TOPICS_CONFIG =
   "browser.newtabpage.activity-stream.discoverystream.topicSelection.region-topics-config";
@@ -123,13 +124,6 @@ function useInferredPersonalization({ geo, locale }) {
   );
 }
 
-function useShortcutsPersonalization({ geo, locale }) {
-  return (
-    csvPrefHasValue(REGION_SHORTCUTS_PERSONALIZATION_CONFIG, geo) &&
-    csvPrefHasValue(LOCALE_SHORTCUTS_PERSONALIZATION_CONFIG, locale)
-  );
-}
-
 function useContextualAds({ geo, locale }) {
   return (
     csvPrefHasValue(REGION_CONTEXTUAL_AD_CONFIG, geo) &&
@@ -149,6 +143,13 @@ function showWeather({ geo, locale }) {
   return (
     csvPrefHasValue(REGION_WEATHER_CONFIG, geo) &&
     csvPrefHasValue(LOCALE_WEATHER_CONFIG, locale)
+  );
+}
+
+function showWeatherOptIn({ geo, locale }) {
+  return (
+    csvPrefHasValue(REGION_OPTIN_WEATHER_CONFIG, geo) &&
+    csvPrefHasValue(LOCALE_OPTIN_WEATHER_CONFIG, locale)
   );
 }
 
@@ -197,31 +198,6 @@ export const PREFS_CONFIG = new Map([
         "Comma-separated list of default top sites to fill in behind visited sites",
       getValue: ({ geo }) =>
         lazy.DEFAULT_SITES.get(lazy.DEFAULT_SITES.has(geo) ? geo : ""),
-    },
-  ],
-  [
-    "feeds.section.topstories.options",
-    {
-      title: "Configuration options for top stories feed",
-      // This is a dynamic pref as it depends on the feed being shown or not
-      getValue: args =>
-        JSON.stringify({
-          api_key_pref: "extensions.pocket.oAuthConsumerKey",
-          // Use the opposite value as what default value the feed would have used
-          hidden: !PREFS_CONFIG.get("feeds.system.topstories").getValue(args),
-          provider_icon: "chrome://global/skin/icons/help.svg",
-          provider_name: "Pocket",
-          read_more_endpoint:
-            "https://getpocket.com/explore/trending?src=fx_new_tab",
-          stories_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/global-recs?version=3&consumer_key=$apiKey&locale_lang=${
-            args.locale
-          }&feed_variant=${
-            showSpocs(args) ? "default_spocs_on" : "default_spocs_off"
-          }`,
-          stories_referrer: "https://getpocket.com/recommendations",
-          topics_endpoint: `https://getpocket.cdn.mozilla.net/v3/firefox/trending-topics?version=2&consumer_key=$apiKey&locale_lang=${args.locale}`,
-          show_spocs: showSpocs(args),
-        }),
     },
   ],
   [
@@ -301,6 +277,20 @@ export const PREFS_CONFIG = new Map([
     },
   ],
   [
+    "discoverystream.merino-provider.ohttp.enabled",
+    {
+      title: "Enables the Merino requests and images sent over OHTTP",
+      value: false,
+    },
+  ],
+  [
+    "unifiedAds.ohttp.enabled",
+    {
+      title: "Enables the MARS requests and images sent over OHTTP",
+      value: false,
+    },
+  ],
+  [
     "unifiedAds.adsFeed.enabled",
     {
       title:
@@ -355,6 +345,52 @@ export const PREFS_CONFIG = new Map([
     },
   ],
   [
+    "system.showWeatherOptIn",
+    {
+      title: "system.showWeatherOptIn",
+      // pref is dynamic
+      getValue: showWeatherOptIn,
+    },
+  ],
+  [
+    "discoverystream.optIn-region-weather-config",
+    {
+      title: "Regions for weather opt-in.",
+      value: "DE,GB,FR,ES,IT,CH,AT,BE,IE,NL,PL,CZ,SE,SG,HU,SK,FI,DK,NO,PT",
+    },
+  ],
+  [
+    "discoverystream.optIn-locale-weather-config",
+    {
+      title: "Locales for weather opt-in.",
+      value: "fr,de",
+    },
+  ],
+  [
+    "weather.optInDisplayed",
+    {
+      title:
+        "Enable opt-in dialog to display for weather widget in GDPR regions.",
+      value: false,
+    },
+  ],
+  [
+    "weather.optInAccepted",
+    {
+      title:
+        "User choice made when prompted with the opt-in dialog for weather.",
+      value: false,
+    },
+  ],
+  [
+    "weather.staticData.enabled",
+    {
+      title:
+        "Static weather data shown when user has not set/enabled location from opt-in.",
+      value: false,
+    },
+  ],
+  [
     "weather.query",
     {
       title: "weather.query",
@@ -381,6 +417,14 @@ export const PREFS_CONFIG = new Map([
       title:
         "Toggle the weather widget to include a text summary of the current conditions",
       value: "simple",
+    },
+  ],
+  [
+    "weather.placement",
+    {
+      title:
+        "weather widget can be rendered in a variety of positions. Either in `header` or `sections`",
+      value: "header",
     },
   ],
   [
@@ -451,6 +495,12 @@ export const PREFS_CONFIG = new Map([
     {
       title: "Enables the private ping sent over OHTTP through Glean",
       value: false,
+    },
+  ],
+  [
+    "telemetry.surfaceId",
+    {
+      title: "surface id",
     },
   ],
   [
@@ -565,6 +615,13 @@ export const PREFS_CONFIG = new Map([
     },
   ],
   [
+    "newtabWallpapers.customWallpaper.theme",
+    {
+      title: "theme ('light' | 'dark') of user uploaded wallpaper",
+      value: "",
+    },
+  ],
+  [
     "newtabAdSize.leaderboard",
     {
       title: "Boolean flag to turn the leaderboard ad size on and off",
@@ -602,9 +659,16 @@ export const PREFS_CONFIG = new Map([
     },
   ],
   [
-    "newtabShortcuts.refresh",
+    "discoverystream.promoCard.enabled",
     {
-      title: "Boolean flag to change sizes and spacing of new tab shortcuts",
+      title: "Boolean flag to turn the promo card on and off",
+      value: false,
+    },
+  ],
+  [
+    "discoverystream.promoCard.visible",
+    {
+      title: "Boolean flag whether the promo card is visible or not",
       value: false,
     },
   ],
@@ -655,11 +719,32 @@ export const PREFS_CONFIG = new Map([
     },
   ],
   [
+    "discoverystream.dailyBrief.enabled",
+    {
+      title: "Boolean flag to enable the daily brief section",
+      value: false,
+    },
+  ],
+  [
+    "discoverystream.dailyBrief.sectionId",
+    {
+      title: "sectionId for the Daily brief section",
+      value: "top_stories_section",
+    },
+  ],
+  [
     "discoverystream.shortcuts.personalization.enabled",
     {
-      title: "Boolean flag to enable inferred personalizaton",
-      // pref is dynamic
-      getValue: useShortcutsPersonalization,
+      title: "Boolean flag to enable shortcuts personalization",
+      value: false,
+    },
+  ],
+  [
+    "discoverystream.shortcuts.force_log.enabled",
+    {
+      title:
+        "Boolean flag to enable logging shortcuts interactions even if enabled is off",
+      value: false,
     },
   ],
   [
@@ -738,6 +823,22 @@ export const PREFS_CONFIG = new Map([
     {
       title:
         "CSV string of spoc placement counts on newtab Pocket grid. The count tells the ad server how many ads to return for this position and placement.",
+    },
+  ],
+  [
+    "discoverystream.placements.contextualBanners",
+    {
+      title:
+        "CSV string of the banner placement ids on newtab Pocket grid. This placement id tells us which banner is visible when contexual ads are on",
+      value: "",
+    },
+  ],
+  [
+    "discoverystream.placements.contextualBanners.counts",
+    {
+      title:
+        "CSV string of AdBanner placement counts on newtab Pocket grid. The count tells the ad server how many banners to return for this position and placement.",
+      value: "",
     },
   ],
   [
@@ -849,6 +950,93 @@ export const PREFS_CONFIG = new Map([
     },
   ],
   [
+    "widgets.system.enabled",
+    {
+      title: "Enables visibility of all widgets and controls to enable them",
+      value: false,
+    },
+  ],
+  [
+    "widgets.lists.enabled",
+    {
+      title: "Enables the to-do lists widget",
+      value: true,
+    },
+  ],
+  [
+    "widgets.lists.maxLists",
+    {
+      title: "Maximum number of lists that can be created",
+      value: 10,
+    },
+  ],
+  [
+    "widgets.lists.maxListItems",
+    {
+      title:
+        "Maximum number of items that can be created on an individual list",
+      value: 100,
+    },
+  ],
+  [
+    "widgets.system.lists.enabled",
+    {
+      title: "Enables the to-do lists widget experiment in Nimbus",
+      value: false,
+    },
+  ],
+  [
+    "widgets.lists.interaction",
+    {
+      title:
+        "Boolean flag for determining if a user has interacted with the lists widget",
+      value: false,
+    },
+  ],
+  [
+    "widgets.lists.badge.enabled",
+    {
+      title: "Show badge on lists widget to indicate new/beta feature",
+      value: false,
+    },
+  ],
+  [
+    "widgets.lists.badge.label",
+    {
+      title: "Label type for lists widget badge (New or Beta)",
+      value: "",
+    },
+  ],
+  [
+    "widgets.focusTimer.enabled",
+    {
+      title: "Enables the focus timer widget",
+      value: true,
+    },
+  ],
+  [
+    "widgets.system.focusTimer.enabled",
+    {
+      title: "Enables the focus timer widget experiment in Nimbus",
+      value: false,
+    },
+  ],
+  [
+    "widgets.focusTimer.interaction",
+    {
+      title:
+        "Boolean flag for determining if a user has interacted with the timer widget",
+      value: false,
+    },
+  ],
+  [
+    "widgets.focusTimer.showSystemNotifications",
+    {
+      title: "Enables the focus timer widget to show system notifications",
+      value: false,
+    },
+  ],
+  [
     "improvesearch.noDefaultSearchTile",
     {
       title: "Remove tiles that are the same as the default search",
@@ -909,7 +1097,6 @@ export const PREFS_CONFIG = new Map([
       title: "Configuration for the new pocket new tab",
       getValue: () => {
         return JSON.stringify({
-          api_key_pref: "extensions.pocket.oAuthConsumerKey",
           collapsible: true,
           enabled: true,
         });
@@ -923,22 +1110,6 @@ export const PREFS_CONFIG = new Map([
         "Endpoint prefixes (comma-separated) that are allowed to be requested",
       value:
         "https://getpocket.cdn.mozilla.net/,https://firefox-api-proxy.cdn.mozilla.net/,https://spocs.getpocket.com/,https://merino.services.mozilla.com/,https://ads.mozilla.org/",
-    },
-  ],
-  [
-    "discoverystream.isCollectionDismissible",
-    {
-      title: "Allows Pocket story collections to be dismissed",
-      value: false,
-    },
-  ],
-  [
-    "discoverystream.onboardingExperience.dismissed",
-    {
-      title: "Allows the user to dismiss the new Pocket onboarding experience",
-      skipBroadcast: true,
-      alsoToPreloaded: true,
-      value: false,
     },
   ],
   [
@@ -1086,13 +1257,6 @@ export const PREFS_CONFIG = new Map([
     },
   ],
   [
-    "showRecentSaves",
-    {
-      title: "Control whether a user wants recent saves visible on Newtab",
-      value: true,
-    },
-  ],
-  [
     "discoverystream.spocs.cacheTimeout",
     {
       title: "Set sponsored content cache timeout in minutes.",
@@ -1216,7 +1380,7 @@ export const PREFS_CONFIG = new Map([
     {
       title:
         "Switches on grouping of sponsored checkboxes on 'about:settings#home' page",
-      value: false,
+      value: true,
     },
   ],
   [
@@ -1408,6 +1572,18 @@ const FEEDS_DATA = [
     title: "Handles fetching the google trending search API",
     value: true,
   },
+  {
+    name: "listsfeed",
+    factory: () => new lazy.ListsFeed(),
+    title: "Handles the data for the Todo list widget",
+    value: true,
+  },
+  {
+    name: "timerfeed",
+    factory: () => new lazy.TimerFeed(),
+    title: "Handles the data for the Timer widget",
+    value: true,
+  },
 ];
 
 const FEEDS_CONFIG = new Map();
@@ -1441,25 +1617,6 @@ export class ActivityStream {
     // In some cases, BROWSER_URLBAR_PLACEHOLDERNAME is read before it's been set,
     // so we also observe it and update our mirrored value when it changes initially.
     Services.prefs.addObserver(BROWSER_URLBAR_PLACEHOLDERNAME, this);
-
-    // Look for outdated user pref values that might have been accidentally
-    // persisted when restoring the original pref value at the end of an
-    // experiment across versions with a different default value.
-    const DS_CONFIG =
-      "browser.newtabpage.activity-stream.discoverystream.config";
-    if (
-      Services.prefs.prefHasUserValue(DS_CONFIG) &&
-      [
-        // Firefox 66
-        `{"api_key_pref":"extensions.pocket.oAuthConsumerKey","enabled":false,"show_spocs":true,"layout_endpoint":"https://getpocket.com/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic"}`,
-        // Firefox 67
-        `{"api_key_pref":"extensions.pocket.oAuthConsumerKey","enabled":false,"show_spocs":true,"layout_endpoint":"https://getpocket.cdn.mozilla.net/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic"}`,
-        // Firefox 68
-        `{"api_key_pref":"extensions.pocket.oAuthConsumerKey","collapsible":true,"enabled":false,"show_spocs":true,"hardcoded_layout":true,"personalized":false,"layout_endpoint":"https://getpocket.cdn.mozilla.net/v3/newtab/layout?version=1&consumer_key=$apiKey&layout_variant=basic"}`,
-      ].includes(Services.prefs.getStringPref(DS_CONFIG))
-    ) {
-      Services.prefs.clearUserPref(DS_CONFIG);
-    }
 
     // Hook up the store and let all feeds and pages initialize
     this.store.init(

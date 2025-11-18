@@ -9,7 +9,7 @@ const {
   PSEUDO_CLASSES,
 } = require("resource://devtools/shared/css/constants.js");
 const {
-  style: { ELEMENT_STYLE },
+  style: { ELEMENT_STYLE, PRES_HINTS },
 } = require("resource://devtools/shared/constants.js");
 const Rule = require("resource://devtools/client/inspector/rules/models/rule.js");
 const {
@@ -65,8 +65,10 @@ const INDENT_STR = " ".repeat(INDENT_SIZE);
  *        The CssRuleView containg the document holding this rule editor.
  * @param {Rule} rule
  *        The Rule object we're editing.
+ * @param {Object} options
+ * @param {Set} options.elementsWithPendingClicks
  */
-function RuleEditor(ruleView, rule) {
+function RuleEditor(ruleView, rule, options = {}) {
   EventEmitter.decorate(this);
 
   this.ruleView = ruleView;
@@ -74,8 +76,9 @@ function RuleEditor(ruleView, rule) {
   this.toolbox = this.ruleView.inspector.toolbox;
   this.telemetry = this.toolbox.telemetry;
   this.rule = rule;
+  this.options = options;
 
-  this.isEditable = !rule.isSystem;
+  this.isEditable = rule.isEditable();
   // Flag that blocks updates of the selector and properties when it is
   // being edited
   this.isEditing = false;
@@ -98,6 +101,10 @@ function RuleEditor(ruleView, rule) {
 
 RuleEditor.prototype = {
   destroy() {
+    for (const prop of this.rule.textProps) {
+      prop.editor?.destroy();
+    }
+
     this.rule.domRule.off("location-changed");
     this.toolbox.off("tool-registered", this._onToolChanged);
     this.toolbox.off("tool-unregistered", this._onToolChanged);
@@ -141,7 +148,10 @@ RuleEditor.prototype = {
 
     // Add the source link for supported rules. inline style and pres hints are not visible
     // in the StyleEditor, so don't show anything for such rule.
-    if (this.rule.domRule.type !== ELEMENT_STYLE) {
+    if (
+      this.rule.domRule.type !== ELEMENT_STYLE &&
+      this.rule.domRule.type !== PRES_HINTS
+    ) {
       this.source = createChild(this.element, "div", {
         class: "ruleview-rule-source theme-link",
       });
@@ -327,6 +337,13 @@ RuleEditor.prototype = {
       class: "ruleview-selectors-container",
       tabindex: this.isSelectorEditable ? "0" : "-1",
     });
+
+    if (
+      this.rule.domRule.type === ELEMENT_STYLE ||
+      this.rule.domRule.type === PRES_HINTS
+    ) {
+      this.selectorText.classList.add("alternative-selector");
+    }
 
     if (this.isSelectorEditable) {
       this.selectorText.addEventListener("click", event => {
@@ -622,7 +639,10 @@ RuleEditor.prototype = {
     // If selector text comes from a css rule, highlight selectors that
     // actually match.  For custom selector text (such as for the 'element'
     // style, just show the text directly.
-    if (this.rule.domRule.type === ELEMENT_STYLE) {
+    if (
+      this.rule.domRule.type === ELEMENT_STYLE ||
+      this.rule.domRule.type === PRES_HINTS
+    ) {
       this.selectorText.textContent = this.rule.selectorText;
     } else if (this.rule.domRule.type === CSSRule.KEYFRAME_RULE) {
       this.selectorText.textContent = this.rule.domRule.keyText;
@@ -648,7 +668,9 @@ RuleEditor.prototype = {
 
     for (const prop of this.rule.textProps) {
       if (!prop.editor && !prop.invisible) {
-        const editor = new TextPropertyEditor(this, prop);
+        const editor = new TextPropertyEditor(this, prop, {
+          elementsWithPendingClicks: this.options.elementsWithPendingClicks,
+        });
         this.propertyList.appendChild(editor.element);
       } else if (prop.editor) {
         // If an editor already existed, append it to the bottom now to make sure the
@@ -657,7 +679,9 @@ RuleEditor.prototype = {
       }
     }
 
-    if (focusedElSelector) {
+    // Set focus if the focus is still in the current document (avoid stealing
+    // the focus, see Bug 1911627).
+    if (this.doc.hasFocus() && focusedElSelector) {
       const elementToFocus = this.doc.querySelector(focusedElSelector);
       if (elementToFocus && this.element.contains(elementToFocus)) {
         // We need to wait for a tick for the focus to be properly set
@@ -779,7 +803,9 @@ RuleEditor.prototype = {
       siblingProp
     );
     const index = this.rule.textProps.indexOf(prop);
-    const editor = new TextPropertyEditor(this, prop);
+    const editor = new TextPropertyEditor(this, prop, {
+      elementsWithPendingClicks: this.options.elementsWithPendingClicks,
+    });
 
     // Insert this node before the DOM node that is currently at its new index
     // in the property list.  There is currently one less node in the DOM than

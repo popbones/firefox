@@ -1231,6 +1231,7 @@ class TreeMetadataEmitter(LoggingMixin):
         computed_flags = ComputedFlags(context, context["COMPILE_FLAGS"])
         computed_link_flags = ComputedFlags(context, context["LINK_FLAGS"])
         computed_host_flags = ComputedFlags(context, context["HOST_COMPILE_FLAGS"])
+        computed_host_link_flags = ComputedFlags(context, context["HOST_LINK_FLAGS"])
         computed_as_flags = ComputedFlags(context, context["ASM_FLAGS"])
         computed_wasm_flags = ComputedFlags(context, context["WASM_FLAGS"])
 
@@ -1239,12 +1240,14 @@ class TreeMetadataEmitter(LoggingMixin):
         # desired abstraction of the build definition away from makefiles.
         passthru = VariablePassthru(context)
         varlist = [
+            "DUMP_SYMBOLS_FLAGS",
             "EXTRA_DSO_LDOPTS",
             "RCFILE",
             "RCINCLUDE",
             "WIN32_EXE_LDFLAGS",
             "USE_EXTENSION_MANIFEST",
             "WASM_LIBS",
+            "XPI_PKGNAME",
         ]
         for v in varlist:
             if v in context and context[v]:
@@ -1285,6 +1288,9 @@ class TreeMetadataEmitter(LoggingMixin):
 
         if "LDFLAGS" in context and context["LDFLAGS"]:
             computed_link_flags.resolve_flags("MOZBUILD", context["LDFLAGS"])
+
+        if "HOST_LDFLAGS" in context and context["HOST_LDFLAGS"]:
+            computed_host_link_flags.resolve_flags("MOZBUILD", context["HOST_LDFLAGS"])
 
         # Set link flags according to whether we want a console.
         if context.config.substs.get("TARGET_OS") == "WINNT":
@@ -1642,6 +1648,7 @@ class TreeMetadataEmitter(LoggingMixin):
 
         if context.objdir in self._host_compile_dirs:
             yield computed_host_flags
+            yield computed_host_link_flags
 
         if context.objdir in self._wasm_compile_dirs:
             yield computed_wasm_flags

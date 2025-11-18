@@ -6,11 +6,11 @@
 
 #include "mozilla/dom/HTMLDetailsElement.h"
 
+#include "mozilla/BuiltInStyleSheets.h"
+#include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/dom/HTMLDetailsElementBinding.h"
 #include "mozilla/dom/HTMLSummaryElement.h"
 #include "mozilla/dom/ShadowRoot.h"
-#include "mozilla/BuiltInStyleSheets.h"
-#include "mozilla/StaticPrefs_dom.h"
 #include "nsContentUtils.h"
 #include "nsTextNode.h"
 
@@ -156,8 +156,9 @@ JSObject* HTMLDetailsElement::WrapNode(JSContext* aCx,
 
 bool HTMLDetailsElement::IsValidCommandAction(Command aCommand) const {
   return nsGenericHTMLElement::IsValidCommandAction(aCommand) ||
-         aCommand == Command::Toggle || aCommand == Command::Close ||
-         aCommand == Command::Open;
+         (StaticPrefs::dom_element_commandfor_on_details_enabled() &&
+          (aCommand == Command::Toggle || aCommand == Command::Close ||
+           aCommand == Command::Open));
 }
 
 bool HTMLDetailsElement::HandleCommandInternal(Element* aSource,
@@ -167,15 +168,18 @@ bool HTMLDetailsElement::HandleCommandInternal(Element* aSource,
     return true;
   }
 
+  MOZ_ASSERT(StaticPrefs::dom_element_commandfor_on_details_enabled());
   if (aCommand == Command::Toggle) {
     ToggleOpen();
     return true;
-  } else if (aCommand == Command::Close) {
+  }
+  if (aCommand == Command::Close) {
     if (Open()) {
       SetOpen(false, IgnoreErrors());
     }
     return true;
-  } else if (aCommand == Command::Open) {
+  }
+  if (aCommand == Command::Open) {
     if (!Open()) {
       SetOpen(true, IgnoreErrors());
     }
@@ -198,13 +202,8 @@ void HTMLDetailsElement::CloseElementIfNeeded() {
     return;
   }
 
-  RefPtr<nsAtom> name = GetParsedAttr(nsGkAtoms::name)->GetAsAtom();
-
-  RefPtr<Document> doc = OwnerDoc();
-  bool oldFlag = doc->FireMutationEvents();
-  doc->SetFireMutationEvents(false);
-
-  nsINode* root = SubtreeRoot();
+  const RefPtr<nsAtom> name = GetParsedAttr(nsGkAtoms::name)->GetAsAtom();
+  nsINode* const root = SubtreeRoot();
   for (nsINode* cur = root; cur; cur = cur->GetNextNode(root)) {
     if (!cur->HasName()) {
       continue;
@@ -218,8 +217,6 @@ void HTMLDetailsElement::CloseElementIfNeeded() {
       }
     }
   }
-
-  doc->SetFireMutationEvents(oldFlag);
 }
 
 void HTMLDetailsElement::CloseOtherElementsIfNeeded() {
@@ -233,13 +230,8 @@ void HTMLDetailsElement::CloseOtherElementsIfNeeded() {
     return;
   }
 
-  RefPtr<nsAtom> name = GetParsedAttr(nsGkAtoms::name)->GetAsAtom();
-
-  RefPtr<Document> doc = OwnerDoc();
-  bool oldFlag = doc->FireMutationEvents();
-  doc->SetFireMutationEvents(false);
-
-  nsINode* root = SubtreeRoot();
+  const RefPtr<nsAtom> name = GetParsedAttr(nsGkAtoms::name)->GetAsAtom();
+  nsINode* const root = SubtreeRoot();
   for (nsINode* cur = root; cur; cur = cur->GetNextNode(root)) {
     if (!cur->HasName()) {
       continue;
@@ -254,8 +246,6 @@ void HTMLDetailsElement::CloseOtherElementsIfNeeded() {
       }
     }
   }
-
-  doc->SetFireMutationEvents(oldFlag);
 }
 
 }  // namespace mozilla::dom

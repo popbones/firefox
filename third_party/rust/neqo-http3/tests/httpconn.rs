@@ -91,31 +91,6 @@ fn process_client_events(conn: &mut Http3Client) {
     assert!(response_data_found);
 }
 
-fn connect_peers(hconn_c: &mut Http3Client, hconn_s: &mut Http3Server) -> Option<Datagram> {
-    assert_eq!(hconn_c.state(), Http3State::Initializing);
-    let out = hconn_c.process_output(now()); // Initial
-    let out2 = hconn_c.process_output(now()); // Initial
-    _ = hconn_s.process(out.dgram(), now()); // ACK
-    let out = hconn_s.process(out2.dgram(), now()); // Initial + Handshake
-    let out = hconn_c.process(out.dgram(), now());
-    let out = hconn_s.process(out.dgram(), now());
-    let out = hconn_c.process(out.dgram(), now());
-    drop(hconn_s.process(out.dgram(), now())); // consume ACK
-    let authentication_needed = |e| matches!(e, Http3ClientEvent::AuthenticationNeeded);
-    assert!(hconn_c.events().any(authentication_needed));
-    hconn_c.authenticated(AuthenticationStatus::Ok, now());
-    let out = hconn_c.process_output(now()); // Handshake
-    assert_eq!(hconn_c.state(), Http3State::Connected);
-    let out = hconn_s.process(out.dgram(), now()); // Handshake
-    let out = hconn_c.process(out.dgram(), now());
-    let out = hconn_s.process(out.dgram(), now());
-    // assert!(hconn_s.settings_received);
-    let out = hconn_c.process(out.dgram(), now());
-    // assert!(hconn_c.settings_received);
-
-    out.dgram()
-}
-
 fn connect_peers_with_network_propagation_delay(
     hconn_c: &mut Http3Client,
     hconn_s: &mut Http3Server,
@@ -164,17 +139,6 @@ pub fn connect() -> (Http3Client, Http3Server, Option<Datagram>) {
     (hconn_c, hconn_s, out)
 }
 
-fn exchange_packets(client: &mut Http3Client, server: &mut Http3Server, out_ex: Option<Datagram>) {
-    let mut out = out_ex;
-    loop {
-        out = client.process(out, now()).dgram();
-        out = server.process(out, now()).dgram();
-        if out.is_none() {
-            break;
-        }
-    }
-}
-
 #[test]
 fn simple_connect() {
     let (_hconn_c, _hconn_s, _d) = connect();
@@ -189,7 +153,7 @@ fn fetch() {
         .fetch(
             now(),
             "GET",
-            &("https", "something.com", "/"),
+            ("https", "something.com", "/"),
             &[],
             Priority::default(),
         )
@@ -218,7 +182,7 @@ fn response_103() {
         .fetch(
             now(),
             "GET",
-            &("https", "something.com", "/"),
+            ("https", "something.com", "/"),
             &[],
             Priority::default(),
         )
@@ -272,12 +236,12 @@ fn data_writable_events_low_watermark() -> Result<(), Box<dyn std::error::Error>
     let stream_id = hconn_c.fetch(
         now(),
         "GET",
-        &("https", "something.com", "/"),
+        ("https", "something.com", "/"),
         &[],
         Priority::default(),
     )?;
     hconn_c.stream_close_send(stream_id)?;
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
 
     // Server receives GET and responds with headers.
     let request = receive_request(&hconn_s).unwrap();
@@ -285,7 +249,7 @@ fn data_writable_events_low_watermark() -> Result<(), Box<dyn std::error::Error>
 
     // Sending these headers clears the server's send stream buffer and thus
     // emits a DataWritable event.
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
     let data_writable = |e| {
         matches!(
             e,
@@ -305,7 +269,7 @@ fn data_writable_events_low_watermark() -> Result<(), Box<dyn std::error::Error>
 
     // Sending the buffered data clears the send stream buffer and thus emits a
     // DataWritable event.
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
     assert!(hconn_s.events().any(data_writable));
 
     // Sending more fails, given that each data frame needs to be preceded by a
@@ -317,7 +281,7 @@ fn data_writable_events_low_watermark() -> Result<(), Box<dyn std::error::Error>
     let mut recv_buf = vec![0_u8; all_but_one];
     let (recvd, _) = hconn_c.read_data(now(), stream_id, &mut recv_buf)?;
     assert_eq!(sent, recvd);
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
 
     // Expect the server's available send space to be back to the stream limit.
     assert_eq!(request.available()?, STREAM_LIMIT as usize);
@@ -347,13 +311,13 @@ fn data_writable_events() {
         .fetch(
             now(),
             "GET",
-            &("https", "something.com", "/"),
+            ("https", "something.com", "/"),
             &[],
             Priority::default(),
         )
         .unwrap();
     hconn_c.stream_close_send(req).unwrap();
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
 
     let request = receive_request(&hconn_s).unwrap();
 
@@ -370,12 +334,12 @@ fn data_writable_events() {
     assert!(sent < DATA_AMOUNT);
 
     // Exchange packets and read the data on the client side.
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
     let stream_id = request.stream_id();
     let mut recv_buf = [0_u8; DATA_AMOUNT];
     let (mut recvd, _) = hconn_c.read_data(now(), stream_id, &mut recv_buf).unwrap();
     assert_eq!(sent, recvd);
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
 
     let data_writable = |e| {
         matches!(
@@ -393,12 +357,12 @@ fn data_writable_events() {
     sent += s;
 
     // Exchange packets and read the data on the client side.
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
     let (r, _) = hconn_c
         .read_data(now(), stream_id, &mut recv_buf[recvd..])
         .unwrap();
     recvd += r;
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
     assert_eq!(sent, recvd);
 
     // One more DataWritable event.
@@ -409,7 +373,7 @@ fn data_writable_events() {
     sent += s;
     assert_eq!(sent, DATA_AMOUNT);
 
-    exchange_packets(&mut hconn_c, &mut hconn_s, None);
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, None);
     let (r, _) = hconn_c
         .read_data(now(), stream_id, &mut recv_buf[recvd..])
         .unwrap();
@@ -451,7 +415,7 @@ fn zerortt() {
         .fetch(
             now(),
             "GET",
-            &("https", "something.com", "/"),
+            ("https", "something.com", "/"),
             &[],
             Priority::default(),
         )
@@ -502,7 +466,7 @@ fn zerortt() {
     set_response(&request_stream);
 
     // Receive the response
-    exchange_packets(&mut hconn_c, &mut hconn_s, out.dgram());
+    exchange_packets(&mut hconn_c, &mut hconn_s, false, out.dgram());
     process_client_events(&mut hconn_c);
 }
 
@@ -521,7 +485,7 @@ fn fetch_noresponse_will_idletimeout() {
         .fetch(
             now,
             "GET",
-            &("https", "something.com", "/"),
+            ("https", "something.com", "/"),
             &[],
             Priority::default(),
         )

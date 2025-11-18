@@ -4,7 +4,6 @@
 
 package org.mozilla.focus.fragment.about
 
-import android.os.Build
 import android.os.Bundle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -15,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +48,6 @@ class AboutFragment : BaseComposeFragment() {
     private lateinit var aboutHeader: String
     private lateinit var content: String
     private lateinit var aboutContent: String
-    private lateinit var learnMore: String
 
     private val openLearnMore = {
         val tabId = requireContext().components.tabsUseCases.addTab(
@@ -71,9 +69,6 @@ class AboutFragment : BaseComposeFragment() {
             requireContext().getString(R.string.about_content, appName, "")
 
         aboutHeader = getAboutHeader()
-        learnMore = aboutContent
-            .substringAfter("<a href=>")
-            .substringBefore("</a></p>")
 
         content =
             aboutContent
@@ -97,14 +92,13 @@ class AboutFragment : BaseComposeFragment() {
         AboutPageContent(
             aboutVersion = aboutHeader,
             content = content,
-            learnMore = learnMore,
             secretSettingsUnlocker = secretSettingsUnlocker,
             openLearnMore = openLearnMore,
         )
     }
 
     private fun getAboutHeader(): String {
-        val gecko = if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) " \uD83E\uDD8E " else " GV: "
+        val gecko = " \uD83E\uDD8E "
         val engineIndicator =
             gecko + GeckoViewBuildConfig.MOZ_APP_VERSION + "-" + GeckoViewBuildConfig.MOZ_APP_BUILDID
         val servicesAbbreviation = getString(R.string.services_abbreviation)
@@ -129,7 +123,6 @@ class AboutFragment : BaseComposeFragment() {
     private fun AboutPageContent(
         aboutVersion: String,
         content: String,
-        learnMore: String,
         secretSettingsUnlocker: SecretSettingsUnlocker,
         openLearnMore: () -> Job,
     ) {
@@ -145,7 +138,7 @@ class AboutFragment : BaseComposeFragment() {
                 LogoIcon(secretSettingsUnlocker)
                 VersionInfo(aboutVersion)
                 AboutContent(content)
-                LearnMoreLink(learnMore, openLearnMore)
+                LearnMoreLink(openLearnMore)
             }
         }
     }
@@ -169,7 +162,7 @@ class AboutFragment : BaseComposeFragment() {
             Text(
                 text = aboutVersion,
                 color = focusColors.aboutPageText,
-                style = focusTypography.body1.copy(
+                style = focusTypography.bodyLarge.copy(
                     // Use LTR in all cases since the version is not translatable.
                     textDirection = TextDirection.Ltr,
                 ),
@@ -184,7 +177,7 @@ class AboutFragment : BaseComposeFragment() {
         Text(
             text = content,
             color = focusColors.aboutPageText,
-            style = focusTypography.body1,
+            style = focusTypography.bodyLarge,
             modifier = Modifier
                 .padding(10.dp),
         )

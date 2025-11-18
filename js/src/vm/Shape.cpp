@@ -858,11 +858,12 @@ bool NativeObject::removeProperty(JSContext* cx, Handle<NativeObject*> obj,
     return true;
   }
 
-  if (!Watchtower::watchPropertyRemove(cx, obj, id)) {
+  PropertyInfo prop = propMap->getPropertyInfo(propIndex);
+  bool wasTrackedObjectFuseProp = false;
+  if (!Watchtower::watchPropertyRemove(cx, obj, id, prop,
+                                       &wasTrackedObjectFuseProp)) {
     return false;
   }
-
-  PropertyInfo prop = propMap->getPropertyInfo(propIndex);
 
   // If we're removing an accessor property, ensure the HadGetterSetterChange
   // object flag is set. This is necessary because the slot holding the
@@ -878,7 +879,19 @@ bool NativeObject::removeProperty(JSContext* cx, Handle<NativeObject*> obj,
     // Fast path for removing the last property from a SharedPropMap. In this
     // case we can just call getPrevious and then look up a shape for the
     // resulting map/mapLength.
-    if (propMap == map && propIndex == mapLength - 1) {
+    //
+    // Don't reuse a previously-used Shape if the object has an ObjectFuse and
+    // we are removing a tracked property, to avoid the following bug:
+    //
+    // 1) The object has Shape S1 and a property P that was marked NotConstant.
+    // 2) We attach a SetSlot IC stub that guards on the object + S1 and stores
+    //    a new value for this property.
+    // 3) We remove property P (we are here now).
+    // 4) We add a new property P, reuse Shape S1, and mark P Constant.
+    // 5) We use the SetSlot IC stub again but this is invalid because P is
+    //    still marked Constant.
+    if (propMap == map && propIndex == mapLength - 1 &&
+        !wasTrackedObjectFuseProp) {
       MOZ_ASSERT(obj->getLastProperty().key() == id);
 
       Rooted<SharedPropMap*> sharedMap(cx, map->asShared());
@@ -1137,7 +1150,8 @@ BaseShape::BaseShape(JSContext* cx, const JSClass* clasp, JS::Realm* realm,
   MOZ_ASSERT_IF(proto.isObject(), !IsWindow(proto.toObject()));
 
   if (MOZ_UNLIKELY(clasp->emulatesUndefined())) {
-    cx->runtime()->hasSeenObjectEmulateUndefinedFuse.ref().popFuse(cx);
+    cx->runtime()->runtimeFuses.ref().hasSeenObjectEmulateUndefinedFuse.popFuse(
+        cx);
   }
 
 #ifdef DEBUG
@@ -1329,8 +1343,8 @@ void ForEachObjectFlag(ObjectFlags flags, KnownF known, UnknownF unknown) {
       case ObjectFlag::NeedsProxyGetSetResultValidation:
         known("NeedsProxyGetSetResultValidation");
         break;
-      case ObjectFlag::HasFuseProperty:
-        known("HasFuseProperty");
+      case ObjectFlag::HasRealmFuseProperty:
+        known("HasRealmFuseProperty");
         break;
       case ObjectFlag::HasPreservedWrapper:
         known("HasPreservedWrapper");

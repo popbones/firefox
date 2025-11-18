@@ -9,9 +9,21 @@ ChromeUtils.defineESModuleGetters(lazy, {
   PersistentCache: "resource://newtab/lib/PersistentCache.sys.mjs",
   SearchSuggestionController:
     "moz-src:///toolkit/components/search/SearchSuggestionController.sys.mjs",
-  UrlbarUtils: "resource:///modules/UrlbarUtils.sys.mjs",
 });
 
+ChromeUtils.defineLazyGetter(lazy, "UrlbarUtils", () => {
+  try {
+    return ChromeUtils.importESModule(
+      "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs"
+    ).UrlbarUtils;
+  } catch {
+    // Fallback to URI format prior to FF 144.
+    return ChromeUtils.importESModule("resource:///modules/UrlbarUtils.sys.mjs")
+      .UrlbarUtils;
+  }
+});
+
+import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 import {
   actionTypes as at,
   actionCreators as ac,
@@ -106,15 +118,25 @@ export class TrendingSearchFeed {
     this.suggestionsController = this.SearchSuggestionController();
     this.suggestionsController.maxLocalResults = 0;
 
-    let suggestionPromise = this.suggestionsController.fetch(
-      "", // searchTerm
-      false, // privateMode
-      this.defaultEngine, // engine
-      0,
-      false, //restrictToEngine
-      false, // dedupeRemoteAndLocal
-      true // fetchTrending
-    );
+    let suggestionPromise;
+    if (Services.vc.compare(AppConstants.MOZ_APP_VERSION, "144.0a1") >= 0) {
+      suggestionPromise = this.suggestionsController.fetch({
+        searchString: "",
+        inPrivateBrowsing: false,
+        engine: this.defaultEngine,
+        fetchTrending: true,
+      });
+    } else {
+      suggestionPromise = this.suggestionsController.fetch(
+        "", // searchString
+        false, // privateMode
+        this.defaultEngine, // engine
+        0,
+        false, //restrictToEngine
+        false, // dedupeRemoteAndLocal
+        true // fetchTrending
+      );
+    }
 
     let fetchData = await suggestionPromise;
 
@@ -157,6 +179,12 @@ export class TrendingSearchFeed {
       case at.INIT:
         if (this.enabled) {
           await this.init();
+        }
+        break;
+      case at.DISCOVERY_STREAM_CONFIG_CHANGE:
+        await this.cache.set("trendingSearch", {});
+        if (this.enabled) {
+          await this.loadTrendingSearch();
         }
         break;
       case at.DISCOVERY_STREAM_DEV_SYSTEM_TICK:

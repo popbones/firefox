@@ -4,97 +4,93 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#include "nsGenericHTMLElement.h"
+
+#include "HTMLBRElement.h"
+#include "HTMLFieldSetElement.h"
+#include "ReferrerInfo.h"
+#include "imgIContainer.h"
 #include "mozilla/EditorBase.h"
+#include "mozilla/ErrorResult.h"
 #include "mozilla/EventDispatcher.h"
 #include "mozilla/EventListenerManager.h"
 #include "mozilla/EventStateManager.h"
-#include "mozilla/HTMLEditor.h"
 #include "mozilla/FocusModel.h"
+#include "mozilla/HTMLEditor.h"
 #include "mozilla/IMEContentObserver.h"
 #include "mozilla/IMEStateManager.h"
 #include "mozilla/MappedDeclarationsBuilder.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/MouseEvents.h"
+#include "mozilla/Preferences.h"
 #include "mozilla/PresShell.h"
-#include "mozilla/TextEditor.h"
-#include "mozilla/TextEvents.h"
+#include "mozilla/PresState.h"
 #include "mozilla/StaticPrefs_accessibility.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/StaticPrefs_layout.h"
+#include "mozilla/TextEditor.h"
+#include "mozilla/TextEvents.h"
 #include "mozilla/dom/AncestorIterator.h"
-#include "mozilla/dom/FetchPriority.h"
-#include "mozilla/dom/FormData.h"
-#include "mozilla/dom/HTMLElementBinding.h"
-#include "nsCaseTreatment.h"
-#include "nscore.h"
-#include "nsGenericHTMLElement.h"
-#include "nsCOMPtr.h"
-#include "nsAtom.h"
-#include "nsQueryObject.h"
 #include "mozilla/dom/BindContext.h"
-#include "mozilla/dom/Document.h"
-#include "mozilla/dom/UnbindContext.h"
-#include "nsPIDOMWindow.h"
-#include "nsIFrameInlines.h"
-#include "nsView.h"
-#include "nsViewManager.h"
-#include "nsIWidget.h"
-#include "nsRange.h"
-#include "nsPresContext.h"
-#include "nsError.h"
-#include "nsIPrincipal.h"
-#include "nsContainerFrame.h"
-#include "nsStyleUtil.h"
-#include "ReferrerInfo.h"
-
-#include "mozilla/PresState.h"
-#include "nsILayoutHistoryState.h"
-
-#include "nsHTMLParts.h"
-#include "nsContentUtils.h"
-#include "mozilla/dom/DirectionalityUtils.h"
-#include "mozilla/dom/DocumentOrShadowRoot.h"
-#include "nsString.h"
-#include "nsGkAtoms.h"
-#include "nsDOMCSSDeclaration.h"
-#include "nsIFormControl.h"
-#include "mozilla/dom/HTMLFormElement.h"
-#include "nsFocusManager.h"
-
-#include "nsDOMStringMap.h"
-#include "nsDOMString.h"
-
-#include "nsLayoutUtils.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "HTMLFieldSetElement.h"
-#include "nsTextNode.h"
-#include "HTMLBRElement.h"
-#include "nsDOMMutationObserver.h"
-#include "mozilla/Preferences.h"
-#include "mozilla/dom/FromParser.h"
-#include "mozilla/dom/Link.h"
-#include "mozilla/dom/ScriptLoader.h"
-
-#include "nsDOMTokenList.h"
-#include "nsThreadUtils.h"
 #include "mozilla/dom/BindingUtils.h"
-#include "mozilla/dom/MouseEventBinding.h"
-#include "mozilla/dom/ToggleEvent.h"
-#include "mozilla/dom/TouchEvent.h"
-#include "mozilla/dom/InputEvent.h"
 #include "mozilla/dom/CommandEvent.h"
-#include "mozilla/ErrorResult.h"
-#include "nsHTMLDocument.h"
-#include "nsGlobalWindowInner.h"
-#include "mozilla/dom/HTMLBodyElement.h"
-#include "imgIContainer.h"
-#include "nsComputedDOMStyle.h"
-#include "mozilla/dom/HTMLDialogElement.h"
-#include "mozilla/dom/HTMLLabelElement.h"
-#include "mozilla/dom/HTMLInputElement.h"
 #include "mozilla/dom/CustomElementRegistry.h"
+#include "mozilla/dom/DirectionalityUtils.h"
+#include "mozilla/dom/Document.h"
+#include "mozilla/dom/DocumentInlines.h"
+#include "mozilla/dom/DocumentOrShadowRoot.h"
 #include "mozilla/dom/ElementBinding.h"
 #include "mozilla/dom/ElementInternals.h"
+#include "mozilla/dom/FetchPriority.h"
+#include "mozilla/dom/FormData.h"
+#include "mozilla/dom/FromParser.h"
+#include "mozilla/dom/HTMLBodyElement.h"
+#include "mozilla/dom/HTMLDialogElement.h"
+#include "mozilla/dom/HTMLElementBinding.h"
+#include "mozilla/dom/HTMLFormElement.h"
+#include "mozilla/dom/HTMLInputElement.h"
+#include "mozilla/dom/HTMLLabelElement.h"
+#include "mozilla/dom/InputEvent.h"
+#include "mozilla/dom/Link.h"
+#include "mozilla/dom/MouseEventBinding.h"
+#include "mozilla/dom/ScriptLoader.h"
+#include "mozilla/dom/ToggleEvent.h"
+#include "mozilla/dom/TouchEvent.h"
+#include "mozilla/dom/UnbindContext.h"
+#include "nsAtom.h"
+#include "nsCOMPtr.h"
+#include "nsCaseTreatment.h"
+#include "nsComputedDOMStyle.h"
+#include "nsContainerFrame.h"
+#include "nsContentUtils.h"
+#include "nsDOMCSSDeclaration.h"
+#include "nsDOMMutationObserver.h"
+#include "nsDOMString.h"
+#include "nsDOMStringMap.h"
+#include "nsDOMTokenList.h"
+#include "nsError.h"
+#include "nsFocusManager.h"
+#include "nsGkAtoms.h"
+#include "nsGlobalWindowInner.h"
+#include "nsHTMLDocument.h"
+#include "nsHTMLParts.h"
+#include "nsIFormControl.h"
+#include "nsIFrameInlines.h"
+#include "nsILayoutHistoryState.h"
+#include "nsIPrincipal.h"
+#include "nsIWidget.h"
+#include "nsLayoutUtils.h"
+#include "nsPIDOMWindow.h"
+#include "nsPresContext.h"
+#include "nsQueryObject.h"
+#include "nsRange.h"
+#include "nsString.h"
+#include "nsStyleUtil.h"
+#include "nsTextNode.h"
+#include "nsThreadUtils.h"
+#include "nsView.h"
+#include "nsViewManager.h"
+#include "nscore.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -303,158 +299,6 @@ void nsGenericHTMLElement::SetHidden(
   }
 }
 
-static bool IsOffsetParent(nsIFrame* aFrame) {
-  LayoutFrameType frameType = aFrame->Type();
-
-  if (frameType == LayoutFrameType::TableCell ||
-      frameType == LayoutFrameType::TableWrapper) {
-    // Per the IDL for Element, only td, th, and table are acceptable
-    // offsetParents apart from body or positioned elements; we need to check
-    // the content type as well as the frame type so we ignore anonymous tables
-    // created by an element with display: table-cell with no actual table
-    nsIContent* content = aFrame->GetContent();
-
-    return content->IsAnyOfHTMLElements(nsGkAtoms::table, nsGkAtoms::td,
-                                        nsGkAtoms::th);
-  }
-  return false;
-}
-
-struct OffsetResult {
-  Element* mParent = nullptr;
-  nsRect mRect;
-};
-
-static OffsetResult GetUnretargetedOffsetsFor(const Element& aElement) {
-  nsIFrame* frame = aElement.GetPrimaryFrame();
-  if (!frame) {
-    return {};
-  }
-
-  nsIFrame* styleFrame = nsLayoutUtils::GetStyleFrame(frame);
-
-  nsIFrame* parent = frame->GetParent();
-  nsPoint origin(0, 0);
-
-  nsIContent* offsetParent = nullptr;
-  Element* docElement = aElement.GetComposedDoc()->GetRootElement();
-  nsIContent* content = frame->GetContent();
-  const auto effectiveZoom = frame->Style()->EffectiveZoom();
-
-  if (content &&
-      (content->IsHTMLElement(nsGkAtoms::body) || content == docElement)) {
-    parent = frame;
-  } else {
-    const bool isPositioned = styleFrame->IsAbsPosContainingBlock();
-    const bool isAbsolutelyPositioned = frame->IsAbsolutelyPositioned();
-    origin += frame->GetPositionIgnoringScrolling();
-
-    for (; parent; parent = parent->GetParent()) {
-      content = parent->GetContent();
-
-      // Stop at the first ancestor that is positioned.
-      if (parent->IsAbsPosContainingBlock()) {
-        offsetParent = content;
-        break;
-      }
-
-      // WebKit-ism: offsetParent stops at zoom changes.
-      // See https://github.com/w3c/csswg-drafts/issues/10252
-      if (effectiveZoom != parent->Style()->EffectiveZoom()) {
-        offsetParent = content;
-        break;
-      }
-
-      // Add the parent's origin to our own to get to the
-      // right coordinate system.
-      const bool isOffsetParent = !isPositioned && IsOffsetParent(parent);
-      if (!isOffsetParent) {
-        origin += parent->GetPositionIgnoringScrolling();
-      }
-
-      if (content) {
-        // If we've hit the document element, break here.
-        if (content == docElement) {
-          break;
-        }
-
-        // Break if the ancestor frame type makes it suitable as offset parent
-        // and this element is *not* positioned or if we found the body element.
-        if (isOffsetParent || content->IsHTMLElement(nsGkAtoms::body)) {
-          offsetParent = content;
-          break;
-        }
-      }
-    }
-
-    if (isAbsolutelyPositioned && !offsetParent) {
-      // If this element is absolutely positioned, but we don't have
-      // an offset parent it means this element is an absolutely
-      // positioned child that's not nested inside another positioned
-      // element, in this case the element's frame's parent is the
-      // frame for the HTML element so we fail to find the body in the
-      // parent chain. We want the offset parent in this case to be
-      // the body, so we just get the body element from the document.
-      //
-      // We use GetBodyElement() here, not GetBody(), because we don't want to
-      // end up with framesets here.
-      offsetParent = aElement.GetComposedDoc()->GetBodyElement();
-    }
-  }
-
-  // Make the position relative to the padding edge.
-  if (parent) {
-    const nsStyleBorder* border = parent->StyleBorder();
-    origin.x -= border->GetComputedBorderWidth(eSideLeft);
-    origin.y -= border->GetComputedBorderWidth(eSideTop);
-  }
-
-  // Get the union of all rectangles in this and continuation frames.
-  // It doesn't really matter what we use as aRelativeTo here, since
-  // we only care about the size. We just have to use something non-null.
-  nsRect rcFrame = nsLayoutUtils::GetAllInFlowRectsUnion(frame, frame);
-  rcFrame.MoveTo(origin);
-  return {Element::FromNodeOrNull(offsetParent), rcFrame};
-}
-
-static bool ShouldBeRetargeted(const Element& aReferenceElement,
-                               const Element& aElementToMaybeRetarget) {
-  ShadowRoot* shadow = aElementToMaybeRetarget.GetContainingShadow();
-  if (!shadow) {
-    return false;
-  }
-  for (ShadowRoot* scope = aReferenceElement.GetContainingShadow(); scope;
-       scope = scope->Host()->GetContainingShadow()) {
-    if (scope == shadow) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-Element* nsGenericHTMLElement::GetOffsetRect(CSSIntRect& aRect) {
-  aRect = CSSIntRect();
-
-  nsIFrame* frame = GetPrimaryFrame(FlushType::Layout);
-  if (!frame) {
-    return nullptr;
-  }
-
-  OffsetResult thisResult = GetUnretargetedOffsetsFor(*this);
-  nsRect rect = thisResult.mRect;
-  Element* parent = thisResult.mParent;
-  while (parent && ShouldBeRetargeted(*this, *parent)) {
-    OffsetResult result = GetUnretargetedOffsetsFor(*parent);
-    rect += result.mRect.TopLeft();
-    parent = result.mParent;
-  }
-
-  aRect = CSSIntRect::FromAppUnitsRounded(
-      frame->Style()->EffectiveZoom().Unzoom(rect));
-  return parent;
-}
-
 bool nsGenericHTMLElement::Spellcheck() {
   // Has the state has been explicitly set?
   nsIContent* node;
@@ -566,8 +410,8 @@ nsresult nsGenericHTMLElement::BindToTree(BindContext& aContext,
 
   // Hide any nonce from the DOM, but keep the internal value of the
   // nonce by copying and resetting the internal nonce value.
-  if (HasFlag(NODE_HAS_NONCE_AND_HEADER_CSP) && IsInComposedDoc() &&
-      OwnerDoc()->GetBrowsingContext()) {
+  if (!aContext.IsMove() && HasFlag(NODE_HAS_NONCE_AND_HEADER_CSP) &&
+      IsInComposedDoc() && OwnerDoc()->GetBrowsingContext()) {
     nsContentUtils::AddScriptRunner(NS_NewRunnableFunction(
         "nsGenericHTMLElement::ResetNonce::Runnable",
         [self = RefPtr<nsGenericHTMLElement>(this)]() {
@@ -595,7 +439,7 @@ void nsGenericHTMLElement::UnbindFromTree(UnbindContext& aContext) {
     // If removedNode's popover attribute is not in the no popover state, then
     // run the hide popover algorithm given removedNode, false, false, and
     // false.
-    if (GetPopoverData()) {
+    if (!aContext.IsMove() && GetPopoverData()) {
       HidePopoverWithoutRunningScript();
     }
     RegUnRegAccessKey(false);
@@ -2211,12 +2055,6 @@ bool nsGenericHTMLFormElement::IsElementDisabledForEvents(WidgetEvent* aEvent,
     return false;
   }
 
-  // FIXME(emilio): This poking at the style of the frame is slightly bogus
-  // unless we flush before every event, which we don't really want to do.
-  if (aFrame && aFrame->StyleUI()->UserInput() == StyleUserInput::None) {
-    return true;
-  }
-
   return IsDisabled();
 }
 
@@ -2985,12 +2823,34 @@ void nsGenericHTMLFormControlElementWithState::SetPopoverTargetElement(
   ExplicitlySetAttrElement(nsGkAtoms::popovertarget, aElement);
 }
 
-void nsGenericHTMLFormControlElementWithState::HandlePopoverTargetAction() {
-  RefPtr<nsGenericHTMLElement> target = GetEffectivePopoverTargetElement();
-  if (!target) {
+// https://html.spec.whatwg.org/multipage/#popover-target-attribute-activation-behavior
+void nsGenericHTMLFormControlElementWithState::HandlePopoverTargetAction(
+    mozilla::dom::Element* aEventTarget) {
+  // 1. Let popover be node's popover target element.
+  RefPtr<nsGenericHTMLElement> popover = GetEffectivePopoverTargetElement();
+
+  // 2. If popover is null, then return.
+  if (!popover) {
     return;
   }
 
+  // 3. If eventTarget is a shadow-including inclusive descendant of popover and
+  // popover is a shadow-including descendant of node, then return.
+  if (aEventTarget &&
+      aEventTarget->IsShadowIncludingInclusiveDescendantOf(popover) &&
+      popover->IsShadowIncludingDescendantOf(this)) {
+    return;
+  }
+
+  // 4. If node's popovertargetaction attribute is in the show state and
+  // popover's popover visibility state is showing, then return.
+  // 5. If node's popovertargetaction attribute is in the hide state and
+  // popover's popover visibility state is hidden, then return.
+  // 6. If popover's popover visibility state is showing, then run the hide
+  // popover algorithm given popover, true, true, false, and node.
+  // 7. Otherwise, if popover's popover visibility state is hidden and the
+  // result of running check popover validity given popover, false, false, and
+  // null is true, then run show popover given popover, false, and node.
   auto action = PopoverTargetAction::Toggle;
   if (const nsAttrValue* value =
           GetParsedAttr(nsGkAtoms::popovertargetaction)) {
@@ -3000,15 +2860,15 @@ void nsGenericHTMLFormControlElementWithState::HandlePopoverTargetAction() {
 
   bool canHide = action == PopoverTargetAction::Hide ||
                  action == PopoverTargetAction::Toggle;
-  bool shouldHide = canHide && target->IsPopoverOpen();
+  bool shouldHide = canHide && popover->IsPopoverOpen();
   bool canShow = action == PopoverTargetAction::Show ||
                  action == PopoverTargetAction::Toggle;
-  bool shouldShow = canShow && !target->IsPopoverOpen();
+  bool shouldShow = canShow && !popover->IsPopoverOpen();
 
   if (shouldHide) {
-    target->HidePopover(IgnoreErrors());
+    popover->HidePopover(IgnoreErrors());
   } else if (shouldShow) {
-    target->ShowPopoverInternal(this, IgnoreErrors());
+    popover->ShowPopoverInternal(this, IgnoreErrors());
   }
 }
 
@@ -3316,9 +3176,10 @@ static already_AddRefed<nsINode> TextToNode(const nsAString& aString,
   return fragment.forget();
 }
 
-void nsGenericHTMLElement::SetInnerText(const nsAString& aValue) {
+void nsGenericHTMLElement::SetInnerTextInternal(
+    const nsAString& aValue, MutationEffectOnScript aMutationEffectOnScript) {
   RefPtr<nsINode> node = TextToNode(aValue, NodeInfo()->NodeInfoManager());
-  ReplaceChildren(node, IgnoreErrors());
+  ReplaceChildren(node, IgnoreErrors(), aMutationEffectOnScript);
 }
 
 // https://html.spec.whatwg.org/#merge-with-the-next-text-node
@@ -3329,7 +3190,8 @@ static void MergeWithNextTextNode(Text& aText, ErrorResult& aRv) {
   }
   nsAutoString data;
   nextSibling->GetData(data);
-  aText.AppendData(data, aRv);
+  aText.AppendDataInternal(data, MutationEffectOnScript::KeepTrustWorthiness,
+                           aRv);
   nextSibling->Remove();
 }
 
@@ -3344,9 +3206,6 @@ void nsGenericHTMLElement::SetOuterText(const nsAString& aValue,
   RefPtr<nsINode> next = GetNextSibling();
   RefPtr<nsINode> previous = GetPreviousSibling();
 
-  // Batch possible DOMSubtreeModified events.
-  mozAutoSubtreeModified subtree(OwnerDoc(), nullptr);
-
   nsNodeInfoManager* nim = NodeInfo()->NodeInfoManager();
   RefPtr<nsINode> node = TextToNode(aValue, nim);
   if (!node) {
@@ -3354,7 +3213,8 @@ void nsGenericHTMLElement::SetOuterText(const nsAString& aValue,
     // https://github.com/whatwg/html/issues/7508
     node = new (nim) nsTextNode(nim);
   }
-  parent->ReplaceChild(*node, *this, aRv);
+  parent->ReplaceChildInternal(
+      *node, *this, MutationEffectOnScript::DropTrustWorthiness, aRv);
   if (aRv.Failed()) {
     return;
   }
@@ -3573,6 +3433,9 @@ void nsGenericHTMLElement::ShowPopoverInternal(Element* aInvoker,
     auto* popoverData = GetPopoverData();
     popoverData->SetPopoverVisibilityState(PopoverVisibilityState::Showing);
     popoverData->SetInvoker(aInvoker);
+    if (aInvoker && aInvoker->IsHTMLElement()) {
+      aInvoker->SetAssociatedPopover(*this);
+    }
   }
 
   // Run the popover focusing steps given element.
@@ -3743,11 +3606,9 @@ ElementInternals* nsGenericHTMLElement::GetInternals() const {
   return nullptr;
 }
 
-bool nsGenericHTMLElement::IsFormAssociatedCustomElements() const {
-  if (CustomElementData* data = GetCustomElementData()) {
-    return data->IsFormAssociated();
-  }
-  return false;
+bool nsGenericHTMLElement::IsFormAssociatedCustomElement() const {
+  CustomElementData* data = GetCustomElementData();
+  return data && data->IsFormAssociated();
 }
 
 void nsGenericHTMLElement::GetAutocapitalize(nsAString& aValue) const {

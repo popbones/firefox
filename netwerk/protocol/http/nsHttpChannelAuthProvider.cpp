@@ -1191,7 +1191,7 @@ void nsHttpChannelAuthProvider::GetIdentityFromURI(uint32_t authFlags,
   CopyUTF8toUTF16(buf, passBuf);
 
   nsDependentSubstring user(userBuf, 0);
-  nsDependentSubstring domain(u""_ns, 0);
+  nsDependentSubstring domain(EmptyString(), 0);
 
   if (authFlags & nsIHttpAuthenticator::IDENTITY_INCLUDES_DOMAIN) {
     ParseUserDomain(userBuf, user, domain);
@@ -1761,7 +1761,7 @@ void nsHttpChannelAuthProvider::SetAuthorizationHeader(
     if (mProxyInfo) {
       nsAutoCString type;
       mProxyInfo->GetType(type);
-      if (type.EqualsLiteral("https")) {
+      if (type.EqualsLiteral("https") || type.EqualsLiteral("connect-udp")) {
         // Let this be overriden by anything from the cache.
         auto const& pa = mProxyInfo->ProxyAuthorizationHeader();
         if (!pa.IsEmpty()) {

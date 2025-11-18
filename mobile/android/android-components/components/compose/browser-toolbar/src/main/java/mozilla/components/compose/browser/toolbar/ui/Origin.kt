@@ -8,12 +8,12 @@ import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.content.res.Configuration.UI_MODE_TYPE_NORMAL
 import android.view.SoundEffectConstants
 import androidx.annotation.StringRes
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Indication
+import androidx.compose.foundation.IndicationNodeFactory
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.layout.Arrangement.Center
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,9 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.Bottom
 import androidx.compose.ui.Alignment.Companion.Start
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.node.DelegatableNode
+import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role.Companion.Button
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -48,6 +52,8 @@ import mozilla.components.compose.base.text.TruncationDirection.END
 import mozilla.components.compose.base.text.TruncationDirection.START
 import mozilla.components.compose.base.theme.AcornTheme
 import mozilla.components.compose.browser.toolbar.R
+import mozilla.components.compose.browser.toolbar.concept.BrowserToolbarTestTags.ADDRESSBAR_TITLE
+import mozilla.components.compose.browser.toolbar.concept.BrowserToolbarTestTags.ADDRESSBAR_URL
 import mozilla.components.compose.browser.toolbar.concept.PageOrigin.Companion.ContextualMenuOption
 import mozilla.components.compose.browser.toolbar.concept.PageOrigin.Companion.TextGravity
 import mozilla.components.compose.browser.toolbar.concept.PageOrigin.Companion.TextGravity.TEXT_GRAVITY_END
@@ -55,6 +61,7 @@ import mozilla.components.compose.browser.toolbar.concept.PageOrigin.Companion.T
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarInteraction
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarInteraction.BrowserToolbarEvent
 import mozilla.components.compose.browser.toolbar.utils.PageOriginContextualMenuBuilder
+import mozilla.components.support.ktx.kotlin.getRegistrableDomainIndexRange
 import mozilla.components.support.utils.ClipboardHandler
 
 private const val URL_TEXT_SIZE_ALONE = 15
@@ -74,14 +81,12 @@ private const val FADE_LENGTH = 66
  * @param onInteraction [BrowserToolbarInteraction] to be dispatched when this layout is interacted with.
  * @param onInteraction Callback for handling [BrowserToolbarEvent]s on user interactions.
  */
-@OptIn(ExperimentalFoundationApi::class) // for combinedClickable
 @Composable
 @Suppress("LongMethod")
 internal fun Origin(
     @StringRes hint: Int,
     modifier: Modifier = Modifier,
-    url: String? = null,
-    registrableDomainIndexRange: Pair<Int, Int>? = null,
+    url: CharSequence? = null,
     title: String? = null,
     textGravity: TextGravity = TEXT_GRAVITY_START,
     contextualMenuOptions: List<ContextualMenuOption> = emptyList(),
@@ -106,7 +111,7 @@ internal fun Origin(
     }
 
     val hint = stringResource(hint)
-    val urlToShow: String = remember(url) {
+    val urlToShow: CharSequence = remember(url) {
         when (url == null || url.isBlank()) {
             true -> hint
             else -> url
@@ -130,8 +135,10 @@ internal fun Origin(
                     Modifier.combinedClickable(
                         role = Button,
                         onClick = {
-                            view.playSoundEffect(SoundEffectConstants.CLICK)
-                            onInteraction(requireNotNull(onClick))
+                            onClick?.let {
+                                view.playSoundEffect(SoundEffectConstants.CLICK)
+                                onInteraction(it)
+                            }
                         },
                         onLongClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -139,14 +146,14 @@ internal fun Origin(
                             onLongClick?.let { onInteraction(it) }
                         },
                     ),
-                ) { onClick != null && shouldReactToLongClicks },
+                ) { shouldReactToLongClicks },
         ) {
             Column(
                 verticalArrangement = Center,
             ) {
                 Title(title, textGravity)
 
-                Url(urlToShow, registrableDomainIndexRange, urlTextSize)
+                Url(urlToShow, urlTextSize)
             }
 
             LongPressMenu(showMenu, contextualMenuOptions, clipboardHandler, onInteraction) {
@@ -164,6 +171,7 @@ private fun Title(
     if (title != null && title.isNotBlank()) {
         FadedText(
             text = title,
+            modifier = Modifier.testTag(ADDRESSBAR_TITLE),
             style = TextStyle(
                 fontSize = URL_TEXT_SIZE_ALONE.sp,
                 color = AcornTheme.colors.textSecondary,
@@ -176,15 +184,18 @@ private fun Title(
 
 @Composable
 private fun Url(
-    url: String,
-    registrableDomainIndexRange: Pair<Int, Int>?,
+    url: CharSequence,
     fontSize: Int,
 ) {
     // Ensure compatibility with MaterialTheme attributes. See bug 1936346 for more context.
     val materialTextStyle = LocalTextStyle.current
+    val urlString = remember(url) { url.toString() }
+    val registrableDomainIndexRange = remember(url) {
+        url.getRegistrableDomainIndexRange()
+    }
 
     HighlightedDomainUrl(
-        url = url,
+        url = urlString,
         registrableDomainIndexRange = registrableDomainIndexRange,
         fadedTextStyle = materialTextStyle.merge(
             fontSize = fontSize.sp,
@@ -194,6 +205,7 @@ private fun Url(
             fontSize = fontSize.sp,
             color = AcornTheme.colors.textPrimary,
         ),
+        modifier = Modifier.testTag(ADDRESSBAR_URL),
     )
 }
 
@@ -234,9 +246,13 @@ private fun TextGravity.toTextTruncationDirection() = when (this) {
 /**
  * Custom indication disabling click ripples.
  */
-private object NoRippleIndication : Indication {
-    override fun equals(other: Any?): Boolean = other === this
+private object NoRippleIndication : IndicationNodeFactory {
+    override fun create(interactionSource: InteractionSource): DelegatableNode =
+        object : Modifier.Node(), DrawModifierNode {
+            override fun ContentDrawScope.draw() = drawContent()
+        }
 
+    override fun equals(other: Any?) = other === this
     override fun hashCode(): Int = System.identityHashCode(this)
 }
 

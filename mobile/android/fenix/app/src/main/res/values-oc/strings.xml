@@ -11,10 +11,6 @@
   -->
   <string name="content_description_menu">Mai d’opcions</string>
   <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">Activar la navegacion privada</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_disable_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">Desactivar la navigacion privada.</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
   <string name="content_description_private_browsing">Navegacion privada</string>
   <!-- Placeholder text shown in the search bar before a user enters text for the default engine -->
   <string name="search_hint">Recèrca o adreça</string>
@@ -56,13 +52,7 @@
   <string name="home_bookmarks_menu_item_remove">Suprimir</string>
   <!-- About content. %1$s is the name of the app (for example "Firefox"). -->
   <string name="about_content">%1$s es produch per Mozilla.</string>
-  <!--
-    Private Browsing
-
-    Explanation for private browsing displayed to users on home view when they first enable private mode.
-    %1$s is the name of the app (for example "Firefox").
-  -->
-  <string name="private_browsing_placeholder_description_2" moz:removedIn="141" tools:ignore="UnusedResources">%1$s escafa vòstre istoric de recèrcas e de navegacion quand quitatz l’aplicacion o tampatz totes los onglets e fenèstras de navegacion privada. Malgrat qu’aquò vos faga pas venir anonim pels sites web o vòstre provesidor Internet, fa venir mai simple de gardar privat çò que fasètz en linha pels autres qu’utilizan aqueste aparelh.</string>
+  <!-- Private Browsing -->
   <string name="private_browsing_common_myths">Mites màgers de la navegacion privada</string>
   <!--
     True Private Browsing Mode
@@ -93,22 +83,8 @@
   <string name="open_in_app_cfr_positive_button_text">Anar als paramètres</string>
   <!-- Text for the negative action button -->
   <string name="open_in_app_cfr_negative_button_text">Ignorar</string>
-  <!--
-    Private browsing erase action "contextual feature recommendation" (CFR)
+  <!-- Private browsing erase action "contextual feature recommendation" (CFR) -->
 
-    Text for the message displayed in the contextual feature recommendation popup promoting the erase private browsing feature.
-  -->
-  <string name="erase_action_cfr_message" moz:removedIn="141" tools:ignore="UnusedResources">Tocatz aicí per començar una session privada freja. Suprimirà l’istoric, los cookies — tot.</string>
-  <!--
-    Toolbar "contextual feature recommendation" (CFR)
-
-    Text for the title displayed in the contextual feature recommendation popup promoting the navigation bar.
-  -->
-  <string name="navbar_cfr_title" moz:removedIn="140" tools:ignore="UnusedResources">Navegatz mai rapidament amb lo nòu sistèma de navegacion</string>
-  <!-- Text for the message displayed in the contextual feature recommendation popup promoting the navigation bar. -->
-  <string name="navbar_cfr_message_2" moz:removedIn="140" tools:ignore="UnusedResources">Sus un site web, aquesta barra s’amaga quand vos desplaçatz enbàs per ganhar d’espaci suplementari.</string>
-  <!-- Text for the message displayed for the popup promoting the long press of navigation in the navigation bar. -->
-  <string name="navbar_navigation_buttons_cfr_message" moz:removedIn="140" tools:ignore="UnusedResources">Tocatz de longa las sagetas per sautar entre paginas de l’istoric d’aqueste onglet.</string>
   <!-- Text for the info dialog when camera permissions have been denied but user tries to access a camera feature. -->
   <string name="camera_permissions_needed_message">Accès a la camèra necessari. Anatz als paramètres Android, tocatz Autorizacions puèi Autorizar.</string>
   <!-- Text for the positive action button to go to Android Settings to grant permissions. -->
@@ -195,33 +171,14 @@
   <string name="browser_menu_stop">Arrestar</string>
   <!-- Browser menu button that opens the extensions manager -->
   <string name="browser_menu_extensions">Extensions</string>
-  <!--
-    Browser menu banner header text for extensions onboarding.
-    %s is the name of the app (for example "Firefox").
-  -->
-  <string name="browser_menu_extensions_banner_onboarding_header" moz:removedIn="141" tools:ignore="UnusedResources">Adaptatz %s a vòstre estil</string>
   <!-- Browser menu banner header text for extensions onboarding when all installed extensions have been disabled. -->
   <string name="browser_menu_disabled_extensions_banner_onboarding_header">Avètz d’extensions installadas, mas son pas activadas</string>
-  <!--
-    Browser menu banner body text for extensions onboarding.
-    %s is the name of the app (for example "Firefox").
-  -->
-  <string name="browser_menu_extensions_banner_onboarding_body" moz:removedIn="141" tools:ignore="UnusedResources">Las extensions melhoran la navegacion, de la modificacion de l’aparéncia o del compòrtament de %s dusca las performanças per la confidencialitat e la seguretat.</string>
-  <!--
-    Browser menu banner body text for extensions onboarding when all installed extensions have been disabled.
-    %s is the label of the button that opens the extension manager (for example "Manage extensions").
-  -->
-  <string name="browser_menu_disabled_extensions_banner_onboarding_body" moz:removedIn="141" tools:ignore="UnusedResources">Per utilizar d’extensions, activatz-las als paramètres o en seleccionant « %s » çai-jos.</string>
-  <!-- Browser menu banner link text for learning more about extensions -->
-  <string name="browser_menu_extensions_banner_learn_more" moz:removedIn="141" tools:ignore="UnusedResources">Ne saber mai</string>
   <!-- Browser menu button that opens the extensions manager -->
   <string name="browser_menu_manage_extensions">Gerir las extensions</string>
   <!-- Browser menu group that contains additional settings in collapsed state -->
   <string name="browser_menu_more_settings">Mai</string>
   <!-- Browser menu group that contains additional settings in expanded state -->
-  <string name="browser_menu_less_settings">Mens</string>
-  <!-- Content description (not visible, for screen readers etc.): Section heading for recommended extensions. -->
-  <string name="browser_menu_recommended_section_content_description" moz:removedIn="141" tools:ignore="UnusedResources">Extensions recomandadas</string>
+  <string name="browser_menu_less_settings" moz:removedIn="144" tools:ignore="UnusedResources">Mens</string>
   <!--
     Content description (not visible, for screen readers etc.): Label for plus icon used to add extension.
     %1$s is the name of the extension (for example: ClearURLs).
@@ -253,28 +210,18 @@
   <string name="browser_menu_add_to_homescreen">Apondre a l’ecran d’acuèlh</string>
   <!-- Browser menu toggle that adds a PWA of the site on the device home screen. -->
   <string name="browser_menu_add_app_to_homescreen">Apondre l’aplicacion a l’ecran d’acuèlh</string>
-  <!-- Browser menu toggle that adds a shortcut to the site on the device home screen. -->
-  <string name="browser_menu_add_to_homescreen_2" moz:removedIn="141" tools:ignore="UnusedResources">Apondre a l’ecran d’acuèlh…</string>
-  <!-- Browser menu toggle that adds a PWA of the site on the device home screen. -->
-  <string name="browser_menu_add_app_to_homescreen_2" moz:removedIn="141" tools:ignore="UnusedResources">Apondre l’aplicacion a l’ecran d’acuèlh…</string>
   <!-- Text for notifying users that Xiaomi devices require additional permissions to add to home screen -->
   <string name="browser_menu_add_to_homescreen_xiaomi">Los aparelhs Xiaomi pòdon aver besonh d\'autorizacions suplementàrias per apondre d\'acorchis a l\'ecran d\'acuèlh. Verificatz vòstres paramètres.</string>
   <!-- Content description (not visible, for screen readers etc.) for the Resync tabs button -->
   <string name="resync_button_content_description">Tornar sincronizar</string>
   <!-- Browser menu button that opens the find in page menu -->
   <string name="browser_menu_find_in_page">Recercar dins la pagina</string>
-  <!-- Browser menu button that opens the find in page menu -->
-  <string name="browser_menu_find_in_page_2" moz:removedIn="141" tools:ignore="UnusedResources">Recercar dins la pagina…</string>
   <!-- Browser menu button that opens the translations dialog, which has options to translate the current browser page. -->
   <string name="browser_menu_translations">Traduire la pagina</string>
-  <!-- Browser menu button that saves the current tab to a collection -->
-  <string name="browser_menu_save_to_collection" moz:removedIn="141" tools:ignore="UnusedResources">Salvar a la colleccion…</string>
   <!-- Browser menu button that saves the current tab to a collection -->
   <string name="browser_menu_save_to_collection_2">Salvar a la colleccion</string>
   <!-- Browser menu button that open a share menu to share the current site -->
   <string name="browser_menu_share">Partejar</string>
-  <!-- Browser menu button that open a share menu to share the current site -->
-  <string name="browser_menu_share_2" moz:removedIn="141" tools:ignore="UnusedResources">Partejar…</string>
   <!--
     Browser menu button shown in custom tabs that opens the current tab in Fenix
     %1$s is the name of the app (for example "Firefox").
@@ -308,8 +255,6 @@
   <string name="browser_menu_customize_home_1">Personalizar la pagina d’acuèlh</string>
   <!-- Browser menu label to sign in to sync on the device using Mozilla accounts -->
   <string name="browser_menu_sign_in">Connexion</string>
-  <!-- Browser menu caption label for the "Sign in" browser menu item described in `browser_menu_sign_in` -->
-  <string name="browser_menu_sign_in_caption" moz:removedIn="141" tools:ignore="UnusedResources">Sincronizar los senhals, onglets e encara mai</string>
   <!-- Browser menu label to sign back in to sync on the device when the user's account needs to be reauthenticated -->
   <string name="browser_menu_sign_back_in_to_sync">Reconnectatz-vos per sincronizar</string>
   <!-- Browser menu caption label for the "Sign back in to sync" browser menu item described in `browser_menu_sign_back_in_to_sync` when there is an error in syncing -->
@@ -318,21 +263,6 @@
   <string name="browser_menu_new_private_tab">Novèl onglet de nav. privada</string>
   <!-- Browser menu label that navigates to the Password screen -->
   <string name="browser_menu_passwords">Senhals</string>
-  <!--
-    Browser menu label that navigates to the SUMO page for the Firefox for Android release notes.
-    %1$s is the name of the app (for example "Firefox").
-  -->
-  <string name="browser_menu_new_in_firefox" moz:removedIn="141" tools:ignore="UnusedResources">Novetats dins %1$s</string>
-  <!-- Browser menu label that toggles the request for the desktop site of the currently visited page -->
-  <string name="browser_menu_switch_to_desktop_site" moz:removedIn="141" tools:ignore="UnusedResources">Passar en version ordenador</string>
-  <!-- Browser menu label that toggles the request for the mobile site of the currently visited page -->
-  <string name="browser_menu_switch_to_mobile_site">Passar en version mobil</string>
-  <!-- Browser menu label that navigates to the page tools sub-menu -->
-  <string name="browser_menu_tools" moz:removedIn="141" tools:ignore="UnusedResources">Aisinas</string>
-  <!-- Content description (not visible, for screen readers etc.): Back button for all menu redesign sub-menu -->
-  <string name="browser_menu_back_button_content_description" moz:removedIn="141" tools:ignore="UnusedResources">Tornar al menú principal</string>
-  <!-- Content description (not visible, for screen readers etc.) for bottom sheet handlebar main menu. -->
-  <string name="browser_main_menu_handlebar_content_description">Tampar lo panèl del menú principal</string>
   <!-- Content description (not visible, for screen readers etc.) for main menu help button. -->
   <string name="browser_main_menu_content_description_help_button">Ajuda</string>
   <!-- Content description (not visible, for screen readers etc.) for main menu settings button. -->
@@ -345,54 +275,20 @@
   <string name="browser_tools_menu_handlebar_content_description">Tampar lo panèl del menú de las aisinas</string>
   <!-- Content description (not visible, for screen readers etc.) for bottom sheet handlebar custom tab menu. -->
   <string name="browser_custom_tab_menu_handlebar_content_description">Tampar lo panèl del menú dels onglets personalizats</string>
-  <!-- Browser menu description that describes the various tools related menu items inside of the tools sub-menu when the "Report broken site" feature is available -->
-  <string name="browser_menu_tools_description_with_translate_with_report_site_2" moz:removedIn="141" tools:ignore="UnusedResources">Mòde lectura, traduire, senhalar un site copat, imprimir, partejar, dobrir dins una aplicacion</string>
-  <!-- Browser menu description that describes the various tools related menu items inside of the tools sub-menu -->
-  <string name="browser_menu_tools_description_with_translate_without_report_site" moz:removedIn="141" tools:ignore="UnusedResources">Mòde lectura, traduire, imprimir, partejar, dobrir dins una aplicacion</string>
-  <!-- Browser menu description that describes the various tools related menu items inside of the tools sub-menu when the "Report broken site" feature is available -->
-  <string name="browser_menu_tools_description_with_report_site_2" moz:removedIn="141" tools:ignore="UnusedResources">Mòde lectura, senhalar un site copat, imprimir, partejar, dobrir dins una aplicacion</string>
-  <!-- Browser menu description that describes the various tools related menu items inside of the tools sub-menu -->
-  <string name="browser_menu_tools_description_without_report_site" moz:removedIn="141" tools:ignore="UnusedResources">Mòde lectura, imprimir, partejar, dobrir dins una aplicacion</string>
-  <!--
-    Browser menu label that navigates to the save sub-menu, which contains various save related menu items such as
-    bookmarking a page, saving to collection, shortcut or as a PDF, and adding to home screen
-  -->
-  <string name="browser_menu_save" moz:removedIn="141" tools:ignore="UnusedResources">Enregistrar</string>
-  <!-- Browser menu description that describes the various save related menu items inside of the save sub-menu -->
-  <string name="browser_menu_save_description" moz:removedIn="141" tools:ignore="UnusedResources">Apondre als marcapaginas, acorchis, acuèlh, colleccion, PDF</string>
-  <!-- Browser menu label that bookmarks the currently visited page -->
-  <string name="browser_menu_bookmark_this_page" moz:removedIn="141" tools:ignore="UnusedResources">Marcar aquesta pagina</string>
   <!-- Browser menu label that bookmarks the currently visited page -->
   <string name="browser_menu_bookmark_this_page_2">Marcar la pagina</string>
   <!-- Browser menu label that navigates to the edit bookmark screen for the current bookmarked page -->
   <string name="browser_menu_edit_bookmark">Modificar lo marcapagina</string>
   <!-- Browser menu label that the saves the currently visited page as a PDF -->
-  <string name="browser_menu_save_as_pdf" moz:removedIn="141" tools:ignore="UnusedResources">Enregistrar en PDF…</string>
-  <!-- Browser menu label that the saves the currently visited page as a PDF -->
   <string name="browser_menu_save_as_pdf_2">Enregistrar en PDF</string>
-  <!-- Browser menu label for turning ON reader view of the current visited page -->
-  <string name="browser_menu_turn_on_reader_view" moz:removedIn="141" tools:ignore="UnusedResources">Passar a la vista lectura</string>
-  <!-- Browser menu label for turning OFF reader view of the current visited page -->
-  <string name="browser_menu_turn_off_reader_view" moz:removedIn="141" tools:ignore="UnusedResources">Quitar lo mòde lectura</string>
-  <!-- Browser menu button that reopens a private tab as a regular tab -->
-  <string name="browser_menu_open_in_normal_tab" moz:removedIn="141" tools:ignore="UnusedResources">Desplaçar cap a un onglet non privat</string>
-  <!-- Browser menu label for navigating to the translation feature, which provides language translation options the current visited page -->
-  <string name="browser_menu_translate_page" moz:removedIn="141" tools:ignore="UnusedResources">Traduire la pagina…</string>
   <!-- Browser menu label for navigating to the translation feature, which provides language translation options the current visited page -->
   <string name="browser_menu_translate_page_2">Traduire la pagina</string>
   <!-- Browser menu label for navigating to the Web Compat Reporter feature, which provides users the ability to send bug reports for broken sites. -->
   <string name="browser_menu_webcompat_reporter">Senhalar un site copat…</string>
   <!-- Browser menu label for navigating to the Web Compat Reporter feature, which provides users the ability to send bug reports for broken sites. -->
   <string name="browser_menu_webcompat_reporter_2">Senhalar un site copat</string>
-  <!--
-    Browser menu label that is displayed when the current page has been translated by the translation feature.
-    %1$s is the name of the language that page was translated to (e.g. English).
-  -->
-  <string name="browser_menu_translated_to" moz:removedIn="141" tools:ignore="UnusedResources">Traduch en %1$s</string>
   <!-- Browser menu label that is displayed when the current page has been translated by the translation feature. -->
   <string name="browser_menu_translated">Traducha</string>
-  <!-- Browser menu label for the print feature -->
-  <string name="browser_menu_print" moz:removedIn="141" tools:ignore="UnusedResources">Imprimir…</string>
   <!-- Browser menu label for the print feature -->
   <string name="browser_menu_print_2">Imprimir</string>
   <!--
@@ -420,11 +316,6 @@
     Content description for the Home screen button on the browser toolbar
   -->
   <string name="browser_toolbar_home">Ecran d’acuèlh</string>
-  <!--
-    Content description (not visible, for screen readers etc.): Erase button: Erase the browsing
-    history and go back to the home screen.
-  -->
-  <string name="browser_toolbar_erase" moz:removedIn="141" tools:ignore="UnusedResources">Netejar l’istoric de navegacion</string>
   <!-- Content description for the translate page toolbar button that opens the translations dialog when no translation has occurred. -->
   <string name="browser_toolbar_translate">Traduire la pagina</string>
   <!--
@@ -483,24 +374,8 @@
   <!--
     Home onboarding
 
-    Home onboarding dialog welcome screen title text.
+    Content description (not visible, for screen readers etc.): Close button for the home onboarding dialog
   -->
-  <string name="onboarding_home_welcome_title_2" moz:removedIn="141" tools:ignore="UnusedResources">Benvengut dins un Internet mai personal</string>
-  <!-- Home onboarding dialog welcome screen description text. -->
-  <string name="onboarding_home_welcome_description" moz:removedIn="141" tools:ignore="UnusedResources">Mai de colors. Melhora confidencialitat. Meteis engatjament per las personas abans lo profièch.</string>
-  <!-- Home onboarding dialog sign into sync screen title text. -->
-  <string name="onboarding_home_sync_title_3" moz:removedIn="141" tools:ignore="UnusedResources">Bascular d’ecran es mai facil que jamai</string>
-  <!-- Home onboarding dialog sign into sync screen description text. -->
-  <string name="onboarding_home_sync_description" moz:removedIn="141" tools:ignore="UnusedResources">Tornatz ont èretz amb los onglets d’autres aparelhs que figuran ara per la pagina d’acuèlh.</string>
-  <!-- Text for the button to continue the onboarding on the home onboarding dialog. -->
-  <string name="onboarding_home_get_started_button" moz:removedIn="141" tools:ignore="UnusedResources">Per començar</string>
-  <!-- Text for the button to navigate to the sync sign in screen on the home onboarding dialog. -->
-  <string name="onboarding_home_sign_in_button" moz:removedIn="141" tools:ignore="UnusedResources">Connexion</string>
-  <!-- Text for the button to skip the onboarding on the home onboarding dialog. -->
-  <string name="onboarding_home_skip_button" moz:removedIn="141" tools:ignore="UnusedResources">Passar</string>
-  <!-- Onboarding home screen sync popup dialog message, shown on top of Recent Synced Tabs in the Jump back in section. -->
-  <string name="sync_cfr_message" moz:removedIn="142" tools:ignore="UnusedResources">Vòstre onglets son sincronizatz ! Tornatz ont èretz sus vòstre autre aparelh.</string>
-  <!-- Content description (not visible, for screen readers etc.): Close button for the home onboarding dialog -->
   <string name="onboarding_home_content_description_close_button">Tampar</string>
   <!--
     Juno first user onboarding flow experiment, strings are marked unused as they are only referenced by Nimbus experiments.
@@ -569,45 +444,6 @@
   <string name="juno_onboarding_add_search_widget_positive_button" tools:ignore="BrandUsage,UnusedResources">Apondre lo widget Firefox</string>
   <!-- Text for the button to dismiss the screen and move on with the flow -->
   <string name="juno_onboarding_add_search_widget_negative_button" tools:ignore="UnusedResources">Pas ara</string>
-  <!--
-    Onboarding header for the add-ons card used by Nimbus experiments. Nimbus experiments do not support string placeholders.
-    Note: The word "Firefox" should NOT be translated
-  -->
-  <string name="onboarding_add_on_header" moz:removedIn="140" tools:ignore="BrandUsage,UnusedResources">Personalizatz Firefox amb d’extensions</string>
-  <!-- Onboarding sub header for the add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_sub_header" moz:removedIn="140" tools:ignore="UnusedResources">Apondètz d\'extensions tèrças per melhorar la seguretat, la productivitat e mai.</string>
-  <!-- Onboarding add-ons card, for checking more add-ons on, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_explore_more_extensions_2" moz:removedIn="140" tools:ignore="UnusedResources">Exploratz d’autras extensions</string>
-  <!-- Onboarding add-ons card, button for start browsing, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_start_browsing_button_2" moz:removedIn="140" tools:ignore="UnusedResources">Començar de navegar</string>
-  <!-- Ublock name for the onboarding add-ons card, used by Nimbus experiments. Note: The word "Ublock Origin" is a brand name should NOT be translated -->
-  <string name="onboarding_add_on_ublock_name" moz:removedIn="140" tools:ignore="UnusedResources">uBlock Origin</string>
-  <!-- Ublock description for the onboarding add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_ublock_description" moz:removedIn="140" tools:ignore="UnusedResources">Blocatz las publicitats amb eficacitat.</string>
-  <!-- Privacy Badger name for the onboarding add-ons card, used by Nimbus experiments. Note: The word "Privacy Badger" is a brand name should NOT be translated -->
-  <string name="onboarding_add_on_privacy_badger_name" moz:removedIn="140" tools:ignore="UnusedResources">Privacy Badger</string>
-  <!-- Privacy Badger description for the onboarding add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_privacy_badger_description" moz:removedIn="140" tools:ignore="UnusedResources">Una jòia de proteccion contra lo seguiment. Blocatz los elements de seguiment invisibles e las publicitats que vos espian.</string>
-  <!-- Search by Image name for the onboarding add-ons card, used by Nimbus experiments. Note: The word "Search by Image" is a brand name should NOT be translated -->
-  <string name="onboarding_add_on_search_by_image_name" moz:removedIn="140" tools:ignore="UnusedResources">Cercar per imatge</string>
-  <!-- Search by Image description for the onboarding add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_search_by_image_description" moz:removedIn="140" tools:ignore="UnusedResources">Trobatz un imatge interessant e obtenètz mai d’informacion.</string>
-  <!-- Dark Reader name for the onboarding add-ons card, used by Nimbus experiments. Note: The word "Dark Reader" is a brand name should NOT be translated -->
-  <string name="onboarding_add_on_dark_reader_name" moz:removedIn="140" tools:ignore="UnusedResources">Dark Reader</string>
-  <!-- Privacy Badger description for the onboarding add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_dark_reader_description" moz:removedIn="140" tools:ignore="UnusedResources">Mòde fosc personalizat pel web mobil.</string>
-  <!-- Label for the number of reviews for an add-on. %1$s is the formatted number of reviews e.g. "1,234", "12,345", "123,456". -->
-  <string name="onboarding_add_on_reviews_label" moz:removedIn="140" tools:ignore="UnusedResources">Avises : %1$s</string>
-  <!-- Content description for the add-on icon. -->
-  <string name="onboarding_add_on_icon_content_description" moz:removedIn="140" tools:ignore="UnusedResources">Icòna del modul</string>
-  <!-- Content description for the an installed add-on icon. -->
-  <string name="onboarding_installed_add_on_icon_content_description" moz:removedIn="140" tools:ignore="UnusedResources">Icòna de module complementari installat</string>
-  <!-- Content description for the an installing add-on icon. -->
-  <string name="onboarding_installing_add_on_icon_content_description" moz:removedIn="140" tools:ignore="UnusedResources">Icòna d’installacion de modul complementari</string>
-  <!-- Content description for the add add-on button. -->
-  <string name="onboarding_add_on_add_button_content_description" moz:removedIn="140" tools:ignore="UnusedResources">Boton Apondre un modul complementari</string>
-  <!-- Content description for the star rating group. %1$s is the rating. -->
-  <string name="onboarding_add_on_star_rating_content_description" moz:removedIn="140" tools:ignore="UnusedResources">Notat %1$s de 5</string>
   <!-- Title for the privacy preferences dialog shown during onboarding. Note: The word "Firefox" should NOT be translated. -->
   <string name="onboarding_preferences_dialog_title" tools:ignore="BrandUsage">Ajudatz-nos a melhorar Firefox</string>
   <!-- Title for the crash reporting option in the privacy preferences dialog shown during onboarding. -->
@@ -627,8 +463,6 @@
   <!-- Terms of service sub header label. -->
   <string name="onboarding_terms_of_service_sub_header_2">Navegacion web rapida e segura</string>
   <!-- Terms of service onboarding page continue button label. -->
-  <string name="onboarding_term_of_service_agree_and_continue_button_label" moz:removedIn="140" tools:ignore="UnusedResources">Acceptar e contunhar</string>
-  <!-- Terms of service onboarding page continue button label. -->
   <string name="onboarding_term_of_service_agree_and_continue_button_label_2">Contunhar</string>
   <!-- Line one of the terms of service onboarding page. %1$s is replaced by an active link, using onboarding_term_of_service_line_one_link_text_2 as text (“Firefox Terms of Use”). -->
   <string name="onboarding_term_of_service_line_one_2">En contunhant, acceptatz las %1$s.</string>
@@ -647,7 +481,7 @@
   <!-- Marketing onboarding page body. 'Firefox' is intentionally hardcoded. -->
   <string name="onboarding_marketing_body" tools:ignore="BrandUsage,UnusedResources">Quand partejatz cossí avètz descobèrt Firefox e que l’utilizatz, nos ajudatz a far conéisser nòstre navegador a mai de personas.</string>
   <!-- Marketing onboarding page opt-in checkbox. 'Mozilla' is intentionally hardcoded. -->
-  <string name="onboarding_marketing_opt_in_checkbox" tools:ignore="UnusedResources">Partejatz un minimum de donadas amb los partenaris marketing de Mozilla. Aquestas donadas son pas jamai vendudas o utilizadas per vos mostrar de publicitats.</string>
+  <string name="onboarding_marketing_opt_in_checkbox" moz:removedIn="143" tools:ignore="UnusedResources">Partejatz un minimum de donadas amb los partenaris marketing de Mozilla. Aquestas donadas son pas jamai vendudas o utilizadas per vos mostrar de publicitats.</string>
   <!-- Marketing onboarding page clickable link text to "learn more" on how data is used. -->
   <string name="onboarding_marketing_learn_more" tools:ignore="UnusedResources">Cossí utilizam las donadas</string>
   <!-- Marketing onboarding page button label. Button to confirm choice and start browsing. -->
@@ -763,17 +597,15 @@
   <!-- Preference for opening links in a private tab -->
   <string name="preferences_open_links_in_a_private_tab">Dobrir los ligams en navigacion privada</string>
   <!-- Preference for allowing screenshots to be taken while in a private tab -->
-  <string name="preferences_allow_screenshots_in_private_mode">Permetre las capturas d’ecran en navegacion privada</string>
+  <string name="preferences_allow_screenshots_in_private_mode" tools:ignore="UnusedResources" moz:removedIn="144">Permetre las capturas d’ecran en navegacion privada</string>
   <!-- Will inform the user of the risk of activating Allow screenshots in private browsing option -->
-  <string name="preferences_screenshots_in_private_mode_disclaimer">Se permés, los onglets privats seràn tanben visibles quand mantunas aplicacions son dubèrtas</string>
+  <string name="preferences_screenshots_in_private_mode_disclaimer" tools:ignore="UnusedResources" moz:removedIn="144">Se permés, los onglets privats seràn tanben visibles quand mantunas aplicacions son dubèrtas</string>
   <!-- Preference for adding private browsing shortcut -->
   <string name="preferences_add_private_browsing_shortcut">Ajustar un acorchi per la navegacion privada</string>
   <!-- Preference for enabling "HTTPS-Only" mode -->
   <string name="preferences_https_only_title">Mòde HTTPS solament</string>
   <!-- Preference title for using the screen lock to hide tabs in private browsing -->
   <string name="preferences_pbm_lock_screen_title">Utilizar lo verrolhatge d’ecran per amagar los onglets en navegacion privada.</string>
-  <!-- Informs the user how to access the tabs when "Use screen lock to hide tabs in private browsing" is enabled -->
-  <string name="preferences_pbm_lock_screen_summary" moz:removedIn="140" tools:ignore="UnusedResources">Afichar los onglets amb vòstra detada, la reconeissença vocala o un còdi PIN.</string>
   <!-- Label for cookie banner section in quick settings panel. -->
   <string name="cookie_banner_blocker">Blocador de bandièras de cookies</string>
   <!-- Preference for removing cookie/consent banners from sites automatically in private mode. See reduce_cookie_banner_summary for additional context. -->
@@ -847,7 +679,7 @@
   <!-- Preference for settings related to visual options -->
   <string name="preferences_customize">Personalizacion</string>
   <!-- Preference description for banner about signing in -->
-  <string name="preferences_sign_in_description_2">Connectatz-vos per sincronizar onglets, marcapaginas, senhals e plan mai encara.</string>
+  <string name="preferences_sign_in_description_2" tools:ignore="UnusedResources" moz:removedIn="145">Connectatz-vos per sincronizar onglets, marcapaginas, senhals e plan mai encara.</string>
   <!-- Preference shown instead of account display name while account profile information isn't available yet. -->
   <string name="preferences_account_default_name_2">Compte Mozilla</string>
   <!-- Preference text for account title when there was an error syncing FxA -->
@@ -856,8 +688,6 @@
   <string name="preferences_language">Lenga</string>
   <!-- Preference for translations -->
   <string name="preferences_translations">Traduccions</string>
-  <!-- Preference for data choices -->
-  <string name="preferences_data_choices">Donadas collectadas</string>
   <!-- Preference for data collection -->
   <string name="preferences_data_collection">Culhida de donadas</string>
   <!-- Preference for developers -->
@@ -918,8 +748,6 @@
   <string name="preferences_open_links_in_apps_ask">Demandar avant dobertura</string>
   <!-- Preference for open links in third party apps never open in apps option -->
   <string name="preferences_open_links_in_apps_never">Pas jamai</string>
-  <!-- Preference for open download with an external download manager app -->
-  <string name="preferences_external_download_manager" tools:ignore="UnusedResources" moz:removedIn="141">Gestionari de telecargament extèrn</string>
   <!-- Preference for downloads -->
   <string name="preferences_downloads">Telecargaments</string>
   <!-- Preference for enabling gecko engine logs -->
@@ -939,12 +767,8 @@
   <!--
     Add-on Permissions
 
-    The title of the required permissions section from addon's permissions screen
+    The title of the origin permission option allowing a user to enable the extension to run on all sites
   -->
-  <string name="addons_permissions_heading_required" tools:ignore="UnusedResources" moz:removedIn="141">Requesida</string>
-  <!-- The title of the optional permissions section from addon's permissions screen -->
-  <string name="addons_permissions_heading_optional" tools:ignore="UnusedResources" moz:removedIn="141">Facultativa</string>
-  <!-- The title of the origin permission option allowing a user to enable the extension to run on all sites -->
   <string name="addons_permissions_allow_for_all_sites">Autorizar per totes los sites</string>
   <!-- The subtitle for the allow for all sites preference toggle -->
   <string name="addons_permissions_allow_for_all_sites_subtitle">Se vos fisatz d’aquesta extension, podètz li donar l’autorizacion per quin site web que siá.</string>
@@ -980,11 +804,7 @@
   -->
   <string name="customize_toggle_recently_visited">Visitats fa res</string>
   <!-- Title for the customize home screen section with Pocket. -->
-  <string name="customize_toggle_pocket_2" tools:ignore="UnusedResources" moz:removedIn="140">Articles suggerits</string>
-  <!-- Title for the customize home screen section with Pocket. -->
   <string name="customize_toggle_pocket_3">Stories</string>
-  <!-- Summary for the customize home screen section with Pocket. %s is "Pocket". -->
-  <string name="customize_toggle_pocket_summary" tools:ignore="UnusedResources" moz:removedIn="140">Articles provesits per %s</string>
   <!-- Title for the customize home screen section with sponsored Pocket stories. -->
   <string name="customize_toggle_pocket_sponsored">Istòrias pairinejadas</string>
   <!-- Title for the opening wallpaper settings screen -->
@@ -998,9 +818,9 @@
   -->
   <string name="wallpapers_item_name_content_description">Fons : %1$s</string>
   <!-- Snackbar message for when wallpaper is selected -->
-  <string name="wallpaper_updated_snackbar_message">Fons mes a jorn !</string>
+  <string name="wallpaper_updated_snackbar_message" tools:ignore="UnusedResources" moz:removedIn="144">Fons mes a jorn !</string>
   <!-- Snackbar label for action to view selected wallpaper -->
-  <string name="wallpaper_updated_snackbar_action">Visualizar</string>
+  <string name="wallpaper_updated_snackbar_action" tools:ignore="UnusedResources" moz:removedIn="144">Visualizar</string>
   <!-- Snackbar message for when wallpaper couldn't be downloaded -->
   <string name="wallpaper_download_error_snackbar_message">Telecargament impossible del papièr pintrat</string>
   <!-- Snackbar label for action to retry downloading the wallpaper -->
@@ -1052,7 +872,7 @@
   <!-- Title for the "Retro 2004" themed alternative app icon variant in the icon picker screen. This app icon uses the classic Firefox logo from 2004. -->
   <string name="alternative_app_icon_option_retro_2004">Retro 2004</string>
   <!-- Title for the "Retro 2017" themed alternative app icon variant in the icon picker screen. This app icon uses the Firefox logo from 2017, with a more modernized design. -->
-  <string name="alternative_app_icon_option_retro_2017">Retro 2017</string>
+  <string name="alternative_app_icon_option_retro_2017" tools:ignore="UnusedResources" moz:removedIn="144">Retro 2017</string>
   <!-- Title for the "Pixelated" themed alternative app icon variant in the icon picker screen. This app icon features a pixel-art style, resembling retro 8-bit graphics. -->
   <string name="alternative_app_icon_option_pixelated">Pixelizat</string>
   <!-- Title for the "Minimal" themed alternative app icon variant in the icon picker screen. The app icon presents a simplified, flat and monochrome version of the Firefox logo. -->
@@ -1060,7 +880,7 @@
   <!-- Title for the "Pride" themed alternative app icon variant in the icon picker screen. The app icon incorporates a rainbow color scheme in support of the LGBTQ+ community. -->
   <string name="alternative_app_icon_option_pride">Fiertat</string>
   <!-- Title for the "Cute" themed alternative app icon variant in the icon picker screen. The app icon features a playful design with an adorable aesthetic. -->
-  <string name="alternative_app_icon_option_cute">Manhac</string>
+  <string name="alternative_app_icon_option_cute" tools:ignore="UnusedResources" moz:removedIn="144">Manhac</string>
   <!--
     Add-ons general availability nimbus message
 
@@ -1169,10 +989,12 @@
   <string name="exceptions_empty_message_learn_more_link">Ne saber mai</string>
   <!-- Preference switch for usage and technical data collection -->
   <string name="preference_usage_data_2">Enviar de dondas tecnicas e d’interaccion</string>
-  <!-- Preference switch for usage and technical learn more link -->
-  <string name="preference_usage_data_learn_more">Ne saber mai</string>
   <!-- Preference description for marketing data collection. Note: The words "Firefox" should NOT be translated -->
   <string name="preferences_usage_data_description_1" tools:ignore="BrandUsage">Donadas a prepaus de vòstre aparelh, la configuracion materiala e l’utilizacion nos ajudan a melhorar las caracteristicas, la performança, e l’estabilitat de Firefox.</string>
+  <!-- Preference switch for daily usage ping data collection -->
+  <string name="preferences_daily_usage_ping_title">Ping d’usatge jornalièr</string>
+  <string name="preferences_daily_usage_ping_description">Aquò ajuda a Mozilla a estimar los utilizaires actius.</string>
+  <string name="preferences_daily_usage_ping_learn_more">Ne saber mai tocant lo ping d’usatge jornalièr</string>
   <!-- Preference switch for campaign measurement data (marketing data) collection -->
   <string name="preferences_marketing_data_2">Donadas de mesura de las campanhas</string>
   <!--
@@ -1182,16 +1004,6 @@
   <string name="preferences_marketing_data_description_4" tools:ignore="BrandUsage">Partejatz cossí avètz descobèrt Firefox e que l’utilizatz, amb los partenaris marketing tecnologics de Mozilla.</string>
   <!-- Learn more link for marketing data preference -->
   <string name="preferences_marketing_data_learn_more">Ne saber mai tocant las donadas de marketing</string>
-  <!-- Preference switch for daily usage ping data collection -->
-  <string name="preferences_daily_usage_ping_title">Ping d’usatge jornalièr</string>
-  <string name="preferences_daily_usage_ping_description">Aquò ajuda a Mozilla a estimar los utilizaires actius.</string>
-  <string name="preferences_daily_usage_ping_learn_more">Ne saber mai tocant lo ping d’usatge jornalièr</string>
-  <!-- Preference switch title for automatically submitting crash reports -->
-  <string name="preferences_automatically_send_crashes_title">Enviar automaticament los rapòrts de plantatge</string>
-  <!-- Preference switch description for automatically submitting crash reports -->
-  <string name="preferences_automatically_send_crashes_description">Aquò nos permet de diagnosticar e de corregir de problèmas amb lo navegador. Los rapòrts pòdon conténer de donadas personalas o sensiblas.</string>
-  <!-- Learn more link for crash reporting preference -->
-  <string name="onboarding_preferences_dialog_crash_reporting_learn_more">Ne saber mai suls rapòrts de plantatge</string>
   <!-- Title for studies preferences -->
   <string name="preference_experiments_2">Estudis</string>
   <!-- Summary for studies preferences -->
@@ -1201,7 +1013,7 @@
 
     Header of the Sync and save your data preference view
   -->
-  <string name="preferences_sync_2">Sincronizar e enregistrar vòstras donadas</string>
+  <string name="preferences_sync_2" tools:ignore="UnusedResources" moz:removedIn="145">Sincronizar e enregistrar vòstras donadas</string>
   <!-- Preference for reconnecting to FxA sync -->
   <string name="preferences_sync_sign_in_to_reconnect">S’identificar per se reconnectar</string>
   <!-- Preference for removing FxA account -->
@@ -1242,8 +1054,6 @@
   <string name="preference_gestures_dynamic_toolbar">Defilar per amagar la barra d’aisinas</string>
   <!-- Preference for showing the opened tabs by swiping up on the toolbar -->
   <string name="preference_gestures_swipe_toolbar_show_tabs">Dobrir los ligams en lisant la barra d’aisina amont</string>
-  <!-- Preference for using the dynamic toolbars -->
-  <string name="preference_gestures_dynamic_toolbar_2" moz:removedIn="140" tools:ignore="UnusedResources">Desplaçatz-vos per amagar la barra d’adreça e la barra d’aisinas</string>
   <!-- Preference for switching tabs by swiping horizontally on the addressbar -->
   <string name="preference_gestures_swipe_toolbar_switch_tabs_2">Cambiatz d’onglet en lisant la barra d’adreça lateralament</string>
   <!--
@@ -1383,8 +1193,6 @@
   <!-- Learn more link for studies, links to an article for more information about studies. -->
   <string name="studies_learn_more">Ne saber mai</string>
   <!--
-    Sessions
-
     Title for the list of tabs in the current private session used by a11y services
     The %1$s will be replaced by the number of opened private tabs
   -->
@@ -1394,6 +1202,12 @@
     The %1$s will be replaced by the number of opened synced tabs
   -->
   <string name="tabs_header_synced_tabs_counter_title">%1$s onglets sincronizats dobèrts. Tocatz per cambiar d’onglet.</string>
+  <!-- Text for the tabs header private tabs -->
+  <string name="tabs_header_private_tabs_title">Privats</string>
+  <!-- Text for the tabs header normal tabs -->
+  <string name="tabs_header_normal_tabs_title">Onglets</string>
+  <!-- Text for the tabs header synced tabs -->
+  <string name="tabs_header_synced_tabs_title">Sinc.</string>
   <!-- Content description (not visible, for screen readers etc.): Add tab button. Adds a news tab when pressed -->
   <string name="add_tab">Apondre un onglet</string>
   <!-- Content description (not visible, for screen readers etc.): Add tab button. Adds a news tab when pressed -->
@@ -1459,9 +1273,9 @@
   <!-- Text for the button to clear all history -->
   <string name="history_delete_all">Escafar l’istoric</string>
   <!-- Text for the snackbar to confirm that multiple browsing history items has been deleted -->
-  <string name="history_delete_multiple_items_snackbar">Istoric escafat</string>
+  <string name="history_delete_multiple_items_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">Istoric escafat</string>
   <!-- Text for the snackbar to confirm that a single browsing history item has been deleted. %1$s is the shortened URL of the deleted history item. -->
-  <string name="history_delete_single_item_snackbar">%1$s suprimit</string>
+  <string name="history_delete_single_item_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">%1$s suprimit</string>
   <!-- Context description text for the button to delete a single history item -->
   <string name="history_delete_item">Suprimir</string>
   <!--
@@ -1488,6 +1302,8 @@
     %1$d is the number of items deleted.
   -->
   <string name="download_delete_multiple_items_snackbar_2">Elements suprimits : %1$d</string>
+  <!-- Title for the dialog that prompts the user to choose an app for downloading a file. -->
+  <string name="download_app_dialog_title">Telecargar lo fichièr amb\u00a0:</string>
   <!-- Text for the snackbar to confirm that a single download item has been removed. %1$s is the name of the download item. -->
   <string name="download_delete_single_item_snackbar_2">« %1$s » suprimit</string>
   <!-- Text for the snackbar to confirm that downloads are in progress. -->
@@ -1565,13 +1381,6 @@
   <!-- Description of an in progress download item, displayed in the downloads list when the download has just started. -->
   <string name="download_item_in_progress_description_preparing">Preparacion del telecargament…</string>
   <!--
-    Description of an in progress download item, displayed in the downloads list.
-    %1$s is the current file size that has been downloaded.
-    %2$s is the total size of the downloaded file.
-    %3$s is the amount of time remaining to complete the download.
-  -->
-  <string name="download_item_in_progress_description" moz:removedIn="141" tools:ignore="UnusedResources">%1$s / %2$s • %3$s restant</string>
-  <!--
     Description of an in progress download item, displayed in the downloads list when the download time remaining is known.
     %1$s is the current file size that has been downloaded.
     %2$s is the total size of the downloaded file.
@@ -1585,15 +1394,21 @@
   -->
   <string name="download_item_in_progress_description_pending">%1$s / %2$s • en espèra</string>
   <!--
+    Description of an in progress download item, displayed in the downloads list when the total download size is unknown. This results in the estimated download time remaining to be unknown also.
+    %1$s is the current file size that has been downloaded.
+  -->
+  <string name="download_item_in_progress_description_unknown_total_size">%1$s • durada indeterminada</string>
+  <!--
     Description of a paused download item, displayed in the downloads list.
     %1$s is the current file size that has been downloaded.
     %2$s is the total size of the downloaded file.
   -->
   <string name="download_item_paused_description">%1$s / %2$s • en pausa</string>
-  <!-- Text to indicate that an in progress download is paused. -->
-  <string name="download_item_status_paused" moz:removedIn="141" tools:ignore="UnusedResources">en pausa</string>
-  <!-- Text to indicate that the download speed of an in progress download is being calculated. -->
-  <string name="download_item_download_speed_pending" moz:removedIn="141" tools:ignore="UnusedResources">en espèra</string>
+  <!--
+    Description of a paused download item, displayed in the downloads list when the total download size is unknown.
+    %1$s is the current file size that has been downloaded.
+  -->
+  <string name="download_item_paused_description_unknown_total_size">%1$s • en pausa</string>
   <!-- Text to indicate that a download has failed to download. -->
   <string name="download_item_status_failed">Fracàs del telecargament</string>
   <!-- Text for the snackbar action button to view failed download details. -->
@@ -1624,44 +1439,34 @@
     The title of the Web Compat Reporter feature. This is displayed in the top app bar.
   -->
   <string name="webcompat_reporter_screen_title">Senhalar un site copat</string>
-  <!-- The description of the Web Compat Reporter feature. %1$s is the name of the app (for example "Firefox"). -->
-  <string name="webcompat_reporter_description">Ajudatz a melhorar %1$s per totòm. Lo personal de Mozilla utiliza las informacions qu’enviatz per resòlvre de problèmas suls sites web.</string>
   <!-- The text field label of the URL text field. This is displayed above the user-inputted URL. -->
   <string name="webcompat_reporter_label_url">URL</string>
   <!-- The error message of the URL text field when an invalid URL has been entered. -->
   <string name="webcompat_reporter_url_error_invalid">Picatz una URL valida</string>
   <!-- The label/title of a field in the Web Compat Reporter feature for explaining a high-level reason why the site is broken. -->
   <string name="webcompat_reporter_label_whats_broken_2">Qu’es copat ?</string>
-  <!-- The placeholder text for the dropdown where a user selects a high-level reason why the site is broken. -->
-  <string name="webcompat_reporter_choose_reason">Causissètz una rason</string>
   <!-- The error message of the dropdown, prompting the user to select a high-level reason why the site is broken. -->
   <string name="webcompat_reporter_choose_reason_error">Mercés de causir una rason</string>
   <!-- The label/title of an optional field in the Web Compat Reporter feature for adding additional information. -->
   <string name="webcompat_reporter_label_description">Descrivètz lo problèma (facultatiu)</string>
   <!-- The button text for navigating away from the feature to provide more information on the broken site's bug report. -->
-  <string name="webcompat_reporter_send_more_info">Enviar mai d’informacions</string>
+  <string name="webcompat_reporter_send_more_info" moz:removedIn="144" tools:ignore="UnusedResources">Enviar mai d’informacions</string>
   <!-- The button text for the cancel button to leave the Web Compat Reporter feature. -->
   <string name="webcompat_reporter_cancel">Anullar</string>
   <!-- The button text for the send button to submit the provided form data. -->
   <string name="webcompat_reporter_send">Mandar</string>
   <!-- Text for a snackbar to confirm the successful submission of a WebCompat report. -->
-  <string name="webcompat_reporter_success_snackbar_text">Senhalament enviat</string>
+  <string name="webcompat_reporter_success_snackbar_text" moz:removedIn="144" tools:ignore="UnusedResources">Senhalament enviat</string>
   <!-- Button text for closing or dismissing the snackbar shown after successfully submitting a WebCompat report. -->
-  <string name="webcompat_reporter_dismiss_success_snackbar_text">Tampar</string>
+  <string name="webcompat_reporter_dismiss_success_snackbar_text" moz:removedIn="144" tools:ignore="UnusedResources">Tampar</string>
   <!--
     These reason strings are dropdown options on a WebCompat reporter form, indicating what is broken on the site.
 
-    Broken site reason text for site slow or not working
+    Broken site reason text for site doesn’t load
   -->
-  <string name="webcompat_reporter_reason_slow" moz:removedIn="140" tools:ignore="UnusedResources">Site lent o non foncional</string>
-  <!-- Broken site reason text for images or videos -->
-  <string name="webcompat_reporter_reason_media" moz:removedIn="140" tools:ignore="UnusedResources">Imatges o vidèos</string>
-  <!-- Broken site reason text for buttons, links, and other content -->
-  <string name="webcompat_reporter_reason_content" moz:removedIn="140" tools:ignore="UnusedResources">Botons, ligams o autre contengut</string>
-  <!-- Broken site reason text for sign in or sign out -->
-  <string name="webcompat_reporter_reason_account" moz:removedIn="140" tools:ignore="UnusedResources">Connexion o desconnexion</string>
-  <!-- Broken site reason text for ad blocker -->
-  <string name="webcompat_reporter_reason_ad_blocker" moz:removedIn="140" tools:ignore="UnusedResources">Blocador de publicitat</string>
+  <string name="webcompat_reporter_reason_load">Lo site se carga pas</string>
+  <!-- Broken site reason text for site is slow -->
+  <string name="webcompat_reporter_reason_slow2">Lo site es lent</string>
   <!-- Broken site reason text for something else -->
   <string name="webcompat_reporter_reason_other">Quicòm mai</string>
   <!--
@@ -1676,24 +1481,27 @@
   <string name="tab_crash_close">Tampar l’onglet</string>
   <!-- Restore tab button text on the tab crash page -->
   <string name="tab_crash_restore">Restablir l’onglet</string>
-  <!-- Unsubmitted crash dialog title, %s is the name of the app (for example "Firefox"). -->
-  <string name="unsubmitted_crash_dialog_title">%s a degut reaviar</string>
   <!-- Unsubmitted crash dialog checkbox label for automatically sending reports in the future -->
   <string name="unsubmitted_crash_dialog_checkbox_label">Enviar automaticament los rapòrts de plantatge</string>
   <!-- Unsubmitted crash dialog negative button to dismiss the dialog -->
   <string name="unsubmitted_crash_dialog_negative_button">Tampar</string>
+  <!-- Unsubmitted crash dialog negative button to dismiss the dialog -->
+  <string name="unsubmitted_crash_dialog_negative_button_2">TAMPAR</string>
+  <!-- Unsubmitted crash dialog positive button to submit crash report -->
+  <string name="unsubmitted_crash_dialog_positive_button_2">ENVIAR</string>
   <!-- Unsubmitted crash dialog positive button to submit crash report -->
   <string name="unsubmitted_crash_dialog_positive_button">Mandar un rapòrt de plantatge</string>
+  <string name="unsubmitted_crash_dialog_learn_more">Ne saber mai</string>
   <!--
     Bookmarks
 
     Confirmation message for a dialog confirming if the user wants to delete the selected folder
   -->
-  <string name="bookmark_delete_folder_confirmation_dialog">Volètz vertadièrament suprimir aqueste dorsièr ?</string>
+  <string name="bookmark_delete_folder_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">Volètz vertadièrament suprimir aqueste dorsièr ?</string>
   <!-- Confirmation message for a dialog confirming if the user wants to delete multiple items. -->
   <string name="bookmark_delete_folders_confirmation_dialog">Volètz vertadièrament suprimir los elements seleccionats ?</string>
   <!-- Confirmation message for a dialog confirming if the user wants to delete multiple items including folders. %s is the name of the app (for example "Firefox"). -->
-  <string name="bookmark_delete_multiple_folders_confirmation_dialog">%s suprimirà los elements seleccionats.</string>
+  <string name="bookmark_delete_multiple_folders_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">%s suprimirà los elements seleccionats.</string>
   <!-- Text for the cancel button on delete bookmark dialog -->
   <string name="bookmark_delete_negative">Anullar</string>
   <!-- Screen title for adding a bookmarks folder -->
@@ -1723,7 +1531,9 @@
   <!-- Bookmark overflow menu delete button -->
   <string name="bookmark_menu_delete_button">Suprimir</string>
   <!-- Bookmark overflow menu save button -->
-  <string name="bookmark_menu_save_button">Enregistrar</string>
+  <string name="bookmark_menu_save_button" tools:ignore="UnusedResources" moz:removedIn="143">Enregistrar</string>
+  <!-- Label for button to sort bookmarks by user-defined sort order in the bookmark sorting overflow menu. -->
+  <string name="bookmark_sort_menu_custom">Triar per òrdre personalizat</string>
   <!-- Label for button to sort bookmarks by newest in the bookmark sorting overflow menu. -->
   <string name="bookmark_sort_menu_newest">Triar per mai recent</string>
   <!-- Label for button to sort bookmarks by oldest in the bookmark sorting overflow menu. -->
@@ -1742,7 +1552,7 @@
   <!-- Bookmark folder editing screen title -->
   <string name="edit_bookmark_folder_fragment_title">Modificar lo dossièr</string>
   <!-- Bookmark sign in button message -->
-  <string name="bookmark_sign_in_button">Connectatz-vos per veire los marcapaginas sincronizats.</string>
+  <string name="bookmark_sign_in_button" tools:ignore="UnusedResources" moz:removedIn="143">Connectatz-vos per veire los marcapaginas sincronizats.</string>
   <!-- Bookmark URL editing field label -->
   <string name="bookmark_url_label">URL</string>
   <!-- Bookmark FOLDER editing field label -->
@@ -1754,24 +1564,24 @@
   <!-- Label for a text input field for a bookmark or folder name -->
   <string name="bookmark_name_label_normal_case">Nom</string>
   <!-- Bookmark add folder screen title -->
-  <string name="bookmark_add_folder_fragment_label">Apondre un dossièr</string>
+  <string name="bookmark_add_folder_fragment_label" tools:ignore="UnusedResources" moz:removedIn="143">Apondre un dossièr</string>
   <!-- Bookmark select folder screen title -->
   <string name="bookmark_select_folder_fragment_label">Seleccionar un dossièr</string>
   <!-- Bookmark editing error missing title -->
-  <string name="bookmark_empty_title_error">Deu aver un títol</string>
+  <string name="bookmark_empty_title_error" tools:ignore="UnusedResources" moz:removedIn="143">Deu aver un títol</string>
   <!-- Bookmark editing error missing or improper URL -->
   <string name="bookmark_invalid_url_error">URL invalida</string>
   <!-- Bookmark screen message for empty bookmarks folder -->
-  <string name="bookmarks_empty_message">I a pas cap de marcapagina aquí</string>
+  <string name="bookmarks_empty_message" tools:ignore="UnusedResources" moz:removedIn="143">I a pas cap de marcapagina aquí</string>
   <!--
     Bookmark snackbar message on deletion
     %1$s is the host part of the URL of the bookmark deleted, if any
   -->
   <string name="bookmark_deletion_snackbar_message">%1$s suprimit</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks not including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_2">Marcapagina suprimit</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_2" tools:ignore="UnusedResources" moz:removedIn="143">Marcapagina suprimit</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_3">Supression dels dossièrs seleccionats</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_3" tools:ignore="UnusedResources" moz:removedIn="143">Supression dels dossièrs seleccionats</string>
   <!-- Bookmark undo button for deletion snackbar action -->
   <string name="bookmark_undo_deletion">ANULLAR</string>
   <!-- Bookmark snackbar message for deleting a single item. %s is the title of the item being deleted -->
@@ -1779,7 +1589,7 @@
   <!-- Bookmark snackbar message for deleting multiple items. %s is the number of items being deleted -->
   <string name="bookmark_delete_multiple_items">%s elements suprimits</string>
   <!-- Text for the button to search all bookmarks -->
-  <string name="bookmark_search">Picatz de tèrmes de recèrca</string>
+  <string name="bookmark_search" tools:ignore="UnusedResources" moz:removedIn="143">Picatz de tèrmes de recèrca</string>
   <!-- Content description for the bookmark navigation bar back button -->
   <string name="bookmark_navigate_back_button_content_description">Tornar</string>
   <!-- Content description for the bookmark list new folder navigation bar button -->
@@ -1930,12 +1740,10 @@
     %d is a placeholder for the number of tabs selected.
   -->
   <string name="create_collection_save_to_collection_tab_selected">%d onglet seleccionat</string>
-  <!-- Text shown in snackbar when multiple tabs have been saved in a collection -->
-  <string name="create_collection_tabs_saved">Onglets enregistrats !</string>
   <!-- Text shown in snackbar when one or multiple tabs have been saved in a new collection -->
-  <string name="create_collection_tabs_saved_new_collection">Colleccion enregistrada</string>
+  <string name="create_collection_tabs_saved_new_collection" tools:ignore="UnusedResources" moz:removedIn="144">Colleccion enregistrada</string>
   <!-- Text shown in snackbar when one tab has been saved in a collection -->
-  <string name="create_collection_tab_saved">Onglet enregistrat !</string>
+  <string name="create_collection_tab_saved" tools:ignore="UnusedResources" moz:removedIn="144">Onglet enregistrat !</string>
   <!-- Content description (not visible, for screen readers etc.): button to close the collection creator -->
   <string name="create_collection_close">Tampar</string>
   <!-- Button to save currently selected tabs in the "select tabs" step of the collection creator -->
@@ -1982,7 +1790,7 @@
   <!-- An option from the share dialog to sign into sync -->
   <string name="sync_sign_in">Se connectar a Sync</string>
   <!-- An option from the three dot menu to sync and save data -->
-  <string name="sync_menu_sync_and_save_data">Sincronizar e enregistrar las donadas</string>
+  <string name="sync_menu_sync_and_save_data" tools:ignore="UnusedResources" moz:removedIn="145">Sincronizar e enregistrar las donadas</string>
   <!-- An option from the share dialog to send link to all other sync devices -->
   <string name="sync_send_to_all">Enviar a totes los periferics</string>
   <!-- An option from the share dialog to reconnect to sync -->
@@ -2064,9 +1872,7 @@
 
     Text shown in snackbar when user deletes a collection
   -->
-  <string name="snackbar_collection_deleted">Colleccion suprimida</string>
-  <!-- Text shown in snackbar when user renames a collection -->
-  <string name="snackbar_collection_renamed">Colleccion renomenada</string>
+  <string name="snackbar_collection_deleted" tools:ignore="UnusedResources" moz:removedIn="143">Colleccion suprimida</string>
   <!-- Text shown in snackbar when user closes a tab -->
   <string name="snackbar_tab_closed">Onglet tampat</string>
   <!-- Text shown in snackbar when user closes all tabs -->
@@ -2074,19 +1880,17 @@
   <!-- Text shown in snackbar when user closes multiple inactive tabs. %1$s will be replaced with the number of tabs closed. -->
   <string name="snackbar_num_tabs_closed">Onglets tampats : %1$s</string>
   <!-- Text shown in snackbar when user bookmarks a list of tabs. %s is the name of the folder the bookmark was saved into. -->
-  <string name="snackbar_message_bookmarks_saved_in">Marcapagina salvat dins « %s » !</string>
+  <string name="snackbar_message_bookmarks_saved_in" tools:ignore="UnusedResources" moz:removedIn="144">Marcapagina salvat dins « %s » !</string>
   <!-- Text shown in snackbar when user adds a site to shortcuts -->
   <string name="snackbar_added_to_shortcuts">Apondut als acorchis !</string>
   <!-- Text shown in snackbar when user closes a private tab -->
   <string name="snackbar_private_tab_closed">Onglet privat tampat</string>
-  <!-- Text shown in snackbar when user closes all private tabs -->
-  <string name="snackbar_private_tabs_closed" moz:removedIn="141" tools:ignore="UnusedResources">Onglets privats tampats</string>
   <!-- Text shown in snackbar when user erases their private browsing data -->
   <string name="snackbar_private_data_deleted">Donadas de navegacion privada suprimidas</string>
   <!-- Text shown in snackbar to undo deleting a tab, top site or collection -->
   <string name="snackbar_deleted_undo">ANULLAR</string>
   <!-- Text shown in snackbar when user removes a top site -->
-  <string name="snackbar_top_site_removed">Site suprimit</string>
+  <string name="snackbar_top_site_removed" moz:removedIn="144" tools:ignore="UnusedResources">Site suprimit</string>
   <!--
     QR code scanner prompt which appears after scanning a code, but before navigating to it
     %1$s is the name of the app (for example "Firefox"), %2$s is the URL or text scanned
@@ -2103,9 +1907,7 @@
   <!-- Tab collection deletion prompt dialog message. %1$s is the collection name. -->
   <string name="tab_collection_dialog_message">Volètz vertadièrament suprimir %1$s ?</string>
   <!-- Tab collection deletion prompt dialog option to delete the collection -->
-  <string name="tab_collection_dialog_positive">Suprimir</string>
-  <!-- Message for copying the URL via long press on the toolbar -->
-  <string name="url_copied">URL copiada</string>
+  <string name="tab_collection_dialog_positive" tools:ignore="UnusedResources" moz:removedIn="143">Suprimir</string>
   <!-- Sample text for accessibility font size -->
   <string name="accessibility_text_size_sample_text_1">Aquò es un exemple de tèxt. Aquí es una demostracion de coma apareisserà lo tèxt quand aumentatz o redusissètz la talha amb aqueste paramètre.</string>
   <!-- Summary for Accessibility Text Size Scaling Preference -->
@@ -2192,9 +1994,9 @@
 
     Text shown in snackbar when multiple tabs have been sent to device
   -->
-  <string name="sync_sent_tabs_snackbar">Onglets enviats !</string>
+  <string name="sync_sent_tabs_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">Onglets enviats !</string>
   <!-- Text shown in snackbar when one tab has been sent to device -->
-  <string name="sync_sent_tab_snackbar">Onglet enviat !</string>
+  <string name="sync_sent_tab_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">Onglet enviat !</string>
   <!-- Text shown in snackbar when sharing tabs failed -->
   <string name="sync_sent_tab_error_snackbar">Mandadís impossible</string>
   <!-- Text shown in snackbar for the "retry" action that the user has after sharing tabs failed -->
@@ -2535,6 +2337,14 @@
   <string name="saved_login_clear_username">Escafar identificant</string>
   <!-- Content Description (for screenreaders etc) read for the button to clear the hostname field while creating a login -->
   <string name="saved_login_clear_hostname">Escafar lo nom d’òste</string>
+  <!-- Edit text for the login detail menu edit button -->
+  <string name="login_detail_menu_edit_button">Modificar</string>
+  <!-- Delete text for the login detail menu delete button -->
+  <string name="login_detail_menu_delete_button">Suprimir</string>
+  <!-- Content description, used by tools like screenreaders, to go back and exit the add login view. -->
+  <string name="add_login_navigate_back_button_content_description">Tornar</string>
+  <!-- Content description, used by tools like screenreaders, to press on the edit login button. -->
+  <string name="edit_login_button_content_description">Modificar l\'identificant</string>
   <!-- Content Description (for screenreaders etc) read for the button to open a site in logins -->
   <string name="saved_login_open_site">Dobrir lo site dins lo navegador</string>
   <!-- Content Description (for screenreaders etc) read for the button to reveal a password in logins -->
@@ -2717,14 +2527,6 @@
   <string name="search_add_custom_engine_error_empty_search_string">Picatz una cadena de recèrca</string>
   <!-- Text shown when a user leaves out the required template string -->
   <string name="search_add_custom_engine_error_missing_template">Verificatz que la cadena de recèrca correspond al format de l’exemple</string>
-  <!-- Text shown when we aren't able to validate the custom search query. %s is the url of the custom search engine. -->
-  <string name="search_add_custom_engine_error_cannot_reach" moz:removedIn="140" tools:ignore="UnusedResources">Error de connexion a « %s »</string>
-  <!-- Text shown when a user creates a new search engine. %s is the url of the custom search engine. -->
-  <string name="search_add_custom_engine_success_message">%s creat</string>
-  <!-- Text shown when a user successfully edits a custom search engine. %s is the url of the custom search engine. -->
-  <string name="search_edit_custom_engine_success_message">%s enregistrat</string>
-  <!-- Text shown when a user successfully deletes a custom search engine. %s is the url of the custom search engine. -->
-  <string name="search_delete_search_engine_success_message">%s : supression realizada</string>
   <!-- Heading for the instructions to allow a permission -->
   <string name="phone_feature_blocked_intro">Per l’autorizar :</string>
   <!-- First step for the allowing a permission -->
@@ -2752,7 +2554,7 @@
   <!-- label shown when there are not site exceptions to show in the site exception settings -->
   <string name="no_site_exceptions">Cap d’excepcions de site</string>
   <!-- Bookmark deletion confirmation -->
-  <string name="bookmark_deletion_confirmation">Volètz vertadièrament suprimir aqueste marcapagina ?</string>
+  <string name="bookmark_deletion_confirmation" tools:ignore="UnusedResources" moz:removedIn="143">Volètz vertadièrament suprimir aqueste marcapagina ?</string>
   <!-- Browser menu button that adds a shortcut to the home fragment -->
   <string name="browser_menu_add_to_shortcuts">Apondre als acorchis</string>
   <!-- Browser menu button that removes a shortcut from the home fragment -->
@@ -2828,11 +2630,7 @@
   <string name="synced_tabs_expand_group">Desplegar lo grop d’onglets sincronizats</string>
   <!-- Content description for collapsing a group of synced tabs. -->
   <string name="synced_tabs_collapse_group">Plegar lo grop d’onglets sincronizats</string>
-  <!--
-    Top Sites
-
-    Title text displayed in the dialog when shortcuts limit is reached.
-  -->
+  <!-- Title text displayed in the dialog when shortcuts limit is reached. -->
   <string name="shortcut_max_limit_title">Arribat a la limita dels acorchis</string>
   <!-- Content description text displayed in the dialog when shortcut limit is reached. -->
   <string name="shortcut_max_limit_content">Per apondre un acorchi novèl, suprimissètz-ne un. Tocatz e demoratz quichat per ne suprimir un.</string>
@@ -2920,23 +2718,7 @@
   <!-- Content description for the action bar "up" button -->
   <string name="action_bar_up_description">Remontar</string>
   <!-- Content description for privacy content close button -->
-  <string name="privacy_content_close_button_content_description">Tampar</string>
-  <!--
-    Pocket recommended stories
-
-    Header text for a section on the home screen.
-  -->
-  <string name="pocket_stories_header_1" tools:ignore="UnusedResources" moz:removedIn="140">Articles suggerits</string>
-  <!-- Header text for a section on the home screen. -->
-  <string name="pocket_stories_categories_header" moz:removedIn="141" tools:ignore="UnusedResources">Articles per tèma</string>
-  <!-- Text of a button allowing users to access an external url for more Pocket recommendations. -->
-  <string name="pocket_stories_placeholder_text" moz:removedIn="141" tools:ignore="UnusedResources">Ne descobrir mai</string>
-  <!-- Title of an app feature. Smaller than a heading. %s is "Pocket". -->
-  <string name="pocket_stories_feature_title_2" moz:removedIn="140" tools:ignore="UnusedResources">Fonciona gràcia a %s.</string>
-  <!-- Caption for describing a certain feature. %s is a link using pocket_stories_feature_learn_more as text, which will load an url in a new tab when clicked. -->
-  <string name="pocket_stories_feature_caption" moz:removedIn="140" tools:ignore="BrandUsage,UnusedResources">Membre de la familha Firefox. %s</string>
-  <!-- Clickable text for opening an external link for more information about Pocket. -->
-  <string name="pocket_stories_feature_learn_more" moz:removedIn="140" tools:ignore="UnusedResources">Ne saber mai</string>
+  <string name="privacy_content_close_button_content_description" tools:ignore="UnusedResources" moz:removedIn="143">Tampar</string>
   <!-- Text indicating that the Pocket story that also displays this text is a sponsored story by other 3rd party entity. -->
   <string name="pocket_stories_sponsor_indication">Esponsorizat</string>
   <!-- Snackbar message for enrolling in a Nimbus experiment from the secret settings when Studies preference is Off. -->
@@ -2967,10 +2749,6 @@
   <string name="a11y_state_label_expanded">desvolopat</string>
   <!-- Action label for links to a website containing documentation about a wallpaper collection. Talkback will append this to say "Double tap to open link to learn more about this collection". -->
   <string name="a11y_action_label_wallpaper_collection_learn_more">dobrir lo ligam per ne saber mai tocant aquesta colleccion</string>
-  <!-- Action label for links that point to an article. Talkback will append this to say "Double tap to read the article". -->
-  <string name="a11y_action_label_read_article" moz:removedIn="141" tools:ignore="UnusedResources">legir l’article</string>
-  <!-- Action label for links to the Firefox Pocket website. Talkback will append this to say "Double tap to open link to learn more". -->
-  <string name="a11y_action_label_pocket_learn_more" moz:removedIn="140" tools:ignore="UnusedResources">dobrissètz lo ligam per ne saber mai</string>
   <!-- Content description for headings announced by accessibility service. %s is the text of the heading. Talkback will announce the text and then speak the word "Heading" indicating to the user that this text is a heading for a section. -->
   <string name="a11y_heading">%s, títol</string>
   <!-- Title for dialog displayed when trying to access links present in a text. -->
@@ -3220,12 +2998,8 @@
   <!--
     Unified Trust Panel
 
-    Text for the protection panel header when the site is secure.
+    Title text for the protection panel banner when the site is not secure.
   -->
-  <string name="protection_panel_header_secure">Securizat</string>
-  <!-- Text for the protection panel header when the site is not secure. -->
-  <string name="protection_panel_header_not_secure">Non securizat</string>
-  <!-- Title text for the protection panel banner when the site is not secure. -->
   <string name="protection_panel_banner_not_secure_title">Mesfisatz-vos sus aqueste site</string>
   <!-- Description text for the protection panel banner when the site is not secure. -->
   <string name="protection_panel_banner_not_secure_description">La connexion es pas segura.</string>
@@ -3245,10 +3019,6 @@
   <string name="protection_panel_banner_protected_description">Sètz jos proteccion. Se trobam quicòm, vos assabentarem.</string>
   <!-- Label text for the Enhanced Tracking Protection toggle. -->
   <string name="protection_panel_etp_toggle_label">Proteccion renfortida contra lo seguiment</string>
-  <!-- Description text for the Enhanced Tracking Protection toggle when tracking protection is enabled. -->
-  <string name="protection_panel_etp_toggle_enabled_description">Se quicòm sembla copat sus aqueste site, ensajatz de desactivar las proteccions.</string>
-  <!-- Description text for the Enhanced Tracking Protection toggle when tracking protection is disabled. -->
-  <string name="protection_panel_etp_toggle_disabled_description">Las proteccions son desactivadas. Suggerissèm de las reactivar.</string>
   <!--
     Text for displaying the total number of trackers blocked in the protection panel.
     %d is a placeholder for the number of trackers blocked.
@@ -3257,7 +3027,7 @@
   <!-- Text for when no trackers have been blocked. -->
   <string name="protection_panel_no_trackers_blocked">Cap de traçador pas trobat</string>
   <!-- Link text to navigate to privacy and security settings from the protection panel. -->
-  <string name="protection_panel_privacy_and_security_settings">Paramètres de vida privada e de seguretat</string>
+  <string name="protection_panel_privacy_and_security_settings_2">Paramètres de confidencialitat</string>
   <!--
     Text for displaying the total number of trackers blocked in the trackers blocked panel.
     %d is a placeholder for the number of trackers blocked.
@@ -3279,14 +3049,14 @@
   <!-- Button text on the clear site data dialog to allow users to cancel the action and not clear the site data. -->
   <string name="clear_site_data_dialog_negative_button_text">Anullar</string>
   <!-- Snackbar title shown when the site data has been cleared. -->
-  <string name="clear_site_data_snackbar">Cookies e donadas de sites suprimits</string>
+  <string name="clear_site_data_snackbar" moz:removedIn="144" tools:ignore="UnusedResources">Cookies e donadas de sites suprimits</string>
   <!-- Text for the connection security panel when the site is secure. -->
   <string name="connection_security_panel_secure">Connexion segura</string>
   <!-- Text for the connection security panel when the site is not secure. -->
   <string name="connection_security_panel_not_secure">Connexion non segura</string>
   <!--
     Text for the connection security panel to indicate who the certificate was verified by.
-    %s is a placeholder for the name of the certificate authority that verified the ticket
+    %s is a placeholder for the name of the certificate authority that issued the certificate.
   -->
   <string name="connection_security_panel_verified_by">Verificat per %s</string>
   <!--
@@ -3443,6 +3213,18 @@
     The title of the glean debugging feature
   -->
   <string name="glean_debug_tools_title">Aisinas de desbugatge Glean</string>
+  <!-- The text label for displaying home region. -->
+  <string name="debug_drawer_home_region_label">Region d’origina</string>
+  <!-- The text label for displaying current region. -->
+  <string name="debug_drawer_current_region_label">Region actuala</string>
+  <!--
+    Add-ons debug tools
+
+    The description of the Add-ons Tools in the Debug Drawer
+  -->
+  <string name="debug_drawer_addons_tools_title">Aisinas pels moduls</string>
+  <!-- The title of the button used to check for add-on updates. -->
+  <string name="addons_debug_tools_check_for_updates_button">Verificar las mesas a jorn</string>
   <!--
     Messages explaining how to exit fullscreen mode
 
@@ -3548,7 +3330,7 @@
   <!-- The title of the explore extensions task for the setup checklist -->
   <string name="setup_checklist_task_explore_extensions">Percórrer las extensions</string>
   <!-- The title of the search widget task for the setup checklist -->
-  <string name="setup_checklist_task_search_widget">Installar le widget de recèrca</string>
+  <string name="setup_checklist_task_search_widget" moz:removedIn="143" tools:ignore="UnusedResources">Installar le widget de recèrca</string>
   <!--
     ===== Setup checklist feature: Group titles =====
 
@@ -3591,4 +3373,22 @@
   <string name="review_prompt_negative_button">Ai de problèmas</string>
   <!-- Label for a button positively rating the user's experience with the app -->
   <string name="review_prompt_positive_button">Extrà !</string>
+  <!-- Label for a button opening a feedback forum -->
+  <string name="review_prompt_feedback_button">Donar vòstre vejaire</string>
+  <!--
+    Terms of use pop up prompt
+
+    Title for the pop up prompt
+  -->
+  <string name="terms_of_use_prompt_title">I a de nòu</string>
+  <!-- Terms of use link in the pop up prompt message that links to the terms of use -->
+  <string name="terms_of_use_prompt_link_terms_of_use">Condicions d’utilizacion</string>
+  <!-- Privacy notice link in the pop up prompt message that links to the privacy notice -->
+  <string name="terms_of_use_prompt_link_privacy_notice">Politica de confidencialitat</string>
+  <!-- Learn more link in the pop up prompt message that links to a site with more information about the terms of use -->
+  <string name="terms_of_use_prompt_link_learn_more">Ne saber mai</string>
+  <!-- Label for a button to accept the terms of use -->
+  <string name="terms_of_use_prompt_accept">Acceptar</string>
+  <!-- Label for a button to postpone accepting the terms of use -->
+  <string name="terms_of_use_prompt_postpone">Lo me remembrar mai tard</string>
 </resources>

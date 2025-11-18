@@ -9,12 +9,12 @@
 
 #include "mozilla/RefPtr.h"
 #include "mozilla/WeakPtr.h"
-#include "mozilla/dom/PWindowGlobalChild.h"
-#include "nsRefPtrHashtable.h"
-#include "nsWrapperCache.h"
 #include "mozilla/dom/Document.h"
+#include "mozilla/dom/PWindowGlobalChild.h"
 #include "mozilla/dom/WindowGlobalActor.h"
 #include "mozilla/dom/WindowProxyHolder.h"
+#include "nsRefPtrHashtable.h"
+#include "nsWrapperCache.h"
 
 class nsGlobalWindowInner;
 class nsDocShell;
@@ -82,6 +82,9 @@ class WindowGlobalChild final : public WindowGlobalActor,
   int64_t BeforeUnloadListeners() { return mBeforeUnloadListeners; }
   void BeforeUnloadAdded();
   void BeforeUnloadRemoved();
+
+  void NavigateAdded();
+  void NavigateRemoved();
 
   bool IsCurrentGlobal();
 
@@ -159,8 +162,9 @@ class WindowGlobalChild final : public WindowGlobalActor,
 
   // IPC messages
   mozilla::ipc::IPCResult RecvRawMessage(
-      const JSActorMessageMeta& aMeta, const Maybe<ClonedMessageData>& aData,
-      const Maybe<ClonedMessageData>& aStack);
+      const JSActorMessageMeta& aMeta,
+      const UniquePtr<ClonedMessageData>& aData,
+      const UniquePtr<ClonedMessageData>& aStack);
 
   MOZ_CAN_RUN_SCRIPT_BOUNDARY
   mozilla::ipc::IPCResult RecvMakeFrameLocal(

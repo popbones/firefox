@@ -63,10 +63,6 @@ class PropertyIteratorObject;
 class RegExpStatics;
 class SetObject;
 
-namespace gc {
-class FinalizationRegistryGlobalData;
-}  // namespace gc
-
 // Fixed slot capacities for PlainObjects. The global has a cached Shape for
 // PlainObject with default prototype for each of these values.
 enum class PlainObjectSlotsKind {
@@ -226,8 +222,6 @@ class GlobalObjectData {
   // Lazily initialized script source object to use for scripts cloned from the
   // self-hosting stencil.
   GCPtr<ScriptSourceObject*> selfHostingScriptSource;
-
-  UniquePtr<gc::FinalizationRegistryGlobalData> finalizationRegistryData;
 
   // The number of times that one of the following has occurred:
   // 1. A property of this GlobalObject is deleted.
@@ -1141,11 +1135,6 @@ class GlobalObject : public NativeObject {
   static JSObject* getOrCreateRealmKeyObject(JSContext* cx,
                                              Handle<GlobalObject*> global);
 
-  gc::FinalizationRegistryGlobalData* getOrCreateFinalizationRegistryData();
-  gc::FinalizationRegistryGlobalData* maybeFinalizationRegistryData() const {
-    return data().finalizationRegistryData.get();
-  }
-
   static size_t offsetOfGlobalDataSlot() {
     return getFixedSlotOffset(GLOBAL_DATA_SLOT);
   }
@@ -1207,22 +1196,22 @@ JSObject* GenericCreatePrototype(JSContext* cx, JSProtoKey key) {
   return GlobalObject::createBlankPrototype(cx, cx->global(), &T::protoClass_);
 }
 
-// Which object(s) should be marked as having a fuse property in
+// Which object(s) should be marked as having a RealmFuse property in
 // GenericFinishInit.
-enum class WhichHasFuseProperty {
+enum class WhichHasRealmFuseProperty {
   Proto,
   ProtoAndCtor,
 };
 
-template <WhichHasFuseProperty FuseProperty>
+template <WhichHasRealmFuseProperty FuseProperty>
 inline bool GenericFinishInit(JSContext* cx, HandleObject ctor,
                               HandleObject proto) {
-  if constexpr (FuseProperty == WhichHasFuseProperty::ProtoAndCtor) {
-    if (!JSObject::setHasFuseProperty(cx, ctor)) {
+  if constexpr (FuseProperty == WhichHasRealmFuseProperty::ProtoAndCtor) {
+    if (!JSObject::setHasRealmFuseProperty(cx, ctor)) {
       return false;
     }
   }
-  return JSObject::setHasFuseProperty(cx, proto);
+  return JSObject::setHasRealmFuseProperty(cx, proto);
 }
 
 inline JSProtoKey StandardProtoKeyOrNull(const JSObject* obj) {

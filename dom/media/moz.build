@@ -41,6 +41,7 @@ DIRS += [
     "ipc",
     "mediacapabilities",
     "mediacontrol",
+    "mediaelement",
     "mediasink",
     "mediasource",
     "mediasession",
@@ -55,7 +56,6 @@ DIRS += [
     "webcodecs",
     "webm",
     "webrtc",
-    "webspeech",
     "webvtt",
 ]
 
@@ -64,6 +64,9 @@ if CONFIG["MOZ_ANDROID_HLS_SUPPORT"]:
 
 if CONFIG["MOZ_WEBRTC"]:
     DIRS += ["bridge"]
+
+if CONFIG["MOZ_WEBSPEECH"]:
+    DIRS += ["webspeech"]
 
 TEST_DIRS += [
     "gtest",
@@ -90,6 +93,7 @@ MOCHITEST_MANIFESTS += [
     "test/mochitest_media_recorder.toml",
     "test/mochitest_seek.toml",
     "test/mochitest_stream.toml",
+    "test/mochitest_sw.toml",
     "webrtc/tests/mochitests/identity/mochitest.toml",
 ]
 
@@ -234,7 +238,7 @@ EXPORTS.mozilla.dom += [
     "MediaDevices.h",
     "MediaStreamError.h",
     "MediaStreamTrack.h",
-    "MPSCQueue.h",
+    "UnboundedMPSCQueue.h",
     "VideoPlaybackQuality.h",
     "VideoStreamTrack.h",
     "VideoTrack.h",
@@ -325,6 +329,9 @@ if CONFIG["OS_TARGET"] == "Linux":
 else:
     UNIFIED_SOURCES += ["UnderrunHandlerNoop.cpp"]
 
+if CONFIG["ENABLE_TESTS"] or CONFIG["FUZZING"]:
+    UNIFIED_SOURCES += ["MockCubeb.cpp"]
+
 # CubebUtils.cpp needs to be built separately due to what appears to be some kind
 # of compiler bug on Android 4.2 x86 opt. See bug 1408459.
 # DecoderTraits.cpp needs to be built separately because of Mac OS X headers.
@@ -368,6 +375,7 @@ LOCAL_INCLUDES += [
 
 if CONFIG["MOZ_WEBRTC"]:
     LOCAL_INCLUDES += [
+        "!/dist/include/libwebrtc_overrides",
         "/dom/media/webrtc/common",
         "/third_party/abseil-cpp",
         "/third_party/libwebrtc",
@@ -394,10 +402,9 @@ if CONFIG["COMPILE_ENVIRONMENT"]:
         inputs=["/third_party/rust/audioipc2-server"],
     )
 
-if CONFIG["ENABLE_TESTS"]:
-    DIRS += [
-        "test/rdd_process_xpcom",
-    ]
+TEST_DIRS += [
+    "test/rdd_process_xpcom",
+]
 
 if CONFIG["MOZ_SYSTEM_AV1"]:
     CXXFLAGS += CONFIG["MOZ_SYSTEM_LIBAOM_CFLAGS"]

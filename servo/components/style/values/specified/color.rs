@@ -11,7 +11,7 @@ use crate::media_queries::Device;
 use crate::parser::{Parse, ParserContext};
 use crate::values::computed::{Color as ComputedColor, Context, ToComputedValue};
 use crate::values::generics::color::{
-    ColorMixFlags, GenericCaretColor, GenericColorMix, GenericColorOrAuto, GenericLightDark
+    ColorMixFlags, GenericCaretColor, GenericColorMix, GenericColorOrAuto, GenericLightDark,
 };
 use crate::values::specified::Percentage;
 use crate::values::{normalize, CustomIdent};
@@ -108,7 +108,7 @@ impl ToCss for Absolute {
 }
 
 /// Specified color value
-#[derive(Clone, Debug, MallocSizeOf, PartialEq, ToShmem)]
+#[derive(Clone, Debug, MallocSizeOf, PartialEq, ToShmem, ToTyped)]
 pub enum Color {
     /// The 'currentColor' keyword
     CurrentColor,
@@ -447,8 +447,11 @@ impl Color {
                     return Ok(Color::ColorMix(Box::new(mix)));
                 }
 
-                if let Ok(ld) = input.try_parse(|i| GenericLightDark::parse_with(i, |i| Self::parse_internal(context, i, preserve_authored)))
-                {
+                if let Ok(ld) = input.try_parse(|i| {
+                    GenericLightDark::parse_with(i, |i| {
+                        Self::parse_internal(context, i, preserve_authored)
+                    })
+                }) {
                     return Ok(Color::LightDark(Box::new(ld)));
                 }
 
@@ -529,7 +532,7 @@ impl ToCss for Color {
             #[cfg(feature = "gecko")]
             Color::System(system) => system.to_css(dest),
             #[cfg(feature = "gecko")]
-            Color::InheritFromBodyQuirk => Ok(()),
+            Color::InheritFromBodyQuirk => dest.write_str("-moz-inherit-from-body-quirk"),
         }
     }
 }
@@ -553,12 +556,12 @@ impl Color {
                     .unwrap_or(false)
             },
             Self::LightDark(ref ld) => {
-                ld.light.honored_in_forced_colors_mode(allow_transparent) &&
-                    ld.dark.honored_in_forced_colors_mode(allow_transparent)
+                ld.light.honored_in_forced_colors_mode(allow_transparent)
+                    && ld.dark.honored_in_forced_colors_mode(allow_transparent)
             },
             Self::ColorMix(ref mix) => {
-                mix.left.honored_in_forced_colors_mode(allow_transparent) &&
-                    mix.right.honored_in_forced_colors_mode(allow_transparent)
+                mix.left.honored_in_forced_colors_mode(allow_transparent)
+                    && mix.right.honored_in_forced_colors_mode(allow_transparent)
             },
         }
     }
@@ -835,7 +838,7 @@ impl SpecifiedValueInfo for Color {
 /// Specified value for the "color" property, which resolves the `currentcolor`
 /// keyword to the parent color instead of self's color.
 #[cfg_attr(feature = "gecko", derive(MallocSizeOf))]
-#[derive(Clone, Debug, PartialEq, SpecifiedValueInfo, ToCss, ToShmem)]
+#[derive(Clone, Debug, PartialEq, SpecifiedValueInfo, ToCss, ToShmem, ToTyped)]
 pub struct ColorPropertyValue(pub Color);
 
 impl ToComputedValue for ColorPropertyValue {
@@ -919,6 +922,7 @@ bitflags! {
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(C)]
 #[value_info(other_values = "normal")]
@@ -1034,6 +1038,7 @@ impl ToCss for ColorScheme {
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum PrintColorAdjust {
@@ -1056,6 +1061,7 @@ pub enum PrintColorAdjust {
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 pub enum ForcedColorAdjust {

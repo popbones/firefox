@@ -8,64 +8,61 @@
 
 #include "nsCSSRendering.h"
 
+#include <algorithm>
 #include <ctime>
 
+#include "BorderConsts.h"
+#include "ImageContainer.h"
+#include "ImageOps.h"
+#include "ScaledFontBase.h"
+#include "TextDrawTarget.h"
 #include "gfx2DGlue.h"
 #include "gfxContext.h"
+#include "gfxDrawable.h"
+#include "gfxFont.h"
+#include "gfxGradientCache.h"
+#include "gfxUtils.h"
+#include "imgIContainer.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/ComputedStyle.h"
 #include "mozilla/DebugOnly.h"
-#include "mozilla/StaticPrefs_layout.h"
+#include "mozilla/HashFunctions.h"
+#include "mozilla/MathAlgorithms.h"
+#include "mozilla/PresShell.h"
+#include "mozilla/ProfilerLabels.h"
+#include "mozilla/SVGImageContext.h"
+#include "mozilla/ScrollContainerFrame.h"
+#include "mozilla/StaticPtr.h"
+#include "mozilla/css/ImageLoader.h"
+#include "mozilla/dom/DocumentInlines.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/Helpers.h"
 #include "mozilla/gfx/Logging.h"
 #include "mozilla/gfx/PathHelpers.h"
-#include "mozilla/HashFunctions.h"
-#include "mozilla/MathAlgorithms.h"
-#include "mozilla/PresShell.h"
-#include "mozilla/ScrollContainerFrame.h"
-#include "mozilla/StaticPtr.h"
-#include "mozilla/SVGImageContext.h"
-#include "gfxFont.h"
-#include "ScaledFontBase.h"
-#include "skia/include/core/SkTextBlob.h"
-
-#include "BorderConsts.h"
-#include "nsCanvasFrame.h"
-#include "nsStyleConsts.h"
-#include "nsPresContext.h"
-#include "nsIFrame.h"
-#include "nsIFrameInlines.h"
-#include "nsPageSequenceFrame.h"
-#include "nsPoint.h"
-#include "nsRect.h"
-#include "nsFrameManager.h"
-#include "nsGkAtoms.h"
-#include "nsCSSAnonBoxes.h"
-#include "nsIContent.h"
-#include "mozilla/dom/DocumentInlines.h"
-#include "imgIContainer.h"
-#include "ImageOps.h"
-#include "nsCSSColorUtils.h"
-#include "nsITheme.h"
-#include "nsLayoutUtils.h"
 #include "nsBlockFrame.h"
-#include "nsStyleStructInlines.h"
+#include "nsCSSAnonBoxes.h"
+#include "nsCSSColorUtils.h"
 #include "nsCSSFrameConstructor.h"
 #include "nsCSSProps.h"
-#include "nsContentUtils.h"
-#include "gfxDrawable.h"
 #include "nsCSSRenderingBorders.h"
-#include "mozilla/css/ImageLoader.h"
-#include "ImageContainer.h"
-#include "mozilla/ProfilerLabels.h"
-#include "mozilla/StaticPrefs_layout.h"
-#include "gfxUtils.h"
-#include "gfxGradientCache.h"
+#include "nsCanvasFrame.h"
+#include "nsContentUtils.h"
+#include "nsFrameManager.h"
+#include "nsGkAtoms.h"
+#include "nsIContent.h"
+#include "nsIFrame.h"
+#include "nsIFrameInlines.h"
+#include "nsITheme.h"
 #include "nsInlineFrame.h"
+#include "nsLayoutUtils.h"
+#include "nsPageSequenceFrame.h"
+#include "nsPoint.h"
+#include "nsPresContext.h"
+#include "nsRect.h"
 #include "nsRubyTextContainerFrame.h"
-#include <algorithm>
-#include "TextDrawTarget.h"
+#include "nsStyleConsts.h"
+#include "nsStyleStructInlines.h"
+#include "skia/include/core/SkTextBlob.h"
 
 using namespace mozilla;
 using namespace mozilla::css;
@@ -491,7 +488,7 @@ static nscolor MakeBevelColor(mozilla::Side whichSide, StyleBorderStyle style,
 
 static bool GetRadii(nsIFrame* aForFrame, const nsStyleBorder& aBorder,
                      const nsRect& aOrigBorderArea, const nsRect& aBorderArea,
-                     nscoord aRadii[8]) {
+                     nsRectCornerRadii& aRadii) {
   bool haveRoundedCorners;
   nsSize sz = aBorderArea.Size();
   nsSize frameSize = aForFrame->GetSize();
@@ -509,7 +506,7 @@ static bool GetRadii(nsIFrame* aForFrame, const nsStyleBorder& aBorder,
 static bool GetRadii(nsIFrame* aForFrame, const nsStyleBorder& aBorder,
                      const nsRect& aOrigBorderArea, const nsRect& aBorderArea,
                      RectCornerRadii* aBgRadii) {
-  nscoord radii[8];
+  nsRectCornerRadii radii;
   bool haveRoundedCorners =
       GetRadii(aForFrame, aBorder, aOrigBorderArea, aBorderArea, radii);
 
@@ -602,21 +599,14 @@ nsRect nsCSSRendering::BoxDecorationRectForBackground(
  * this border/outline, given the various input bits.
  */
 /* static */
-void nsCSSRendering::ComputePixelRadii(const nscoord* aAppUnitsRadii,
+void nsCSSRendering::ComputePixelRadii(const nsRectCornerRadii& aRadii,
                                        nscoord aAppUnitsPerPixel,
                                        RectCornerRadii* oBorderRadii) {
-  Float radii[8];
-  for (const auto corner : mozilla::AllPhysicalHalfCorners()) {
-    radii[corner] = Float(aAppUnitsRadii[corner]) / aAppUnitsPerPixel;
+  for (const auto corner : mozilla::AllPhysicalCorners()) {
+    (*oBorderRadii)[corner] =
+        LayoutDeviceSize::FromAppUnits(aRadii[corner], aAppUnitsPerPixel)
+            .ToUnknownSize();
   }
-
-  (*oBorderRadii)[C_TL] = Size(radii[eCornerTopLeftX], radii[eCornerTopLeftY]);
-  (*oBorderRadii)[C_TR] =
-      Size(radii[eCornerTopRightX], radii[eCornerTopRightY]);
-  (*oBorderRadii)[C_BR] =
-      Size(radii[eCornerBottomRightX], radii[eCornerBottomRightY]);
-  (*oBorderRadii)[C_BL] =
-      Size(radii[eCornerBottomLeftX], radii[eCornerBottomLeftY]);
 }
 
 static Maybe<nsStyleBorder> GetBorderIfVisited(const ComputedStyle& aStyle) {
@@ -795,9 +785,9 @@ static nsCSSBorderRenderer ConstructBorderRenderer(
   // Convert to dev pixels.
   nscoord oneDevPixel = aPresContext->DevPixelsToAppUnits(1);
   Rect joinedBorderAreaPx = NSRectToRect(joinedBorderArea, oneDevPixel);
-  Float borderWidths[4] = {
+  Margin borderWidths(
       Float(border.top) / oneDevPixel, Float(border.right) / oneDevPixel,
-      Float(border.bottom) / oneDevPixel, Float(border.left) / oneDevPixel};
+      Float(border.bottom) / oneDevPixel, Float(border.left) / oneDevPixel);
   Rect dirtyRect = NSRectToRect(aDirtyRect, oneDevPixel);
 
   StyleBorderStyle borderStyles[4];
@@ -998,12 +988,12 @@ nsCSSRendering::CreateBorderRendererForNonThemedOutline(
   const nscoord oneDevPixel = aPresContext->AppUnitsPerDevPixel();
   Rect oRect(NSRectToRect(outerRect, oneDevPixel));
 
-  const Float outlineWidths[4] = {
+  const Margin outlineWidths(
       Float(width) / oneDevPixel, Float(width) / oneDevPixel,
-      Float(width) / oneDevPixel, Float(width) / oneDevPixel};
+      Float(width) / oneDevPixel, Float(width) / oneDevPixel);
 
   // convert the radii
-  nscoord twipsRadii[8];
+  nsRectCornerRadii twipsRadii;
 
   // get the radius for our outline
   if (aForFrame->GetBorderRadii(twipsRadii)) {
@@ -1013,10 +1003,10 @@ nsCSSRendering::CreateBorderRendererForNonThemedOutline(
     const auto devPxOffset = LayoutDeviceSize::FromAppUnits(
         effectiveOffset, aPresContext->AppUnitsPerDevPixel());
 
-    const Float widths[4] = {outlineWidths[0] + devPxOffset.Height(),
-                             outlineWidths[1] + devPxOffset.Width(),
-                             outlineWidths[2] + devPxOffset.Height(),
-                             outlineWidths[3] + devPxOffset.Width()};
+    const Margin widths(outlineWidths.top + devPxOffset.Height(),
+                        outlineWidths.right + devPxOffset.Width(),
+                        outlineWidths.bottom + devPxOffset.Height(),
+                        outlineWidths.left + devPxOffset.Width());
     nsCSSBorderRenderer::ComputeOuterRadii(innerRadii, widths, &outlineRadii);
   }
 
@@ -1065,13 +1055,9 @@ void nsCSSRendering::PaintFocus(nsPresContext* aPresContext,
   Rect focusRect(NSRectToRect(aFocusRect, oneDevPixel));
 
   RectCornerRadii focusRadii;
-  {
-    nscoord twipsRadii[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    ComputePixelRadii(twipsRadii, oneDevPixel, &focusRadii);
-  }
-  Float focusWidths[4] = {
+  Margin focusWidths(
       Float(oneCSSPixel) / oneDevPixel, Float(oneCSSPixel) / oneDevPixel,
-      Float(oneCSSPixel) / oneDevPixel, Float(oneCSSPixel) / oneDevPixel};
+      Float(oneCSSPixel) / oneDevPixel, Float(oneCSSPixel) / oneDevPixel);
 
   StyleBorderStyle focusStyles[4] = {
       StyleBorderStyle::Dotted, StyleBorderStyle::Dotted,
@@ -1411,7 +1397,7 @@ bool nsCSSRendering::GetBorderRadii(const nsRect& aFrameRect,
                                     const nsRect& aBorderRect, nsIFrame* aFrame,
                                     RectCornerRadii& aOutRadii) {
   const nscoord oneDevPixel = aFrame->PresContext()->DevPixelsToAppUnits(1);
-  nscoord twipsRadii[8];
+  nsRectCornerRadii twipsRadii;
   NS_ASSERTION(
       aBorderRect.Size() == aFrame->VisualBorderRectRelativeToSelf().Size(),
       "unexpected size");
@@ -1448,7 +1434,7 @@ void nsCSSRendering::PaintBoxShadowOuter(nsPresContext* aPresContext,
   RectCornerRadii borderRadii;
   const nscoord oneDevPixel = aPresContext->DevPixelsToAppUnits(1);
   if (hasBorderRadius) {
-    nscoord twipsRadii[8];
+    nsRectCornerRadii twipsRadii;
     NS_ASSERTION(
         aFrameArea.Size() == aForFrame->VisualBorderRectRelativeToSelf().Size(),
         "unexpected size");
@@ -1614,14 +1600,8 @@ void nsCSSRendering::PaintBoxShadowOuter(nsPresContext* aPresContext,
       RectCornerRadii clipRectRadii;
       if (hasBorderRadius) {
         Float spreadDistance = Float(shadowSpread / oneDevPixel);
-
-        Float borderSizes[4];
-
-        borderSizes[eSideLeft] = spreadDistance;
-        borderSizes[eSideTop] = spreadDistance;
-        borderSizes[eSideRight] = spreadDistance;
-        borderSizes[eSideBottom] = spreadDistance;
-
+        Margin borderSizes(spreadDistance, spreadDistance, spreadDistance,
+                           spreadDistance);
         nsCSSBorderRenderer::ComputeOuterRadii(borderRadii, borderSizes,
                                                &clipRectRadii);
       }
@@ -1669,7 +1649,7 @@ bool nsCSSRendering::GetShadowInnerRadii(nsIFrame* aFrame,
                                          RectCornerRadii& aOutInnerRadii) {
   // Get any border radius, since box-shadow must also have rounded corners
   // if the frame does.
-  nscoord twipsRadii[8];
+  nsRectCornerRadii twipsRadii;
   nsRect frameRect =
       BoxDecorationRectForBorder(aFrame, aFrameArea, aFrame->GetSkipSides());
   nsSize sz = frameRect.Size();
@@ -1685,9 +1665,9 @@ bool nsCSSRendering::GetShadowInnerRadii(nsIFrame* aFrame,
   if (hasBorderRadius) {
     ComputePixelRadii(twipsRadii, oneDevPixel, &borderRadii);
 
-    Float borderSizes[4] = {
+    Margin borderSizes(
         Float(border.top) / oneDevPixel, Float(border.right) / oneDevPixel,
-        Float(border.bottom) / oneDevPixel, Float(border.left) / oneDevPixel};
+        Float(border.bottom) / oneDevPixel, Float(border.left) / oneDevPixel);
     nsCSSBorderRenderer::ComputeInnerRadii(borderRadii, borderSizes,
                                            &aOutInnerRadii);
   }
@@ -1750,23 +1730,23 @@ void nsCSSRendering::PaintBoxShadowInner(nsPresContext* aPresContext,
     RectCornerRadii clipRectRadii;
     if (hasBorderRadius) {
       // Calculate the radii the inner clipping rect will have
-      Float borderSizes[4] = {0, 0, 0, 0};
+      Margin borderSizes;
 
       // See PaintBoxShadowOuter and bug 514670
       if (innerRadii[C_TL].width > 0 || innerRadii[C_BL].width > 0) {
-        borderSizes[eSideLeft] = spreadDistance;
+        borderSizes.left = spreadDistance;
       }
 
       if (innerRadii[C_TL].height > 0 || innerRadii[C_TR].height > 0) {
-        borderSizes[eSideTop] = spreadDistance;
+        borderSizes.top = spreadDistance;
       }
 
       if (innerRadii[C_TR].width > 0 || innerRadii[C_BR].width > 0) {
-        borderSizes[eSideRight] = spreadDistance;
+        borderSizes.right = spreadDistance;
       }
 
       if (innerRadii[C_BL].height > 0 || innerRadii[C_BR].height > 0) {
-        borderSizes[eSideBottom] = spreadDistance;
+        borderSizes.bottom = spreadDistance;
       }
 
       nsCSSBorderRenderer::ComputeInnerRadii(innerRadii, borderSizes,
@@ -1784,7 +1764,7 @@ void nsCSSRendering::PaintBoxShadowInner(nsPresContext* aPresContext,
           std::max(clipRectRadii[C_BL].height, clipRectRadii[C_BR].height), 0));
     }
 
-    // When there's a blur radius, gfxAlphaBoxBlur leaves the skiprect area
+    // When there's a blur radius, gfxGaussianBlur leaves the skiprect area
     // unchanged. And by construction the gfxSkipRect is not touched by the
     // rendered shadow (even after blurring), so those pixels must be completely
     // transparent in the shadow, so drawing them changes nothing.
@@ -2239,7 +2219,7 @@ void nsCSSRendering::GetImageLayerClip(
     aClipState->mBGClipArea.Deflate(border);
 
     if (haveRoundedCorners) {
-      nsIFrame::AdjustBorderRadii(aClipState->mRadii, -border);
+      aClipState->mRadii.AdjustInwards(border);
     }
   }
 
@@ -3085,8 +3065,7 @@ nsBackgroundLayerState nsCSSRendering::PrepareImageLayer(
   // Only do partial bg image drawing in content documents: non-content
   // documents are viewed as UI of the browser and a partial draw of a bg image
   // might look weird in that context.
-  if (StaticPrefs::layout_display_partial_background_images() &&
-      XRE_IsContentProcess() && !aPresContext->IsChrome()) {
+  if (XRE_IsContentProcess() && !aPresContext->IsChrome()) {
     irFlags |= nsImageRenderer::FLAG_DRAW_PARTIAL_FRAMES;
   }
 
@@ -4011,38 +3990,39 @@ static void SkipInk(nsIFrame* aFrame, DrawTarget& aDrawTarget,
                     const nsTArray<SkScalar>& aIntercepts, Float aPadding,
                     Rect& aRect) {
   nsCSSRendering::PaintDecorationLineParams clipParams = aParams;
-  int length = aIntercepts.Length();
+  const unsigned length = aIntercepts.Length();
 
-  SkScalar startIntercept = 0;
-  SkScalar endIntercept = 0;
-
-  // keep track of the direction we are drawing the clipped rects in
-  // for sideways text, our intercepts from the first glyph are actually
-  // decreasing (towards the top edge of the page), so we use a negative
-  // direction
-  Float dir = 1.0f;
   Float lineStart = aParams.vertical ? aParams.pt.y : aParams.pt.x;
   Float lineEnd = lineStart + aParams.lineSize.width;
-  if (aParams.sidewaysLeft) {
-    dir = -1.0f;
-    std::swap(lineStart, lineEnd);
-  }
 
-  for (int i = 0; i <= length; i += 2) {
-    // handle start/end edge cases and set up general case
-    startIntercept = (i > 0) ? (dir * aIntercepts[i - 1]) + lineStart
-                             : lineStart - (dir * aPadding);
-    endIntercept = (i < length) ? (dir * aIntercepts[i]) + lineStart
-                                : lineEnd + (dir * aPadding);
+  // Compute the min/max positions based on trim.
+  const Float trimLineStart = lineStart + (aParams.trimLeft - aPadding);
+  const Float trimLineEnd = lineEnd - (aParams.trimRight - aPadding);
+
+  for (unsigned i = 0; i <= length; i += 2) {
+    // Handle start/end edge cases and set up general case.
+    // While we use the trim start/end values, it is possible the trim cuts
+    // of the first intercept and into the next, so we will need to clamp
+    // the dimensions in the other case too.
+    SkScalar startIntercept = trimLineStart;
+    if (i > 0) {
+      startIntercept = std::max(aIntercepts[i - 1] + lineStart, startIntercept);
+    }
+    SkScalar endIntercept = trimLineEnd;
+    if (i < length) {
+      endIntercept = std::min(aIntercepts[i] + lineStart, endIntercept);
+    }
 
     // remove padding at both ends for width
     // the start of the line is calculated so the padding removes just
     // enough so that the line starts at its normal position
     clipParams.lineSize.width =
-        (dir * (endIntercept - startIntercept)) - (2.0 * aPadding);
+        endIntercept - startIntercept - (2.0 * aPadding);
 
     // Don't draw decoration lines that have a smaller width than 1, or half
     // the line-end padding dimension.
+    // This will catch the case of an intercept being fully removed by the
+    // trim values, in which case the width will be negative.
     if (clipParams.lineSize.width < std::max(aPadding * 0.5, 1.0)) {
       continue;
     }
@@ -4051,8 +4031,9 @@ static void SkipInk(nsIFrame* aFrame, DrawTarget& aDrawTarget,
     // padding; snap the rect edges to device pixels for consistent rendering
     // of dots across separate fragments of a dotted line.
     if (aParams.vertical) {
-      clipParams.pt.y = aParams.sidewaysLeft ? endIntercept + aPadding
-                                             : startIntercept + aPadding;
+      clipParams.pt.y = aParams.sidewaysLeft
+                            ? lineEnd - (endIntercept - lineStart) + aPadding
+                            : startIntercept + aPadding;
       aRect.y = std::floor(clipParams.pt.y + 0.5);
       aRect.SetBottomEdge(
           std::floor(clipParams.pt.y + clipParams.lineSize.width + 0.5));
@@ -4678,6 +4659,11 @@ gfxRect nsCSSRendering::GetTextDecorationRectInternal(
     MOZ_ASSERT_UNREACHABLE("Invalid text decoration value");
   }
 
+  // Take text decoration trim into account.
+  r.x += aParams.sidewaysLeft ? aParams.trimRight : aParams.trimLeft;
+  r.width -= aParams.trimLeft + aParams.trimRight;
+  r.width = std::max(r.width, 0.0);
+
   // Convert line-relative coordinate system (x = line-right, y = line-up)
   // to physical coords, and move the decoration rect to the calculated
   // offset from baseline.
@@ -4722,7 +4708,7 @@ static inline IntSize ComputeBlurRadius(nscoord aBlurRadius,
                                         gfxFloat aScaleY = 1.0) {
   gfxPoint scaledBlurStdDev =
       ComputeBlurStdDev(aBlurRadius, aAppUnitsPerDevPixel, aScaleX, aScaleY);
-  return gfxAlphaBoxBlur::CalculateBlurRadius(scaledBlurStdDev);
+  return gfxGaussianBlur::CalculateBlurRadius(scaledBlurStdDev);
 }
 
 // -----
@@ -4768,16 +4754,13 @@ gfxContext* nsContextBoxBlur::Init(const nsRect& aRect, nscoord aSpreadRadius,
 
   // Create the temporary surface for blurring
   dirtyRect = transform.TransformBounds(dirtyRect);
-  bool useHardwareAccel = !(aFlags & DISABLE_HARDWARE_ACCELERATION_BLUR);
   if (aSkipRect) {
     gfxRect skipRect = transform.TransformBounds(*aSkipRect);
-    mOwnedContext =
-        mAlphaBoxBlur.Init(aDestinationCtx, rect, spreadRadius, blurRadius,
-                           &dirtyRect, &skipRect, useHardwareAccel);
+    mOwnedContext = mGaussianBlur.Init(aDestinationCtx, rect, spreadRadius,
+                                       blurRadius, &dirtyRect, &skipRect);
   } else {
-    mOwnedContext =
-        mAlphaBoxBlur.Init(aDestinationCtx, rect, spreadRadius, blurRadius,
-                           &dirtyRect, nullptr, useHardwareAccel);
+    mOwnedContext = mGaussianBlur.Init(aDestinationCtx, rect, spreadRadius,
+                                       blurRadius, &dirtyRect, nullptr);
   }
   mContext = mOwnedContext.get();
 
@@ -4800,7 +4783,7 @@ void nsContextBoxBlur::DoPaint() {
     mDestinationCtx->SetMatrix(Matrix());
   }
 
-  mAlphaBoxBlur.Paint(mDestinationCtx);
+  mGaussianBlur.Paint(mDestinationCtx);
 }
 
 gfxContext* nsContextBoxBlur::GetContext() { return mContext; }
@@ -4876,7 +4859,7 @@ void nsContextBoxBlur::BlurRectangle(
     aCornerRadii->Scale(scaleX, scaleY);
   }
 
-  gfxAlphaBoxBlur::BlurRectangle(aDestinationCtx, shadowThebesRect,
+  gfxGaussianBlur::BlurRectangle(aDestinationCtx, shadowThebesRect,
                                  aCornerRadii, blurStdDev, aShadowColor,
                                  dirtyRect, skipRect);
 }
@@ -4965,14 +4948,14 @@ bool nsContextBoxBlur::InsetBoxBlur(
   transformedShadowClipRect.Round();
   transformedSkipRect.RoundIn();
 
-  for (size_t i = 0; i < 4; i++) {
-    aInnerClipRectRadii[i].width =
-        std::floor(scale.xScale * aInnerClipRectRadii[i].width);
-    aInnerClipRectRadii[i].height =
-        std::floor(scale.yScale * aInnerClipRectRadii[i].height);
+  for (auto corner : AllPhysicalCorners()) {
+    aInnerClipRectRadii[corner].width =
+        std::floor(scale.xScale * aInnerClipRectRadii[corner].width);
+    aInnerClipRectRadii[corner].height =
+        std::floor(scale.yScale * aInnerClipRectRadii[corner].height);
   }
 
-  mAlphaBoxBlur.BlurInsetBox(aDestinationCtx, transformedDestRect,
+  mGaussianBlur.BlurInsetBox(aDestinationCtx, transformedDestRect,
                              transformedShadowClipRect, blurRadius,
                              aShadowColor,
                              aHasBorderRadius ? &aInnerClipRectRadii : nullptr,

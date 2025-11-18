@@ -52,8 +52,11 @@ class ViewportFrame : public nsContainerFrame {
   void BuildDisplayList(nsDisplayListBuilder* aBuilder,
                         const nsDisplayListSet& aLists) override;
 
-  nsDisplayWrapList* BuildDisplayListForTopLayer(nsDisplayListBuilder* aBuilder,
-                                                 bool* aIsOpaque = nullptr);
+  nsDisplayWrapList* BuildDisplayListForContentTopLayer(
+      nsDisplayListBuilder* aBuilder, bool* aIsOpaque = nullptr);
+
+  nsDisplayWrapList* BuildDisplayListForViewTransitionsAndNACTopLayer(
+      nsDisplayListBuilder* aBuilder);
 
   nscoord IntrinsicISize(const IntrinsicSizeInput& aInput,
                          IntrinsicISizeType aType) override;
@@ -70,7 +73,14 @@ class ViewportFrame : public nsContainerFrame {
    * GetContentDocumentFixedPositionMargins adjustments.
    * @return the rect to use as containing block rect
    */
-  nsRect AdjustReflowInputAsContainingBlock(ReflowInput* aReflowInput) const;
+  nsRect AdjustReflowInputAsContainingBlock(ReflowInput& aReflowInput) const;
+
+  /*
+   * This is similar to AdjustReflowInputAsContainingBlock, but it doesn't
+   * change the input ReflowInput. Only return the containing block rect.
+   */
+  nsRect GetContainingBlockAdjustedForScrollbars(
+      const ReflowInput& aReflowInput) const;
 
   /**
    * Update our style (and recursively the styles of any anonymous boxes we
@@ -91,10 +101,6 @@ class ViewportFrame : public nsContainerFrame {
   virtual nsresult GetFrameName(nsAString& aResult) const override;
 #endif
 
- protected:
-  ViewportFrame(ComputedStyle* aStyle, nsPresContext* aPresContext, ClassID aID)
-      : nsContainerFrame(aStyle, aPresContext, aID), mView(nullptr) {}
-
   /**
    * Calculate how much room is available for fixed frames. That means
    * determining if the viewport is scrollable and whether the vertical and/or
@@ -102,12 +108,19 @@ class ViewportFrame : public nsContainerFrame {
    * available isize for aReflowInput accordingly.
    * @return the current scroll position, or (0,0) if not scrollable.
    */
-  nsPoint AdjustReflowInputForScrollbars(ReflowInput* aReflowInput) const;
+  nsPoint AdjustReflowInputForScrollbars(ReflowInput& aReflowInput) const;
+
+ protected:
+  ViewportFrame(ComputedStyle* aStyle, nsPresContext* aPresContext, ClassID aID)
+      : nsContainerFrame(aStyle, aPresContext, aID), mView(nullptr) {}
 
   nsView* GetViewInternal() const override { return mView; }
   void SetViewInternal(nsView* aView) override { mView = aView; }
 
  private:
+  nsDisplayWrapList* MaybeWrapTopLayerList(nsDisplayListBuilder*,
+                                           uint16_t aIndex, nsDisplayList&);
+
   mozilla::FrameChildListID GetAbsoluteListID() const override {
     return FrameChildListID::Fixed;
   }

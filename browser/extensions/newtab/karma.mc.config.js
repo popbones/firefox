@@ -156,7 +156,7 @@ module.exports = function (config) {
             /**
              * WallpaperFeed.sys.mjs is tested via an xpcshell test
              */
-            "lib/WallpaperFeed.sys.mjs": {
+            "lib/Wallpapers/WallpaperFeed.sys.mjs": {
               statements: 0,
               lines: 0,
               functions: 0,
@@ -175,20 +175,6 @@ module.exports = function (config) {
               functions: 0,
               branches: 0,
             },
-            "content-src/components/DiscoveryStreamComponents/FeatureHighlight/WallpaperFeatureHighlight.jsx":
-              {
-                statements: 0,
-                lines: 0,
-                functions: 0,
-                branches: 0,
-              },
-            "content-src/components/DiscoveryStreamComponents/FeatureHighlight/DownloadMobilePromoHighlight.jsx":
-              {
-                statements: 0,
-                lines: 0,
-                functions: 0,
-                branches: 0,
-              },
             "content-src/components/DiscoveryStreamComponents/FeatureHighlight/FollowSectionButtonHighlight.jsx":
               {
                 statements: 88,
@@ -200,6 +186,14 @@ module.exports = function (config) {
                 statements: 88,
                 lines: 88,
                 functions: 80,
+              },
+            // for all other components in FeatureHighlight that dont have bespoke functionality
+            "content-src/components/DiscoveryStreamComponents/FeatureHighlight/!(FeatureHighlight).jsx":
+              {
+                statements: 0,
+                lines: 0,
+                functions: 0,
+                branches: 0,
               },
             "content-src/components/DiscoveryStreamComponents/ReportContent/ReportContent.jsx":
               {
@@ -237,8 +231,8 @@ module.exports = function (config) {
               },
             "content-src/components/DiscoveryStreamComponents/CardSections/CardSections.jsx":
               {
-                statements: 83.82,
-                lines: 83.33,
+                statements: 83.11,
+                lines: 82.52,
                 functions: 79.31,
                 branches: 52.8,
               },
@@ -251,13 +245,26 @@ module.exports = function (config) {
               },
             "content-src/components/DiscoveryStreamComponents/AdBanner/AdBanner.jsx":
               {
+                statements: 94.12,
+                lines: 94.12,
+                functions: 75,
                 branches: 60,
               },
             "content-src/components/DiscoveryStreamComponents/AdBannerContextMenu/AdBannerContextMenu.jsx":
               {
-                statements: 86,
-                lines: 86,
+                statements: 84,
+                lines: 84,
                 functions: 83,
+              },
+            /**
+             * PromoCard currently has no functionality and is a placeholder component
+             */
+            "content-src/components/DiscoveryStreamComponents/PromoCard/PromoCard.jsx":
+              {
+                statements: 0,
+                lines: 0,
+                functions: 0,
+                branches: 0,
               },
             "content-src/components/DiscoveryStreamComponents/DSThumbsUpDownButtons/DSThumbsUpDownButtons.jsx":
               {
@@ -276,7 +283,7 @@ module.exports = function (config) {
               statements: 80.95,
               lines: 80.95,
               functions: 71.43,
-              branches: 71,
+              branches: 70.9,
             },
             /**
              * WallpaperCategories.jsx is tested via an xpcshell test
@@ -312,17 +319,32 @@ module.exports = function (config) {
               functions: 0,
               branches: 0,
             },
-            "content-src/components/CustomizeMenu/**/*.jsx": {
+            /**
+             * TODO: Bug 1985362 - Write SectionsMgmtPanel Unit Tests
+             */
+            "content-src/components/CustomizeMenu/SectionsMgmtPanel/*.jsx": {
               statements: 0,
               lines: 0,
               functions: 0,
               branches: 0,
             },
+            "content-src/components/CustomizeMenu/ContentSection/*.jsx": {
+              statements: 80,
+              lines: 80,
+              functions: 99,
+              branches: 64,
+            },
+            "content-src/components/CustomizeMenu/**/*.jsx": {
+              statements: 68,
+              lines: 66,
+              functions: 80,
+              branches: 16,
+            },
             "content-src/components/CustomizeMenu/*.jsx": {
-              statements: 0,
-              lines: 0,
-              functions: 0,
-              branches: 0,
+              statements: 98,
+              lines: 98,
+              functions: 98,
+              branches: 98,
             },
             "content-src/lib/link-menu-options.js": {
               statements: 96,
@@ -332,6 +354,9 @@ module.exports = function (config) {
             },
             "content-src/lib/utils.jsx": {
               branches: 60,
+              statements: 95.56,
+              lines: 95.4,
+              functions: 92.86,
             },
             "content-src/components/MessageWrapper/MessageWrapper.jsx": {
               lines: 50,

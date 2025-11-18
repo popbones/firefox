@@ -4,30 +4,26 @@
 
 package org.mozilla.fenix.search
 
-import android.content.Context
 import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.Lifecycle.State.RESUMED
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.navigation.NavController
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.launch
 import mozilla.components.browser.state.action.AwesomeBarAction
+import mozilla.components.browser.state.search.DefaultSearchEngineProvider
 import mozilla.components.browser.state.search.SearchEngine
 import mozilla.components.browser.state.store.BrowserStore
 import mozilla.components.compose.browser.toolbar.store.BrowserEditToolbarAction
+import mozilla.components.compose.browser.toolbar.store.BrowserEditToolbarAction.PrivateModeUpdated
 import mozilla.components.compose.browser.toolbar.store.BrowserToolbarStore
 import mozilla.components.concept.awesomebar.AwesomeBar
 import mozilla.components.concept.engine.Engine
 import mozilla.components.concept.engine.EngineSession.LoadUrlFlags
 import mozilla.components.feature.search.SearchUseCases.SearchUseCase
 import mozilla.components.feature.session.SessionUseCases.LoadUrlUseCase
-import mozilla.components.feature.tabs.TabsUseCases
 import mozilla.components.feature.tabs.TabsUseCases.SelectTabUseCase
 import mozilla.components.lib.state.Middleware
 import mozilla.components.lib.state.MiddlewareContext
@@ -38,21 +34,25 @@ import mozilla.telemetry.glean.private.NoExtras
 import org.mozilla.fenix.GleanMetrics.BookmarksManagement
 import org.mozilla.fenix.GleanMetrics.Events
 import org.mozilla.fenix.GleanMetrics.History
-import org.mozilla.fenix.GleanMetrics.UnifiedSearch
+import org.mozilla.fenix.GleanMetrics.Toolbar
 import org.mozilla.fenix.R
-import org.mozilla.fenix.browser.browsingmode.BrowsingModeManager
+import org.mozilla.fenix.browser.browsingmode.BrowsingMode
 import org.mozilla.fenix.components.AppStore
 import org.mozilla.fenix.components.NimbusComponents
-import org.mozilla.fenix.components.appstate.AppAction.SearchEngineSelected
+import org.mozilla.fenix.components.UseCases
+import org.mozilla.fenix.components.appstate.AppAction.SearchAction.SearchEngineSelected
 import org.mozilla.fenix.components.metrics.MetricsUtils
 import org.mozilla.fenix.components.search.BOOKMARKS_SEARCH_ENGINE_ID
 import org.mozilla.fenix.components.search.HISTORY_SEARCH_ENGINE_ID
 import org.mozilla.fenix.components.search.TABS_SEARCH_ENGINE_ID
-import org.mozilla.fenix.components.usecases.FenixBrowserUseCases
+import org.mozilla.fenix.ext.components
 import org.mozilla.fenix.ext.navigateSafe
 import org.mozilla.fenix.ext.telemetryName
 import org.mozilla.fenix.nimbus.FxNimbus
+import org.mozilla.fenix.search.SearchFragmentAction.EnvironmentCleared
+import org.mozilla.fenix.search.SearchFragmentAction.EnvironmentRehydrated
 import org.mozilla.fenix.search.SearchFragmentAction.Init
+import org.mozilla.fenix.search.SearchFragmentAction.PrivateSuggestionsCardAccepted
 import org.mozilla.fenix.search.SearchFragmentAction.SearchEnginesSelectedActions
 import org.mozilla.fenix.search.SearchFragmentAction.SearchProvidersUpdated
 import org.mozilla.fenix.search.SearchFragmentAction.SearchStarted
@@ -60,8 +60,13 @@ import org.mozilla.fenix.search.SearchFragmentAction.SearchSuggestionsVisibility
 import org.mozilla.fenix.search.SearchFragmentAction.SuggestionClicked
 import org.mozilla.fenix.search.SearchFragmentAction.SuggestionSelected
 import org.mozilla.fenix.search.SearchFragmentAction.UpdateQuery
+import org.mozilla.fenix.search.SearchFragmentStore.Environment
+import org.mozilla.fenix.search.awesomebar.DefaultSuggestionIconProvider
+import org.mozilla.fenix.search.awesomebar.DefaultSuggestionsStringsProvider
 import org.mozilla.fenix.search.awesomebar.SearchSuggestionsProvidersBuilder
 import org.mozilla.fenix.search.awesomebar.toSearchProviderState
+import org.mozilla.fenix.telemetry.ACTION_SEARCH_ENGINE_SELECTED
+import org.mozilla.fenix.telemetry.SOURCE_ADDRESS_BAR
 import org.mozilla.fenix.utils.Settings
 import mozilla.components.lib.state.Action as MVIAction
 
@@ -69,7 +74,7 @@ import mozilla.components.lib.state.Action as MVIAction
  * [SearchFragmentStore] [Middleware] that will handle the setup of the search UX and related user interactions.
  *
  * @param engine [Engine] used for speculative connections to search suggestions URLs.
- * @param tabsUseCases [TabsUseCases] used for operations related to current open tabs.
+ * @param useCases [UseCases] helping this integrate with other features of the applications.
  * @param nimbusComponents [NimbusComponents] used for accessing Nimbus events to use in telemetry.
  * @param settings [Settings] application settings.
  * @param appStore [AppStore] to sync search related data with.
@@ -79,41 +84,30 @@ import mozilla.components.lib.state.Action as MVIAction
 @Suppress("LongParameterList")
 class FenixSearchMiddleware(
     private val engine: Engine,
-    private val tabsUseCases: TabsUseCases,
+    private val useCases: UseCases,
     private val nimbusComponents: NimbusComponents,
     private val settings: Settings,
     private val appStore: AppStore,
     private val browserStore: BrowserStore,
     private val toolbarStore: BrowserToolbarStore,
-) : Middleware<SearchFragmentState, SearchFragmentAction>, ViewModel() {
-    private lateinit var dependencies: LifecycleDependencies
-    internal lateinit var searchStore: SearchFragmentStore
+) : Middleware<SearchFragmentState, SearchFragmentAction> {
+    @VisibleForTesting
+    internal var environment: Environment? = null
     private var observeSearchEnginesChangeJob: Job? = null
 
     @VisibleForTesting
-    internal lateinit var suggestionsProvidersBuilder: SearchSuggestionsProvidersBuilder
-
-    /**
-     * Updates the [LifecycleDependencies] for this middleware.
-     *
-     * @param dependencies The new [LifecycleDependencies].
-     */
-    fun updateLifecycleDependencies(dependencies: LifecycleDependencies) {
-        this.dependencies = dependencies
-        if (::searchStore.isInitialized) {
-            suggestionsProvidersBuilder = buildSearchSuggestionsProvider()
-            updateSearchProviders()
-        }
-    }
+    internal var suggestionsProvidersBuilder: SearchSuggestionsProvidersBuilder? = null
 
     override fun invoke(
         context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
         next: (SearchFragmentAction) -> Unit,
         action: SearchFragmentAction,
     ) {
+        if (handleEnvironmentUpdates(context, next, action)) return
+
         when (action) {
             is Init -> {
-                searchStore = context.store as SearchFragmentStore
+                next(action)
 
                 context.dispatch(
                     SearchFragmentAction.UpdateSearchState(
@@ -121,36 +115,42 @@ class FenixSearchMiddleware(
                         true,
                     ),
                 )
-
-                next(action)
             }
 
             is SearchStarted -> {
+                toolbarStore.dispatch(
+                    PrivateModeUpdated(
+                        environment?.browsingModeManager?.mode?.isPrivate == true,
+                    ),
+                )
+
                 next(action)
 
                 engine.speculativeCreateSession(action.inPrivateMode)
-                suggestionsProvidersBuilder = buildSearchSuggestionsProvider()
-                setSearchEngine(action.selectedSearchEngine)
-                observeSearchEngineSelection()
+                suggestionsProvidersBuilder = buildSearchSuggestionsProvider(context)
+                setSearchEngine(context, action.selectedSearchEngine, action.isUserSelected)
+                observeSearchEngineSelection(context)
             }
 
             is UpdateQuery -> {
                 next(action)
 
-                maybeShowSearchSuggestions(action.query)
+                maybeShowSearchSuggestions(context, action.query)
             }
 
             is SearchEnginesSelectedActions -> {
                 next(action)
 
-                updateSearchProviders()
-                maybeShowFxSuggestions()
+                updateSearchProviders(context)
+                maybeShowSearchSuggestions(context, context.state.query)
             }
 
             is SearchProvidersUpdated -> {
                 next(action)
 
-                maybeShowSearchSuggestions(searchStore.state.query)
+                if (action.providers.isNotEmpty()) {
+                    maybeShowSearchSuggestions(context, context.state.query)
+                }
             }
 
             is SuggestionClicked -> {
@@ -174,21 +174,60 @@ class FenixSearchMiddleware(
                 }
             }
 
+            is PrivateSuggestionsCardAccepted -> {
+                updateSearchProviders(context)
+            }
+
             else -> next(action)
         }
+    }
+
+    private fun handleEnvironmentUpdates(
+        context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
+        next: (SearchFragmentAction) -> Unit,
+        action: SearchFragmentAction,
+    ) = when (action) {
+        is EnvironmentRehydrated -> {
+            next(action)
+
+            environment = action.environment
+
+            suggestionsProvidersBuilder = buildSearchSuggestionsProvider(context)
+            updateSearchProviders(context)
+
+            true
+        }
+
+        is EnvironmentCleared -> {
+            next(action)
+
+            environment = null
+
+            // Search providers may keep hard references to lifecycle dependent objects
+            // so we need to reset them when the environment is cleared.
+            suggestionsProvidersBuilder = null
+            context.dispatch(SearchProvidersUpdated(emptyList()))
+
+            true
+        }
+
+        else -> false
     }
 
     /**
      * Observe when the user changes the search engine to use for the current in-progress search
      * and update the suggestions providers used and shown suggestions accordingly.
      */
-    private fun observeSearchEngineSelection() {
+    private fun observeSearchEngineSelection(context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>) {
         observeSearchEnginesChangeJob?.cancel()
-        observeSearchEnginesChangeJob = appStore.observeWhileActive(dependencies.lifecycleOwner) {
-            distinctUntilChangedBy { it.shortcutSearchEngine }
+        observeSearchEnginesChangeJob = appStore.observeWhileActive {
+            distinctUntilChangedBy { it.searchState.selectedSearchEngine?.searchEngine }
                 .collect {
-                    it.shortcutSearchEngine?.let {
-                        handleSearchShortcutEngineSelectedByUser(it)
+                    it.searchState.selectedSearchEngine?.let {
+                        when (it.isUserSelected) {
+                            true -> handleSearchShortcutEngineSelectedByUser(context, it.searchEngine)
+                            false -> handleSearchShortcutEngineSelected(context, it.searchEngine)
+                        }
                     }
                 }
         }
@@ -197,69 +236,100 @@ class FenixSearchMiddleware(
     /**
      * Update the search engine to the one selected by the user or fallback to the default search engine.
      *
+     * @param context The current [MiddlewareContext] allowing to read and update the search state.
      * @param searchEngine The new [SearchEngine] to be used for new searches or `null` to fallback to
      * fallback to the default search engine.
+     * @param isSelectedByUser isUserSelected Whether or not the search engine was selected by the user.
      */
-    private fun setSearchEngine(searchEngine: SearchEngine?) {
-        searchEngine
-            ?.let { handleSearchShortcutEngineSelectedByUser(it) }
-            ?: searchStore.state.defaultEngine
-                ?.let { handleSearchShortcutEngineSelected(it) }
-    }
-
-    /**
-     * Check if new firefox suggestions (trending, recent searches or search engines suggestions)
-     * should be shown based on the current search query.
-     */
-    private fun maybeShowFxSuggestions() {
-        val shouldShowSuggestions = with(searchStore.state) {
-            (showTrendingSearches || showRecentSearches || showShortcutsSuggestions) &&
-                (query.isNotEmpty() || FxNimbus.features.searchSuggestionsOnHomepage.value().enabled)
-        }
-        searchStore.dispatch(SearchSuggestionsVisibilityUpdated(shouldShowSuggestions))
+    private fun setSearchEngine(
+        context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
+        searchEngine: SearchEngine?,
+        isSelectedByUser: Boolean,
+    ) {
+        searchEngine?.let {
+            when (isSelectedByUser) {
+                true -> handleSearchShortcutEngineSelectedByUser(context, it)
+                false -> handleSearchShortcutEngineSelected(context, it)
+            }
+        } ?: context.state.defaultEngine?.let { handleSearchShortcutEngineSelected(context, it) }
     }
 
     /**
      * Check if new search suggestions should be shown based on the current search query.
      */
-    private fun maybeShowSearchSuggestions(query: String) {
-        val shouldShowSuggestions = with(searchStore.state) {
-            url != query && query.isNotBlank() || showSearchShortcuts
+    private fun maybeShowSearchSuggestions(
+        context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
+        query: String,
+    ) {
+        val shouldShowTrendingSearches = context.state.run {
+            (showTrendingSearches || showRecentSearches || showShortcutsSuggestions) &&
+                (searchStartedForCurrentUrl || FxNimbus.features.searchSuggestionsOnHomepage.value().enabled)
         }
-        searchStore.dispatch(SearchSuggestionsVisibilityUpdated(shouldShowSuggestions))
+        val shouldShowSearchSuggestions = with(context.state) {
+            (url != query && query.isNotBlank() || showSearchShortcuts)
+        }
+        val shouldShowSuggestions = shouldShowTrendingSearches || shouldShowSearchSuggestions
+
+        context.dispatch(SearchSuggestionsVisibilityUpdated(shouldShowSuggestions))
+
+        val showPrivatePrompt = with(context.state) {
+            !settings.showSearchSuggestionsInPrivateOnboardingFinished &&
+                    environment?.browsingModeManager?.mode?.isPrivate == true &&
+                    !isSearchSuggestionsFeatureEnabled() && !showSearchShortcuts && url != query
+        }
+
+        context.dispatch(
+            SearchFragmentAction.AllowSearchSuggestionsInPrivateModePrompt(
+                showPrivatePrompt,
+            ),
+        )
     }
 
     /**
      * Update the search providers used and shown suggestions based on the current search state.
      */
-    private fun updateSearchProviders() {
-        searchStore.dispatch(
+    private fun updateSearchProviders(context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>) {
+        val suggestionsProvidersBuilder = suggestionsProvidersBuilder ?: return
+        context.dispatch(
             SearchProvidersUpdated(
                 buildList {
-                    if (searchStore.state.showSearchShortcuts) {
+                    if (context.state.showSearchShortcuts) {
                         add(suggestionsProvidersBuilder.shortcutsEnginePickerProvider)
                     }
-                    addAll((suggestionsProvidersBuilder.getProvidersToAdd(searchStore.state.toSearchProviderState())))
+                    addAll((suggestionsProvidersBuilder.getProvidersToAdd(context.state.toSearchProviderState())))
                 },
             ),
         )
     }
 
     @VisibleForTesting
-    internal fun buildSearchSuggestionsProvider() = SearchSuggestionsProvidersBuilder(
-        context = dependencies.context,
-        browsingModeManager = dependencies.browsingModeManager,
-        includeSelectedTab = true,
-        loadUrlUseCase = loadUrlUseCase,
-        searchUseCase = searchUseCase,
-        selectTabUseCase = selectTabUseCase,
-        onSearchEngineShortcutSelected = ::handleSearchEngineSuggestionClicked,
-        onSearchEngineSuggestionSelected = ::handleSearchEngineSuggestionClicked,
-        onSearchEngineSettingsClicked = ::handleClickSearchEngineSettings,
-    )
+    internal fun buildSearchSuggestionsProvider(
+        context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
+    ): SearchSuggestionsProvidersBuilder? {
+        val environment = environment ?: return null
+
+        return SearchSuggestionsProvidersBuilder(
+            components = environment.context.components,
+            browsingModeManager = environment.browsingModeManager,
+            includeSelectedTab = context.state.tabId == null,
+            loadUrlUseCase = loadUrlUseCase(context),
+            searchUseCase = searchUseCase(context),
+            selectTabUseCase = selectTabUseCase(),
+            suggestionsStringsProvider = DefaultSuggestionsStringsProvider(
+                environment.context,
+                DefaultSearchEngineProvider(environment.context.components.core.store),
+            ),
+            suggestionIconProvider = DefaultSuggestionIconProvider(environment.context),
+            onSearchEngineShortcutSelected = ::handleSearchEngineSuggestionClicked,
+            onSearchEngineSuggestionSelected = ::handleSearchEngineSuggestionClicked,
+            onSearchEngineSettingsClicked = { handleClickSearchEngineSettings() },
+        )
+    }
 
     @VisibleForTesting
-    internal val loadUrlUseCase = object : LoadUrlUseCase {
+    internal fun loadUrlUseCase(
+        context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
+    ) = object : LoadUrlUseCase {
         override fun invoke(
             url: String,
             flags: LoadUrlFlags,
@@ -271,9 +341,9 @@ class FenixSearchMiddleware(
                 createNewTab = if (settings.enableHomepageAsNewTab) {
                     false
                 } else {
-                    searchStore.state.tabId == null
+                    context.state.tabId == null
                 },
-                usePrivateMode = dependencies.browsingModeManager.mode.isPrivate,
+                usePrivateMode = environment?.browsingModeManager?.mode?.isPrivate == true,
                 flags = flags,
             )
 
@@ -284,35 +354,37 @@ class FenixSearchMiddleware(
     }
 
     @VisibleForTesting
-    internal val searchUseCase = object : SearchUseCase {
+    internal fun searchUseCase(
+        context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
+    ) = object : SearchUseCase {
         override fun invoke(
             searchTerms: String,
             searchEngine: SearchEngine?,
             parentSessionId: String?,
         ) {
-            val searchEngine = searchStore.state.searchEngineSource.searchEngine
+            val searchEngine = context.state.searchEngineSource.searchEngine
 
             openToBrowserAndLoad(
                 url = searchTerms,
                 createNewTab = if (settings.enableHomepageAsNewTab) {
                     false
                 } else {
-                    searchStore.state.tabId == null
+                    context.state.tabId == null
                 },
-                usePrivateMode = dependencies.browsingModeManager.mode.isPrivate,
+                usePrivateMode = environment?.browsingModeManager?.mode?.isPrivate == true,
                 forceSearch = true,
                 searchEngine = searchEngine,
             )
 
-            val searchAccessPoint = when (searchStore.state.searchAccessPoint) {
+            val searchAccessPoint = when (context.state.searchAccessPoint) {
                 MetricsUtils.Source.NONE -> MetricsUtils.Source.SUGGESTION
-                else -> searchStore.state.searchAccessPoint
+                else -> context.state.searchAccessPoint
             }
 
             if (searchEngine != null) {
                 MetricsUtils.recordSearchMetrics(
                     searchEngine,
-                    searchEngine == searchStore.state.defaultEngine,
+                    searchEngine == context.state.defaultEngine,
                     searchAccessPoint,
                     nimbusComponents.events,
                 )
@@ -323,11 +395,11 @@ class FenixSearchMiddleware(
     }
 
     @VisibleForTesting
-    internal val selectTabUseCase = object : SelectTabUseCase {
+    internal fun selectTabUseCase() = object : SelectTabUseCase {
         override fun invoke(tabId: String) {
-            tabsUseCases.selectTab(tabId)
+            useCases.tabsUseCases.selectTab(tabId)
 
-            dependencies.navController.navigate(R.id.browserFragment)
+            environment?.navController?.navigate(R.id.browserFragment)
 
             browserStore.dispatch(AwesomeBarAction.EngagementFinished(abandoned = false))
         }
@@ -341,8 +413,8 @@ class FenixSearchMiddleware(
         searchEngine: SearchEngine? = null,
         flags: LoadUrlFlags = LoadUrlFlags.none(),
     ) {
-        dependencies.navController.navigate(R.id.browserFragment)
-        dependencies.fenixBrowserUseCases.loadUrlOrSearch(
+        environment?.navController?.navigate(R.id.browserFragment)
+        useCases.fenixBrowserUseCases.loadUrlOrSearch(
             searchTermOrURL = url,
             newTab = createNewTab,
             private = usePrivateMode,
@@ -358,48 +430,62 @@ class FenixSearchMiddleware(
      * The difference between this and [handleSearchShortcutEngineSelected] is that this also
      * records the appropriate telemetry for the user interaction.
      *
+     * @param context The store which will provide the state and environment dependencies needed.
      * @param searchEngine The [SearchEngine] to be used for the current in-progress search.
      */
     @VisibleForTesting
     internal fun handleSearchShortcutEngineSelectedByUser(
+        context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
         searchEngine: SearchEngine,
     ) {
-        handleSearchShortcutEngineSelected(searchEngine)
+        handleSearchShortcutEngineSelected(context, searchEngine)
 
-        UnifiedSearch.engineSelected.record(UnifiedSearch.EngineSelectedExtra(searchEngine.telemetryName()))
+        Toolbar.buttonTapped.record(
+            Toolbar.ButtonTappedExtra(
+                source = SOURCE_ADDRESS_BAR,
+                item = ACTION_SEARCH_ENGINE_SELECTED,
+                extra = searchEngine.telemetryName(),
+            ),
+        )
     }
 
     /**
      * Update what search engine to use for the current in-progress search.
      * This will result in using a different set of suggestions providers and showing different search suggestions.
      *
+     * @param context The current [MiddlewareContext] allowing to read and update the search state.
      * @param searchEngine The [SearchEngine] to be used for the current in-progress search.
      */
-    private fun handleSearchShortcutEngineSelected(searchEngine: SearchEngine) {
+    private fun handleSearchShortcutEngineSelected(
+        context: MiddlewareContext<SearchFragmentState, SearchFragmentAction>,
+        searchEngine: SearchEngine,
+    ) {
+        val environment = environment ?: return
+
         when {
             searchEngine.type == SearchEngine.Type.APPLICATION && searchEngine.id == HISTORY_SEARCH_ENGINE_ID -> {
-                searchStore.dispatch(SearchFragmentAction.SearchHistoryEngineSelected(searchEngine))
+                context.dispatch(SearchFragmentAction.SearchHistoryEngineSelected(searchEngine))
             }
             searchEngine.type == SearchEngine.Type.APPLICATION && searchEngine.id == BOOKMARKS_SEARCH_ENGINE_ID -> {
-                searchStore.dispatch(SearchFragmentAction.SearchBookmarksEngineSelected(searchEngine))
+                context.dispatch(SearchFragmentAction.SearchBookmarksEngineSelected(searchEngine))
             }
             searchEngine.type == SearchEngine.Type.APPLICATION && searchEngine.id == TABS_SEARCH_ENGINE_ID -> {
-                searchStore.dispatch(SearchFragmentAction.SearchTabsEngineSelected(searchEngine))
+                context.dispatch(SearchFragmentAction.SearchTabsEngineSelected(searchEngine))
             }
-            searchEngine == searchStore.state.defaultEngine -> {
-                searchStore.dispatch(
+            searchEngine == context.state.defaultEngine -> {
+                context.dispatch(
                     SearchFragmentAction.SearchDefaultEngineSelected(
                         engine = searchEngine,
-                        browsingMode = dependencies.browsingModeManager.mode,
+                        browsingMode = environment.browsingModeManager.mode,
                         settings = settings,
                     ),
                 )
             }
             else -> {
-                searchStore.dispatch(
+                context.dispatch(
                     SearchFragmentAction.SearchShortcutEngineSelected(
                         engine = searchEngine,
-                        browsingMode = dependencies.browsingModeManager.mode,
+                        browsingMode = environment.browsingModeManager.mode,
                         settings = settings,
                     ),
                 )
@@ -408,20 +494,19 @@ class FenixSearchMiddleware(
     }
 
     private fun handleSearchEngineSuggestionClicked(searchEngine: SearchEngine) {
-        appStore.dispatch(SearchEngineSelected(searchEngine))
+        appStore.dispatch(SearchEngineSelected(searchEngine, true))
     }
 
     @VisibleForTesting
     internal fun handleClickSearchEngineSettings() {
         val directions = SearchDialogFragmentDirections.actionGlobalSearchEngineFragment()
-        dependencies.navController.navigateSafe(R.id.searchDialogFragment, directions)
+        environment?.navController?.navigateSafe(R.id.searchDialogFragment, directions)
         browserStore.dispatch(AwesomeBarAction.EngagementFinished(abandoned = true))
     }
 
     private inline fun <S : State, A : MVIAction> Store<S, A>.observeWhileActive(
-        lifecycleOwner: LifecycleOwner,
         crossinline observe: suspend (Flow<S>.() -> Unit),
-    ): Job = with(lifecycleOwner) {
+    ): Job? = environment?.viewLifecycleOwner?.run {
         lifecycleScope.launch {
             repeatOnLifecycle(RESUMED) {
                 flow().observe()
@@ -429,63 +514,19 @@ class FenixSearchMiddleware(
         }
     }
 
-    override fun onCleared() {
-        observeSearchEnginesChangeJob?.cancel()
-        super.onCleared()
-    }
-
     /**
-     * Lifecycle dependencies for the [FenixSearchMiddleware].
+     * Check whether search suggestions should be shown in the AwesomeBar.
      *
-     * @property context Activity [Context] used for various system interactions.
-     * @property lifecycleOwner [LifecycleOwner] depending on which lifecycle related operations will be scheduled.
-     * @property browsingModeManager [BrowsingModeManager] for querying the current browsing mode.
-     * @property navController [NavController] used to navigate to other destinations.
-     * @property fenixBrowserUseCases [FenixBrowserUseCases] used for loading new URLs.
+     * @return `true` if search suggestions should be shown `false` otherwise.
      */
-    data class LifecycleDependencies(
-        val context: Context,
-        val lifecycleOwner: LifecycleOwner,
-        val browsingModeManager: BrowsingModeManager,
-        val navController: NavController,
-        val fenixBrowserUseCases: FenixBrowserUseCases,
-    )
+    @VisibleForTesting
+    internal fun isSearchSuggestionsFeatureEnabled(): Boolean {
+        val environment = environment ?: return false
 
-    /**
-     * Static functionalities of the [FenixSearchMiddleware].
-     */
-    companion object {
-        /**
-         * [ViewModelProvider.Factory] for creating a [FenixSearchMiddleware].
-         *
-         * @param engine [Engine] used for speculative connections to search suggestions URLs.
-         * @param tabsUseCases [TabsUseCases] used for operations related to current open tabs.
-         * @param nimbusComponents [NimbusComponents] used for accessing Nimbus events to use in telemetry.
-         * @param settings [Settings] application settings.
-         * @param appStore [AppStore] used for querying application's state related to search.
-         * @param browserStore [BrowserStore] used for updating search related data.
-         * @param toolbarStore [BrowserToolbarStore] used for querying and updating the toolbar state.
-         */
-        @Suppress("LongParameterList")
-        fun viewModelFactory(
-            engine: Engine,
-            tabsUseCases: TabsUseCases,
-            nimbusComponents: NimbusComponents,
-            settings: Settings,
-            appStore: AppStore,
-            browserStore: BrowserStore,
-            toolbarStore: BrowserToolbarStore,
-        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = FenixSearchMiddleware(
-                engine = engine,
-                tabsUseCases = tabsUseCases,
-                nimbusComponents = nimbusComponents,
-                settings = settings,
-                appStore = appStore,
-                browserStore = browserStore,
-                toolbarStore = toolbarStore,
-            ) as? T ?: throw IllegalArgumentException("Unknown ViewModel class")
+        return when (environment.browsingModeManager.mode) {
+            BrowsingMode.Normal -> settings.shouldShowSearchSuggestions
+            BrowsingMode.Private ->
+                settings.shouldShowSearchSuggestions && settings.shouldShowSearchSuggestionsInPrivate
         }
     }
 }

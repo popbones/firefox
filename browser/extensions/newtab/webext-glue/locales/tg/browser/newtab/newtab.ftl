@@ -32,14 +32,14 @@ newtab-search-box-search-button =
     .aria-label = Ҷустуҷӯ
 # Variables:
 #   $engine (string) - The name of the user's default search engine
-newtab-search-box-handoff-text = Нишониеро тавассути { $engine } ҷустуҷӯ кунед ё ворид намоед
+newtab-search-box-handoff-text = Ба воситаи «{ $engine }» ҷустуҷӯ кунед ё нишониеро ворид намоед
 newtab-search-box-handoff-text-no-engine = Нишониеро ҷустуҷӯ кунед ё ворид намоед
 # Variables:
 #   $engine (string) - The name of the user's default search engine
 newtab-search-box-handoff-input =
-    .placeholder = Нишониеро тавассути { $engine } ҷустуҷӯ кунед ё ворид намоед
-    .title = Нишониеро тавассути { $engine } ҷустуҷӯ кунед ё ворид намоед
-    .aria-label = Нишониеро тавассути { $engine } ҷустуҷӯ кунед ё ворид намоед
+    .placeholder = Ба воситаи «{ $engine }» ҷустуҷӯ кунед ё нишониеро ворид намоед
+    .title = Ба воситаи «{ $engine }» ҷустуҷӯ кунед ё нишониеро ворид намоед
+    .aria-label = Ба воситаи «{ $engine }» ҷустуҷӯ кунед ё нишониеро ворид намоед
 newtab-search-box-handoff-input-no-engine =
     .placeholder = Нишониеро ҷустуҷӯ кунед ё ворид намоед
     .title = Нишониеро ҷустуҷӯ кунед ё ворид намоед
@@ -56,6 +56,9 @@ newtab-topsites-add-shortcut-header = Миёнбури нав
 newtab-topsites-edit-topsites-header = Таҳрир кардани сомонаи беҳтарин
 newtab-topsites-edit-shortcut-header = Таҳрир кардани миёнбур
 newtab-topsites-add-shortcut-label = Илова кардани миёнбур
+newtab-topsites-add-shortcut-title =
+    .title = Илова кардани миёнбур
+    .aria-label = Илова кардани миёнбур
 newtab-topsites-title-label = Сарлавҳа
 newtab-topsites-title-input =
     .placeholder = Сарлавҳаро ворид намоед
@@ -84,6 +87,14 @@ newtab-confirm-delete-history-p2 = Ин амал бекор карда наме�
 ## Top Sites - Sponsored label
 
 newtab-topsite-sponsored = Сарпарастӣ
+
+## Label used by screen readers for pinned top sites
+
+# Variables:
+#   $title (string) - The label or hostname of the site.
+topsite-label-pinned =
+    .aria-label = { $title } (васлшуда)
+    .title = { $title }
 
 ## Context Menu - Action Tooltips.
 
@@ -306,19 +317,32 @@ newtab-custom-pocket-subtitle = Муҳтавои мустасно аз тара�
 newtab-custom-stories-toggle =
     .label = Ҳикояҳои тавсияшуда
     .description = Маводҳои истисноӣ, ки аз ҷониби оилаи «{ -brand-product-name }» таҳия шудааст
+newtab-custom-stories-personalized-toggle =
+    .label = Ҳикояҳо
+newtab-custom-stories-personalized-checkbox-label = Ҳикояҳои фардӣ дар асоси фаъолияти шумо
 newtab-custom-pocket-sponsored = Мақолаҳои сарпарастӣ
 newtab-custom-pocket-show-recent-saves = Намоиш додани маводҳои охирин
 newtab-custom-recent-title = Фаъолияти охирин
 newtab-custom-recent-subtitle = Интихоби сомонаҳо ва муҳтавои охирин
-newtab-custom-recent-toggle =
-    .label = Фаъолияти охирин
-    .description = Интихоби сомонаҳо ва муҳтавои охирин
 newtab-custom-weather-toggle =
     .label = Обу ҳаво
     .description = Ҳолати обу ҳаво барои имрӯз
 newtab-custom-trending-search-toggle =
     .label = Ҷустуҷӯҳои ҳавасангез
     .description = Мавзуъҳои маъмул ва ҷустуҷӯшавандаи такрорӣ
+newtab-custom-widget-weather-toggle =
+    .label = Обу ҳаво
+newtab-custom-widget-trending-search-toggle =
+    .label = Ҷустуҷӯҳои ҳавасангез
+newtab-custom-widget-lists-toggle =
+    .label = Рӯйхатҳо
+newtab-custom-widget-timer-toggle =
+    .label = Вақтсанҷ
+newtab-custom-widget-section-title = Виҷетҳо
+# Tooltip for close button
+newtab-custom-close-menu-button =
+    .title = Пӯшидан
+    .aria-label = Пӯшидани меню
 newtab-custom-close-button = Пӯшидан
 newtab-custom-settings = Идоракунии танзимоти бештар
 
@@ -331,6 +355,7 @@ newtab-wallpaper-custom-color = Рангеро интихоб кунед
 # Variables
 #   $file_size (number) - The number of the maximum image file size (in MB) that may be uploaded
 newtab-wallpaper-error-max-file-size = Андозаи тасвир зиёда аз маҳдудияти андозаи файли { $file_size } МБ мебошад. Лутфан, кӯшиш кунед, ки файлеро бо андозаи хурдтар бор намоед.
+newtab-wallpaper-error-upload-file-type = Мо файли шуморо бор карда натавонистем. Лутфан, бо файли тасвирӣ аз нав кӯшиш намоед.
 newtab-wallpaper-error-file-type = Мо файли шуморо бор карда натавонистем. Лутфан, бо навъи дигари файл аз нав кӯшиш намоед.
 newtab-wallpaper-light-red-panda = Пандаи сурх
 newtab-wallpaper-light-mountain = Кӯҳи сафед
@@ -436,13 +461,12 @@ newtab-weather-menu-change-location = Иваз кардани макон
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Ҷустуҷӯи макон
     .aria-label = Ҷустуҷӯи макон
-newtab-weather-change-location-search-input = Ҷустуҷӯи макон
 newtab-weather-menu-weather-display = Намоиши обу ҳаво
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
 # - Detailed: Include simple information plus a short text summary: e.g. "Mostly cloudy"
-newtab-weather-menu-weather-display-option-simple = Одӣ
-newtab-weather-menu-change-weather-display-simple = Гузариш ба намуди одӣ
+newtab-weather-menu-weather-display-option-simple = Оддӣ
+newtab-weather-menu-change-weather-display-simple = Гузариш ба намуди оддӣ
 newtab-weather-menu-weather-display-option-detailed = Ботафсил
 newtab-weather-menu-change-weather-display-detailed = Гузариш ба намуди ботафсил
 newtab-weather-menu-temperature-units = Воҳидҳои ченаки ҳарорат
@@ -502,6 +526,9 @@ newtab-topic-selection-button-pick-interests = Манфиатҳои худро �
 newtab-section-follow-button = Обуна шавед
 newtab-section-following-button = Обуна шуд
 newtab-section-unfollow-button = Бекор кардани обуна
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = Навори хабарҳои худро ба таври дилхоҳ танзим кунед
+newtab-section-follow-highlight-subtitle = Чизҳои дилбастагии худро пайгирӣ кунед, то чизҳои бештареро, ки ба шумо маъқуланд, бубинед.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -534,6 +561,12 @@ newtab-custom-wallpaper-title = Тасвирҳои заминаи фармоиш
 newtab-custom-wallpaper-subtitle = Барои ба таври худ танзим кардани «{ -brand-product-name }», тасвири заминаи худро бор кунед ё ранги дилхоҳеро интихоб намоед.
 newtab-custom-wallpaper-cta = Озмоед
 
+## Strings for new user activation custom wallpaper highlight
+
+newtab-new-user-custom-wallpaper-title = Тасвири заминаеро интихоб карда, соҳиби браузери «{ -brand-product-name }» шавед
+newtab-new-user-custom-wallpaper-subtitle = Ҳар як варақаи навро ба як саҳифаи шахсии зебо табдил диҳед — бо тасвирҳои замина ва рангҳое, ки услуби шуморо инъикос мекунанд.
+newtab-new-user-custom-wallpaper-cta = Ҳозир онро кӯшиш кунед
+
 ## Strings for download mobile highlight
 
 newtab-download-mobile-highlight-title = Браузери «{ -brand-product-name }»-ро ба телефони мобилии худ боргирӣ кунед
@@ -543,6 +576,11 @@ newtab-download-mobile-highlight-body-variant-b = Вақте ки шумо ва�
 newtab-download-mobile-highlight-body-variant-c = Оё шумо медонистед, ки метавонед «{ -brand-product-name }»-ро ба даст оред? Ҳамон браузери шинос — акнун дар кисаи шумо.
 newtab-download-mobile-highlight-image =
     .aria-label = Рамзи «QR» барои боргирӣ кардани версияи мобилии «{ -brand-product-name }»
+
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = Сомонаҳои дӯстдоштаи шумо дар нӯгҳои ангуштони шумо
+newtab-shortcuts-highlight-subtitle = Миёнбуреро илова кунед, то сомонаҳои дӯстдоштаи шумо бо зеркунии як тугма дастрас шаванд.
 
 ## Strings for reporting ads and content
 
@@ -569,11 +607,84 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
-# "Trending on Google" refers to the trending topics coming from Google Search, usually seen when a user is focused on the search bar
-newtab-trending-searches-trending-on-google = Ҳавасангез дар «Google»
 newtab-trending-searches-show-trending =
     .title = Намоиш додани ҷустуҷӯҳои ҳавасангез
 newtab-trending-searches-hide-trending =
     .title = Пинҳон кардани ҷустуҷӯҳои ҳавасангез
 newtab-trending-searches-learn-more = Маълумоти бештар
 newtab-trending-searches-dismiss = Пинҳон кардани ҷустуҷӯҳои ҳавасангез
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = Ҷустуҷӯҳои ҳавасангез
+
+## Strings for task / to-do list productivity widget
+
+# "Add one" means adding a new task to the list (e.g., "Walk the dog")
+newtab-widget-lists-empty-cta = Имкониятҳо беохиранд. Вазифаи дилхоҳро илова намоед.
+# A simple label next to the default list name letting users know this is a new / beta feature
+newtab-widget-lists-label-new =
+    .label = Нав
+newtab-widget-lists-label-beta =
+    .label = Бета
+# When tasks have been previous marked as complete, they will appear in their own separate list beneath incomplete items
+# Variables:
+#   $number (number) - Amount of list items marked complete
+newtab-widget-lists-completed-list = Иҷро шуд ({ $number })
+newtab-widget-task-list-menu-copy = Нусха бардоштан
+newtab-widget-lists-menu-edit = Таҳрир кардани номи рӯйхат
+newtab-widget-lists-menu-create = Эҷод кардани рӯйхати нав
+newtab-widget-lists-menu-delete = Нест кардани ин рӯйхат
+newtab-widget-lists-menu-copy = Нусха бардоштани рӯйхат ба ҳофизаи муваққатӣ
+newtab-widget-lists-menu-hide = Пинҳон кардани ҳамаи варақаҳо
+newtab-widget-lists-menu-learn-more = Маълумоти бештар
+newtab-widget-lists-input-add-an-item =
+    .placeholder = Илова кардани унсур
+newtab-widget-lists-input-error = Лутфан, барои илова кардани унсур матнеро ворид намоед.
+newtab-widget-lists-input-menu-open-link = Кушодани пайванд
+newtab-widget-lists-input-menu-move-up = Ба боло гузоштан
+newtab-widget-lists-input-menu-move-down = Ба поён гузоштан
+newtab-widget-lists-input-menu-delete = Нест кардан
+newtab-widget-lists-input-menu-edit = Таҳрир кардан
+newtab-widget-lists-name-label-default =
+    .label = Рӯйхати вазифаҳо
+newtab-widget-lists-name-placeholder-default =
+    .placeholder = Рӯйхати вазифаҳо
+# The placeholder value of the name field for a newly created list
+newtab-widget-lists-name-placeholder-new =
+    .placeholder = Рӯйхати нав
+
+## Strings for timer productivity widget
+## When the timer ends, a system notification may be shown. Depending on which mode the timer is in, that message would be shown
+
+newtab-widget-timer-notification-title = Вақтсанҷ
+newtab-widget-timer-notification-focus = Вақти мутолиа ба анҷом расид. Кори хуб. Танаффус лозим аст?
+newtab-widget-timer-notification-break = Танаффус ба анҷом расид. Омода ҳастед, ки боз диққат кунед?
+newtab-widget-timer-notification-warning = Огоҳномаҳо хомӯш мебошанд
+newtab-widget-timer-mode-focus =
+    .label = Марказонидан
+newtab-widget-timer-mode-break =
+    .label = Қатъ кардан
+newtab-widget-timer-play =
+    .title = Пахш кардан
+newtab-widget-timer-pause =
+    .title = Таваққуф кардан
+newtab-widget-timer-label-play =
+    .label = Пахш кардан
+newtab-widget-timer-label-pause =
+    .label = Таваққуф кардан
+newtab-widget-timer-reset =
+    .title = Аз нав танзим кардан
+newtab-widget-timer-menu-notifications = Хомӯш кардани огоҳномаҳо
+newtab-widget-timer-menu-notifications-on = Фаъол кардани огоҳномаҳо
+newtab-widget-timer-menu-hide = Пинҳон кардани вақтсанҷ
+newtab-widget-timer-menu-learn-more = Маълумоти бештар
+# Message that appears when widgets are full-height. This reminds users that there is more New Tab content to see if they scroll
+newtab-widget-keep-scrolling = Барои дидани маълумоти бештар, ҳаракат кунед
+newtab-widget-message-title = Бо истифода аз рӯйхатҳо ва вақтсанҷи дарунсохт диққати худро нигоҳ доред
+# to-dos stands for "things to do".
+newtab-widget-message-copy = Аз ёдовариҳои фаврӣ то вазифаҳои ҳаррӯза ва аз ҷаласаҳои бодиққат то танаффусҳои бардавом — ҳар гуна вазифаҳоро дар сари вақт иҷро намоед.
+newtab-promo-card-title = Дастгирӣ кардани «{ -brand-product-name }»
+newtab-promo-card-body = Сарпарастони мо рисолати моро барои ташкили таҷрибаи беҳтарини Интернет дастгирӣ менамоянд
+newtab-promo-card-cta = Маълумоти бештар
+newtab-promo-card-dismiss-button =
+    .title = Нодида гузарондан
+    .aria-label = Нодида гузарондан

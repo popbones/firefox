@@ -2422,12 +2422,10 @@ TEST(GeckoProfiler, Markers)
       schema.AddKeyFormat("key with url", MS::Format::Url);
       schema.AddKeyLabelFormat("key with label filePath", "label filePath",
                                MS::Format::FilePath);
-      schema.AddKeyFormatSearchable("key with string not-searchable",
-                                    MS::Format::String,
-                                    MS::Searchable::NotSearchable);
-      schema.AddKeyLabelFormatSearchable("key with label duration searchable",
-                                         "label duration", MS::Format::Duration,
-                                         MS::Searchable::Searchable);
+      schema.AddKeyFormat("key with string not-searchable", MS::Format::String);
+      schema.AddKeyLabelFormat("key with label duration searchable",
+                               "label duration", MS::Format::Duration,
+                               MS::PayloadFlags::Searchable);
       schema.AddKeyFormat("key with time", MS::Format::Time);
       schema.AddKeyFormat("key with seconds", MS::Format::Seconds);
       schema.AddKeyFormat("key with milliseconds", MS::Format::Milliseconds);
@@ -2439,9 +2437,19 @@ TEST(GeckoProfiler, Markers)
       schema.AddKeyFormat("key with decimal", MS::Format::Decimal);
       schema.AddStaticLabelValue("static label", "static value");
       schema.AddKeyFormat("key with unique string", MS::Format::UniqueString);
-      schema.AddKeyFormatSearchable("key with sanitized string",
-                                    MS::Format::SanitizedString,
-                                    MS::Searchable::Searchable);
+      schema.AddKeyFormat("key with sanitized string",
+                          MS::Format::SanitizedString,
+                          MS::PayloadFlags::Searchable);
+      schema.AddKeyLabelFormat("key with label hidden", "label",
+                               MS::Format::String, MS::PayloadFlags::Hidden);
+      schema.AddKeyFormat("key hidden", MS::Format::String,
+                          MS::PayloadFlags::Hidden);
+
+      schema.AddKeyFormat(
+          "key hidden and searchable", MS::Format::String,
+          MS::PayloadFlags(uint32_t(MS::PayloadFlags::Hidden) |
+                           uint32_t(MS::PayloadFlags::Searchable)));
+
       return schema;
     }
   };
@@ -2481,6 +2489,21 @@ TEST(GeckoProfiler, Markers)
   // Make sure the compiler doesn't complain about this unused struct.
   mozilla::Unused << GtestUnusedMarker{};
 
+  // Test PROFILER_MARKER_SIMPLE_PAYLOAD with various data types.
+  int testInt = 42;
+  double testDouble = 3.14;
+  bool testBool = true;
+  nsCString testString("test_string");
+
+  PROFILER_MARKER_SIMPLE_PAYLOAD("SimplePayload with int", OTHER, testInt);
+  PROFILER_MARKER_SIMPLE_PAYLOAD("SimplePayload with double", OTHER,
+                                 testDouble);
+  PROFILER_MARKER_SIMPLE_PAYLOAD("SimplePayload with bool", OTHER, testBool);
+  PROFILER_MARKER_SIMPLE_PAYLOAD("SimplePayload with string", OTHER,
+                                 testString);
+  PROFILER_MARKER_SIMPLE_PAYLOAD("SimplePayload with multiple", OTHER, testInt,
+                                 testDouble, testBool);
+
   // Other markers in alphabetical order of payload class names.
 
   nsCOMPtr<nsIURI> uri;
@@ -2496,8 +2519,8 @@ TEST(GeckoProfiler, Markers)
       /* mozilla::TimeStamp aStart */ ts1,
       /* mozilla::TimeStamp aEnd */ ts2,
       /* int64_t aCount */ 56,
-      /* mozilla::net::CacheDisposition aCacheDisposition */
-      net::kCacheHit,
+      /* nsICacheInfoChannel::CacheDisposition aCacheDisposition */
+      nsICacheInfoChannel::kCacheHit,
       /* uint64_t aInnerWindowID */ 78,
       /* bool aIsPrivateBrowsing */ false,
       /* unsigned long aClassOfServiceFlag */ nsIClassOfService::Leader,
@@ -2523,8 +2546,8 @@ TEST(GeckoProfiler, Markers)
       /* mozilla::TimeStamp aStart */ ts1,
       /* mozilla::TimeStamp aEnd */ ts2,
       /* int64_t aCount */ 56,
-      /* mozilla::net::CacheDisposition aCacheDisposition */
-      net::kCacheUnresolved,
+      /* nsICacheInfoChannel::CacheDisposition aCacheDisposition */
+      nsICacheInfoChannel::kCacheUnresolved,
       /* uint64_t aInnerWindowID */ 78,
       /* bool aIsPrivateBrowsing */ false,
       /* unsigned long aClassOfServiceFlag */ nsIClassOfService::Follower,
@@ -2556,8 +2579,8 @@ TEST(GeckoProfiler, Markers)
       /* mozilla::TimeStamp aStart */ ts1,
       /* mozilla::TimeStamp aEnd */ ts2,
       /* int64_t aCount */ 56,
-      /* mozilla::net::CacheDisposition aCacheDisposition */
-      net::kCacheUnresolved,
+      /* nsICacheInfoChannel::CacheDisposition aCacheDisposition */
+      nsICacheInfoChannel::kCacheUnresolved,
       /* uint64_t aInnerWindowID */ 78,
       /* bool aIsPrivateBrowsing */ false,
       /* unsigned long aClassOfServiceFlag */ nsIClassOfService::Speculative,
@@ -2588,8 +2611,8 @@ TEST(GeckoProfiler, Markers)
       /* mozilla::TimeStamp aStart */ ts1,
       /* mozilla::TimeStamp aEnd */ ts2,
       /* int64_t aCount */ 56,
-      /* mozilla::net::CacheDisposition aCacheDisposition */
-      net::kCacheUnresolved,
+      /* nsICacheInfoChannel::CacheDisposition aCacheDisposition */
+      nsICacheInfoChannel::kCacheUnresolved,
       /* uint64_t aInnerWindowID */ 78,
       /* bool aIsPrivateBrowsing */ false,
       /* unsigned long aClassOfServiceFlag */ nsIClassOfService::Background,
@@ -2620,8 +2643,8 @@ TEST(GeckoProfiler, Markers)
       /* mozilla::TimeStamp aStart */ ts1,
       /* mozilla::TimeStamp aEnd */ ts2,
       /* int64_t aCount */ 56,
-      /* mozilla::net::CacheDisposition aCacheDisposition */
-      net::kCacheUnresolved,
+      /* nsICacheInfoChannel::CacheDisposition aCacheDisposition */
+      nsICacheInfoChannel::kCacheUnresolved,
       /* uint64_t aInnerWindowID */ 78,
       /* bool aIsPrivateBrowsing */ false,
       /* unsigned long aClassOfServiceFlag */ nsIClassOfService::Unblocked |
@@ -2652,8 +2675,8 @@ TEST(GeckoProfiler, Markers)
       /* mozilla::TimeStamp aStart */ ts1,
       /* mozilla::TimeStamp aEnd */ ts2,
       /* int64_t aCount */ 56,
-      /* mozilla::net::CacheDisposition aCacheDisposition */
-      net::kCacheUnresolved,
+      /* nsICacheInfoChannel::CacheDisposition aCacheDisposition */
+      nsICacheInfoChannel::kCacheUnresolved,
       /* uint64_t aInnerWindowID */ 78,
       /* bool aIsPrivateBrowsing */ false,
       /* unsigned long aClassOfServiceFlag */ nsIClassOfService::Unblocked |
@@ -2684,8 +2707,8 @@ TEST(GeckoProfiler, Markers)
       /* mozilla::TimeStamp aStart */ ts1,
       /* mozilla::TimeStamp aEnd */ ts2,
       /* int64_t aCount */ 56,
-      /* mozilla::net::CacheDisposition aCacheDisposition */
-      net::kCacheUnresolved,
+      /* nsICacheInfoChannel::CacheDisposition aCacheDisposition */
+      nsICacheInfoChannel::kCacheUnresolved,
       /* uint64_t aInnerWindowID */ 78,
       /* bool aIsPrivateBrowsing */ true,
       /* unsigned long aClassOfServiceFlag */ nsIClassOfService::Tail,
@@ -2789,6 +2812,11 @@ TEST(GeckoProfiler, Markers)
     S_FirstMarker,
     S_CustomMarker,
     S_SpecialMarker,
+    S_SimplePayload_int,
+    S_SimplePayload_double,
+    S_SimplePayload_bool,
+    S_SimplePayload_string,
+    S_SimplePayload_multiple,
     S_NetworkMarkerPayload_start,
     S_NetworkMarkerPayload_stop,
     S_NetworkMarkerPayload_redirect_temporary,
@@ -3076,6 +3104,43 @@ TEST(GeckoProfiler, Markers)
                   state = State(S_SpecialMarker + 1);
                   EXPECT_EQ(typeString, "markers-gtest-special");
                   EXPECT_EQ(payload.size(), 1u) << "Only 'type' in the payload";
+
+                } else if (nameString == "SimplePayload with int") {
+                  EXPECT_EQ(state, S_SimplePayload_int);
+                  state = State(S_SimplePayload_int + 1);
+                  EXPECT_EQ(typeString, "SimplePayload with int");
+                  EXPECT_TIMING_INSTANT;
+                  EXPECT_EQ_JSON(payload["testInt"], Int64, 42);
+
+                } else if (nameString == "SimplePayload with double") {
+                  EXPECT_EQ(state, S_SimplePayload_double);
+                  state = State(S_SimplePayload_double + 1);
+                  EXPECT_EQ(typeString, "SimplePayload with double");
+                  EXPECT_TIMING_INSTANT;
+                  EXPECT_EQ_JSON(payload["testDouble"], Double, 3.14);
+
+                } else if (nameString == "SimplePayload with bool") {
+                  EXPECT_EQ(state, S_SimplePayload_bool);
+                  state = State(S_SimplePayload_bool + 1);
+                  EXPECT_EQ(typeString, "SimplePayload with bool");
+                  EXPECT_TIMING_INSTANT;
+                  EXPECT_EQ_JSON(payload["testBool"], Bool, true);
+
+                } else if (nameString == "SimplePayload with string") {
+                  EXPECT_EQ(state, S_SimplePayload_string);
+                  state = State(S_SimplePayload_string + 1);
+                  EXPECT_EQ(typeString, "SimplePayload with string");
+                  EXPECT_TIMING_INSTANT;
+                  EXPECT_EQ_JSON(payload["testString"], String, "test_string");
+
+                } else if (nameString == "SimplePayload with multiple") {
+                  EXPECT_EQ(state, S_SimplePayload_multiple);
+                  state = State(S_SimplePayload_multiple + 1);
+                  EXPECT_EQ(typeString, "SimplePayload with multiple");
+                  EXPECT_TIMING_INSTANT;
+                  EXPECT_EQ_JSON(payload["testInt"], Int64, 42);
+                  EXPECT_EQ_JSON(payload["testDouble"], Double, 3.14);
+                  EXPECT_EQ_JSON(payload["testBool"], Bool, true);
 
                 } else if (nameString == "Load 1: http://mozilla.org/") {
                   EXPECT_EQ(state, S_NetworkMarkerPayload_start);
@@ -3444,7 +3509,7 @@ TEST(GeckoProfiler, Markers)
             EXPECT_EQ_JSON(schema["tooltipLabel"], String, "tooltip label");
             EXPECT_EQ_JSON(schema["tableLabel"], String, "table label");
 
-            ASSERT_EQ(data.size(), 16u);
+            ASSERT_EQ(data.size(), 19u);
 
             ASSERT_TRUE(data[0u].isObject());
             EXPECT_EQ_JSON(data[0u]["key"], String, "key with url");
@@ -3463,7 +3528,7 @@ TEST(GeckoProfiler, Markers)
                            "key with string not-searchable");
             EXPECT_TRUE(data[2u]["label"].isNull());
             EXPECT_EQ_JSON(data[2u]["format"], String, "string");
-            EXPECT_EQ_JSON(data[2u]["searchable"], Bool, false);
+            EXPECT_TRUE(data[2u]["searchable"].isNull());
 
             ASSERT_TRUE(data[3u].isObject());
             EXPECT_EQ_JSON(data[3u]["key"], String,
@@ -3542,6 +3607,29 @@ TEST(GeckoProfiler, Markers)
             EXPECT_TRUE(data[15u]["label"].isNull());
             EXPECT_EQ_JSON(data[15u]["format"], String, "sanitized-string");
             EXPECT_EQ_JSON(data[15u]["searchable"], Bool, true);
+
+            ASSERT_TRUE(data[16u].isObject());
+            EXPECT_EQ_JSON(data[16u]["key"], String, "key with label hidden");
+            EXPECT_EQ_JSON(data[16u]["label"], String, "label");
+            EXPECT_EQ_JSON(data[16u]["format"], String, "string");
+            EXPECT_TRUE(data[16u]["searchable"].isNull());
+            EXPECT_EQ_JSON(data[16u]["hidden"], Bool, true);
+
+            ASSERT_TRUE(data[17u].isObject());
+            EXPECT_EQ_JSON(data[17u]["key"], String, "key hidden");
+            EXPECT_TRUE(data[17u]["label"].isNull());
+            EXPECT_EQ_JSON(data[17u]["format"], String, "string");
+            EXPECT_TRUE(data[17u]["searchable"].isNull());
+            EXPECT_EQ_JSON(data[17u]["hidden"], Bool, true);
+
+            ASSERT_TRUE(data[18u].isObject());
+            EXPECT_EQ_JSON(data[18u]["key"], String,
+                           "key hidden and searchable");
+            EXPECT_TRUE(data[18u]["label"].isNull());
+            EXPECT_EQ_JSON(data[18u]["format"], String, "string");
+            EXPECT_EQ_JSON(data[18u]["searchable"], Bool, true);
+            EXPECT_EQ_JSON(data[18u]["hidden"], Bool, true);
+
           } else if (nameString == "markers-gtest-special") {
             EXPECT_EQ(display.size(), 0u);
             ASSERT_EQ(data.size(), 0u);

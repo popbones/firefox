@@ -11,66 +11,16 @@
 
 #include "nsFrameLoader.h"
 
-#include "base/basictypes.h"
-
-#include "prenv.h"
-
-#include "nsDocShell.h"
-#include "nsIContentInlines.h"
-#include "nsIDocumentViewer.h"
-#include "nsIPrintSettings.h"
-#include "nsIPrintSettingsService.h"
-#include "mozilla/dom/Document.h"
-#include "nsPIDOMWindow.h"
-#include "nsIWebNavigation.h"
-#include "nsIWebProgress.h"
-#include "nsIDocShell.h"
-#include "nsIDocShellTreeOwner.h"
-#include "nsDocShellLoadState.h"
-#include "nsIBaseWindow.h"
-#include "nsIBrowser.h"
-#include "nsContentUtils.h"
-#include "nsUnicharUtils.h"
-#include "nsIScriptGlobalObject.h"
-#include "nsIScriptSecurityManager.h"
-#include "nsFrameLoaderOwner.h"
-#include "nsIFrame.h"
-#include "nsSubDocumentFrame.h"
-#include "nsError.h"
-#include "nsIAppWindow.h"
-#include "nsIScriptError.h"
-#include "nsGlobalWindowInner.h"
-#include "nsGlobalWindowOuter.h"
-#include "nsHTMLDocument.h"
-#include "nsPIWindowRoot.h"
-#include "nsLayoutUtils.h"
-#include "nsView.h"
-#include "nsViewManager.h"
-#include "nsBaseWidget.h"
-#include "nsQueryObject.h"
-#include "ReferrerInfo.h"
-#include "nsIOpenWindowInfo.h"
-#include "nsISHistory.h"
-#include "nsIURI.h"
-#include "nsIXULRuntime.h"
-#include "nsNetUtil.h"
-#include "nsFocusManager.h"
-#include "nsIINIParser.h"
-#include "nsAppRunner.h"
-#include "nsDirectoryService.h"
-#include "nsDirectoryServiceDefs.h"
-
-#include "nsGkAtoms.h"
-#include "nsNameSpaceManager.h"
-
-#include "nsThreadUtils.h"
-
-#include "InProcessBrowserChildMessageManager.h"
-
-#include "ContentParent.h"
 #include "BrowserParent.h"
+#include "ContentParent.h"
+#include "InProcessBrowserChildMessageManager.h"
+#include "ReferrerInfo.h"
+#include "base/basictypes.h"
+#include "buildid_section.h"
+#include "jsapi.h"
 #include "mozilla/AsyncEventDispatcher.h"
 #include "mozilla/BasePrincipal.h"
+#include "mozilla/ContentPrincipal.h"
 #include "mozilla/ExpandedPrincipal.h"
 #include "mozilla/FlushType.h"
 #include "mozilla/HTMLEditor.h"
@@ -79,62 +29,100 @@
 #include "mozilla/PresShell.h"
 #include "mozilla/PresShellInlines.h"
 #include "mozilla/ProcessPriorityManager.h"
+#include "mozilla/ProfilerLabels.h"
 #include "mozilla/ScopeExit.h"
 #include "mozilla/ScrollContainerFrame.h"
 #include "mozilla/StaticPrefs_fission.h"
 #include "mozilla/Unused.h"
+#include "mozilla/WebBrowserPersistLocalDocument.h"
+#include "mozilla/dom/BrowserBridgeChild.h"
+#include "mozilla/dom/BrowserBridgeHost.h"
+#include "mozilla/dom/BrowserHost.h"
 #include "mozilla/dom/BrowsingContext.h"
+#include "mozilla/dom/BrowsingContextGroup.h"
+#include "mozilla/dom/CanonicalBrowsingContext.h"
+#include "mozilla/dom/ChildSHistory.h"
 #include "mozilla/dom/ChromeMessageSender.h"
+#include "mozilla/dom/ContentChild.h"
+#include "mozilla/dom/ContentProcessManager.h"
+#include "mozilla/dom/CustomEvent.h"
+#include "mozilla/dom/Document.h"
 #include "mozilla/dom/Element.h"
 #include "mozilla/dom/FrameCrashedEvent.h"
 #include "mozilla/dom/FrameLoaderBinding.h"
+#include "mozilla/dom/HTMLBodyElement.h"
+#include "mozilla/dom/HTMLIFrameElement.h"
 #include "mozilla/dom/InProcessChild.h"
 #include "mozilla/dom/MozFrameLoaderOwnerBinding.h"
+#include "mozilla/dom/PBackgroundSessionStorageCache.h"
 #include "mozilla/dom/PBrowser.h"
+#include "mozilla/dom/PolicyContainer.h"
+#include "mozilla/dom/Promise.h"
+#include "mozilla/dom/PromiseNativeHandler.h"
 #include "mozilla/dom/SessionHistoryEntry.h"
+#include "mozilla/dom/SessionStorageManager.h"
 #include "mozilla/dom/SessionStoreChild.h"
 #include "mozilla/dom/SessionStoreParent.h"
 #include "mozilla/dom/SessionStoreUtils.h"
 #include "mozilla/dom/WindowGlobalParent.h"
 #include "mozilla/dom/XULFrameElement.h"
-#include "mozilla/gfx/CrossProcessPaint.h"
-#include "mozilla/ProfilerLabels.h"
-#include "nsGenericHTMLFrameElement.h"
-
-#include "jsapi.h"
-#include "mozilla/dom/HTMLIFrameElement.h"
-#include "nsSandboxFlags.h"
-#include "mozilla/layers/CompositorBridgeChild.h"
-#include "mozilla/dom/CustomEvent.h"
-
 #include "mozilla/dom/ipc/StructuredCloneData.h"
-#include "mozilla/WebBrowserPersistLocalDocument.h"
-#include "mozilla/dom/Promise.h"
-#include "mozilla/dom/PromiseNativeHandler.h"
-#include "mozilla/dom/ChildSHistory.h"
-#include "mozilla/dom/CanonicalBrowsingContext.h"
-#include "mozilla/dom/ContentChild.h"
-#include "mozilla/dom/ContentProcessManager.h"
-#include "mozilla/dom/BrowserBridgeChild.h"
-#include "mozilla/dom/BrowserHost.h"
-#include "mozilla/dom/BrowserBridgeHost.h"
-#include "mozilla/dom/BrowsingContextGroup.h"
-
-#include "mozilla/dom/SessionStorageManager.h"
+#include "mozilla/gfx/CrossProcessPaint.h"
 #include "mozilla/ipc/BackgroundChild.h"
-#include "mozilla/ipc/PBackgroundChild.h"
-#include "mozilla/dom/PBackgroundSessionStorageCache.h"
 #include "mozilla/ipc/BackgroundUtils.h"
-
-#include "mozilla/dom/HTMLBodyElement.h"
-
-#include "mozilla/ContentPrincipal.h"
-
-#include "buildid_section.h"
+#include "mozilla/ipc/PBackgroundChild.h"
+#include "mozilla/layers/CompositorBridgeChild.h"
 #include "mozilla/toolkit/library/buildid_reader_ffi.h"
+#include "nsAppRunner.h"
+#include "nsBaseWidget.h"
+#include "nsContentUtils.h"
+#include "nsDirectoryService.h"
+#include "nsDirectoryServiceDefs.h"
+#include "nsDocShell.h"
+#include "nsDocShellLoadState.h"
+#include "nsError.h"
+#include "nsFocusManager.h"
+#include "nsFrameLoaderOwner.h"
+#include "nsGenericHTMLFrameElement.h"
+#include "nsGkAtoms.h"
+#include "nsGlobalWindowInner.h"
+#include "nsGlobalWindowOuter.h"
+#include "nsHTMLDocument.h"
+#include "nsIAppWindow.h"
+#include "nsIBaseWindow.h"
+#include "nsIBrowser.h"
+#include "nsIContentInlines.h"
+#include "nsIDocShell.h"
+#include "nsIDocShellTreeOwner.h"
+#include "nsIDocumentViewer.h"
+#include "nsIFrame.h"
+#include "nsIINIParser.h"
+#include "nsIOpenWindowInfo.h"
+#include "nsIPrintSettings.h"
+#include "nsIPrintSettingsService.h"
+#include "nsISHistory.h"
+#include "nsIScriptError.h"
+#include "nsIScriptGlobalObject.h"
+#include "nsIScriptSecurityManager.h"
+#include "nsIURI.h"
+#include "nsIWebNavigation.h"
+#include "nsIWebProgress.h"
+#include "nsIXULRuntime.h"
+#include "nsLayoutUtils.h"
+#include "nsNameSpaceManager.h"
+#include "nsNetUtil.h"
+#include "nsPIDOMWindow.h"
+#include "nsPIWindowRoot.h"
+#include "nsQueryObject.h"
+#include "nsSandboxFlags.h"
+#include "nsSubDocumentFrame.h"
+#include "nsThreadUtils.h"
+#include "nsUnicharUtils.h"
+#include "nsView.h"
+#include "nsViewManager.h"
 #include "nsXPCOMPrivate.h"  // for XUL_DLL
-
 #include "nsXULPopupManager.h"
+#include "prenv.h"
 
 #ifdef NS_PRINTING
 #  include "nsIWebBrowserPrint.h"
@@ -509,16 +497,16 @@ void nsFrameLoader::LoadFrame(bool aOriginalSrc,
 
   nsAutoString src;
   nsCOMPtr<nsIPrincipal> principal;
-  nsCOMPtr<nsIContentSecurityPolicy> csp;
+  nsCOMPtr<nsIPolicyContainer> policyContainer;
 
   bool isSrcdoc = mOwnerContent->IsHTMLElement(nsGkAtoms::iframe) &&
                   mOwnerContent->HasAttr(nsGkAtoms::srcdoc);
   if (isSrcdoc) {
     src.AssignLiteral("about:srcdoc");
     principal = mOwnerContent->NodePrincipal();
-    csp = mOwnerContent->GetCsp();
+    policyContainer = mOwnerContent->GetPolicyContainer();
   } else {
-    GetURL(src, getter_AddRefs(principal), getter_AddRefs(csp));
+    GetURL(src, getter_AddRefs(principal), getter_AddRefs(policyContainer));
 
     src.Trim(" \t\n\r");
 
@@ -533,7 +521,7 @@ void nsFrameLoader::LoadFrame(bool aOriginalSrc,
       }
       src.AssignLiteral("about:blank");
       principal = mOwnerContent->NodePrincipal();
-      csp = mOwnerContent->GetCsp();
+      policyContainer = mOwnerContent->GetPolicyContainer();
     }
   }
 
@@ -558,7 +546,8 @@ void nsFrameLoader::LoadFrame(bool aOriginalSrc,
   }
 
   if (NS_SUCCEEDED(rv)) {
-    rv = LoadURI(uri, principal, csp, aOriginalSrc, aShouldCheckForRecursion);
+    rv = LoadURI(uri, principal, policyContainer, aOriginalSrc,
+                 aShouldCheckForRecursion);
   }
 
   if (NS_FAILED(rv)) {
@@ -589,7 +578,7 @@ void nsFrameLoader::FireErrorEvent() {
 
 nsresult nsFrameLoader::LoadURI(nsIURI* aURI,
                                 nsIPrincipal* aTriggeringPrincipal,
-                                nsIContentSecurityPolicy* aCsp,
+                                nsIPolicyContainer* aPolicyContainer,
                                 bool aOriginalSrc,
                                 bool aShouldCheckForRecursion) {
   if (!aURI) return NS_ERROR_INVALID_POINTER;
@@ -609,12 +598,12 @@ nsresult nsFrameLoader::LoadURI(nsIURI* aURI,
 
   mURIToLoad = aURI;
   mTriggeringPrincipal = aTriggeringPrincipal;
-  mCsp = aCsp;
+  mPolicyContainer = aPolicyContainer;
   rv = doc->InitializeFrameLoader(this);
   if (NS_FAILED(rv)) {
     mURIToLoad = nullptr;
     mTriggeringPrincipal = nullptr;
-    mCsp = nullptr;
+    mPolicyContainer = nullptr;
   }
   return rv;
 }
@@ -636,13 +625,13 @@ void nsFrameLoader::ResumeLoad(uint64_t aPendingSwitchID) {
   mURIToLoad = nullptr;
   mPendingSwitchID = aPendingSwitchID;
   mTriggeringPrincipal = mOwnerContent->NodePrincipal();
-  mCsp = mOwnerContent->GetCsp();
+  mPolicyContainer = mOwnerContent->GetPolicyContainer();
 
   nsresult rv = doc->InitializeFrameLoader(this);
   if (NS_FAILED(rv)) {
     mPendingSwitchID = 0;
     mTriggeringPrincipal = nullptr;
-    mCsp = nullptr;
+    mPolicyContainer = nullptr;
 
     FireErrorEvent();
   }
@@ -678,16 +667,17 @@ nsresult nsFrameLoader::ReallyStartLoadingInternal() {
       loadState->SetTriggeringPrincipal(mOwnerContent->NodePrincipal());
     }
 
-    // If we have an explicit CSP, we set it. If not, we only query it from
-    // the document in case there was no explicit triggeringPrincipal.
+    // If we have an explicit policyContainer, we set it. If not, we only query
+    // it from the document in case there was no explicit triggeringPrincipal.
     // Otherwise it's possible that the original triggeringPrincipal did not
-    // have a CSP which causes the CSP on the Principal and explicit CSP
-    // to be out of sync.
-    if (mCsp) {
-      loadState->SetCsp(mCsp);
+    // have a policyContainer which causes the policyContainer on the Principal
+    // and explicit policyContainer to be out of sync.
+    if (mPolicyContainer) {
+      loadState->SetPolicyContainer(mPolicyContainer);
     } else if (!mTriggeringPrincipal) {
-      nsCOMPtr<nsIContentSecurityPolicy> csp = mOwnerContent->GetCsp();
-      loadState->SetCsp(csp);
+      nsCOMPtr<nsIPolicyContainer> policyContainer =
+          mOwnerContent->GetPolicyContainer();
+      loadState->SetPolicyContainer(policyContainer);
     }
 
     nsAutoString srcdoc;
@@ -2315,21 +2305,22 @@ nsresult nsFrameLoader::MaybeCreateDocShell() {
   return NS_OK;
 }
 
-void nsFrameLoader::GetURL(nsString& aURI, nsIPrincipal** aTriggeringPrincipal,
-                           nsIContentSecurityPolicy** aCsp) {
-  aURI.Truncate();
+void nsFrameLoader::GetURL(nsString& aURL, nsIPrincipal** aTriggeringPrincipal,
+                           nsIPolicyContainer** aPolicyContainer) {
+  aURL.Truncate();
   // Within this function we default to using the NodePrincipal as the
   // triggeringPrincipal and the CSP of the document.
   // Expanded Principals however override the CSP of the document, hence
   // if frame->GetSrcTriggeringPrincipal() returns a valid principal, we
   // have to query the CSP from that Principal.
   nsCOMPtr<nsIPrincipal> triggeringPrincipal = mOwnerContent->NodePrincipal();
-  nsCOMPtr<nsIContentSecurityPolicy> csp = mOwnerContent->GetCsp();
+  nsCOMPtr<nsIPolicyContainer> policyContainer =
+      mOwnerContent->GetPolicyContainer();
 
   if (mOwnerContent->IsHTMLElement(nsGkAtoms::object)) {
-    mOwnerContent->GetAttr(nsGkAtoms::data, aURI);
+    mOwnerContent->GetAttr(nsGkAtoms::data, aURL);
   } else {
-    mOwnerContent->GetAttr(nsGkAtoms::src, aURI);
+    mOwnerContent->GetAttr(nsGkAtoms::src, aURL);
     if (RefPtr<nsGenericHTMLFrameElement> frame =
             do_QueryObject(mOwnerContent)) {
       nsCOMPtr<nsIPrincipal> srcPrincipal = frame->GetSrcTriggeringPrincipal();
@@ -2338,13 +2329,19 @@ void nsFrameLoader::GetURL(nsString& aURI, nsIPrincipal** aTriggeringPrincipal,
         nsCOMPtr<nsIExpandedPrincipal> ep =
             do_QueryInterface(triggeringPrincipal);
         if (ep) {
-          csp = ep->GetCsp();
+          // Bug 1548468: Move CSP off ExpandedPrincipal
+          RefPtr<PolicyContainer> addonPolicyContainer;
+          if (nsCOMPtr<nsIContentSecurityPolicy> addonCSP = ep->GetCsp()) {
+            addonPolicyContainer = new PolicyContainer();
+            addonPolicyContainer->SetCSP(addonCSP);
+          }
+          policyContainer = addonPolicyContainer.forget();
         }
       }
     }
   }
   triggeringPrincipal.forget(aTriggeringPrincipal);
-  csp.forget(aCsp);
+  policyContainer.forget(aPolicyContainer);
 }
 
 nsresult nsFrameLoader::CheckForRecursiveLoad(nsIURI* aURI) {
@@ -3085,7 +3082,7 @@ void nsFrameLoader::ApplySandboxFlags(uint32_t sandboxFlags) {
 /* virtual */
 void nsFrameLoader::AttributeChanged(mozilla::dom::Element* aElement,
                                      int32_t aNameSpaceID, nsAtom* aAttribute,
-                                     int32_t aModType,
+                                     AttrModType,
                                      const nsAttrValue* aOldValue) {
   MOZ_ASSERT(mObservingOwnerContent);
 
@@ -3629,9 +3626,6 @@ void nsFrameLoader::SetWillChangeProcess() {
 }
 
 static mozilla::Result<bool, nsresult> BuildIDMismatchMemoryAndDisk() {
-  nsresult rv;
-  nsCOMPtr<nsIFile> file;
-
   if (const char* forceMismatch = PR_GetEnv("MOZ_FORCE_BUILDID_MISMATCH")) {
     if (forceMismatch[0] == '1') {
       NS_WARNING("Forcing a buildid mismatch");
@@ -3643,9 +3637,9 @@ static mozilla::Result<bool, nsresult> BuildIDMismatchMemoryAndDisk() {
   // Android packages on installation will stop existing instance, so we
   // cannot run into this problem.
   return false;
-#endif  // defined(ANDROID)
+#else
 
-#if defined(XP_WIN)
+#  if defined(XP_WIN)
   {
     // Windows Store packages cannot run into this problem.
     nsCOMPtr<nsIPropertyBag2> infoService =
@@ -3659,7 +3653,10 @@ static mozilla::Result<bool, nsresult> BuildIDMismatchMemoryAndDisk() {
       }
     }
   }
-#endif
+#  endif  // XP_WIN
+
+  nsresult rv;
+  nsCOMPtr<nsIFile> file;
 
   rv = NS_GetSpecialDirectory(NS_GRE_BIN_DIR, getter_AddRefs(file));
   MOZ_TRY(rv);
@@ -3677,6 +3674,7 @@ static mozilla::Result<bool, nsresult> BuildIDMismatchMemoryAndDisk() {
   MOZ_TRY(rv);
 
   return (installedBuildID != PlatformBuildID());
+#endif    // !ANDROID
 }
 
 void nsFrameLoader::MaybeNotifyCrashed(BrowsingContext* aBrowsingContext,

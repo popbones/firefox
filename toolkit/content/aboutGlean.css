@@ -4,6 +4,11 @@
 
 @import url("chrome://global/skin/in-content/common.css");
 
+:root {
+  --content-width-offset: 340px;
+  --table-width: calc(100vw - var(--content-width-offset));
+}
+
 body {
   display: flex;
   align-items: stretch;
@@ -42,4 +47,65 @@ body {
 #log-pings {
   vertical-align: text-top;
   margin-inline-end: 0;
+}
+
+#metrics-table-controls {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+#metrics-table {
+  width: var(--table-width);
+}
+
+#metrics-table table {
+  width: var(--table-width);
+}
+
+#metrics-table table td {
+  vertical-align: middle;
+}
+
+#metrics-table-instance {
+  max-height: calc(100vh - 205px);
+  overflow-y: scroll;
+}
+
+td[data-d3-cell="actions"] > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+td[data-d3-cell="value"] > pre {
+  background-color: var(--background-color-box);
+  padding: 5px;
+  border-radius: var(--border-radius-small);
+  overflow-x: scroll;
+  width: fit-content;
+}
+
+td[data-d3-cell="value"] > svg {
+  color: var(--text-color);
+  border: 1px solid var(--border-color-card);
+  border-radius: var(--border-radius-small);
+  background-color: var(--background-color-box);
+}
+
+.histogram .boxes rect {
+  fill: var(--color-accent-primary);
+}
+
+.histogram .boxes .hovered rect {
+  fill: var(--color-accent-primary-hover);
+}
+
+.histogram .boxes text {
+  fill: var(--text-color);
+}
+
+.histogram .tick *,
+.histogram .domain {
+  fill: var(--text-color);
 }

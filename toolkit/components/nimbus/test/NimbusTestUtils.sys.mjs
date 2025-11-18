@@ -114,6 +114,62 @@ function validateFeatureValueEnum({ branch }) {
   }
 }
 
+const NimbusLogging = {
+  LOG_LEVEL_PREF: "messaging-system.log",
+
+  originalLogLevel: null,
+  outstandingResets: 0,
+
+  /**
+   * Enable logging, setting the log level to `all`.
+   *
+   * This function may be called multiple times and
+   * {@link NimbusLogging.maybeResetLogLevel} must be called the same number of
+   * time to reset the log level. This ensures that tests that call
+   * {@link NimbusTestUtils.enroll} et al. multiple times do not reset the log
+   * level until every cleanup handler is called.
+   */
+  enableLogging() {
+    if (this.outstandingResets == 0) {
+      if (
+        Services.prefs.getPrefType(this.LOG_LEVEL_PREF) !=
+        Ci.nsIPrefBranch.PREF_INVALID
+      ) {
+        this.originalLogLevel = Services.prefs.getStringPref(
+          this.LOG_LEVEL_PREF
+        );
+      }
+      Services.prefs.setStringPref(this.LOG_LEVEL_PREF, "all");
+    }
+
+    this.outstandingResets += 1;
+  },
+
+  /**
+   * Reset the log level.
+   *
+   * This function must be called once for each call to
+   * {@link NimbusLogging.enableLogging}.
+   */
+  maybeResetLogLevel() {
+    if (this.outstandingResets > 0) {
+      this.outstandingResets -= 1;
+
+      if (this.outstandingResets == 0) {
+        if (this.originalLogLevel !== null) {
+          Services.prefs.setStringPref(
+            this.LOG_LEVEL_PREF,
+            this.originalLogLevel
+          );
+        } else {
+          Services.prefs.clearUserPref(this.LOG_LEVEL_PREF);
+        }
+        this.originalLogLevel = null;
+      }
+    }
+  },
+};
+
 let _testSuite = null;
 
 export const NimbusTestUtils = {
@@ -140,8 +196,11 @@ export const NimbusTestUtils = {
      *
      * @param {object} store
      *        The `ExperimentStore`.
+     *
+     * @param {object} options
+     * @param {boolean} options.allProfiles Whether to assert that no enrollments exist in any profiles in the group.
      */
-    async storeIsEmpty(store) {
+    async storeIsEmpty(store, { allProfiles = false } = {}) {
       NimbusTestUtils.Assert.deepEqual(
         store
           .getAll()
@@ -172,6 +231,23 @@ export const NimbusTestUtils = {
       NimbusTestUtils.cleanupStorePrefCache();
 
       await NimbusTestUtils.cleanupEnrollmentDatabase(store?._db);
+      if (lazy.NimbusEnrollments.databaseEnabled) {
+        // TODO(bug 1967779): require the ProfilesDatastoreService to be initialized
+        // and remove this check.
+
+        if (allProfiles) {
+          const conn = await lazy.ProfilesDatastoreService.getConnection();
+          const count = await conn
+            .execute("SELECT COUNT(*) AS count FROM NimbusEnrollments;")
+            .then(([row]) => row.getResultByName("count"));
+
+          NimbusTestUtils.Assert.equal(
+            count,
+            0,
+            "There should be zero enrollments in the NimbusEnrollments table"
+          );
+        }
+      }
     },
 
     /**
@@ -662,12 +738,33 @@ export const NimbusTestUtils = {
     } catch (e) {}
   },
 
-  enableNimbusEnrollments({ read = false } = {}) {
+  async deleteEnrollmentsFromProfiles(profileIds) {
+    const conn = await lazy.ProfilesDatastoreService.getConnection();
+    if (!conn) {
+      throw new Error("ProfilesDatastoreService connection is closed");
+    }
+
+    await conn.executeTransaction(async () => {
+      for (const profileId of profileIds) {
+        await conn.execute(
+          `
+            DELETE FROM NimbusEnrollments
+            WHERE profileId = :profileId;
+          `,
+          { profileId }
+        );
+      }
+    });
+  },
+
+  enableNimbusEnrollments({ read = false, sync = false } = {}) {
     const writePref = "nimbus.profilesdatastoreservice.enabled";
     const readPref = "nimbus.profilesdatastoreservice.read.enabled";
+    const syncPref = "nimbus.profilesdatastoreservice.sync.enabled";
 
     const originalWriteValue = Services.prefs.getBoolPref(writePref, false);
     const originalReadValue = Services.prefs.getBoolPref(readPref, false);
+    const originalSyncValue = Services.prefs.getBoolPref(syncPref, false);
 
     Services.prefs.setBoolPref(writePref, true);
 
@@ -675,11 +772,16 @@ export const NimbusTestUtils = {
       Services.prefs.setBoolPref(readPref, true);
     }
 
+    if (!originalSyncValue && sync) {
+      Services.prefs.setBoolPref(syncPref, true);
+    }
+
     lazy.NimbusEnrollments._reloadPrefsForTests();
 
     return function () {
       Services.prefs.setBoolPref(writePref, originalWriteValue);
       Services.prefs.setBoolPref(readPref, originalReadValue);
+      Services.prefs.setBoolPref(syncPref, originalSyncValue);
       lazy.NimbusEnrollments._reloadPrefsForTests();
     };
   },
@@ -707,8 +809,6 @@ export const NimbusTestUtils = {
    *                 if the recipe fails to enroll.
    */
   async enroll(recipe, { manager, source = "nimbus-test-utils" } = {}) {
-    const experimentManager = manager ?? ExperimentAPI.manager;
-
     if (!recipe?.slug) {
       throw new Error("Experiment with slug is required");
     }
@@ -721,6 +821,9 @@ export const NimbusTestUtils = {
       }
     }
 
+    NimbusLogging.enableLogging();
+
+    const experimentManager = manager ?? ExperimentAPI.manager;
     await experimentManager.store.ready();
 
     const enrollment = await experimentManager.enroll(recipe, source);
@@ -736,6 +839,8 @@ export const NimbusTestUtils = {
       experimentManager.store._deleteForTests(enrollment.slug);
 
       await NimbusTestUtils.flushStore(experimentManager.store);
+
+      NimbusLogging.maybeResetLogLevel();
     };
   },
 
@@ -806,6 +911,64 @@ export const NimbusTestUtils = {
       manager: experimentManager,
       source,
     });
+  },
+
+  async insertEnrollment(recipe, branchSlug, { extra = {}, profileId } = {}) {
+    if (!recipe.branches.find(b => b.slug === branchSlug)) {
+      throw new Error(`Branch with slug ${branchSlug} not found`);
+    }
+
+    const conn = await lazy.ProfilesDatastoreService.getConnection();
+    if (!conn) {
+      throw new Error("ProfilesDatastoreService connection is closed");
+    }
+
+    const active = extra.active ?? true;
+    const unenrollReason = active ? null : (extra.unenrollReason ?? "unknown");
+    const lastSeen = (extra.lastSeen ?? new Date()).toJSON();
+    const setPrefs = active ? (extra.setPrefs ?? null) : null;
+    const prefFlips = active ? (extra.prefFlips ?? null) : null;
+
+    await conn.execute(
+      `
+        INSERT INTO NimbusEnrollments(
+          profileId,
+          slug,
+          branchSlug,
+          recipe,
+          active,
+          unenrollReason,
+          lastSeen,
+          setPrefs,
+          prefFlips,
+          source
+        )
+        VALUES(
+          :profileId,
+          :slug,
+          :branchSlug,
+          jsonb(:recipe),
+          :active,
+          :unenrollReason,
+          :lastSeen,
+          :setPrefs,
+          :prefFlips,
+          :source
+        )
+      `,
+      {
+        profileId: profileId ?? ExperimentAPI.profileId,
+        slug: recipe.slug,
+        branchSlug,
+        recipe: JSON.stringify(recipe),
+        active,
+        unenrollReason,
+        lastSeen,
+        setPrefs: setPrefs ? JSON.stringify(setPrefs) : null,
+        prefFlips: prefFlips ? JSON.stringify(prefFlips) : null,
+        source: extra.source ?? "NimbusTestUtils",
+      }
+    );
   },
 
   /**
@@ -988,6 +1151,8 @@ export const NimbusTestUtils = {
     features,
     migrationState,
   } = {}) {
+    NimbusLogging.enableLogging();
+
     const sandbox = lazy.sinon.createSandbox();
 
     let cleanupFeatures = null;
@@ -1023,7 +1188,9 @@ export const NimbusTestUtils = {
       manager,
       store,
       async cleanup() {
-        await NimbusTestUtils.assert.storeIsEmpty(manager.store);
+        await NimbusTestUtils.assert.storeIsEmpty(manager.store, {
+          allProfiles: true,
+        });
 
         ExperimentAPI._resetForTests();
         sandbox.restore();
@@ -1039,6 +1206,8 @@ export const NimbusTestUtils = {
 
         // Remove all migration state.
         Services.prefs.deleteBranch("nimbus.migrations.");
+
+        NimbusLogging.maybeResetLogLevel();
       },
     };
 
@@ -1120,6 +1289,7 @@ export const NimbusTestUtils = {
   async waitForActiveEnrollments(expectedSlugs) {
     const profileId = ExperimentAPI.profileId;
 
+    await this.flushStore();
     await lazy.TestUtils.waitForCondition(async () => {
       const conn = await lazy.ProfilesDatastoreService.getConnection();
       const slugs = await conn
@@ -1143,6 +1313,7 @@ export const NimbusTestUtils = {
   async waitForInactiveEnrollment(slug) {
     const profileId = ExperimentAPI.profileId;
 
+    await this.flushStore();
     await lazy.TestUtils.waitForCondition(async () => {
       const conn = await lazy.ProfilesDatastoreService.getConnection();
       const result = await conn.execute(
@@ -1164,6 +1335,7 @@ export const NimbusTestUtils = {
   async waitForAllUnenrollments() {
     const profileId = ExperimentAPI.profileId;
 
+    await this.flushStore();
     await lazy.TestUtils.waitForCondition(async () => {
       const conn = await lazy.ProfilesDatastoreService.getConnection();
       const slugs = await conn

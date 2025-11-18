@@ -61,9 +61,10 @@ SHEntrySharedParentState::SHEntrySharedParentState() {
 SHEntrySharedParentState::SHEntrySharedParentState(
     nsIPrincipal* aTriggeringPrincipal, nsIPrincipal* aPrincipalToInherit,
     nsIPrincipal* aPartitionedPrincipalToInherit,
-    nsIContentSecurityPolicy* aCsp, const nsACString& aContentType)
+    nsIPolicyContainer* aPolicyContainer, const nsACString& aContentType)
     : SHEntrySharedState(aTriggeringPrincipal, aPrincipalToInherit,
-                         aPartitionedPrincipalToInherit, aCsp, aContentType) {
+                         aPartitionedPrincipalToInherit, aPolicyContainer,
+                         aContentType) {
   AddSHEntrySharedParentState(this);
 }
 
@@ -101,7 +102,7 @@ void SHEntrySharedParentState::CopyFrom(SHEntrySharedParentState* aEntry) {
   mTriggeringPrincipal = aEntry->mTriggeringPrincipal;
   mPrincipalToInherit = aEntry->mPrincipalToInherit;
   mPartitionedPrincipalToInherit = aEntry->mPartitionedPrincipalToInherit;
-  mCsp = aEntry->mCsp;
+  mPolicyContainer = aEntry->mPolicyContainer;
   mSaveLayoutState = aEntry->mSaveLayoutState;
   mContentType.Assign(aEntry->mContentType);
   mIsFrameNavigation = aEntry->mIsFrameNavigation;
@@ -339,7 +340,7 @@ void nsSHEntryShared::CharacterDataChanged(nsIContent* aContent,
 
 void nsSHEntryShared::AttributeChanged(dom::Element* aElement,
                                        int32_t aNameSpaceID, nsAtom* aAttribute,
-                                       int32_t aModType,
+                                       AttrModType,
                                        const nsAttrValue* aOldValue) {
   if (!IgnoreMutationForBfCache(*aElement)) {
     RemoveFromBFCacheAsync();

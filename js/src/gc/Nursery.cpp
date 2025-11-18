@@ -34,6 +34,7 @@
 #include "util/GetPidProvider.h"  // getpid()
 #include "util/Poison.h"
 #include "vm/JSONPrinter.h"
+#include "vm/Logging.h"
 #include "vm/Realm.h"
 #include "vm/Time.h"
 
@@ -533,35 +534,44 @@ void js::Nursery::updateAllZoneAllocFlags() {
 
 void js::Nursery::getAllocFlagsForZone(JS::Zone* zone, bool* allocObjectsOut,
                                        bool* allocStringsOut,
-                                       bool* allocBigIntsOut) {
+                                       bool* allocBigIntsOut,
+                                       bool* allocGetterSettersOut) {
   *allocObjectsOut = isEnabled();
   *allocStringsOut =
       isEnabled() && canAllocateStrings() && !zone->nurseryStringsDisabled;
   *allocBigIntsOut =
       isEnabled() && canAllocateBigInts() && !zone->nurseryBigIntsDisabled;
+  *allocGetterSettersOut = isEnabled();
 }
 
 void js::Nursery::setAllocFlagsForZone(JS::Zone* zone) {
   bool allocObjects;
   bool allocStrings;
   bool allocBigInts;
+  bool allocGetterSetters;
 
-  getAllocFlagsForZone(zone, &allocObjects, &allocStrings, &allocBigInts);
-  zone->setNurseryAllocFlags(allocObjects, allocStrings, allocBigInts);
+  getAllocFlagsForZone(zone, &allocObjects, &allocStrings, &allocBigInts,
+                       &allocGetterSetters);
+  zone->setNurseryAllocFlags(allocObjects, allocStrings, allocBigInts,
+                             allocGetterSetters);
 }
 
 void js::Nursery::updateAllocFlagsForZone(JS::Zone* zone) {
   bool allocObjects;
   bool allocStrings;
   bool allocBigInts;
+  bool allocGetterSetters;
 
-  getAllocFlagsForZone(zone, &allocObjects, &allocStrings, &allocBigInts);
+  getAllocFlagsForZone(zone, &allocObjects, &allocStrings, &allocBigInts,
+                       &allocGetterSetters);
 
   if (allocObjects != zone->allocNurseryObjects() ||
       allocStrings != zone->allocNurseryStrings() ||
-      allocBigInts != zone->allocNurseryBigInts()) {
+      allocBigInts != zone->allocNurseryBigInts() ||
+      allocGetterSetters != zone->allocNurseryGetterSetters()) {
     CancelOffThreadIonCompile(zone);
-    zone->setNurseryAllocFlags(allocObjects, allocStrings, allocBigInts);
+    zone->setNurseryAllocFlags(allocObjects, allocStrings, allocBigInts,
+                               allocGetterSetters);
     discardCodeAndSetJitFlagsForZone(zone);
   }
 }
@@ -778,20 +788,11 @@ std::tuple<void*, bool> js::Nursery::allocNurseryOrMallocBuffer(
   return {buffer, bool(buffer)};
 }
 
-std::tuple<void*, bool> js::Nursery::allocateBuffer(Zone* zone, size_t nbytes) {
+void* js::Nursery::allocateInternalBuffer(Zone* zone, size_t nbytes) {
   MOZ_ASSERT(nbytes > 0);
-  MOZ_ASSERT(nbytes <= SIZE_MAX - gc::CellAlignBytes);
-  nbytes = RoundUp(nbytes, gc::CellAlignBytes);
-
-  if (nbytes <= MaxNurseryBufferSize) {
-    void* buffer = allocate(nbytes);
-    if (buffer) {
-      return {buffer, false};
-    }
-  }
-
-  void* buffer = AllocBuffer(zone, nbytes, true);
-  return {buffer, bool(buffer)};
+  MOZ_ASSERT(nbytes <= MaxNurseryBufferSize);
+  MOZ_ASSERT(nbytes % CellAlignBytes == 0);
+  return allocate(nbytes);
 }
 
 void* js::Nursery::tryAllocateNurseryBuffer(JS::Zone* zone, size_t nbytes,
@@ -829,16 +830,21 @@ void* js::Nursery::allocateBuffer(Zone* zone, Cell* owner, size_t nbytes) {
   MOZ_ASSERT(owner);
   MOZ_ASSERT(zone == owner->zone());
   MOZ_ASSERT(nbytes > 0);
+  MOZ_ASSERT(nbytes <= SIZE_MAX - gc::CellAlignBytes);
+  nbytes = RoundUp(nbytes, gc::CellAlignBytes);
 
   if (!IsInsideNursery(owner)) {
     return AllocBuffer(zone, nbytes, false);
   }
 
-  auto [buffer, isExternal] = allocateBuffer(zone, nbytes);
-  if (isExternal) {
-    registerBuffer(buffer, nbytes);
+  if (nbytes <= MaxNurseryBufferSize) {
+    void* buffer = allocateInternalBuffer(zone, nbytes);
+    if (buffer) {
+      return buffer;
+    }
   }
-  return buffer;
+
+  return AllocBuffer(zone, nbytes, true);
 }
 
 std::tuple<void*, bool> js::Nursery::allocateZeroedBuffer(Zone* zone,
@@ -923,16 +929,7 @@ void* js::Nursery::reallocateBuffer(Zone* zone, Cell* cell, void* oldBuffer,
 
   if (IsBufferAlloc(oldBuffer)) {
     MOZ_ASSERT(IsNurseryOwned(zone, oldBuffer));
-    MOZ_ASSERT(toSpace.mallocedBufferBytes >= oldBytes);
-
-    void* newBuffer = ReallocBuffer(zone, oldBuffer, newBytes, true);
-    if (!newBuffer) {
-      return nullptr;
-    }
-
-    toSpace.mallocedBufferBytes -= oldBytes;
-    toSpace.mallocedBufferBytes += newBytes;
-    return newBuffer;
+    return ReallocBuffer(zone, oldBuffer, newBytes, true);
   }
 
   // The nursery cannot make use of the returned slots data.
@@ -947,11 +944,18 @@ void* js::Nursery::reallocateBuffer(Zone* zone, Cell* cell, void* oldBuffer,
   return newBuffer;
 }
 
-void js::Nursery::freeBuffer(void* buffer, size_t nbytes) {
-  if (!isInside(buffer)) {
-    removeMallocedBuffer(buffer, nbytes);
-    js_free(buffer);
+void Nursery::freeBuffer(JS::Zone* zone, gc::Cell* cell, void* buffer,
+                         size_t bytes) {
+  MOZ_ASSERT(IsBufferAlloc(buffer) || isInside(buffer));
+  MOZ_ASSERT_IF(!IsInsideNursery(cell), IsBufferAlloc(buffer));
+  MOZ_ASSERT_IF(!IsInsideNursery(cell), !IsNurseryOwned(zone, buffer));
+
+  if (!IsBufferAlloc(buffer)) {
+    // The nursery cannot make use of the returned space.
+    return;
   }
+
+  FreeBuffer(zone, buffer);
 }
 
 #ifdef DEBUG
@@ -1212,8 +1216,12 @@ void js::Nursery::printProfileHeader() {
 void js::Nursery::printProfileDurations(const ProfileDurations& times,
                                         Sprinter& sprinter) {
   for (auto time : times) {
-    int64_t micros = int64_t(time.ToMicroseconds());
-    sprinter.printf(" %6" PRIi64, micros);
+    double micros = time.ToMicroseconds();
+    if (micros < 0.001 || micros >= 1.0) {
+      sprinter.printf(" %6ld", std::lround(micros));
+    } else {
+      sprinter.printf(" %6.3f", micros);
+    }
   }
 
   sprinter.put("\n");
@@ -1364,6 +1372,13 @@ void js::Nursery::collect(JS::GCOptions options, JS::GCReason reason) {
   JSRuntime* rt = runtime();
   MOZ_ASSERT(!rt->mainContextFromOwnThread()->suppressGC);
 
+  JS_LOG(gc, Info, "minor GC for reason %s", ExplainGCReason(reason));
+
+  {
+    AutoGCSession commitSession(gc, JS::HeapState::Idle);
+    rt->commitPendingWrapperPreservations();
+  }
+
   if (minorGCRequested()) {
     MOZ_ASSERT(position() == chunk(currentChunk()).end());
     toSpace.position_ = prevPosition_;
@@ -1392,12 +1407,6 @@ void js::Nursery::collect(JS::GCOptions options, JS::GCReason reason) {
   stats().beginNurseryCollection();
   gcprobes::MinorGCStart();
 
-  if (stats().bufferAllocStatsEnabled() && runtime()->isMainRuntime()) {
-    stats().maybePrintProfileHeaders();
-    BufferAllocator::printStats(gc, gc->stats().creationTime(), false,
-                                gc->stats().profileFile());
-  }
-
   gc->callNurseryCollectionCallbacks(
       JS::GCNurseryProgress::GC_NURSERY_COLLECTION_START, reason);
 
@@ -1418,6 +1427,12 @@ void js::Nursery::collect(JS::GCOptions options, JS::GCReason reason) {
   // minor GC number, which is incremented regardless. See the call to
   // joinSweepTask in GCRuntime::endSweepingSweepGroup.
   joinSweepTask();
+
+  if (stats().bufferAllocStatsEnabled() && runtime()->isMainRuntime()) {
+    stats().maybePrintProfileHeaders();
+    BufferAllocator::printStats(gc, gc->stats().creationTime(), false,
+                                gc->stats().profileFile());
+  }
 
   // If it isn't empty, it will call doCollection, and possibly after that
   // isEmpty() will become true, so use another variable to keep track of the
@@ -1912,14 +1927,6 @@ bool js::Nursery::registerMallocedBuffer(void* buffer, size_t nbytes) {
   return true;
 }
 
-void js::Nursery::registerBuffer(void* buffer, size_t nbytes) {
-  MOZ_ASSERT(buffer);
-  MOZ_ASSERT(nbytes > 0);
-  MOZ_ASSERT(!isInside(buffer));
-
-  addMallocedBufferBytes(nbytes);
-}
-
 /*
  * Several things may need to happen when a nursery allocated cell with an
  * external buffer is promoted:
@@ -1928,7 +1935,8 @@ void js::Nursery::registerBuffer(void* buffer, size_t nbytes) {
  *    freed after nursery collection if it is malloced
  *  - memory accounting for the buffer needs to be updated
  */
-Nursery::WasBufferMoved js::Nursery::maybeMoveRawBufferOnPromotion(
+Nursery::WasBufferMoved
+js::Nursery::maybeMoveRawNurseryOrMallocBufferOnPromotion(
     void** bufferp, gc::Cell* owner, size_t bytesUsed, size_t bytesCapacity,
     MemoryUse use, arena_id_t arena) {
   MOZ_ASSERT(bytesUsed <= bytesCapacity);
@@ -2004,11 +2012,7 @@ Nursery::WasBufferMoved js::Nursery::maybeMoveRawBufferOnPromotion(
     // This is an external buffer allocation owned by a nursery GC thing.
     Zone* zone = owner->zone();
     MOZ_ASSERT(IsNurseryOwned(zone, buffer));
-    bool ownerWasTenured = !nurseryOwned;
-    zone->bufferAllocator.markNurseryOwnedAlloc(buffer, ownerWasTenured);
-    if (nurseryOwned) {
-      registerBuffer(buffer, nbytes);
-    }
+    zone->bufferAllocator.markNurseryOwnedAlloc(buffer, nurseryOwned);
     return BufferNotMoved;
   }
 
@@ -2025,10 +2029,6 @@ Nursery::WasBufferMoved js::Nursery::maybeMoveRawBufferOnPromotion(
   }
 
   memcpy(movedBuffer, buffer, nbytes);
-
-  if (nurseryOwned) {
-    registerBuffer(movedBuffer, nbytes);
-  }
 
   *bufferp = movedBuffer;
   return BufferMoved;
@@ -2360,17 +2360,22 @@ void js::Nursery::maybeResizeNursery(JS::GCOptions options,
   }
 #endif
 
-  decommitTask->join();
-
   size_t newCapacity =
       std::clamp(targetSize(options, reason), minSpaceSize(), maxSpaceSize());
 
   MOZ_ASSERT(roundSize(newCapacity) == newCapacity);
   MOZ_ASSERT(newCapacity >= SystemPageSize());
 
+  if (newCapacity == capacity()) {
+    return;
+  }
+
+  decommitTask->join();
+
   if (newCapacity > capacity()) {
     growAllocableSpace(newCapacity);
-  } else if (newCapacity < capacity()) {
+  } else {
+    MOZ_ASSERT(newCapacity < capacity());
     shrinkAllocableSpace(newCapacity);
   }
 
@@ -2378,6 +2383,9 @@ void js::Nursery::maybeResizeNursery(JS::GCOptions options,
   if (!decommitTask->isEmpty(lock)) {
     decommitTask->startOrRunIfIdle(lock);
   }
+
+  // The size of the store buffers depends on the nursery size.
+  gc->storeBuffer().updateSize();
 }
 
 static inline bool ClampDouble(double* value, double min, double max) {

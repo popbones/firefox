@@ -59,13 +59,14 @@ pub use self::flex::FlexBasis;
 pub use self::font::{FontFamily, FontLanguageOverride, FontPalette, FontStyle};
 pub use self::font::{FontFeatureSettings, FontVariantLigatures, FontVariantNumeric};
 pub use self::font::{
-    FontSize, FontSizeAdjust, FontSizeAdjustFactor, FontSizeKeyword, FontStretch, FontSynthesis, FontSynthesisStyle,
+    FontSize, FontSizeAdjust, FontSizeAdjustFactor, FontSizeKeyword, FontStretch, FontSynthesis,
+    FontSynthesisStyle,
 };
 pub use self::font::{FontVariantAlternates, FontWeight};
 pub use self::font::{FontVariantEastAsian, FontVariationSettings, LineHeight};
 pub use self::font::{MathDepth, MozScriptMinSize, MozScriptSizeMultiplier, XLang, XTextScale};
 pub use self::image::{EndingShape as GradientEndingShape, Gradient, Image, ImageRendering};
-pub use self::length::{AbsoluteLength, AnchorSizeFunction, CalcLengthPercentage, CharacterWidth};
+pub use self::length::{AbsoluteLength, CalcLengthPercentage, CharacterWidth};
 pub use self::length::{FontRelativeLength, Length, LengthOrNumber, NonNegativeLengthOrNumber};
 pub use self::length::{LengthOrAuto, LengthPercentage, LengthPercentageOrAuto};
 pub use self::length::{Margin, MaxSize, Size};
@@ -100,22 +101,22 @@ pub use self::svg::{DProperty, MozContextProperties};
 pub use self::svg::{SVGLength, SVGOpacity, SVGPaint};
 pub use self::svg::{SVGPaintOrder, SVGStrokeDashArray, SVGWidth, VectorEffect};
 pub use self::svg_path::SVGPathData;
-pub use self::text::{HyphenateCharacter, HyphenateLimitChars};
 pub use self::text::RubyPosition;
-pub use self::text::TextAlignLast;
-pub use self::text::TextUnderlinePosition;
+pub use self::text::{HyphenateCharacter, HyphenateLimitChars};
 pub use self::text::{InitialLetter, LetterSpacing, LineBreak, TextAlign, TextIndent};
 pub use self::text::{OverflowWrap, TextEmphasisPosition, TextEmphasisStyle, WordBreak};
 pub use self::text::{TextAlignKeyword, TextDecorationLine, TextOverflow, WordSpacing};
-pub use self::text::{TextDecorationLength, TextDecorationSkipInk, TextJustify, TextTransform};
+pub use self::text::{TextAlignLast, TextAutospace, TextUnderlinePosition};
+pub use self::text::{
+    TextDecorationLength, TextDecorationSkipInk, TextDecorationTrim, TextJustify, TextTransform,
+};
 pub use self::time::Time;
 pub use self::transform::{Rotate, Scale, Transform};
 pub use self::transform::{TransformBox, TransformOrigin, TransformStyle, Translate};
 #[cfg(feature = "gecko")]
 pub use self::ui::CursorImage;
 pub use self::ui::{
-    BoolInteger, Cursor, Inert, MozTheme, PointerEvents, ScrollbarColor, UserFocus, UserInput,
-    UserSelect,
+    BoolInteger, Cursor, Inert, MozTheme, PointerEvents, ScrollbarColor, UserFocus, UserSelect,
 };
 pub use super::generics::grid::GridTemplateComponent as GenericGridTemplateComponent;
 
@@ -552,7 +553,16 @@ impl Parse for NonNegativeNumberOrPercentage {
 /// However, we serialize the specified value as number, so it's ok to store
 /// the Opacity as Number.
 #[derive(
-    Clone, Copy, Debug, MallocSizeOf, PartialEq, PartialOrd, SpecifiedValueInfo, ToCss, ToShmem,
+    Clone,
+    Copy,
+    Debug,
+    MallocSizeOf,
+    PartialEq,
+    PartialOrd,
+    SpecifiedValueInfo,
+    ToCss,
+    ToShmem,
+    ToTyped,
 )]
 pub struct Opacity(Number);
 
@@ -595,7 +605,7 @@ impl ToComputedValue for Opacity {
 /// at computed-value time.
 ///
 /// <https://drafts.csswg.org/css-values/#integers>
-#[derive(Clone, Copy, Debug, MallocSizeOf, PartialEq, PartialOrd, ToShmem)]
+#[derive(Clone, Copy, Debug, MallocSizeOf, PartialEq, PartialOrd, ToShmem, ToTyped)]
 pub enum Integer {
     /// A literal integer value.
     Literal(CSSInteger),
@@ -734,7 +744,7 @@ impl ToCss for Integer {
                 dest.write_str("calc(")?;
                 n.to_css(dest)?;
                 dest.write_char(')')
-            }
+            },
         }
     }
 }

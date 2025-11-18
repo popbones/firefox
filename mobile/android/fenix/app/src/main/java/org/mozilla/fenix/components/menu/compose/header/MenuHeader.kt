@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -24,13 +25,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import mozilla.components.compose.base.Divider
 import mozilla.components.service.fxa.manager.AccountState
 import mozilla.components.service.fxa.manager.AccountState.NotAuthenticated
 import mozilla.components.service.fxa.store.Account
 import org.mozilla.fenix.R
 import org.mozilla.fenix.theme.FirefoxTheme
 import org.mozilla.fenix.theme.Theme
+import mozilla.components.ui.icons.R as iconsR
 
 @Composable
 internal fun MenuHeader(
@@ -47,16 +48,17 @@ internal fun MenuHeader(
             .verticalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MozillaAccountMenuButton(
+        MozillaAccountMenuItem(
             account = account,
             accountState = accountState,
             onClick = onMozillaAccountButtonClick,
+            isPrivate = false,
             modifier = Modifier.weight(1f),
         )
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Divider(modifier = Modifier.size(width = 2.dp, height = 32.dp))
+        HorizontalDivider(modifier = Modifier.size(width = 2.dp, height = 32.dp))
 
         Spacer(modifier = Modifier.width(4.dp))
 
@@ -64,7 +66,7 @@ internal fun MenuHeader(
             onClick = onHelpButtonClick,
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.mozac_ic_help_circle_24),
+                painter = painterResource(id = iconsR.drawable.mozac_ic_help_circle_24),
                 contentDescription = stringResource(
                     id = R.string.browser_main_menu_content_description_help_button,
                 ),
@@ -76,7 +78,7 @@ internal fun MenuHeader(
             onClick = onSettingsButtonClick,
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.mozac_ic_settings_24),
+                painter = painterResource(id = iconsR.drawable.mozac_ic_settings_24),
                 contentDescription = stringResource(
                     id = R.string.browser_main_menu_content_description_settings_button,
                 ),

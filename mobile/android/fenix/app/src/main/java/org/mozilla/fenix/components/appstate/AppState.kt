@@ -4,7 +4,6 @@
 
 package org.mozilla.fenix.components.appstate
 
-import mozilla.components.browser.state.search.SearchEngine
 import mozilla.components.concept.storage.BookmarkNode
 import mozilla.components.feature.tab.collections.TabCollection
 import mozilla.components.feature.top.sites.TopSite
@@ -13,8 +12,10 @@ import mozilla.components.lib.crash.store.CrashState
 import mozilla.components.lib.state.State
 import org.mozilla.fenix.browser.StandardSnackbarError
 import org.mozilla.fenix.browser.browsingmode.BrowsingMode
+import org.mozilla.fenix.components.appstate.qrScanner.QrScannerState
 import org.mozilla.fenix.components.appstate.readerview.ReaderViewState
 import org.mozilla.fenix.components.appstate.recommendations.ContentRecommendationsState
+import org.mozilla.fenix.components.appstate.search.SearchState
 import org.mozilla.fenix.components.appstate.setup.checklist.SetupChecklistState
 import org.mozilla.fenix.components.appstate.snackbar.SnackbarState
 import org.mozilla.fenix.components.appstate.webcompat.WebCompatState
@@ -36,8 +37,6 @@ import org.mozilla.fenix.wallpapers.WallpaperState
  * @property inactiveTabsExpanded A flag to know if the Inactive Tabs section of the Tabs Tray
  * should be expanded when the tray is opened.
  * @property firstFrameDrawn Flag indicating whether the first frame of the homescreen has been drawn.
- * @property isSearchActive Flag indicating whether the user is currently performing a search.
- * @property shortcutSearchEngine New search engine to use for the current in-progress browser search.
  * @property openInFirefoxRequested Flag indicating whether a custom tab should be opened in the browser.
  * @property nonFatalCrashes List of non-fatal crashes that allow the app to continue being used.
  * @property collections The list of [TabCollection] to display in the [HomeFragment].
@@ -60,6 +59,7 @@ import org.mozilla.fenix.wallpapers.WallpaperState
  * @property standardSnackbarError A snackbar error message to display.
  * @property readerViewState The [ReaderViewState] to display.
  * @property snackbarState The [SnackbarState] to display.
+ * @property supportedMenuNotifications The set of currently active [SupportedMenuNotifications].
  * @property showFindInPage Whether or not to show the find in page feature.
  * @property crashState State related to the crash reporter.
  * @property wasLastTabClosedPrivate Whether the last remaining tab that was closed in private mode. This is used to
@@ -67,16 +67,17 @@ import org.mozilla.fenix.wallpapers.WallpaperState
  * @property wasNativeDefaultBrowserPromptShown Whether the native default browser prompt was shown to the user.
  * @property webCompatState The [WebCompatState] when the feature was last used.
  * @property setupChecklistState Optional [SetupChecklistState] for the Setup Checklist feature.
+ * @property searchState The current search state.
+ * @property qrScannerState The [QrScannerState] when the feature was last used.
  * @property isPrivateScreenLocked Whether the private browsing mode is currently locked behind
  * authentication.
  * @property reviewPrompt Whether we should show a review prompt and whether we ran the eligibility check at all
+ * @property voiceSearchState The [VoiceSearchState] representing the current state of voice search functionality.
  */
 data class AppState(
     val isForeground: Boolean = true,
     val inactiveTabsExpanded: Boolean = false,
     val firstFrameDrawn: Boolean = false,
-    val isSearchActive: Boolean = false,
-    val shortcutSearchEngine: SearchEngine? = null,
     val openInFirefoxRequested: Boolean = false,
     val nonFatalCrashes: List<NativeCodeCrash> = emptyList(),
     val collections: List<TabCollection> = emptyList(),
@@ -95,13 +96,17 @@ data class AppState(
     val wallpaperState: WallpaperState = WallpaperState.default,
     val standardSnackbarError: StandardSnackbarError? = null,
     val readerViewState: ReaderViewState = ReaderViewState.None,
-    val snackbarState: SnackbarState = SnackbarState.None,
+    val snackbarState: SnackbarState = SnackbarState.None(),
+    val supportedMenuNotifications: Set<SupportedMenuNotifications> = emptySet(),
     val showFindInPage: Boolean = false,
     val crashState: CrashState = CrashState.Idle,
     val wasLastTabClosedPrivate: Boolean? = null,
     val wasNativeDefaultBrowserPromptShown: Boolean = false,
     val webCompatState: WebCompatState? = null,
     val setupChecklistState: SetupChecklistState? = null,
+    val searchState: SearchState = SearchState.EMPTY,
+    val qrScannerState: QrScannerState = QrScannerState.DEFAULT,
     val isPrivateScreenLocked: Boolean = false,
     val reviewPrompt: ReviewPromptState = Unknown,
+    val voiceSearchState: VoiceSearchState = VoiceSearchState(),
 ) : State

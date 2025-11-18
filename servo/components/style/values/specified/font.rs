@@ -105,7 +105,7 @@ pub enum SystemFont {
 // we have a dummy system font module that does nothing
 
 #[derive(
-    Clone, Copy, Debug, Eq, Hash, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem
+    Clone, Copy, Debug, Eq, Hash, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem,
 )]
 #[allow(missing_docs)]
 #[cfg(feature = "servo")]
@@ -137,7 +137,7 @@ pub const MAX_FONT_WEIGHT: f32 = 1000.;
 ///
 /// https://drafts.csswg.org/css-fonts-4/#propdef-font-weight
 #[derive(
-    Clone, Copy, Debug, MallocSizeOf, Parse, PartialEq, SpecifiedValueInfo, ToCss, ToShmem,
+    Clone, Copy, Debug, MallocSizeOf, Parse, PartialEq, SpecifiedValueInfo, ToCss, ToShmem, ToTyped,
 )]
 pub enum FontWeight {
     /// `<font-weight-absolute>`
@@ -232,8 +232,8 @@ impl Parse for AbsoluteFontWeight {
             // We could add another AllowedNumericType value, but it doesn't
             // seem worth it just for a single property with such a weird range,
             // so we do the clamping here manually.
-            if !number.was_calc() &&
-                (number.get() < MIN_FONT_WEIGHT || number.get() > MAX_FONT_WEIGHT)
+            if !number.was_calc()
+                && (number.get() < MIN_FONT_WEIGHT || number.get() > MAX_FONT_WEIGHT)
             {
                 return Err(input.new_custom_error(StyleParseErrorKind::UnspecifiedError));
             }
@@ -344,8 +344,8 @@ impl SpecifiedFontStyle {
         }
 
         let degrees = angle.degrees();
-        if degrees < FONT_STYLE_OBLIQUE_MIN_ANGLE_DEGREES ||
-            degrees > FONT_STYLE_OBLIQUE_MAX_ANGLE_DEGREES
+        if degrees < FONT_STYLE_OBLIQUE_MIN_ANGLE_DEGREES
+            || degrees > FONT_STYLE_OBLIQUE_MAX_ANGLE_DEGREES
         {
             return Err(input.new_custom_error(StyleParseErrorKind::UnspecifiedError));
         }
@@ -363,7 +363,7 @@ impl SpecifiedFontStyle {
 
 /// The specified value of the `font-style` property.
 #[derive(
-    Clone, Copy, Debug, MallocSizeOf, Parse, PartialEq, SpecifiedValueInfo, ToCss, ToShmem,
+    Clone, Copy, Debug, MallocSizeOf, Parse, PartialEq, SpecifiedValueInfo, ToCss, ToShmem, ToTyped,
 )]
 #[allow(missing_docs)]
 pub enum FontStyle {
@@ -402,7 +402,7 @@ impl ToComputedValue for FontStyle {
 /// https://drafts.csswg.org/css-fonts-4/#font-stretch-prop
 #[allow(missing_docs)]
 #[derive(
-    Clone, Copy, Debug, MallocSizeOf, Parse, PartialEq, SpecifiedValueInfo, ToCss, ToShmem,
+    Clone, Copy, Debug, MallocSizeOf, Parse, PartialEq, SpecifiedValueInfo, ToCss, ToShmem, ToTyped,
 )]
 pub enum FontStretch {
     Stretch(NonNegativePercentage),
@@ -591,11 +591,12 @@ impl KeywordInfo {
     /// text-zoom.
     fn to_computed_value(&self, context: &Context) -> CSSPixelLength {
         debug_assert_ne!(self.kw, FontSizeKeyword::None);
-        #[cfg(feature="gecko")]
+        #[cfg(feature = "gecko")]
         debug_assert_ne!(self.kw, FontSizeKeyword::Math);
         let base = context.maybe_zoom_text(self.kw.to_length(context).0);
         let zoom_factor = context.style().effective_zoom.value();
-        CSSPixelLength::new(base.px() * self.factor * zoom_factor) + context.maybe_zoom_text(self.offset)
+        CSSPixelLength::new(base.px() * self.factor * zoom_factor)
+            + context.maybe_zoom_text(self.offset)
     }
 
     /// Given a parent keyword info (self), apply an additional factor/offset to
@@ -618,7 +619,7 @@ impl SpecifiedValueInfo for KeywordInfo {
     }
 }
 
-#[derive(Clone, Debug, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem)]
+#[derive(Clone, Debug, MallocSizeOf, PartialEq, SpecifiedValueInfo, ToCss, ToShmem, ToTyped)]
 /// A specified font-size value
 pub enum FontSize {
     /// A length; e.g. 10px.
@@ -644,7 +645,7 @@ pub enum FontSize {
 }
 
 /// Specifies a prioritized list of font family names or generic family names.
-#[derive(Clone, Debug, Eq, PartialEq, ToCss, ToShmem)]
+#[derive(Clone, Debug, Eq, PartialEq, ToCss, ToShmem, ToTyped)]
 #[cfg_attr(feature = "servo", derive(Hash))]
 pub enum FontFamily {
     /// List of `font-family`
@@ -1127,6 +1128,7 @@ pub enum VariantAlternates {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(transparent)]
 /// List of Variant Alternates
@@ -1138,12 +1140,12 @@ impl FontVariantAlternates {
     /// Returns the length of all variant alternates.
     pub fn len(&self) -> usize {
         self.0.iter().fold(0, |acc, alternate| match *alternate {
-            VariantAlternates::Swash(_) |
-            VariantAlternates::Stylistic(_) |
-            VariantAlternates::Ornaments(_) |
-            VariantAlternates::Annotation(_) => acc + 1,
-            VariantAlternates::Styleset(ref slice) |
-            VariantAlternates::CharacterVariant(ref slice) => acc + slice.len(),
+            VariantAlternates::Swash(_)
+            | VariantAlternates::Stylistic(_)
+            | VariantAlternates::Ornaments(_)
+            | VariantAlternates::Annotation(_) => acc + 1,
+            VariantAlternates::Styleset(ref slice)
+            | VariantAlternates::CharacterVariant(ref slice) => acc + slice.len(),
             _ => acc,
         })
     }
@@ -1290,6 +1292,7 @@ impl Parse for FontVariantAlternates {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[css(bitflags(
     single = "normal",
@@ -1358,6 +1361,7 @@ impl FontVariantEastAsian {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[css(bitflags(
     single = "normal,none",
@@ -1398,10 +1402,10 @@ impl FontVariantLigatures {
 
     fn validate_mixed_flags(&self) -> bool {
         // Mixing a value and its disabling value is forbidden.
-        if self.contains(Self::COMMON_LIGATURES | Self::NO_COMMON_LIGATURES) ||
-            self.contains(Self::DISCRETIONARY_LIGATURES | Self::NO_DISCRETIONARY_LIGATURES) ||
-            self.contains(Self::HISTORICAL_LIGATURES | Self::NO_HISTORICAL_LIGATURES) ||
-            self.contains(Self::CONTEXTUAL | Self::NO_CONTEXTUAL)
+        if self.contains(Self::COMMON_LIGATURES | Self::NO_COMMON_LIGATURES)
+            || self.contains(Self::DISCRETIONARY_LIGATURES | Self::NO_DISCRETIONARY_LIGATURES)
+            || self.contains(Self::HISTORICAL_LIGATURES | Self::NO_HISTORICAL_LIGATURES)
+            || self.contains(Self::CONTEXTUAL | Self::NO_CONTEXTUAL)
         {
             return false;
         }
@@ -1423,6 +1427,7 @@ impl FontVariantLigatures {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[css(bitflags(
     single = "normal",
@@ -1468,9 +1473,9 @@ impl FontVariantNumeric {
     /// <numeric-spacing-values>  = [ proportional-nums | tabular-nums ]
     /// <numeric-fraction-values> = [ diagonal-fractions | stacked-fractions ]
     fn validate_mixed_flags(&self) -> bool {
-        if self.contains(Self::LINING_NUMS | Self::OLDSTYLE_NUMS) ||
-            self.contains(Self::PROPORTIONAL_NUMS | Self::TABULAR_NUMS) ||
-            self.contains(Self::DIAGONAL_FRACTIONS | Self::STACKED_FRACTIONS)
+        if self.contains(Self::LINING_NUMS | Self::OLDSTYLE_NUMS)
+            || self.contains(Self::PROPORTIONAL_NUMS | Self::TABULAR_NUMS)
+            || self.contains(Self::DIAGONAL_FRACTIONS | Self::STACKED_FRACTIONS)
         {
             return false;
         }
@@ -1529,6 +1534,7 @@ impl Parse for FontLanguageOverride {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 pub enum FontSynthesis {
     /// This attribute may be synthesized if not supported by a face.
@@ -1552,6 +1558,7 @@ pub enum FontSynthesis {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 pub enum FontSynthesisStyle {
     /// This attribute may be synthesized if not supported by a face.
@@ -1572,6 +1579,7 @@ pub enum FontSynthesisStyle {
     ToComputedValue,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(C)]
 /// Allows authors to choose a palette from those supported by a color font
@@ -1712,6 +1720,7 @@ impl MetricsOverride {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[repr(u8)]
 /// How to do font-size scaling.
@@ -1742,6 +1751,7 @@ impl XTextScale {
     ToCss,
     ToResolvedValue,
     ToShmem,
+    ToTyped,
 )]
 #[cfg_attr(feature = "servo", derive(Deserialize, Serialize))]
 /// Internal property that reflects the lang attribute
@@ -1798,7 +1808,7 @@ impl Parse for MozScriptMinSize {
 /// A value for the `math-depth` property.
 /// https://mathml-refresh.github.io/mathml-core/#the-math-script-level-property
 #[cfg_attr(feature = "gecko", derive(MallocSizeOf))]
-#[derive(Clone, Copy, Debug, PartialEq, SpecifiedValueInfo, ToCss, ToShmem)]
+#[derive(Clone, Copy, Debug, PartialEq, SpecifiedValueInfo, ToCss, ToShmem, ToTyped)]
 pub enum MathDepth {
     /// Increment math-depth if math-style is compact.
     AutoAdd,

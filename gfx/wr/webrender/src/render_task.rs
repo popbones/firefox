@@ -6,10 +6,12 @@ use api::{CompositeOperator, FilterPrimitive, FilterPrimitiveInput, FilterPrimit
 use api::{LineStyle, LineOrientation, ClipMode, MixBlendMode, ColorF, ColorSpace, FilterOpGraphPictureBufferId};
 use api::MAX_RENDER_TASK_SIZE;
 use api::units::*;
+use std::time::Duration;
 use crate::box_shadow::BLUR_SAMPLE_SCALE;
 use crate::clip::{ClipDataStore, ClipItemKind, ClipStore, ClipNodeRange};
 use crate::command_buffer::{CommandBufferIndex, QuadFlags};
 use crate::pattern::{PatternKind, PatternShaderInput};
+use crate::profiler::{add_text_marker};
 use crate::spatial_tree::SpatialNodeIndex;
 use crate::filterdata::SFilterData;
 use crate::frame_builder::FrameBuilderConfig;
@@ -158,6 +160,14 @@ pub struct CachedTask {
 #[derive(Debug)]
 #[cfg_attr(feature = "capture", derive(Serialize))]
 #[cfg_attr(feature = "replay", derive(Deserialize))]
+pub struct ImageRequestTask {
+    pub request: ImageRequest,
+    pub is_composited: bool,
+}
+
+#[derive(Debug)]
+#[cfg_attr(feature = "capture", derive(Serialize))]
+#[cfg_attr(feature = "replay", derive(Deserialize))]
 pub struct CacheMaskTask {
     pub actual_rect: DeviceRect,
     pub root_spatial_node_index: SpatialNodeIndex,
@@ -223,7 +233,7 @@ pub struct PictureTask {
     pub valid_rect: Option<DeviceIntRect>,
     pub cmd_buffer_index: CommandBufferIndex,
     pub resolve_op: Option<ResolveOp>,
-
+    pub content_size: DeviceIntSize,
     pub can_use_shared_surface: bool,
 }
 
@@ -262,7 +272,7 @@ impl BlurTask {
     // In order to do the blur down-scaling passes without introducing errors, we need the
     // source of each down-scale pass to be a multuple of two. If need be, this inflates
     // the source size so that each down-scale pass will sample correctly.
-    pub fn adjusted_blur_source_size(original_size: DeviceSize, mut std_dev: DeviceSize) -> DeviceIntSize {
+    pub fn adjusted_blur_source_size(original_size: DeviceSize, mut std_dev: DeviceSize) -> DeviceSize {
         let mut adjusted_size = original_size;
         let mut scale_factor = 1.0;
         while std_dev.width > MAX_BLUR_STD_DEVIATION && std_dev.height > MAX_BLUR_STD_DEVIATION {
@@ -275,7 +285,7 @@ impl BlurTask {
             adjusted_size = (original_size.to_f32() / scale_factor).ceil();
         }
 
-        (adjusted_size * scale_factor).round().to_i32()
+        (adjusted_size * scale_factor).round()
     }
 }
 
@@ -369,7 +379,7 @@ pub struct RenderTaskData {
 #[cfg_attr(feature = "capture", derive(Serialize))]
 #[cfg_attr(feature = "replay", derive(Deserialize))]
 pub enum RenderTaskKind {
-    Image(ImageRequest),
+    Image(ImageRequestTask),
     Cached(CachedTask),
     Picture(PictureTask),
     CacheMask(CacheMaskTask),
@@ -519,6 +529,7 @@ impl RenderTaskKind {
         clear_color: Option<ColorF>,
         cmd_buffer_index: CommandBufferIndex,
         can_use_shared_surface: bool,
+        content_size: Option<DeviceIntSize>,
     ) -> Self {
         render_task_sanity_check(&size);
 
@@ -534,6 +545,7 @@ impl RenderTaskKind {
             cmd_buffer_index,
             resolve_op: None,
             can_use_shared_surface,
+            content_size: content_size.unwrap_or(size),
         })
     }
 
@@ -1085,6 +1097,7 @@ impl RenderTask {
     pub fn new_image(
         size: DeviceIntSize,
         request: ImageRequest,
+        is_composited: bool,
     ) -> Self {
         // Note: this is a special constructor for image render tasks that does not
         // do the render task size sanity check. This is because with SWGL we purposefully
@@ -1097,7 +1110,10 @@ impl RenderTask {
         RenderTask {
             location: RenderTaskLocation::CacheRequest { size, },
             children: TaskDependencies::new(),
-            kind: RenderTaskKind::Image(request),
+            kind: RenderTaskKind::Image(ImageRequestTask {
+                request,
+                is_composited,
+            }),
             free_after: PassId::MAX,
             render_on: PassId::MIN,
             uv_rect_handle: GpuCacheHandle::new(),
@@ -1975,6 +1991,7 @@ impl RenderTask {
             //
             // Also look up the child tasks while we are here.
             let mut used_subregion = LayoutRect::zero();
+            let mut combined_input_subregion = LayoutRect::zero();
             let node_inputs: Vec<(FilterGraphPictureReference, RenderTaskId)> = node.inputs.iter().map(|input| {
                 let (subregion, task) =
                     match input.buffer_id {
@@ -2012,6 +2029,7 @@ impl RenderTask {
                         ),
                     );
                 used_subregion = used_subregion.union(&target_subregion);
+                combined_input_subregion = combined_input_subregion.union(&subregion);
                 (FilterGraphPictureReference{
                     buffer_id: input.buffer_id,
                     // Apply offset to the placement of the input subregion.
@@ -2060,12 +2078,8 @@ impl RenderTask {
                 FilterGraphOp::SVGFEBlendScreen => {},
                 FilterGraphOp::SVGFEBlendSoftLight => {},
                 FilterGraphOp::SVGFEColorMatrix{values} => {
-                    if values[3] != 0.0 ||
-                        values[7] != 0.0 ||
-                        values[11] != 0.0 ||
-                        values[15] != 1.0 ||
-                        values[19] != 0.0 {
-                        // Manipulating alpha can easily create new
+                    if values[19] > 0.0 {
+                        // Manipulating alpha offset can easily create new
                         // pixels outside of input subregions
                         used_subregion = full_subregion;
                     }
@@ -2191,6 +2205,12 @@ impl RenderTask {
                 },
             }
 
+            add_text_marker(
+                "SVGFEGraph",
+                &format!("{}({})", op.kind(), filter_index),
+                Duration::from_micros((used_subregion.width() * used_subregion.height() / 1000.0) as u64),
+            );
+
             // SVG spec requires that a later node sampling pixels outside
             // this node's subregion will receive a transparent black color
             // for those samples, we achieve this by adding a 1 pixel inflate
@@ -2225,7 +2245,7 @@ impl RenderTask {
                         std_deviation_y.ceil() * BLUR_SAMPLE_SCALE)
                 }
                 _ => used_subregion,
-            };
+            }.union(&combined_input_subregion);
             while
                 padded_subregion.scale(device_to_render_scale, device_to_render_scale).round().width() + node_inflate as f32 * 2.0 > MAX_SURFACE_SIZE as f32 ||
                 padded_subregion.scale(device_to_render_scale, device_to_render_scale).round().height() + node_inflate as f32 * 2.0 > MAX_SURFACE_SIZE as f32 {
@@ -2310,7 +2330,7 @@ impl RenderTask {
                         BlurTask::adjusted_blur_source_size(
                             blur_task_size,
                             adjusted_blur_std_deviation,
-                        ).to_f32().max(DeviceSize::new(1.0, 1.0));
+                        ).max(DeviceSize::new(1.0, 1.0));
                     // Now change the subregion to match the revised task size,
                     // keeping it centered should keep animated radius smooth.
                     let corner = LayoutPoint::new(
@@ -2432,7 +2452,7 @@ impl RenderTask {
                         BlurTask::adjusted_blur_source_size(
                             blur_task_size,
                             adjusted_blur_std_deviation,
-                        ).to_f32().max(DeviceSize::new(1.0, 1.0));
+                        ).max(DeviceSize::new(1.0, 1.0));
                     // Now change the subregion to match the revised task size,
                     // keeping it centered should keep animated radius smooth.
                     let corner = LayoutPoint::new(

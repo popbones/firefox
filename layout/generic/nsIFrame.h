@@ -46,41 +46,42 @@
    At the moment we're midway through this process, so you will see inlined
    functions and member variables in this file.  -dwh */
 
-#include <algorithm>
 #include <stdio.h>
+
+#include <algorithm>
 
 #include "FrameProperties.h"
 #include "LayoutConstants.h"
+#include "Visibility.h"
 #include "mozilla/AspectRatio.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/Baseline.h"
+#include "mozilla/ComputedStyle.h"
 #include "mozilla/EnumSet.h"
 #include "mozilla/EventForwards.h"
 #include "mozilla/Maybe.h"
+#include "mozilla/ReflowInput.h"
 #include "mozilla/RelativeTo.h"
 #include "mozilla/Result.h"
 #include "mozilla/SmallPointerArray.h"
 #include "mozilla/ToString.h"
 #include "mozilla/WritingModes.h"
-#include "nsDirection.h"
-#include "nsFrameList.h"
-#include "nsFrameState.h"
-#include "mozilla/ReflowInput.h"
-#include "nsIContent.h"
-#include "nsITheme.h"
-#include "nsQueryFrame.h"
-#include "mozilla/ComputedStyle.h"
-#include "nsStyleStruct.h"
-#include "Visibility.h"
-#include "nsChangeHint.h"
-#include "mozilla/EnumSet.h"
 #include "mozilla/gfx/2D.h"
 #include "mozilla/gfx/CompositorHitTestInfo.h"
 #include "mozilla/gfx/MatrixFwd.h"
 #include "mozilla/intl/BidiEmbeddingLevel.h"
 #include "mozilla/intl/UnicodeProperties.h"
+#include "nsChangeHint.h"
+#include "nsDirection.h"
 #include "nsDisplayItemTypes.h"
+#include "nsFrameList.h"
+#include "nsFrameState.h"
+#include "nsIContent.h"
+#include "nsITheme.h"
 #include "nsPresContext.h"
+#include "nsQueryFrame.h"
+#include "nsStyleStruct.h"
+#include "nsStyleStructList.h"
 #include "nsTHashSet.h"
 
 #ifdef ACCESSIBILITY
@@ -124,6 +125,8 @@ class nsPlaceholderFrame;
 class nsStyleChangeList;
 class nsViewManager;
 class nsWindowSizes;
+
+enum class AttrModType : uint8_t;  // Defined by nsIMutationObserver.h
 
 struct CharacterDataChangeInfo;
 
@@ -176,6 +179,18 @@ enum class LayoutFrameType : uint8_t {
 #define FRAME_TYPE(ty_, ...) ty_,
 #include "mozilla/FrameTypeList.h"
 #undef FRAME_TYPE
+};
+
+// Stores ascent and descent metrics to be used for Ruby annotation positioning
+// (potentially different from line-box or font ascent and descent).
+struct RubyMetrics {
+  nscoord mAscent = 0;
+  nscoord mDescent = 0;
+
+  void CombineWith(const RubyMetrics& aOther) {
+    mAscent = std::max(mAscent, aOther.mAscent);
+    mDescent = std::max(mDescent, aOther.mDescent);
+  }
 };
 
 }  // namespace mozilla
@@ -620,7 +635,9 @@ enum class LayoutFrameClassFlags : uint16_t {
   SVG = 1 << 3,
   SVGContainer = 1 << 4,
   BidiInlineContainer = 1 << 5,
-  // The frame is for a replaced element, such as an image
+  // The frame is for a replaced element, such as an image. Note that HTML
+  // <button> elements don't have this flag but still behave as replaced, see
+  // nsIFrame::IsReplaced().
   Replaced = 1 << 6,
   // A replaced element that has replaced-element sizing characteristics (i.e.,
   // like images or iframes), as opposed to inline-block sizing characteristics
@@ -969,7 +986,7 @@ class nsIFrame : public nsQueryFrame {
  * Callers can use Style*WithOptionalParam if they're in a function that
  * accepts an *optional* pointer the style struct.
  */
-#define STYLE_STRUCT(name_)                                          \
+#define FRAME_STYLE_ACCESSORS(name_)                                 \
   const nsStyle##name_* Style##name_() const MOZ_NONNULL_RETURN {    \
     NS_ASSERTION(mComputedStyle, "No style found!");                 \
     return mComputedStyle->Style##name_();                           \
@@ -982,8 +999,8 @@ class nsIFrame : public nsQueryFrame {
     }                                                                \
     return Style##name_();                                           \
   }
-#include "nsStyleStructList.h"
-#undef STYLE_STRUCT
+  FOR_EACH_STYLE_STRUCT(FRAME_STYLE_ACCESSORS, FRAME_STYLE_ACCESSORS)
+#undef FRAME_STYLE_ACCESSORS
 
   /** Also forward GetVisitedDependentColor to the style */
   template <typename T, typename S>
@@ -1416,6 +1433,8 @@ class nsIFrame : public nsQueryFrame {
 
   NS_DECLARE_FRAME_PROPERTY_DELETABLE(UsedMarginProperty, nsMargin)
   NS_DECLARE_FRAME_PROPERTY_DELETABLE(UsedPaddingProperty, nsMargin)
+  NS_DECLARE_FRAME_PROPERTY_DELETABLE(AnchorPosReferences,
+                                      AnchorPosReferencedAnchors);
 
   // This tracks the start and end page value for a frame.
   //
@@ -1656,23 +1675,7 @@ class nsIFrame : public nsQueryFrame {
   static bool ComputeBorderRadii(const mozilla::BorderRadius&,
                                  const nsSize& aFrameSize,
                                  const nsSize& aBorderArea, Sides aSkipSides,
-                                 nscoord aRadii[8]);
-
-  /*
-   * Given a set of border radii for one box (e.g., border box), convert
-   * it to the equivalent set of radii for another box (e.g., in to
-   * padding box, out to outline box) by reducing radii or increasing
-   * nonzero radii as appropriate.
-   *
-   * Indices into aRadii are the enum HalfCorner constants in gfx/2d/Types.h
-   *
-   * Note that insetting the radii is lossy, since it can turn nonzero radii
-   * into zero, and re-adjusting does not inflate zero radii.
-   *
-   * Therefore, callers should always adjust directly from the original value
-   * coming from style.
-   */
-  static void AdjustBorderRadii(nscoord aRadii[8], const nsMargin& aOffsets);
+                                 nsRectCornerRadii&);
 
   /**
    * Fill in border radii for this frame.  Return whether any are nonzero.
@@ -1686,18 +1689,30 @@ class nsIFrame : public nsQueryFrame {
    */
   virtual bool GetBorderRadii(const nsSize& aFrameSize,
                               const nsSize& aBorderArea, Sides aSkipSides,
-                              nscoord aRadii[8]) const;
-  bool GetBorderRadii(nscoord aRadii[8]) const;
-  bool GetMarginBoxBorderRadii(nscoord aRadii[8]) const;
-  bool GetPaddingBoxBorderRadii(nscoord aRadii[8]) const;
-  bool GetContentBoxBorderRadii(nscoord aRadii[8]) const;
-  bool GetBoxBorderRadii(nscoord aRadii[8], const nsMargin& aOffset) const;
-  bool GetShapeBoxBorderRadii(nscoord aRadii[8]) const;
+                              nsRectCornerRadii&) const;
+  bool GetBorderRadii(nsRectCornerRadii&) const;
+  bool GetMarginBoxBorderRadii(nsRectCornerRadii&) const;
+  bool GetPaddingBoxBorderRadii(nsRectCornerRadii&) const;
+  bool GetContentBoxBorderRadii(nsRectCornerRadii&) const;
+  bool GetShapeBoxBorderRadii(nsRectCornerRadii&) const;
 
   /**
    * Returns one em unit, adjusted for font inflation if needed, in app units.
    */
   nscoord OneEmInAppUnits() const;
+
+  /**
+   * Returns the ascent/descent metrics to be used for CSS Ruby positioning
+   * (if the "normalize metrics" option is enabled). These are derived from the
+   * first available font's "trimmed ascent" and "trimmed descent", where any
+   * internal leading included in the font's metrics has been trimmed equally
+   * from top and bottom, such that the trimmed values total 1em.
+   *
+   * @param aRubyMetricsFactor scale to be applied to the em-normalized
+   * "trimmed" metrics, to adjust how tightly ruby annotations are positioned
+   * around the base text.
+   */
+  virtual mozilla::RubyMetrics RubyMetrics(float aRubyMetricsFactor) const;
 
   /**
    * `GetNaturalBaselineBOffset`, but determines the baseline sharing group
@@ -2267,7 +2282,6 @@ class nsIFrame : public nsQueryFrame {
    * Search for selectable content at point and attempt to select
    * based on the start and end selection behaviours.
    *
-   * @param aPresContext Presentation context
    * @param aPoint Point at which selection will occur. Coordinates
    * should be relative to this frame.
    * @param aBeginAmountType, aEndAmountType Selection behavior, see
@@ -2276,8 +2290,7 @@ class nsIFrame : public nsQueryFrame {
    * @return success or failure at finding suitable content to select.
    */
   MOZ_CAN_RUN_SCRIPT nsresult
-  SelectByTypeAtPoint(nsPresContext* aPresContext, const nsPoint& aPoint,
-                      nsSelectionAmount aBeginAmountType,
+  SelectByTypeAtPoint(const nsPoint& aPoint, nsSelectionAmount aBeginAmountType,
                       nsSelectionAmount aEndAmountType, uint32_t aSelectFlags);
 
   MOZ_CAN_RUN_SCRIPT nsresult PeekBackwardAndForwardForSelection(
@@ -2363,10 +2376,9 @@ class nsIFrame : public nsQueryFrame {
                                     int32_t* aContentOffset,
                                     mozilla::TableSelectionMode* aTarget);
 
-  /**
-   * @return see nsISelectionController.idl's `getDisplaySelection`.
-   */
-  int16_t DetermineDisplaySelection();
+  // Whether this frame should move the selection as a response to mouse moves /
+  // presses / drags.
+  bool ShouldHandleSelectionMovementEvents();
 
  public:
   virtual nsIContent* GetContentForEvent(const mozilla::WidgetEvent*) const;
@@ -2578,10 +2590,10 @@ class nsIFrame : public nsQueryFrame {
    * @param aNameSpaceID the namespace of the attribute
    * @param aAttribute the atom name of the attribute
    * @param aModType Whether or not the attribute was added, changed, or
-   * removed. The constants are defined in MutationEvent.webidl.
+   * removed.
    */
   virtual nsresult AttributeChanged(int32_t aNameSpaceID, nsAtom* aAttribute,
-                                    int32_t aModType);
+                                    AttrModType aModType);
 
   /**
    * When the element states of mContent change, this method is invoked on the
@@ -3198,6 +3210,13 @@ class nsIFrame : public nsQueryFrame {
    */
   virtual void UnionChildOverflow(mozilla::OverflowAreas& aOverflowAreas,
                                   bool aAsIfScrolled = false);
+  /**
+   * Computes the clipping rectangle for the given frame based on its 'overflow'
+   * properties. Returns true if the clip has a border radius.
+   */
+  bool ComputeOverflowClipRectRelativeToSelf(
+      const mozilla::PhysicalAxes aClipAxes, nsRect& aOutRect,
+      nsRectCornerRadii& aOutRadii) const;
 
   // Returns the applicable overflow-clip-margin values.
   nsSize OverflowClipMargin(mozilla::PhysicalAxes aClipAxes) const;
@@ -3290,8 +3309,8 @@ class nsIFrame : public nsQueryFrame {
   // Returns true iff this frame's computed block-size property is one of the
   // intrinsic-sizing keywords.
   bool HasIntrinsicKeywordForBSize() const {
-    const auto bSize =
-        StylePosition()->BSize(GetWritingMode(), StyleDisplay()->mPosition);
+    const auto bSize = StylePosition()->BSize(
+        GetWritingMode(), AnchorPosResolutionParams::From(this));
     return IsIntrinsicKeyword(*bSize);
   }
 
@@ -3565,7 +3584,6 @@ class nsIFrame : public nsQueryFrame {
   CLASS_FLAG_METHOD(IsSVGContainerFrame, SVGContainer);
   CLASS_FLAG_METHOD(IsBidiInlineContainer, BidiInlineContainer);
   CLASS_FLAG_METHOD(IsLineParticipant, LineParticipant);
-  CLASS_FLAG_METHOD(IsReplaced, Replaced);
   CLASS_FLAG_METHOD(HasReplacedSizing, ReplacedSizing);
   CLASS_FLAG_METHOD(IsTablePart, TablePart);
   CLASS_FLAG_METHOD0(CanContainOverflowContainers)
@@ -3602,6 +3620,8 @@ class nsIFrame : public nsQueryFrame {
 #ifdef __clang__
 #  pragma clang diagnostic pop
 #endif
+
+  bool IsReplaced() const;
 
   /**
    * Returns a transformation matrix that converts points in this frame's
@@ -3718,13 +3738,6 @@ class nsIFrame : public nsQueryFrame {
    * Note that very few frames are, so default to false.
    */
   virtual bool IsFloatContainingBlock() const { return false; }
-
-  /**
-   * If this frame is absolute positioned, attempts to lookup and return the
-   * Archor Positioning anchor given by aAnchorSpec.
-   * https://drafts.csswg.org/css-anchor-position-1/#target
-   */
-  nsIFrame* FindAnchorPosAnchor(const nsAtom* aAnchorSpec) const;
 
   /**
    * Marks all display items created by this frame as needing a repaint,
@@ -4510,6 +4523,30 @@ class nsIFrame : public nsQueryFrame {
     mProperties.Remove(aProperty, this);
   }
 
+  /**
+   * Set the deletable property with a given value if it doesn't already exist;
+   * otherwise, allocate a copy of the passed-in value and insert that as a new
+   * value. Returns the pointer to the property, guaranteed non-null, value that
+   * then can be used to update the property value further.
+   *
+   * Note: As the name suggests, this will behave properly only for properties
+   * declared with NS_DECLARE_FRAME_PROPERTY_DELETABLE!
+   */
+  template <typename T, typename... Params>
+  FrameProperties::PropertyType<T> SetOrUpdateDeletableProperty(
+      FrameProperties::Descriptor<T> aProperty, Params&&... aParams) {
+    bool found;
+    using DataType = std::remove_pointer_t<FrameProperties::PropertyType<T>>;
+    DataType* storedValue = GetProperty(aProperty, &found);
+    if (!found) {
+      storedValue = new DataType{aParams...};
+      AddProperty(aProperty, storedValue);
+    } else {
+      *storedValue = DataType{aParams...};
+    }
+    return storedValue;
+  }
+
   void RemoveAllProperties() { mProperties.RemoveAll(this); }
 
   // nsIFrames themselves are in the nsPresArena, and so are not measured here.
@@ -4759,6 +4796,9 @@ class nsIFrame : public nsQueryFrame {
   // Like IsColumnSpan(), but this also checks whether the frame has a
   // multi-column ancestor or not.
   inline bool IsColumnSpanInMulticolSubtree() const;
+
+  // Returns true if this frame makes any reference to anchors.
+  inline bool HasAnchorPosReference() const;
 
   /**
    * Returns the vertical-align value to be used for layout, if it is one
@@ -5028,7 +5068,7 @@ class nsIFrame : public nsQueryFrame {
   bool HasDisplayItem(uint32_t aKey);
 
   static void PrintDisplayList(nsDisplayListBuilder* aBuilder,
-                               const nsDisplayList& aList,
+                               const nsDisplayList& aList, uint32_t aIndent = 0,
                                bool aDumpHtml = false);
   static void PrintDisplayList(nsDisplayListBuilder* aBuilder,
                                const nsDisplayList& aList,
@@ -5891,8 +5931,8 @@ inline nsIFrame* nsFrameList::BackwardFrameTraversal::Prev(nsIFrame* aFrame) {
 }
 
 inline AnchorPosResolutionParams AnchorPosResolutionParams::From(
-    const nsIFrame* aFrame) {
-  return {aFrame, aFrame->StyleDisplay()->mPosition};
+    const nsIFrame* aFrame, AnchorPosReferencedAnchors* aReferencedAnchors) {
+  return {aFrame, aFrame->StyleDisplay()->mPosition, aReferencedAnchors};
 }
 
 #endif /* nsIFrame_h___ */

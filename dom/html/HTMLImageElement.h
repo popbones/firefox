@@ -7,11 +7,11 @@
 #ifndef mozilla_dom_HTMLImageElement_h
 #define mozilla_dom_HTMLImageElement_h
 
+#include "Units.h"
 #include "mozilla/Attributes.h"
+#include "nsCycleCollectionParticipant.h"
 #include "nsGenericHTMLElement.h"
 #include "nsImageLoadingContent.h"
-#include "Units.h"
-#include "nsCycleCollectionParticipant.h"
 
 namespace mozilla {
 class EventChainPreVisitor;
@@ -60,7 +60,7 @@ class HTMLImageElement final : public nsGenericHTMLElement,
                       nsIPrincipal* aMaybeScriptedPrincipal,
                       nsAttrValue& aResult) override;
   nsChangeHint GetAttributeChangeHint(const nsAtom* aAttribute,
-                                      int32_t aModType) const override;
+                                      AttrModType aModType) const override;
   NS_IMETHOD_(bool) IsAttributeMapped(const nsAtom* aAttribute) const override;
   nsMapRuleToAttributesFunc GetAttributeMappingFunction() const override;
 

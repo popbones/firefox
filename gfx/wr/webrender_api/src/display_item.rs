@@ -278,7 +278,7 @@ pub struct RoundedRectClipDisplayItem {
 
 /// The minimum and maximum allowable offset for a sticky frame in a single dimension.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize, PeekPoke)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, MallocSizeOf, PartialEq, Serialize, PeekPoke)]
 pub struct StickyOffsetBounds {
     /// The minimum offset for this frame, typically a negative value, which specifies how
     /// far in the negative direction the sticky frame can offset its contents in this
@@ -784,7 +784,7 @@ pub struct ReferenceFrameDescriptor {
     pub reference_frame: ReferenceFrame,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize, PeekPoke)]
+#[derive(Clone, Copy, Debug, Deserialize, MallocSizeOf, PartialEq, Serialize, PeekPoke)]
 pub enum ReferenceFrameKind {
     /// A normal transform matrix, may contain perspective (the CSS transform property)
     Transform {
@@ -931,7 +931,7 @@ pub struct StackingContext {
 // IMPLICIT: filters: Vec<FilterOp>, filter_datas: Vec<FilterData>, filter_primitives: Vec<FilterPrimitive>
 
 #[repr(u8)]
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize, PeekPoke)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, MallocSizeOf, PartialEq, Serialize, PeekPoke)]
 pub enum TransformStyle {
     Flat = 0,
     Preserve3D = 1,
@@ -996,9 +996,8 @@ bitflags! {
         /// a clip-mask). This is needed to allow the correct selection of a backdrop root
         /// since a clip-mask stacking context creates a parent surface.
         const WRAPS_BACKDROP_FILTER = 1 << 1;
-        /// If true, this stacking context forms a backdrop root, so it must be
-        /// isolated from parent by a surface.
-        const IS_BACKDROP_ROOT = 1 << 2;
+        /// If true, this stacking context must be isolated from parent by a surface.
+        const FORCED_ISOLATION = 1 << 2;
     }
 }
 
@@ -2222,7 +2221,7 @@ impl ClipId {
 }
 
 /// A reference to a spatial node defining item positioning.
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize, PeekPoke)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, MallocSizeOf, PartialEq, Serialize, PeekPoke)]
 pub struct SpatialId(pub usize, PipelineId);
 
 const ROOT_REFERENCE_FRAME_SPATIAL_ID: usize = 0;
@@ -2253,7 +2252,7 @@ impl SpatialId {
 ///
 /// When setting display lists with the `preserve_frame_state` this id is used to preserve scroll
 /// offsets between different sets of SpatialNodes which are ScrollFrames.
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize, PeekPoke)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, MallocSizeOf, PartialEq, Serialize, PeekPoke)]
 #[repr(C)]
 pub struct ExternalScrollId(pub u64, pub PipelineId);
 

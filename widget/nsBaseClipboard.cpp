@@ -24,6 +24,7 @@
 #include "nsFocusManager.h"
 #include "nsIClipboardOwner.h"
 #include "nsIPromptService.h"
+#include "nsISupportsPrimitives.h"
 #include "nsError.h"
 #include "nsXPCOM.h"
 
@@ -389,6 +390,7 @@ NS_IMETHODIMP nsBaseClipboard::SetData(
     mIgnoreEmptyNotification = true;
     // Reject existing pending asyncSetData request if any.
     RejectPendingAsyncSetDataRequestIfAny(aWhichClipboard);
+    SanitizeForClipboard(aTransferable);
     rv = SetNativeClipboardData(aTransferable, aWhichClipboard);
     mIgnoreEmptyNotification = false;
   }
@@ -496,6 +498,14 @@ void nsBaseClipboard::MaybeRetryGetAvailableFlavors(
     const nsTArray<nsCString>& aFlavorList, ClipboardType aWhichClipboard,
     nsIClipboardGetDataSnapshotCallback* aCallback, int32_t aRetryCount,
     mozilla::dom::WindowContext* aRequestingWindowContext) {
+  MOZ_CLIPBOARD_LOG("%s: clipboard=%d", __FUNCTION__, aWhichClipboard);
+  if (MOZ_CLIPBOARD_LOG_ENABLED()) {
+    MOZ_CLIPBOARD_LOG("    Asking for content:");
+    for (const auto& flavor : aFlavorList) {
+      MOZ_CLIPBOARD_LOG("        MIME %s", flavor.get());
+    }
+  }
+
   // Note we have to get the clipboard sequence number first before the actual
   // read. This is to use it to verify the clipboard data is still the one we
   // try to read, instead of the later state.
@@ -534,11 +544,17 @@ void nsBaseClipboard::MaybeRetryGetAvailableFlavors(
         }
 
         if (sequenceNumber == sequenceNumberOrError.unwrap()) {
+          auto flavorList = std::move(aFlavorsOrError.unwrap());
+          if (MOZ_CLIPBOARD_LOG_ENABLED()) {
+            for (const auto& flavor : flavorList) {
+              MOZ_CLIPBOARD_LOG("    has %s", flavor.get());
+            }
+          }
+
           auto clipboardDataSnapshot =
               mozilla::MakeRefPtr<ClipboardDataSnapshot>(
-                  aWhichClipboard, sequenceNumber,
-                  std::move(aFlavorsOrError.unwrap()), false, self,
-                  requestingWindowContext);
+                  aWhichClipboard, sequenceNumber, std::move(flavorList), false,
+                  self, requestingWindowContext);
           callback->OnSuccess(clipboardDataSnapshot);
           return;
         }
@@ -719,9 +735,11 @@ NS_IMETHODIMP nsBaseClipboard::GetDataSnapshotSync(
 
   nsTArray<nsCString> results;
   for (const auto& flavor : aFlavorList) {
+    MOZ_CLIPBOARD_LOG("%s: Asking for MIME %s", __FUNCTION__, flavor.get());
     auto resultOrError = HasNativeClipboardDataMatchingFlavors(
         AutoTArray<nsCString, 1>{flavor}, aWhichClipboard);
     if (resultOrError.isOk() && resultOrError.unwrap()) {
+      MOZ_CLIPBOARD_LOG("    has %s", flavor.get());
       results.AppendElement(flavor);
     }
   }
@@ -970,6 +988,42 @@ void nsBaseClipboard::RequestUserConfirmation(
       aClipboardType, chromeDoc, aRequestingPrincipal, this, aWindowContext);
   sUserConfirmationRequest->AddClipboardGetRequest(aFlavorList, aCallback);
   promise->AppendNativeHandler(sUserConfirmationRequest);
+}
+
+/* static */
+nsresult nsBaseClipboard::SanitizeForClipboard(nsITransferable* aTransferable) {
+  NS_ENSURE_ARG(aTransferable);
+
+  nsTArray<nsCString> flavors;
+  nsresult rv = aTransferable->FlavorsTransferableCanImport(flavors);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  // Remove NULs from text flavors.
+  for (const auto& flavor : flavors) {
+    nsCOMPtr<nsISupports> data;
+    rv = aTransferable->GetTransferData(flavor.get(), getter_AddRefs(data));
+    NS_ENSURE_SUCCESS(rv, rv);
+    if (NS_WARN_IF(MOZ_UNLIKELY(!data))) {
+      continue;
+    }
+    nsCOMPtr<nsISupportsString> stringData = do_QueryInterface(data);
+    if (!stringData) {
+      continue;
+    }
+
+    // Remove NULs from stringData.  If that does anything then the size of the
+    // string will be reduced.
+    nsAutoString newString;
+    rv = stringData->GetData(newString);
+    NS_ENSURE_SUCCESS(rv, rv);
+    auto oldLength = newString.Length();
+    newString.StripChar(L'\0');
+    if (newString.Length() != oldLength) {
+      rv = stringData->SetData(newString);
+      NS_ENSURE_SUCCESS(rv, rv);
+    }
+  }
+  return NS_OK;
 }
 
 NS_IMPL_ISUPPORTS(nsBaseClipboard::ClipboardDataSnapshot,

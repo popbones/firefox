@@ -79,7 +79,7 @@ export const LinkMenuOptions = {
         referrer: site.referrer,
         typedBonus: site.typedBonus,
         url: site.url,
-        sponsored_tile_id: site.sponsored_tile_id,
+        is_sponsored: !!site.sponsored_tile_id,
         event_source: "CONTEXT_MENU",
         topic: site.topic,
         firstVisibleTimestamp: site.firstVisibleTimestamp,
@@ -472,7 +472,7 @@ export const LinkMenuOptions = {
     id: "newtab-menu-section-unfollow",
     action: ac.AlsoToMain({
       type: at.SECTION_PERSONALIZATION_SET,
-      data: (({ sectionKey: _sectionKey, ...remaining }) => remaining)(
+      data: (({ [sectionKey]: _sectionKey, ...remaining }) => remaining)(
         sectionPersonalization
       ),
     }),
@@ -523,9 +523,6 @@ export const LinkMenuOptions = {
         data: {
           card_type: site.card_type,
           corpus_item_id: site.corpus_item_id,
-          is_section_followed: site.is_section_followed,
-          received_rank: site.received_rank,
-          recommended_at: site.recommended_at,
           scheduled_corpus_item_id: site.scheduled_corpus_item_id,
           section_position: site.section_position,
           section: site.section,

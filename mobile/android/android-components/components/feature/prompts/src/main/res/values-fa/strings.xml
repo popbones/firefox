@@ -110,12 +110,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">استفاده از گذرواژه</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">اکنون نه</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">گذرواژه ذخیره شد</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">گذرواژه به‌روز شد</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">نام‌کاربری به‌روز شد</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">ارسال دوباره داده به این پایگاه؟</string>
   <string name="mozac_feature_prompt_repost_message">بازخوانی این صفحه می‌تواند کنش‌های اخیر مانند پرداخت یا ارسال نظر را دوباره تکرار کند.</string>
@@ -123,6 +119,10 @@
   <string name="mozac_feature_prompt_repost_positive_button_text">ارسال دوبارهٔ داده‌ها</string>
   <!-- Pressing this will dismiss the dialog and not refresh the webpage -->
   <string name="mozac_feature_prompt_repost_negative_button_text">لغو</string>
+  <!-- Pressing this will dismiss the dialog and allow to upload folder -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_positive_button_text">بارگذاری</string>
+  <!-- Pressing this will dismiss the dialog and disallow to upload folder -->
+  <string name="mozac_feature_prompt_folder_upload_confirm_negative_button_text">انصراف</string>
   <!--
     Credit Card Autofill
 

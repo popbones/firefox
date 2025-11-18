@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
@@ -36,7 +35,6 @@ import org.mozilla.fenix.wallpapers.WallpaperState
  * @param interactor [PocketStoriesInteractor] for interactions with the UI.
  * @param horizontalPadding Horizontal padding to apply to outermost column.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PocketSection(
     state: PocketState,
@@ -52,17 +50,21 @@ fun PocketSection(
         }
     }
 
-    Column(modifier = Modifier.padding(top = 72.dp)) {
-        // Simple wrapper to add horizontal padding to just the header while the stories have none.
-        Box(modifier = Modifier.padding(horizontal = horizontalPadding)) {
-            HomeSectionHeader(
-                headerText = stringResource(R.string.pocket_stories_header_2),
-            )
-        }
+    Column {
+        HomeSectionHeader(
+            headerText = stringResource(R.string.pocket_stories_header_2),
+            modifier = Modifier.padding(horizontal = horizontalPadding),
+            description = stringResource(R.string.stories_discover_more_content_description),
+            onShowAllClick = if (state.showDiscoverMoreButton) {
+                interactor::onDiscoverMoreClicked
+            } else {
+                null
+            },
+        )
 
         Spacer(Modifier.height(16.dp))
 
-        PocketStories(
+        Stories(
             stories = state.stories,
             contentPadding = horizontalPadding,
             backgroundColor = cardBackgroundColor,

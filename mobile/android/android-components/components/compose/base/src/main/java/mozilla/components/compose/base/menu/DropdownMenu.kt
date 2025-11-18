@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
@@ -28,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,16 +47,15 @@ import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import mozilla.components.compose.base.Divider
-import mozilla.components.compose.base.button.PrimaryButton
+import mozilla.components.compose.base.button.FilledButton
 import mozilla.components.compose.base.menu.MenuItem.FixedItem.Level
 import mozilla.components.compose.base.modifier.thenConditional
 import mozilla.components.compose.base.text.Text
 import mozilla.components.compose.base.text.value
 import mozilla.components.compose.base.theme.AcornTheme
-import mozilla.components.ui.icons.R
 import androidx.compose.material3.DropdownMenu as MaterialDropdownMenu
 import androidx.compose.material3.DropdownMenuItem as MaterialDropdownMenuItem
+import mozilla.components.ui.icons.R as iconsR
 
 private val MenuItemHeight = 48.dp
 private val ItemHorizontalSpaceBetween = 16.dp
@@ -177,7 +178,7 @@ private fun DropdownMenuContent(
                 },
             )
 
-            is MenuItem.Divider -> Divider()
+            is MenuItem.Divider -> HorizontalDivider()
         }
     }
 }
@@ -195,7 +196,7 @@ private fun CheckableMenuItemContent(
 ) {
     if (item.isChecked) {
         Icon(
-            painter = painterResource(R.drawable.mozac_ic_checkmark_24),
+            painter = painterResource(iconsR.drawable.mozac_ic_checkmark_24),
             tint = AcornTheme.levelColors.iconPrimary,
             contentDescription = null,
         )
@@ -277,6 +278,7 @@ private val LocalLevelColor = compositionLocalOf { Level.Default }
  */
 private val AcornTheme.levelColors: LevelColors
     @Composable
+    @ReadOnlyComposable
     get() {
         val current = LocalLevelColor.current
         return when (current) {
@@ -342,19 +344,19 @@ private val menuPreviewParameters by lazy {
             menuItems = listOf(
                 MenuItem.IconItem(
                     text = Text.String("Delete"),
-                    drawableRes = R.drawable.mozac_ic_delete_24,
+                    drawableRes = iconsR.drawable.mozac_ic_delete_24,
                     level = Level.Critical,
                     onClick = {},
                 ),
                 MenuItem.IconItem(
                     text = Text.String("Have a cookie!"),
-                    drawableRes = R.drawable.mozac_ic_cookies_24,
+                    drawableRes = iconsR.drawable.mozac_ic_cookies_24,
                     onClick = {},
                 ),
                 MenuItem.Divider,
                 MenuItem.IconItem(
                     text = Text.String("What's new"),
-                    drawableRes = R.drawable.mozac_ic_whats_new_24,
+                    drawableRes = iconsR.drawable.mozac_ic_whats_new_24,
                     onClick = {},
                 ),
             ),
@@ -393,7 +395,7 @@ private fun DropdownMenuPreview() {
                     var expanded by remember { mutableStateOf(false) }
                     val text by remember { mutableStateOf(it.itemType.name.replace("_", " ")) }
 
-                    PrimaryButton(
+                    FilledButton(
                         text = text,
                         modifier = Modifier.fillMaxWidth(),
                     ) {

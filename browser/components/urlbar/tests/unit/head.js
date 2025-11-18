@@ -9,7 +9,9 @@ const { AppConstants } = ChromeUtils.importESModule(
 );
 
 var { UrlbarMuxer, UrlbarProvider, UrlbarQueryContext, UrlbarUtils } =
-  ChromeUtils.importESModule("resource:///modules/UrlbarUtils.sys.mjs");
+  ChromeUtils.importESModule(
+    "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs"
+  );
 
 ChromeUtils.defineESModuleGetters(this, {
   HttpServer: "resource://testing-common/httpd.sys.mjs",
@@ -17,13 +19,17 @@ ChromeUtils.defineESModuleGetters(this, {
   PlacesUtils: "resource://gre/modules/PlacesUtils.sys.mjs",
   SearchTestUtils: "resource://testing-common/SearchTestUtils.sys.mjs",
   TestUtils: "resource://testing-common/TestUtils.sys.mjs",
-  UrlbarController: "resource:///modules/UrlbarController.sys.mjs",
-  UrlbarInput: "resource:///modules/UrlbarInput.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarProviderOpenTabs: "resource:///modules/UrlbarProviderOpenTabs.sys.mjs",
-  UrlbarProvidersManager: "resource:///modules/UrlbarProvidersManager.sys.mjs",
-  UrlbarResult: "resource:///modules/UrlbarResult.sys.mjs",
-  UrlbarTokenizer: "resource:///modules/UrlbarTokenizer.sys.mjs",
+  UrlbarController:
+    "moz-src:///browser/components/urlbar/UrlbarController.sys.mjs",
+  UrlbarInput: "moz-src:///browser/components/urlbar/UrlbarInput.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
+  UrlbarProviderOpenTabs:
+    "moz-src:///browser/components/urlbar/UrlbarProviderOpenTabs.sys.mjs",
+  UrlbarProvidersManager:
+    "moz-src:///browser/components/urlbar/UrlbarProvidersManager.sys.mjs",
+  UrlbarResult: "moz-src:///browser/components/urlbar/UrlbarResult.sys.mjs",
+  UrlbarTokenizer:
+    "moz-src:///browser/components/urlbar/UrlbarTokenizer.sys.mjs",
   sinon: "resource://testing-common/Sinon.sys.mjs",
 });
 
@@ -440,9 +446,10 @@ function makeBookmarkResult(
     source = UrlbarUtils.RESULT_SOURCE.BOOKMARKS,
   }
 ) {
-  let result = new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.URL,
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.URL,
     source,
+    heuristic,
     ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, {
       url: [uri, UrlbarUtils.HIGHLIGHT.TYPED],
       // Check against undefined so consumers can pass in the empty string.
@@ -460,11 +467,8 @@ function makeBookmarkResult(
           ? Services.urlFormatter.formatURLPref("app.support.baseURL") +
             "awesome-bar-result-menu"
           : undefined,
-    })
-  );
-
-  result.heuristic = heuristic;
-  return result;
+    }),
+  });
 }
 
 /**
@@ -481,9 +485,9 @@ function makeBookmarkResult(
  * @returns {UrlbarResult}
  */
 function makeFormHistoryResult(queryContext, { suggestion, engineName }) {
-  return new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.SEARCH,
-    UrlbarUtils.RESULT_SOURCE.HISTORY,
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.SEARCH,
+    source: UrlbarUtils.RESULT_SOURCE.HISTORY,
     ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, {
       engine: engineName,
       suggestion: [suggestion, UrlbarUtils.HIGHLIGHT.SUGGESTED],
@@ -493,8 +497,8 @@ function makeFormHistoryResult(queryContext, { suggestion, engineName }) {
       helpUrl:
         Services.urlFormatter.formatURLPref("app.support.baseURL") +
         "awesome-bar-result-menu",
-    })
-  );
+    }),
+  });
 }
 
 /**
@@ -526,14 +530,12 @@ function makeOmniboxResult(
     keyword: [keyword, UrlbarUtils.HIGHLIGHT.TYPED],
     icon: [UrlbarUtils.ICON.EXTENSION],
   };
-  let result = new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.OMNIBOX,
-    UrlbarUtils.RESULT_SOURCE.ADDON,
-    ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, payload)
-  );
-  result.heuristic = heuristic;
-
-  return result;
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.OMNIBOX,
+    source: UrlbarUtils.RESULT_SOURCE.ADDON,
+    heuristic,
+    ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, payload),
+  });
 }
 
 /**
@@ -559,9 +561,9 @@ function makeTabSwitchResult(
   queryContext,
   { uri, title, iconUri, userContextId, tabGroup }
 ) {
-  return new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.TAB_SWITCH,
-    UrlbarUtils.RESULT_SOURCE.TABS,
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.TAB_SWITCH,
+    source: UrlbarUtils.RESULT_SOURCE.TABS,
     ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, {
       url: [uri, UrlbarUtils.HIGHLIGHT.TYPED],
       title: [title, UrlbarUtils.HIGHLIGHT.TYPED],
@@ -569,8 +571,8 @@ function makeTabSwitchResult(
       icon: typeof iconUri != "undefined" ? iconUri : `page-icon:${uri}`,
       userContextId: [userContextId || 0],
       tabGroup: [tabGroup || null],
-    })
-  );
+    }),
+  });
 }
 
 /**
@@ -598,9 +600,10 @@ function makeKeywordSearchResult(
   queryContext,
   { uri, keyword, title, iconUri, postData, heuristic = false }
 ) {
-  let result = new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.KEYWORD,
-    UrlbarUtils.RESULT_SOURCE.BOOKMARKS,
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.KEYWORD,
+    source: UrlbarUtils.RESULT_SOURCE.BOOKMARKS,
+    heuristic,
     ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, {
       title: [title ? title : uri, UrlbarUtils.HIGHLIGHT.TYPED],
       url: [uri, UrlbarUtils.HIGHLIGHT.TYPED],
@@ -608,13 +611,8 @@ function makeKeywordSearchResult(
       input: [queryContext.searchString, UrlbarUtils.HIGHLIGHT.TYPED],
       postData: postData || null,
       icon: typeof iconUri != "undefined" ? iconUri : `page-icon:${uri}`,
-    })
-  );
-
-  if (heuristic) {
-    result.heuristic = heuristic;
-  }
-  return result;
+    }),
+  });
 }
 
 /**
@@ -656,13 +654,11 @@ function makeRemoteTabResult(
     payload.title = [uri, UrlbarUtils.HIGHLIGHT.TYPED];
   }
 
-  let result = new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.REMOTE_TAB,
-    UrlbarUtils.RESULT_SOURCE.TABS,
-    ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, payload)
-  );
-
-  return result;
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.REMOTE_TAB,
+    source: UrlbarUtils.RESULT_SOURCE.TABS,
+    ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, payload),
+  });
 }
 
 /**
@@ -784,7 +780,7 @@ function makeSearchResult(
   if (uri) {
     payload.url = uri;
   }
-  if (providerName == "TabToSearch") {
+  if (providerName == "UrlbarProviderTabToSearch") {
     if (searchUrlDomainWithoutSuffix.startsWith("www.")) {
       searchUrlDomainWithoutSuffix = searchUrlDomainWithoutSuffix.substring(4);
     }
@@ -793,35 +789,29 @@ function makeSearchResult(
     payload.isGeneralPurposeEngine = false;
   }
 
-  if (providerName == "TokenAliasEngines") {
+  if (providerName == "UrlbarProviderTokenAliasEngines") {
     payload.keywords = alias?.toLowerCase();
   }
 
-  let result = new UrlbarResult(
-    type,
-    source,
-    ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, payload)
-  );
-
   if (typeof suggestion == "string") {
-    result.payload.lowerCaseSuggestion =
-      result.payload.suggestion.toLocaleLowerCase();
-    result.payload.trending = trending;
-    result.isRichSuggestion = isRichSuggestion;
+    payload.lowerCaseSuggestion = suggestion.toLocaleLowerCase();
+    payload.trending = trending;
   }
 
   if (isRichSuggestion) {
-    result.payload.icon =
+    payload.icon =
       "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
-    result.payload.description = "description";
+    payload.description = "description";
   }
 
-  if (providerName) {
-    result.providerName = providerName;
-  }
-
-  result.heuristic = heuristic;
-  return result;
+  return new UrlbarResult({
+    type,
+    source,
+    heuristic,
+    isRichSuggestion,
+    providerName,
+    ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, payload),
+  });
 }
 
 /**
@@ -877,8 +867,7 @@ function makeVisitResult(
 
   if (
     !heuristic &&
-    providerName != "AboutPages" &&
-    providerName != "PreloadedSites" &&
+    providerName != "UrlbarProviderAboutPages" &&
     source == UrlbarUtils.RESULT_SOURCE.HISTORY
   ) {
     payload.isBlockable = true;
@@ -901,18 +890,13 @@ function makeVisitResult(
     payload.tags = [tags, UrlbarUtils.HIGHLIGHT.TYPED];
   }
 
-  let result = new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.URL,
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.URL,
     source,
-    ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, payload)
-  );
-
-  if (providerName) {
-    result.providerName = providerName;
-  }
-
-  result.heuristic = heuristic;
-  return result;
+    heuristic,
+    providerName,
+    ...UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, payload),
+  });
 }
 
 /**
@@ -927,16 +911,61 @@ function makeVisitResult(
  * @returns {UrlbarResult}
  */
 function makeCalculatorResult(queryContext, { value }) {
-  const result = new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.DYNAMIC,
-    UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
-    {
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.DYNAMIC,
+    source: UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
+    payload: {
       value,
       input: queryContext.searchString,
       dynamicType: "calculator",
-    }
-  );
-  return result;
+    },
+  });
+}
+
+/**
+ * Creates a UrlbarResult for a global action result.
+ *
+ * @param {object} options
+ * @param {Array} [options.actionsResults]
+ *   An array of action descriptors.
+ * @param {string} [options.query]
+ *  The query passed to actions when they run.
+ *  It is "" for contextual search, otherwise it is queryContext.searchString.
+ * @param {number} [options.inputLength]
+ *  Original input length.
+ * @param {boolean} [options.showOnboardingLabel]
+ *   Whether the “press Tab” hint should appear.
+ * @param {boolean} [options.providesSearchMode]
+ *   Whether selecting an action enters a search mode.
+ * @param {string | null} [options.engine]
+ *   The engine name, if providesSearchMode is true.
+ * @returns {UrlbarResult}
+ */
+function makeGlobalActionsResult({
+  actionsResults,
+  query,
+  inputLength,
+  showOnboardingLabel = false,
+  providesSearchMode = false,
+  engine,
+}) {
+  const payload = {
+    actionsResults,
+    dynamicType: "actions",
+    query,
+    input: query,
+    inputLength,
+    showOnboardingLabel,
+    providesSearchMode,
+    engine,
+  };
+
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.DYNAMIC,
+    source: UrlbarUtils.RESULT_SOURCE.ACTIONS,
+    providerName: "UrlbarProviderGlobalActions",
+    payload,
+  });
 }
 
 /**
@@ -976,6 +1005,7 @@ async function check_results({
 
   const controller = UrlbarTestUtils.newMockController({
     input: {
+      isAddressbar: true,
       isPrivate: context.isPrivate,
       onFirstResult() {
         return false;
@@ -1090,7 +1120,7 @@ async function check_results({
     if (
       actual.type == UrlbarUtils.RESULT_TYPE.SEARCH &&
       actual.source == UrlbarUtils.RESULT_SOURCE.SEARCH &&
-      actual.providerName == "HeuristicFallback"
+      actual.providerName == "UrlbarProviderHeuristicFallback"
     ) {
       expected.payload.icon = SEARCH_GLASS_ICON;
     }

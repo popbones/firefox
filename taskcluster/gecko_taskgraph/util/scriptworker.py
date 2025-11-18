@@ -17,6 +17,7 @@ Additional configuration is found in the :ref:`graph config <taskgraph-graph-con
 """
 import functools
 import itertools
+import json
 import os
 from datetime import datetime
 
@@ -56,6 +57,8 @@ SIGNING_SCOPE_ALIAS_TO_PROJECT = [
             "larch",
             # maple is also an L3 branch: https://phabricator.services.mozilla.com/D184833
             "maple",
+            # bug 1988213: cypress project branch
+            "cypress",
         },
     ],
     [
@@ -110,6 +113,8 @@ BEETMOVER_SCOPE_ALIAS_TO_PROJECT = [
             "pine",
             # bug 1877483: larch has similar needs for nightlies
             "larch",
+            # bug 1988213: cypress project branch
+            "cypress",
         },
     ],
     [
@@ -155,6 +160,8 @@ BEETMOVER_ACTION_SCOPES = {
     "nightly-pine": "beetmover:action:push-to-nightly",
     # bug 1877483: larch has similar needs for nightlies
     "nightly-larch": "beetmover:action:push-to-nightly",
+    # bug 1988213: cypress project branch
+    "nightly-cypress": "beetmover:action:push-to-nightly",
     "default": "beetmover:action:push-to-candidates",
 }
 
@@ -189,6 +196,8 @@ BALROG_SCOPE_ALIAS_TO_PROJECT = [
             "pine",
             # bug 1877483: larch has similar needs for nightlies
             "larch",
+            # bug 1988213: cypress project branch
+            "cypress",
         },
     ],
     [
@@ -421,13 +430,10 @@ def get_release_config(config):
         dict: containing both `build_number` and `version`.  This can be used to
             update `task.payload`.
     """
-    release_config = {
-        "version": config.params["version"],
-        "appVersion": config.params["app_version"],
-        "next_version": config.params["next_version"],
-        "build_number": config.params["build_number"],
-    }
-    if pv := config.params.get("partial_versions") and config.kind in (
+    release_config = {}
+
+    partial_updates = os.environ.get("PARTIAL_UPDATES", "")
+    if partial_updates != "" and config.kind in (
         "release-bouncer-sub",
         "release-bouncer-check",
         "release-update-verify-config",
@@ -435,8 +441,21 @@ def get_release_config(config):
         "release-balrog-submit-toplevel",
         "release-secondary-balrog-submit-toplevel",
     ):
-        release_config["partial_versions"] = pv
+        partial_updates = json.loads(partial_updates)
+        release_config["partial_versions"] = ", ".join(
+            [
+                "{}build{}".format(v, info["buildNumber"])
+                for v, info in partial_updates.items()
+            ]
+        )
+        if release_config["partial_versions"] == "{}":
+            del release_config["partial_versions"]
 
+    release_config["version"] = config.params["version"]
+    release_config["appVersion"] = config.params["app_version"]
+
+    release_config["next_version"] = config.params["next_version"]
+    release_config["build_number"] = config.params["build_number"]
     return release_config
 
 

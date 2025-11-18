@@ -689,6 +689,11 @@ export class SpecialPowersParent extends JSWindowActorParent {
       }
     });
 
+    if (failures.length) {
+      // Because we can't reset prefs on the default branch, reset our baseline.
+      this.getBaselinePrefs();
+    }
+
     if (ignorePrefs.length > 1) {
       return failures;
     }
@@ -843,7 +848,9 @@ export class SpecialPowersParent extends JSWindowActorParent {
    **/
   // eslint-disable-next-line complexity
   async receiveMessage(aMessage) {
-    let startTime = Cu.now();
+    // This newtab train-hop compatibility shim can be removed once Firefox 144
+    // makes it to the release channel.
+    let startTime = ChromeUtils.now?.() || Cu.now();
     // Try block so we can use a finally statement to add a profiler marker
     // despite all the return statements.
     try {

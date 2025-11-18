@@ -5,6 +5,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#import <Accessibility/Accessibility.h>
+
 #import "mozAccessible.h"
 #include "MOXAccessibleBase.h"
 
@@ -198,11 +200,15 @@ using namespace mozilla::a11y;
   // Convert the given screen-global point in the cocoa coordinate system (with
   // origin in the bottom-left corner of the screen) into point in the Gecko
   // coordinate system (with origin in a top-left screen point).
+  NSScreen* scalingView = utils::GetNSScreenForAcc(self);
+  // Regardless of screen selected above, VO is only happy if we use the
+  // main screen height for Y coordinate conversion. This is consistent with
+  // moxFrame and GeckoTextMarkerRange::Bounds().
   NSScreen* mainView = [[NSScreen screens] objectAtIndex:0];
   NSPoint tmpPoint =
       NSMakePoint(point.x, [mainView frame].size.height - point.y);
   LayoutDeviceIntPoint geckoPoint = nsCocoaUtils::CocoaPointsToDevPixels(
-      tmpPoint, nsCocoaUtils::GetBackingScaleFactor(mainView));
+      tmpPoint, nsCocoaUtils::GetBackingScaleFactor(scalingView));
 
   Accessible* child = mGeckoAccessible->ChildAtPoint(
       geckoPoint.x, geckoPoint.y, Accessible::EWhichChildAtPoint::DeepestChild);
@@ -537,14 +543,39 @@ static bool ProvidesTitle(const Accessible* aAccessible, nsString& aName) {
 }
 
 - (NSString*)moxHelp {
+  nsAutoString desc;
+  EDescriptionValueFlag descFlag = mGeckoAccessible->Description(desc);
+
+  if (@available(macOS 11.0, *)) {
+    // Provide AXHelp only on non-aria descriptions (eg. title attribute),
+    // or if the accessible is a fieldset or radio group.
+    if (descFlag == eDescriptionFromARIA &&
+        mGeckoAccessible->Role() != roles::GROUPING &&
+        mGeckoAccessible->Role() != roles::RADIO_GROUP) {
+      return nil;
+    }
+  }
+
+  return nsCocoaUtils::ToNSString(desc);
+}
+
+- (NSArray*)moxCustomContent {
   NS_OBJC_BEGIN_TRY_BLOCK_RETURN;
 
-  // What needs to go here is actually the accDescription of an item.
-  // The MSAA acc_help method has nothing to do with this one.
-  nsAutoString helpText;
-  mGeckoAccessible->Description(helpText);
+  if (@available(macOS 11.0, *)) {
+    nsAutoString desc;
+    EDescriptionValueFlag descFlag = mGeckoAccessible->Description(desc);
 
-  return nsCocoaUtils::ToNSString(helpText);
+    if (!desc.IsEmpty() && descFlag == eDescriptionFromARIA) {
+      AXCustomContent* contentItem = [AXCustomContent
+          customContentWithLabel:@"description"
+                           value:nsCocoaUtils::ToNSString(desc)];
+      contentItem.importance = AXCustomContentImportanceHigh;
+      return @[ contentItem ];
+    }
+  }
+
+  return nil;
 
   NS_OBJC_END_TRY_BLOCK_RETURN(nil);
 }
@@ -623,13 +654,19 @@ static bool ProvidesTitle(const Accessible* aAccessible, nsString& aName) {
   MOZ_ASSERT(mGeckoAccessible);
 
   LayoutDeviceIntRect rect = mGeckoAccessible->Bounds();
-  NSScreen* mainView = [[NSScreen screens] objectAtIndex:0];
-  CGFloat scaleFactor = nsCocoaUtils::GetBackingScaleFactor(mainView);
+  NSScreen* screen = utils::GetNSScreenForAcc(self);
+  CGFloat scaleFactor = nsCocoaUtils::GetBackingScaleFactor(screen);
+
+  // Regardless of screen selected above, VO is only happy if we use the
+  // main screen height for Y coordinate conversion. This is consistent with
+  // moxHitTest and GeckoTextMarkerRange::Bounds().
+  NSScreen* mainScreen = [[NSScreen screens] objectAtIndex:0];
+  CGFloat mainScreenHeight = [mainScreen frame].size.height;
 
   return [NSValue
       valueWithRect:NSMakeRect(
                         static_cast<CGFloat>(rect.x) / scaleFactor,
-                        [mainView frame].size.height -
+                        mainScreenHeight -
                             static_cast<CGFloat>(rect.y + rect.height) /
                                 scaleFactor,
                         static_cast<CGFloat>(rect.width) / scaleFactor,
@@ -953,8 +990,12 @@ static bool ProvidesTitle(const Accessible* aAccessible, nsString& aName) {
     if (Accessible* announcement = mGeckoAccessible->FirstChild()) {
       announcement->Name(name);
     } else {
-      MOZ_ASSERT_UNREACHABLE(
-          "A11yUtil event received, but no announcement found?");
+      // This can happen if a modal dialog is opened, which removes everything
+      // else from the accessibility tree, and then the modal is dismissed,
+      // which inserts everything else again. This causes Gecko to fire an alert
+      // event on a11y-announcement (even though it's empty) since it was just
+      // shown.
+      NS_WARNING("A11yUtil event received, but no announcement found");
     }
 
     NSDictionary* info = @{

@@ -6,38 +6,35 @@
 
 #include "mozilla/dom/TrustedTypeUtils.h"
 
+#include "js/RootingAPI.h"
+#include "mozilla/ErrorResult.h"
 #include "mozilla/Maybe.h"
 #include "mozilla/StaticPrefs_dom.h"
-
-#include "js/RootingAPI.h"
-
-#include "mozilla/ErrorResult.h"
+#include "mozilla/dom/CSPViolationData.h"
 #include "mozilla/dom/Document.h"
+#include "mozilla/dom/ElementBinding.h"
+#include "mozilla/dom/HTMLScriptElementBinding.h"
+#include "mozilla/dom/PolicyContainer.h"
 #include "mozilla/dom/TrustedHTML.h"
 #include "mozilla/dom/TrustedScript.h"
 #include "mozilla/dom/TrustedScriptURL.h"
 #include "mozilla/dom/TrustedTypePolicy.h"
 #include "mozilla/dom/TrustedTypePolicyFactory.h"
 #include "mozilla/dom/TrustedTypesConstants.h"
+#include "mozilla/dom/UnionTypes.h"
+#include "mozilla/dom/WindowOrWorkerGlobalScopeBinding.h"
 #include "mozilla/dom/WorkerCommon.h"
 #include "mozilla/dom/WorkerPrivate.h"
 #include "mozilla/dom/WorkerRunnable.h"
 #include "mozilla/dom/WorkerScope.h"
+#include "mozilla/dom/nsCSPUtils.h"
+#include "mozilla/extensions/WebExtensionPolicy.h"
+#include "nsContentUtils.h"
 #include "nsGlobalWindowInner.h"
+#include "nsIContentSecurityPolicy.h"
 #include "nsLiteralString.h"
 #include "nsTArray.h"
 #include "xpcpublic.h"
-
-#include "mozilla/dom/CSPViolationData.h"
-#include "mozilla/dom/ElementBinding.h"
-#include "mozilla/dom/HTMLScriptElementBinding.h"
-#include "mozilla/dom/UnionTypes.h"
-#include "mozilla/dom/WindowOrWorkerGlobalScopeBinding.h"
-#include "mozilla/dom/nsCSPUtils.h"
-#include "mozilla/extensions/WebExtensionPolicy.h"
-
-#include "nsContentUtils.h"
-#include "nsIContentSecurityPolicy.h"
 
 namespace mozilla::dom::TrustedTypeUtils {
 
@@ -446,6 +443,9 @@ MOZ_CAN_RUN_SCRIPT inline const nsAString* GetTrustedTypesCompliantString(
   nsIGlobalObject* globalObject = nullptr;
   nsPIDOMWindowInner* piDOMWindowInner = nullptr;
   if constexpr (std::is_same_v<NodeOrGlobalObjectArg, nsINode>) {
+    if (aNodeOrGlobalObject.HasBeenInUAWidget()) {
+      return GetAsString(aInput);
+    }
     Document* ownerDoc = aNodeOrGlobalObject.OwnerDoc();
     const bool ownerDocLoadedAsData = ownerDoc->IsLoadedAsData();
     if (!ownerDoc->HasPolicyWithRequireTrustedTypesForDirective() &&
@@ -493,7 +493,7 @@ MOZ_CAN_RUN_SCRIPT inline const nsAString* GetTrustedTypesCompliantString(
   RequireTrustedTypesForDirectiveState requireTrustedTypesForDirectiveState =
       RequireTrustedTypesForDirectiveState::NONE;
   if (piDOMWindowInner) {
-    csp = piDOMWindowInner->GetCsp();
+    csp = PolicyContainer::GetCSP(piDOMWindowInner->GetPolicyContainer());
     if (!csp) {
       return GetAsString(aInput);
     }
@@ -616,6 +616,15 @@ GetTrustedTypesCompliantStringForTrustedScript(
   return GetTrustedTypesCompliantString<TrustedScript>(
       &aInput, aSink, aSinkGroup, aGlobalObject, nullptr, aResultHolder,
       aError);
+}
+
+MOZ_CAN_RUN_SCRIPT const nsAString*
+GetTrustedTypesCompliantStringForTrustedScript(
+    const nsAString& aInput, const nsAString& aSink,
+    const nsAString& aSinkGroup, const nsINode& aNode,
+    Maybe<nsAutoString>& aResultHolder, ErrorResult& aError) {
+  return GetTrustedTypesCompliantString<TrustedScript>(
+      &aInput, aSink, aSinkGroup, aNode, nullptr, aResultHolder, aError);
 }
 
 bool GetTrustedTypeDataForAttribute(const nsAtom* aElementName,

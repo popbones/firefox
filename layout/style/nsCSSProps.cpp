@@ -11,27 +11,23 @@
 
 #include "nsCSSProps.h"
 
+#include "gfxPlatform.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/Casting.h"
-
-#include "gfxPlatform.h"
-#include "nsLayoutUtils.h"
-#include "nsIWidget.h"
-#include "nsStyleConsts.h"  // For system widget appearance types
-
-#include "mozilla/dom/Animation.h"
-#include "mozilla/dom/AnimationEffectBinding.h"  // for PlaybackDirection
-#include "mozilla/gfx/gfxVars.h"                 // for UseWebRender
-#include "mozilla/gfx/gfxVarReceiver.h"
+#include "mozilla/ClearOnShutdown.h"
 #include "mozilla/LookAndFeel.h"  // for system colors
-
-#include "nsString.h"
-#include "nsStaticNameTable.h"
-
 #include "mozilla/Preferences.h"
 #include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/StaticPtr.h"
-#include "mozilla/ClearOnShutdown.h"
+#include "mozilla/dom/Animation.h"
+#include "mozilla/dom/AnimationEffectBinding.h"  // for PlaybackDirection
+#include "mozilla/gfx/gfxVarReceiver.h"
+#include "mozilla/gfx/gfxVars.h"  // for UseWebRender
+#include "nsIWidget.h"
+#include "nsLayoutUtils.h"
+#include "nsStaticNameTable.h"
+#include "nsString.h"
+#include "nsStyleConsts.h"  // For system widget appearance types
 
 using namespace mozilla;
 
@@ -83,13 +79,19 @@ void nsCSSProps::RecomputeEnabledState(const char* aPref, void*) {
        pref->mPropID != eCSSProperty_UNKNOWN; pref++) {
     if (!aPref || !strcmp(aPref, pref->mPref)) {
       foundPref = true;
-#ifdef FUZZING
-      gPropertyEnabled[pref->mPropID] = true;
-#else
       gPropertyEnabled[pref->mPropID] = Preferences::GetBool(pref->mPref);
       if (pref->mPropID == eCSSProperty_backdrop_filter) {
         gPropertyEnabled[pref->mPropID] &=
             gfx::gfxVars::GetAllowBackdropFilterOrDefault();
+      }
+#ifdef FUZZING
+      // Even in fuzzing builds we only want to enable overflow-clip-box if the
+      // pref is flipped on (it's still enabled in UA sheets though). See bug
+      // 1936080.
+      if (pref->mPropID != eCSSProperty_overflow_clip_box &&
+          pref->mPropID != eCSSProperty_overflow_clip_box_block &&
+          pref->mPropID != eCSSProperty_overflow_clip_box_inline) {
+        gPropertyEnabled[pref->mPropID] = true;
       }
 #endif
     }
@@ -222,7 +224,7 @@ class nsCSSPropsGfxVarReceiver final : public gfx::gfxVarReceiver {
  public:
   static gfx::gfxVarReceiver& GetInstance() { return sInstance; }
 
-  void OnVarChanged(const gfx::GfxVarUpdate&) override {
+  void OnVarChanged(const nsTArray<gfx::GfxVarUpdate>&) override {
     bool enabled = gfx::gfxVars::AllowBackdropFilter();
     if (sLastKnownAllowBackdropFilter != enabled) {
       sLastKnownAllowBackdropFilter = enabled;

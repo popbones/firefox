@@ -46,6 +46,8 @@ class GeckoInstance:
         "apz.content_response_timeout": 60000,
         # Make sure error page is not shown for blank pages with 4xx or 5xx response code
         "browser.http.blank_page_with_error_response.enabled": True,
+        # Disable CFR features for automated tests.
+        "browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features": False,
         # Don't pull weather data from the network
         "browser.newtabpage.activity-stream.discoverystream.region-weather-config": "",
         # Don't pull wallpaper content from the network
@@ -68,6 +70,8 @@ class GeckoInstance:
         "datareporting.healthreport.service.enabled": False,
         "datareporting.healthreport.service.firstRun": False,
         "datareporting.healthreport.uploadEnabled": False,
+        "datareporting.usage.uploadEnabled": False,
+        "telemetry.fog.test.localhost_port": -1,
         # Do not show datareporting policy notifications which can interfere with tests
         "datareporting.policy.dataSubmissionEnabled": False,
         "datareporting.policy.dataSubmissionPolicyBypassNotification": True,
@@ -171,6 +175,8 @@ class GeckoInstance:
         # influenced by the presence of the persistent doorhanger notification
         "signon.rememberSignons": False,
         # Prevent starting into safe mode after application crashes
+        # Do not show TOU new user modal which can interfere with tests
+        "termsofuse.bypassNotification": True,
         "toolkit.startup.max_resumed_crashes": -1,
         # Disable most telemetry pings
         "toolkit.telemetry.server": "https://%(server)s/telemetry-dummy/",
@@ -602,6 +608,8 @@ class DesktopInstance(GeckoInstance):
         # !!! For backward compatibility up to Firefox 64. Only remove
         # when this Firefox version is no longer supported by the client !!!
         "app.update.auto": False,
+        # Disable the profile backup service.
+        "browser.backup.enabled": False,
         # Don't show the content blocking introduction panel
         # We use a larger number than the default 22 to have some buffer
         # This can be removed once Firefox 69 and 68 ESR and are no longer supported.
@@ -665,6 +673,9 @@ class DesktopInstance(GeckoInstance):
         # TODO: Should be considered to get removed once bug 1960741 is fixed.
         "threads.lower_mainthread_priority_in_background.enabled": False,
         "dom.ipc.processPriorityManager.enabled": False,
+        # Turn off semantic history search as it triggers network connections to
+        # download ML models.
+        "places.semanticHistory.featureGate": False,
         # Disable first-run welcome page
         "startup.homepage_welcome_url": "about:blank",
         "startup.homepage_welcome_url.additional": "",

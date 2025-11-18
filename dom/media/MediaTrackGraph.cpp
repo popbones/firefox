@@ -3,48 +3,48 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "MediaTrackGraphImpl.h"
-#include "mozilla/MathAlgorithms.h"
-#include "mozilla/Unused.h"
-
+#include "AudioCaptureTrack.h"
+#include "AudioDeviceInfo.h"
+#include "AudioNodeExternalInputTrack.h"
+#include "AudioNodeTrack.h"
 #include "AudioSegment.h"
 #include "CrossGraphPort.h"
+#include "CubebDeviceEnumerator.h"
+#include "ForwardedInputTrack.h"
+#include "ImageContainer.h"
+#include "MediaTrackGraphImpl.h"
 #include "VideoSegment.h"
+#include "mozilla/Attributes.h"
+#include "mozilla/Logging.h"
+#include "mozilla/MathAlgorithms.h"
+#include "mozilla/Unused.h"
 #include "nsContentUtils.h"
 #include "nsGlobalWindowInner.h"
 #include "nsPrintfCString.h"
 #include "nsServiceManagerUtils.h"
 #include "prerror.h"
-#include "mozilla/Logging.h"
-#include "mozilla/Attributes.h"
-#include "ForwardedInputTrack.h"
-#include "ImageContainer.h"
-#include "AudioCaptureTrack.h"
-#include "AudioDeviceInfo.h"
-#include "AudioNodeTrack.h"
-#include "AudioNodeExternalInputTrack.h"
 #if defined(MOZ_WEBRTC)
 #  include "MediaEngineWebRTCAudio.h"
 #endif  // MOZ_WEBRTC
+#include <algorithm>
+
+#include "GeckoProfiler.h"
+#include "GraphRunner.h"
 #include "MediaTrackListener.h"
+#include "Tracing.h"
+#include "UnderrunHandler.h"
+#include "VideoFrameContainer.h"
+#include "VideoUtils.h"
+#include "mozilla/AbstractThread.h"
+#include "mozilla/CycleCollectedJSRuntime.h"
+#include "mozilla/Preferences.h"
+#include "mozilla/StaticPrefs_dom.h"
+#include "mozilla/StaticPrefs_media.h"
 #include "mozilla/dom/BaseAudioContextBinding.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/WorkletThread.h"
 #include "mozilla/media/MediaUtils.h"
-#include <algorithm>
-#include "GeckoProfiler.h"
-#include "VideoFrameContainer.h"
-#include "mozilla/AbstractThread.h"
-#include "mozilla/StaticPrefs_dom.h"
-#include "mozilla/StaticPrefs_media.h"
 #include "transport/runnable_utils.h"
-#include "VideoUtils.h"
-#include "GraphRunner.h"
-#include "Tracing.h"
-#include "UnderrunHandler.h"
-#include "mozilla/CycleCollectedJSRuntime.h"
-#include "mozilla/Preferences.h"
-
 #include "webaudio/blink/DenormalDisabler.h"
 #include "webaudio/blink/HRTFDatabaseLoader.h"
 
@@ -823,6 +823,7 @@ void MediaTrackGraphImpl::OpenAudioInput(DeviceInputTrack* aTrack) {
   };
 
   mDeviceInputTrackManagerMainThread.Add(aTrack);
+  UpdateEnumeratorDefaultDeviceTracking();
 
   this->AppendMessage(MakeUnique<Message>(this, aTrack));
 }
@@ -901,6 +902,7 @@ void MediaTrackGraphImpl::CloseAudioInput(DeviceInputTrack* aTrack) {
   // aTrack->Destroy() is called after this. See DeviceInputTrack::CloseAudio
   // for more details.
   mDeviceInputTrackManagerMainThread.Remove(aTrack);
+  UpdateEnumeratorDefaultDeviceTracking();
 
   this->AppendMessage(MakeUnique<Message>(this, aTrack));
 
@@ -1772,6 +1774,7 @@ MediaTrackGraphImpl::Notify(nsITimer* aTimer) {
   // Sigh, graph took too long to shut down.  Stop blocking system
   // shutdown and hope all is well.
   RemoveShutdownBlocker();
+  mOutputDevicesChangedListener.DisconnectIfExists();
   return NS_OK;
 }
 
@@ -3571,11 +3574,10 @@ MediaTrackGraphImpl* MediaTrackGraphImpl::GetInstance(
   MOZ_ASSERT(aGraphDriverRequested != OFFLINE_THREAD_DRIVER,
              "Use CreateNonRealtimeInstance() for offline graphs");
 
-  GraphHashSet* graphs = Graphs();
-  GraphHashSet::AddPtr addPtr =
-      graphs->lookupForAdd({aWindowID, aSampleRate, aPrimaryOutputDeviceID});
-  if (addPtr) {  // graph already exists
-    return *addPtr;
+  MediaTrackGraphImpl* graph =
+      GetInstanceIfExists(aWindowID, aSampleRate, aPrimaryOutputDeviceID);
+  if (graph) {  // graph already exists
+    return graph;
   }
 
   GraphRunType runType = DIRECT_DRIVER;
@@ -3586,10 +3588,11 @@ MediaTrackGraphImpl* MediaTrackGraphImpl::GetInstance(
   // In a real time graph, the number of output channels is determined by
   // the underlying number of channel of the default audio output device.
   uint32_t channelCount = CubebUtils::MaxNumberOfChannels();
-  MediaTrackGraphImpl* graph = new MediaTrackGraphImpl(
-      aWindowID, aSampleRate, aPrimaryOutputDeviceID, aMainThread);
+  graph = new MediaTrackGraphImpl(aWindowID, aSampleRate,
+                                  aPrimaryOutputDeviceID, aMainThread);
   graph->Init(aGraphDriverRequested, runType, channelCount);
-  MOZ_ALWAYS_TRUE(graphs->add(addPtr, graph));
+  MOZ_ALWAYS_TRUE(Graphs()->putNew(
+      {aWindowID, aSampleRate, aPrimaryOutputDeviceID}, graph));
 
   LOG(LogLevel::Debug, ("Starting up MediaTrackGraph %p for window 0x%" PRIx64,
                         graph, aWindowID));
@@ -4111,6 +4114,9 @@ double MediaTrackGraphImpl::AudioOutputLatency() {
 bool MediaTrackGraph::OutputForAECMightDrift() {
   return static_cast<MediaTrackGraphImpl*>(this)->OutputForAECMightDrift();
 }
+bool MediaTrackGraph::OutputForAECIsPrimary() {
+  return static_cast<MediaTrackGraphImpl*>(this)->OutputForAECIsPrimary();
+}
 bool MediaTrackGraph::IsNonRealtime() const {
   return !static_cast<const MediaTrackGraphImpl*>(this)->mRealtime;
 }
@@ -4342,6 +4348,53 @@ void MediaTrackGraphImpl::SetNewNativeInput() {
       ("%p Native input device is set to device %p now", this, deviceId));
 
   MOZ_ASSERT(mDeviceInputTrackManagerMainThread.GetNativeInputTrack());
+}
+
+void MediaTrackGraphImpl::UpdateEnumeratorDefaultDeviceTracking() {
+  MOZ_ASSERT(NS_IsMainThread());
+  auto onExit = MakeScopeExit([&] { UpdateDefaultDevice(); });
+
+  if (!mDeviceInputTrackManagerMainThread.GetNativeInputTrack()) {
+    mEnumeratorMainThread = nullptr;
+    mOutputDevicesChangedListener.DisconnectIfExists();
+    LOG(LogLevel::Debug,
+        ("%p No longer tracking system default output device", this));
+    return;
+  }
+
+  if (mEnumeratorMainThread) {
+    onExit.release();
+    return;
+  }
+
+  mEnumeratorMainThread = CubebDeviceEnumerator::GetInstance();
+  mOutputDevicesChangedListener =
+      mEnumeratorMainThread->OnAudioOutputDeviceListChange().Connect(
+          GetCurrentSerialEventTarget(), this,
+          &MediaTrackGraphImpl::UpdateDefaultDevice);
+  LOG(LogLevel::Debug, ("%p Now tracking system default output device", this));
+}
+
+void MediaTrackGraphImpl::UpdateDefaultDevice() {
+  MOZ_ASSERT(NS_IsMainThread());
+  CubebUtils::AudioDeviceID id = nullptr;
+  auto onExit = MakeScopeExit([&] {
+    mDefaultOutputDeviceID.store(id, std::memory_order_relaxed);
+    LOG(LogLevel::Debug,
+        ("%p Tracked system default output device ID is now %p", this, id));
+  });
+
+  if (!mEnumeratorMainThread) {
+    return;
+  }
+
+  auto dev =
+      mEnumeratorMainThread->DefaultDevice(CubebDeviceEnumerator::Side::OUTPUT);
+  if (!dev) {
+    return;
+  }
+
+  id = dev->DeviceID();
 }
 
 // nsIThreadObserver methods

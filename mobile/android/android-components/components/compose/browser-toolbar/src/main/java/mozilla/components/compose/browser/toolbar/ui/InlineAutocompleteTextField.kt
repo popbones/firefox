@@ -11,6 +11,8 @@ import android.text.InputType.TYPE_CLASS_TEXT
 import android.text.InputType.TYPE_TEXT_VARIATION_URI
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.KeyEvent
+import android.view.View
 import android.view.inputmethod.EditorInfo
 import androidx.annotation.ColorInt
 import androidx.compose.runtime.Composable
@@ -25,6 +27,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.toColorInt
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat.Type.ime
+import androidx.core.view.inputmethod.EditorInfoCompat.IME_FLAG_NO_PERSONALIZED_LEARNING
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +40,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import mozilla.components.compose.base.theme.AcornTheme
 import mozilla.components.compose.browser.toolbar.BrowserEditToolbar
+import mozilla.components.compose.browser.toolbar.R
 import mozilla.components.concept.toolbar.AutocompleteDelegate
 import mozilla.components.concept.toolbar.AutocompleteProvider
 import mozilla.components.concept.toolbar.AutocompleteResult
@@ -51,18 +57,23 @@ private const val TEXT_SIZE = 15f
 private const val TEXT_HIGHLIGHT_COLOR = "#5C592ACB"
 private const val AUTOCOMPLETE_QUERY_THREADS = 3
 private const val AUTOCOMPLETE_THREADS_FACTORY_NAME = "EditToolbar"
+private const val LETTER_SPACING_SP = 0.5f
 
 /**
  * Sub-component of the [BrowserEditToolbar] responsible for displaying a text field that is
  * capable of inline autocompletion.
  */
 @Composable
+@Suppress("LongMethod")
 internal fun InlineAutocompleteTextField(
     query: String,
+    hint: String,
     showQueryAsPreselected: Boolean,
+    usePrivateModeQueries: Boolean,
     autocompleteProviders: List<AutocompleteProvider>,
     modifier: Modifier = Modifier,
     onUrlEdit: (String) -> Unit = {},
+    onUrlEditAborted: () -> Unit = {},
     onUrlCommitted: (String) -> Unit = {},
     onUrlSuggestionAutocompleted: (String) -> Unit = {},
 ) {
@@ -127,9 +138,15 @@ internal fun InlineAutocompleteTextField(
     AndroidView(
         factory = { context ->
             InlineAutocompleteEditText(context).apply {
+                id = R.id.mozac_addressbar_search_query_input
+
                 imeOptions = EditorInfo.IME_ACTION_GO or
                     EditorInfo.IME_FLAG_NO_EXTRACT_UI or
                     EditorInfo.IME_FLAG_NO_FULLSCREEN
+                imeOptions = when (usePrivateModeQueries) {
+                    true -> imeOptions or IME_FLAG_NO_PERSONALIZED_LEARNING
+                    false -> imeOptions and (IME_FLAG_NO_PERSONALIZED_LEARNING.inv())
+                }
                 inputType = TYPE_CLASS_TEXT or TYPE_TEXT_VARIATION_URI
                 setLines(1)
                 gravity = Gravity.CENTER_VERTICAL
@@ -138,11 +155,18 @@ internal fun InlineAutocompleteTextField(
                 background = backgroundDrawable
                 autoCompleteBackgroundColor = autocompletedTextColor
                 setTextColor(textColor.toArgb())
+                this.hint = hint
                 setHintTextColor(hintColor.toArgb())
+
+                // Used to match the same style that is used for Compose texts to ensure a smooth transition
+                letterSpacing = TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_SP,
+                    LETTER_SPACING_SP, context.resources.displayMetrics,
+                    ) / textSize
 
                 updateText(query)
                 if (showQueryAsPreselected && query.isNotBlank()) {
-                    selectAll()
+                    post { selectAll() }
                 }
 
                 setOnCommitListener {
@@ -151,6 +175,13 @@ internal fun InlineAutocompleteTextField(
 
                 setOnTextChangeListener { text, _ ->
                     onUrlEdit(text)
+                }
+
+                setOnDispatchKeyEventPreImeListener { event ->
+                    if (event?.keyCode == KeyEvent.KEYCODE_BACK && isImeVisible()) {
+                        onUrlEditAborted()
+                    }
+                    false
                 }
             }.also {
                 editText = it
@@ -161,6 +192,10 @@ internal fun InlineAutocompleteTextField(
             if (query != it.originalText) {
                 it.updateText(query)
                 it.refreshAutocompleteSuggestions()
+            }
+            if (it.hint != hint) {
+                it.hint = hint
+                it.setHintTextColor(hintColor.toArgb())
             }
         },
     )
@@ -259,6 +294,8 @@ private fun buildBackground(
     }
 }
 
+private fun View.isImeVisible() = ViewCompat.getRootWindowInsets(this)?.isVisible(ime()) == true
+
 private fun InlineAutocompleteEditText.updateText(newText: String) {
     // Avoid running the code for focusing this if the updated text is the one user already typed.
     // But ensure focusing this if just starting to type.
@@ -281,7 +318,9 @@ private fun InlineAutocompleteEditText.updateText(newText: String) {
 private fun BrowserEditToolbarPreview() {
     InlineAutocompleteTextField(
         query = "http://www.mozilla.org",
+        hint = "",
         showQueryAsPreselected = false,
+        usePrivateModeQueries = false,
         autocompleteProviders = emptyList(),
     )
 }

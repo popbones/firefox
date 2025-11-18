@@ -31,13 +31,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import mozilla.components.compose.base.annotation.FlexibleWindowLightDarkPreview
-import mozilla.components.compose.base.button.PrimaryButton
+import mozilla.components.compose.base.button.FilledButton
 import org.mozilla.fenix.HomeActivity
 import org.mozilla.fenix.R
 import org.mozilla.fenix.compose.utils.KeyboardState
 import org.mozilla.fenix.compose.utils.keyboardAsState
 import org.mozilla.fenix.microsurvey.ui.ext.MicrosurveyUIData
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 private const val TABLET_WIDTH_FRACTION = 0.5f
 private const val NON_TABLET_WIDTH_FRACTION = 1.0f
@@ -88,7 +89,7 @@ fun MicrosurveyRequestPrompt(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                PrimaryButton(
+                FilledButton(
                     text = stringResource(id = R.string.micro_survey_continue_button_label),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -141,7 +142,7 @@ private fun MicrosurveyRequestPromptPreview() {
             microsurvey = MicrosurveyUIData(
                 id = "",
                 promptTitle = "Help make printing in Firefox better. It only takes a sec.",
-                icon = R.drawable.mozac_ic_lightbulb_24,
+                icon = iconsR.drawable.mozac_ic_lightbulb_24,
                 question = "",
                 answers = emptyList(),
             ),

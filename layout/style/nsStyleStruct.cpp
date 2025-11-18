@@ -10,42 +10,41 @@
  */
 
 #include "nsStyleStruct.h"
-#include "nsStyleStructInlines.h"
-#include "nsStyleConsts.h"
-#include "nsString.h"
-#include "nsPresContext.h"
-#include "nsIWidget.h"
-#include "nsCRTGlue.h"
-#include "nsCSSProps.h"
-#include "nsDeviceContext.h"
-#include "nsStyleUtil.h"
-#include "nsIURIMutator.h"
 
-#include "nsCOMPtr.h"
+#include <algorithm>
 
-#include "nsBidiUtils.h"
-#include "nsLayoutUtils.h"
-
-#include "imgIRequest.h"
-#include "imgIContainer.h"
 #include "CounterStyleManager.h"
-
-#include "mozilla/dom/AnimationEffectBinding.h"    // for PlaybackDirection
-#include "mozilla/dom/BaseKeyframeTypesBinding.h"  // for CompositeOperation
-#include "mozilla/dom/DocGroup.h"
+#include "ImageLoader.h"
+#include "imgIContainer.h"
+#include "imgIRequest.h"
 #include "mozilla/CORSMode.h"
 #include "mozilla/ClearOnShutdown.h"
 #include "mozilla/GeckoBindings.h"
+#include "mozilla/Likely.h"
 #include "mozilla/PreferenceSheet.h"
 #include "mozilla/SchedulerGroup.h"
+#include "mozilla/StaticPrefs_layout.h"
 #include "mozilla/StaticPresData.h"
-#include "mozilla/Likely.h"
-#include "nsIURI.h"
+#include "mozilla/dom/AnimationEffectBinding.h"    // for PlaybackDirection
+#include "mozilla/dom/BaseKeyframeTypesBinding.h"  // for CompositeOperation
+#include "mozilla/dom/DocGroup.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/DocumentInlines.h"
-#include <algorithm>
-#include "ImageLoader.h"
-#include "mozilla/StaticPrefs_layout.h"
+#include "nsBidiUtils.h"
+#include "nsCOMPtr.h"
+#include "nsCRTGlue.h"
+#include "nsCSSProps.h"
+#include "nsDeviceContext.h"
+#include "nsIURI.h"
+#include "nsIURIMutator.h"
+#include "nsIWidget.h"
+#include "nsLayoutUtils.h"
+#include "nsPresContext.h"
+#include "nsString.h"
+#include "nsStyleConsts.h"
+#include "nsStyleStructInlines.h"
+#include "nsStyleStructList.h"
+#include "nsStyleUtil.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -66,12 +65,12 @@ struct AssertSizeIsLessThan {
   static constexpr bool instantiate = true;
 };
 
-#define STYLE_STRUCT(name_)                                                  \
+#define ASSERT_SIZE(name_)                                                   \
   static_assert(AssertSizeIsLessThan<nsStyle##name_, sizeof(nsStyle##name_), \
                                      kStyleStructSizeLimit>::instantiate,    \
                 "");
-#include "nsStyleStructList.h"
-#undef STYLE_STRUCT
+FOR_EACH_STYLE_STRUCT(ASSERT_SIZE, ASSERT_SIZE)
+#undef ASSERT_SIZE
 
 bool StyleCssUrlData::operator==(const StyleCssUrlData& aOther) const {
   // This very intentionally avoids comparing LoadData and such.
@@ -190,6 +189,7 @@ nsStyleFont::nsStyleFont(const nsStyleFont& aSrc)
       mMinFontSizeRatio(aSrc.mMinFontSizeRatio),
       mMathVariant(aSrc.mMathVariant),
       mMathStyle(aSrc.mMathStyle),
+      mMathShift(aSrc.mMathShift),
       mExplicitLanguage(aSrc.mExplicitLanguage),
       mXTextScale(aSrc.mXTextScale),
       mScriptUnconstrainedSize(aSrc.mScriptUnconstrainedSize),
@@ -218,6 +218,7 @@ nsStyleFont::nsStyleFont(const Document& aDocument)
       mLineHeight(StyleLineHeight::Normal()),
       mMathVariant(StyleMathVariant::None),
       mMathStyle(StyleMathStyle::Normal),
+      mMathShift(StyleMathShift::Normal),
       mXTextScale(InitialTextScale(aDocument)),
       mScriptUnconstrainedSize(mSize),
       mScriptMinSize(Length::FromPixels(
@@ -241,7 +242,7 @@ nsChangeHint nsStyleFont::CalcDifference(const nsStyleFont& aNewData) const {
   if (mSize != aNewData.mSize || mLanguage != aNewData.mLanguage ||
       mExplicitLanguage != aNewData.mExplicitLanguage ||
       mMathVariant != aNewData.mMathVariant ||
-      mMathStyle != aNewData.mMathStyle ||
+      mMathStyle != aNewData.mMathStyle || mMathShift != aNewData.mMathShift ||
       mMinFontSizeRatio != aNewData.mMinFontSizeRatio ||
       mLineHeight != aNewData.mLineHeight) {
     return NS_STYLE_HINT_REFLOW;
@@ -284,14 +285,48 @@ static StyleRect<T> StyleRectWithAllSides(const T& aSide) {
   return {aSide, aSide, aSide, aSide};
 }
 
+AnchorPosReferencedAnchors::Result AnchorPosReferencedAnchors::InsertOrModify(
+    const nsAtom* aAnchorName, bool aNeedOffset) {
+  bool exists = true;
+  auto* result = &mMap.LookupOrInsertWith(aAnchorName, [&exists]() {
+    exists = false;
+    return Nothing{};
+  });
+
+  if (!exists) {
+    return {false, result};
+  }
+
+  // We tried to resolve before.
+  if (result->isNothing()) {
+    // We know this reference is invalid.
+    return {true, result};
+  }
+  // Previous resolution found a valid anchor.
+  if (!aNeedOffset) {
+    // Size is guaranteed to be populated on resolution.
+    return {true, result};
+  }
+
+  // Previous resolution may have been for size only, in which case another
+  // anchor resolution is still required.
+  return {result->ref().mOrigin.isSome(), result};
+}
+
+const AnchorPosReferencedAnchors::Value* AnchorPosReferencedAnchors::Lookup(
+    const nsAtom* aAnchorName) const {
+  return mMap.Lookup(aAnchorName).DataPtrOrNull();
+}
+
 AnchorResolvedMargin AnchorResolvedMarginHelper::ResolveAnchor(
-    const StyleMargin& aValue, StylePositionProperty aPosition) {
+    const StyleMargin& aValue, StylePhysicalAxis aAxis,
+    const AnchorPosResolutionParams& aParams) {
   MOZ_ASSERT(aValue.HasAnchorPositioningFunction(),
              "Calling anchor resolution without using it?");
   if (aValue.IsAnchorSizeFunction()) {
     auto resolved = StyleAnchorPositioningFunctionResolution::Invalid();
-    Servo_ResolveAnchorSizeFunction(&*aValue.AsAnchorSizeFunction(), aPosition,
-                                    &resolved);
+    Servo_ResolveAnchorSizeFunctionForMargin(&*aValue.AsAnchorSizeFunction(),
+                                             &aParams, aAxis, &resolved);
     if (resolved.IsInvalid()) {
       return Zero();
     }
@@ -306,10 +341,11 @@ AnchorResolvedMargin AnchorResolvedMarginHelper::ResolveAnchor(
   const auto& lp = aValue.AsAnchorContainingCalcFunction();
   const auto& c = lp.AsCalc();
   auto result = StyleCalcAnchorPositioningFunctionResolution::Invalid();
-  // TODO(dshin, bug 1969305)
   AnchorPosOffsetResolutionParams params =
-      AnchorPosOffsetResolutionParams::UseCBFrameSize({nullptr, aPosition});
-  Servo_ResolveAnchorFunctionsInCalcPercentage(&c, nullptr, &params, &result);
+      AnchorPosOffsetResolutionParams::UseCBFrameSize(aParams);
+  const auto allowed =
+      StyleAllowAnchorPosResolutionInCalcPercentage::AnchorSizeOnly(aAxis);
+  Servo_ResolveAnchorFunctionsInCalcPercentage(&c, &allowed, &params, &result);
   if (result.IsInvalid()) {
     return Zero();
   }
@@ -654,14 +690,6 @@ nsChangeHint nsStyleList::CalcDifference(const nsStyleList& aNewData,
     hint = nsChangeHint_NeutralChange;
   }
   return hint;
-}
-
-already_AddRefed<nsIURI> nsStyleList::GetListStyleImageURI() const {
-  if (!mListStyleImage.IsUrl()) {
-    return nullptr;
-  }
-
-  return do_AddRef(mListStyleImage.AsUrl().GetURI());
 }
 
 // --------------------
@@ -1285,18 +1313,21 @@ nsChangeHint nsStylePosition::CalcDifference(
     }
   }
 
-  if (mPositionAnchor != aNewData.mPositionAnchor) {
-    // 'position-anchor' provides a default anchor for other anchor positioning
-    // properties in the event that they don't specify one explicitly.
-    // TODO(jwatt): Re-evaluate what we're doing here.
-    hint |= nsChangeHint_NeutralChange;
+  // Note(dshin): Following hints based on changes in `position-*`
+  // is conditional on being absolutely positioned, but we don't have
+  // enough information here.
+  if (mPositionVisibility != aNewData.mPositionVisibility) {
+    // position-visibility doesn't affect layout boxes.
+    hint |= nsChangeHint_RepaintFrame;
   }
 
-  if (mPositionVisibility != aNewData.mPositionVisibility ||
+  if (mPositionAnchor != aNewData.mPositionAnchor ||
       mPositionTryFallbacks != aNewData.mPositionTryFallbacks ||
       mPositionTryOrder != aNewData.mPositionTryOrder ||
       mPositionArea != aNewData.mPositionArea) {
-    hint |= nsChangeHint_NeutralChange;
+    // We need to reflow in order to update the `AnchorPosReferences`
+    // property at minimum.
+    hint |= nsChangeHint_NeedReflow;
   }
 
   if (mAspectRatio != aNewData.mAspectRatio) {
@@ -1311,11 +1342,11 @@ nsChangeHint nsStylePosition::CalcDifference(
   // right now.
   // Don't try to handle changes between types efficiently; at least for
   // changing into/out of `auto`, we will hardly ever be able to avoid a reflow.
-  // TODO(dshin, Bug 1917695): Re-evaulate this for `anchor()`.
   if (mOffset != aNewData.mOffset) {
     if (IsEqualInsetType(mOffset, aNewData.mOffset) &&
         aNewData.mOffset.All([](const StyleInset& aInset) {
-          // Err on the side of triggering reflow for anchor positioning.
+          // Anchor positioning invalidation depends on `AnchorPosReferences`
+          // being updated, which happens during reflow.
           return !aInset.HasAnchorPositioningFunction();
         })) {
       hint |=
@@ -1375,7 +1406,9 @@ AnchorResolvedInset AnchorResolvedInsetHelper::ResolveAnchor(
       const auto& lp = aValue.AsAnchorContainingCalcFunction();
       const auto& c = lp.AsCalc();
       auto result = StyleCalcAnchorPositioningFunctionResolution::Invalid();
-      Servo_ResolveAnchorFunctionsInCalcPercentage(&c, &aSide, &aParams,
+      const auto allowed =
+          StyleAllowAnchorPosResolutionInCalcPercentage::Both(aSide);
+      Servo_ResolveAnchorFunctionsInCalcPercentage(&c, &allowed, &aParams,
                                                    &result);
       if (result.IsInvalid()) {
         return Auto();
@@ -1399,8 +1432,9 @@ AnchorResolvedInset AnchorResolvedInsetHelper::ResolveAnchor(
     }
     case StyleInset::Tag::AnchorSizeFunction: {
       auto resolved = StyleAnchorPositioningFunctionResolution::Invalid();
-      Servo_ResolveAnchorSizeFunction(&*aValue.AsAnchorSizeFunction(),
-                                      aParams.mBaseParams.mPosition, &resolved);
+      Servo_ResolveAnchorSizeFunctionForInset(
+          &*aValue.AsAnchorSizeFunction(), &aParams, ToStylePhysicalAxis(aSide),
+          &resolved);
       if (resolved.IsInvalid()) {
         return Auto();
       }
@@ -1418,14 +1452,14 @@ AnchorResolvedInset AnchorResolvedInsetHelper::ResolveAnchor(
 }
 
 AnchorResolvedSize AnchorResolvedSizeHelper::ResolveAnchor(
-    const mozilla::StyleSize& aValue,
-    mozilla::StylePositionProperty aPosition) {
+    const mozilla::StyleSize& aValue, StylePhysicalAxis aAxis,
+    const AnchorPosResolutionParams& aParams) {
   MOZ_ASSERT(aValue.HasAnchorPositioningFunction(),
              "Calling anchor resolution without using it?");
   if (aValue.IsAnchorSizeFunction()) {
     auto resolved = StyleAnchorPositioningFunctionResolution::Invalid();
-    Servo_ResolveAnchorSizeFunction(&*aValue.AsAnchorSizeFunction(), aPosition,
-                                    &resolved);
+    Servo_ResolveAnchorSizeFunctionForSize(&*aValue.AsAnchorSizeFunction(),
+                                           &aParams, aAxis, &resolved);
     if (resolved.IsInvalid()) {
       return Auto();
     }
@@ -1441,10 +1475,11 @@ AnchorResolvedSize AnchorResolvedSizeHelper::ResolveAnchor(
   // Follows the same reasoning as anchor resolved insets.
   const auto& c = lp.AsCalc();
   auto result = StyleCalcAnchorPositioningFunctionResolution::Invalid();
-  // TODO(dshin, bug 1969305)
   AnchorPosOffsetResolutionParams params =
-      AnchorPosOffsetResolutionParams::UseCBFrameSize({nullptr, aPosition});
-  Servo_ResolveAnchorFunctionsInCalcPercentage(&c, nullptr, &params, &result);
+      AnchorPosOffsetResolutionParams::UseCBFrameSize(aParams);
+  const auto allowed =
+      StyleAllowAnchorPosResolutionInCalcPercentage::AnchorSizeOnly(aAxis);
+  Servo_ResolveAnchorFunctionsInCalcPercentage(&c, &allowed, &params, &result);
   if (result.IsInvalid()) {
     return Auto();
   }
@@ -1452,14 +1487,14 @@ AnchorResolvedSize AnchorResolvedSizeHelper::ResolveAnchor(
 }
 
 AnchorResolvedMaxSize AnchorResolvedMaxSizeHelper::ResolveAnchor(
-    const mozilla::StyleMaxSize& aValue,
-    mozilla::StylePositionProperty aPosition) {
+    const mozilla::StyleMaxSize& aValue, StylePhysicalAxis aAxis,
+    const AnchorPosResolutionParams& aParams) {
   MOZ_ASSERT(aValue.HasAnchorPositioningFunction(),
              "Calling anchor resolution without using it?");
   if (aValue.IsAnchorSizeFunction()) {
     auto resolved = StyleAnchorPositioningFunctionResolution::Invalid();
-    Servo_ResolveAnchorSizeFunction(&*aValue.AsAnchorSizeFunction(), aPosition,
-                                    &resolved);
+    Servo_ResolveAnchorSizeFunctionForMaxSize(&*aValue.AsAnchorSizeFunction(),
+                                              &aParams, aAxis, &resolved);
     if (resolved.IsInvalid()) {
       return None();
     }
@@ -1475,10 +1510,11 @@ AnchorResolvedMaxSize AnchorResolvedMaxSizeHelper::ResolveAnchor(
   // Follows the same reasoning as anchor resolved insets.
   const auto& c = lp.AsCalc();
   auto result = StyleCalcAnchorPositioningFunctionResolution::Invalid();
-  // TODO(dshin, bug 1969305)
   AnchorPosOffsetResolutionParams params =
-      AnchorPosOffsetResolutionParams::UseCBFrameSize({nullptr, aPosition});
-  Servo_ResolveAnchorFunctionsInCalcPercentage(&c, nullptr, &params, &result);
+      AnchorPosOffsetResolutionParams::UseCBFrameSize(aParams);
+  const auto allowed =
+      StyleAllowAnchorPosResolutionInCalcPercentage::AnchorSizeOnly(aAxis);
+  Servo_ResolveAnchorFunctionsInCalcPercentage(&c, &allowed, &params, &result);
   if (result.IsInvalid()) {
     return None();
   }
@@ -1684,7 +1720,8 @@ void StyleImage::ResolveImage(Document& aDoc, const StyleImage* aOld) {
 }
 
 template <>
-ImageResolution StyleImage::GetResolution(const ComputedStyle& aStyle) const {
+ImageResolution StyleImage::GetResolution(
+    const ComputedStyle* aStyleForZoom) const {
   ImageResolution resolution;
   if (imgRequestProxy* request = GetImageRequest()) {
     RefPtr<imgIContainer> image;
@@ -1701,8 +1738,8 @@ ImageResolution StyleImage::GetResolution(const ComputedStyle& aStyle) const {
       resolution.ScaleBy(r);
     }
   }
-  if (aStyle.EffectiveZoom() != StyleZoom::ONE) {
-    resolution.ScaleBy(1.0f / aStyle.EffectiveZoom().ToFloat());
+  if (aStyleForZoom && aStyleForZoom->EffectiveZoom() != StyleZoom::ONE) {
+    resolution.ScaleBy(1.0f / aStyleForZoom->EffectiveZoom().ToFloat());
   }
   return resolution;
 }
@@ -2192,7 +2229,7 @@ nsStyleDisplay::nsStyleDisplay()
     : mDisplay(StyleDisplay::Inline),
       mOriginalDisplay(StyleDisplay::Inline),
       mContentVisibility(StyleContentVisibility::Visible),
-      mContainerType(StyleContainerType::Normal),
+      mContainerType(StyleContainerType::NORMAL),
       mAppearance(StyleAppearance::None),
       mContain(StyleContain::NONE),
       mEffectiveContainment(StyleContain::NONE),
@@ -2888,7 +2925,9 @@ nsStyleTextReset::nsStyleTextReset()
       mUnicodeBidi(StyleUnicodeBidi::Normal),
       mInitialLetter{0, 0},
       mTextDecorationColor(StyleColor::CurrentColor()),
-      mTextDecorationThickness(StyleTextDecorationLength::Auto()) {
+      mTextDecorationThickness(StyleTextDecorationLength::Auto()),
+      mTextDecorationTrim(StyleTextDecorationTrim::Length(
+          StyleLength::Zero(), StyleLength::Zero())) {
   MOZ_COUNT_CTOR(nsStyleTextReset);
 }
 
@@ -2899,7 +2938,8 @@ nsStyleTextReset::nsStyleTextReset(const nsStyleTextReset& aSource)
       mUnicodeBidi(aSource.mUnicodeBidi),
       mInitialLetter(aSource.mInitialLetter),
       mTextDecorationColor(aSource.mTextDecorationColor),
-      mTextDecorationThickness(aSource.mTextDecorationThickness) {
+      mTextDecorationThickness(aSource.mTextDecorationThickness),
+      mTextDecorationTrim(aSource.mTextDecorationTrim) {
   MOZ_COUNT_CTOR(nsStyleTextReset);
 }
 
@@ -2912,7 +2952,8 @@ nsChangeHint nsStyleTextReset::CalcDifference(
 
   if (mTextDecorationLine != aNewData.mTextDecorationLine ||
       mTextDecorationStyle != aNewData.mTextDecorationStyle ||
-      mTextDecorationThickness != aNewData.mTextDecorationThickness) {
+      mTextDecorationThickness != aNewData.mTextDecorationThickness ||
+      mTextDecorationTrim != aNewData.mTextDecorationTrim) {
     // Changes to our text-decoration line can impact our overflow area &
     // also our descendants' overflow areas (particularly for text-frame
     // descendants).  So, we update those areas & trigger a repaint.
@@ -2984,6 +3025,7 @@ nsStyleText::nsStyleText(const nsStyleText& aSource)
       mLineBreak(aSource.mLineBreak),
       mWordBreak(aSource.mWordBreak),
       mOverflowWrap(aSource.mOverflowWrap),
+      mTextAutospace(aSource.mTextAutospace),
       mHyphens(aSource.mHyphens),
       mRubyAlign(aSource.mRubyAlign),
       mRubyPosition(aSource.mRubyPosition),
@@ -3044,7 +3086,8 @@ nsChangeHint nsStyleText::CalcDifference(const nsStyleText& aNewData) const {
       (mHyphenateCharacter != aNewData.mHyphenateCharacter) ||
       (mHyphenateLimitChars != aNewData.mHyphenateLimitChars) ||
       (mWebkitTextSecurity != aNewData.mWebkitTextSecurity) ||
-      (mTextWrapStyle != aNewData.mTextWrapStyle)) {
+      (mTextWrapStyle != aNewData.mTextWrapStyle) ||
+      (mTextAutospace != aNewData.mTextAutospace)) {
     return NS_STYLE_HINT_REFLOW;
   }
 
@@ -3136,7 +3179,6 @@ LogicalSide nsStyleText::TextEmphasisSide(WritingMode aWM,
 nsStyleUI::nsStyleUI()
     : mInert(StyleInert::None),
       mMozTheme(StyleMozTheme::Auto),
-      mUserInput(StyleUserInput::Auto),
       mUserFocus(StyleUserFocus::Normal),
       mPointerEvents(StylePointerEvents::Auto),
       mCursor{{}, StyleCursorKind::Auto},
@@ -3150,7 +3192,6 @@ nsStyleUI::nsStyleUI()
 nsStyleUI::nsStyleUI(const nsStyleUI& aSource)
     : mInert(aSource.mInert),
       mMozTheme(aSource.mMozTheme),
-      mUserInput(aSource.mUserInput),
       mUserFocus(aSource.mUserFocus),
       mPointerEvents(aSource.mPointerEvents),
       mCursor(aSource.mCursor),
@@ -3197,13 +3238,13 @@ nsChangeHint nsStyleUI::CalcDifference(const nsStyleUI& aNewData) const {
   }
 
   if (mInert != aNewData.mInert) {
-    // inert affects pointer-events, user-modify, user-select, user-focus and
-    // -moz-user-input, do the union of all them (minus
+    // inert affects pointer-events, user-select, user-focus.
+    // Do the union of all them (minus
     // nsChangeHint_NeutralChange which isn't needed if there's any other hint).
     hint |= NS_STYLE_HINT_VISUAL | kPointerEventsHint;
   }
 
-  if (mUserFocus != aNewData.mUserFocus || mUserInput != aNewData.mUserInput) {
+  if (mUserFocus != aNewData.mUserFocus) {
     hint |= nsChangeHint_NeutralChange;
   }
 

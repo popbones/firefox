@@ -207,6 +207,7 @@ internal object ContentStateReducer {
                         appPermissionRequestsList = it.appPermissionRequestsList + action.appPermissionRequest,
                     )
                 } else {
+                    it.appPermissionRequestsList.mergePermissions(action.appPermissionRequest)
                     it
                 }
             }
@@ -271,6 +272,16 @@ internal object ContentStateReducer {
             is UpdatePermissionHighlightsStateAction.PersistentStorageChangedAction -> {
                 updatePermissionHighlightsState(state, action.tabId) {
                     it.copy(persistentStorageChanged = action.value)
+                }
+            }
+            is UpdatePermissionHighlightsStateAction.LocalDeviceAccessChangedAction -> {
+                updatePermissionHighlightsState(state, action.tabId) {
+                    it.copy(localDeviceAccessChanged = action.value)
+                }
+            }
+            is UpdatePermissionHighlightsStateAction.LocalNetworkAccessChangedAction -> {
+                updatePermissionHighlightsState(state, action.tabId) {
+                    it.copy(localNetworkAccessChanged = action.value)
                 }
             }
             is UpdatePermissionHighlightsStateAction.AutoPlayAudibleBlockingAction -> {

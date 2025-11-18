@@ -18,9 +18,10 @@ ChromeUtils.defineESModuleGetters(this, {
   ResetProfile: "resource://gre/modules/ResetProfile.sys.mjs",
   TelemetryTestUtils: "resource://testing-common/TelemetryTestUtils.sys.mjs",
   UrlbarProviderInterventions:
-    "resource:///modules/UrlbarProviderInterventions.sys.mjs",
-  UrlbarProvidersManager: "resource:///modules/UrlbarProvidersManager.sys.mjs",
-  UrlbarResult: "resource:///modules/UrlbarResult.sys.mjs",
+    "moz-src:///browser/components/urlbar/UrlbarProviderInterventions.sys.mjs",
+  UrlbarProvidersManager:
+    "moz-src:///browser/components/urlbar/UrlbarProvidersManager.sys.mjs",
+  UrlbarResult: "moz-src:///browser/components/urlbar/UrlbarResult.sys.mjs",
 });
 
 ChromeUtils.defineLazyGetter(this, "UrlbarTestUtils", () => {
@@ -329,7 +330,7 @@ async function doUpdateTest({
     Assert.ok(button.test(actualButton), "Button regexp");
   }
 
-  Assert.ok(element._buttons.has("menu"), "Tip has a menu button");
+  Assert.ok(element._buttons.has("result-menu"), "Tip has a menu button");
 
   // Pick the tip and wait for the action.
   let values = await Promise.all([awaitCallback(), pickTip()]);
@@ -473,7 +474,7 @@ function checkIntervention({
       Assert.ok(button.test(actualButton), "Button regexp");
     }
 
-    let menuButton = element._buttons.get("menu");
+    let menuButton = element._buttons.get("result-menu");
     Assert.ok(menuButton, "Menu button exists");
     Assert.ok(BrowserTestUtils.isVisible(menuButton), "Menu button is visible");
 
@@ -572,12 +573,19 @@ async function checkTip(win, expectedTip, closeView = true) {
   }
 }
 
-function makeTipResult({ buttonUrl, helpUrl = undefined }) {
-  return new UrlbarResult(
-    UrlbarUtils.RESULT_TYPE.TIP,
-    UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
-    {
+function makeTipResult({
+  buttonUrl,
+  helpUrl = undefined,
+  descriptionL10n = undefined,
+  descriptionLearnMoreTopic = undefined,
+}) {
+  return new UrlbarResult({
+    type: UrlbarUtils.RESULT_TYPE.TIP,
+    source: UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
+    payload: {
       helpUrl,
+      descriptionL10n,
+      descriptionLearnMoreTopic,
       type: "test",
       titleL10n: { id: "urlbar-search-tips-confirm" },
       buttons: [
@@ -586,8 +594,8 @@ function makeTipResult({ buttonUrl, helpUrl = undefined }) {
           l10n: { id: "urlbar-search-tips-confirm" },
         },
       ],
-    }
-  );
+    },
+  });
 }
 
 /**
@@ -698,7 +706,9 @@ function resetSearchTipsProvider() {
   Services.prefs.clearUserPref(
     `browser.urlbar.tipShownCount.${UrlbarProviderSearchTips.TIP_TYPE.REDIRECT}`
   );
-  UrlbarProviderSearchTips.disableTipsForCurrentSession = false;
+  UrlbarProvidersManager.getProvider(
+    "UrlbarProviderSearchTips"
+  ).disableTipsForCurrentSession = false;
 }
 
 async function setDefaultEngine(name) {

@@ -135,16 +135,8 @@ add_task(async function testSourceTextContent() {
     "slow-loading-script.js",
     "same-url.js",
     "new-function.js",
+    "iframe.html",
   ];
-
-  // With fission and EFT disabled, the structure of the source tree changes
-  // as there is no iframe thread and all the iframe sources are loaded under the
-  // Main thread, so nodes will be in different positions in the tree.
-  const noFissionNoEFT = !isFissionEnabled() && !isEveryFrameTargetEnabled();
-
-  if (noFissionNoEFT) {
-    waitForSources.push("iframe.html", "named-eval.js");
-  }
 
   // Load the document *once* the debugger is opened
   // in order to avoid having any source being GC-ed.
@@ -153,7 +145,7 @@ add_task(async function testSourceTextContent() {
   await selectSourceFromSourceTreeWithIndex(
     dbg,
     "new-function.js",
-    noFissionNoEFT ? 6 : 5,
+    5,
     "Select `new-function.js`"
   );
   is(
@@ -164,7 +156,7 @@ add_task(async function testSourceTextContent() {
   await selectSourceFromSourceTreeWithIndex(
     dbg,
     "normal-script.js",
-    noFissionNoEFT ? 7 : 6,
+    6,
     "Select `normal-script.js`"
   );
   is(getEditorContent(dbg), `console.log("normal script")`);
@@ -172,7 +164,7 @@ add_task(async function testSourceTextContent() {
   await selectSourceFromSourceTreeWithIndex(
     dbg,
     "slow-loading-script.js",
-    noFissionNoEFT ? 9 : 8,
+    8,
     "Select `slow-loading-script.js`"
   );
   is(getEditorContent(dbg), `console.log("slow loading script")`);
@@ -180,7 +172,7 @@ add_task(async function testSourceTextContent() {
   await selectSourceFromSourceTreeWithIndex(
     dbg,
     "index.html",
-    noFissionNoEFT ? 4 : 3,
+    3,
     "Select `index.html`"
   );
   is(getEditorContent(dbg), INDEX_PAGE_CONTENT);
@@ -188,7 +180,7 @@ add_task(async function testSourceTextContent() {
   await selectSourceFromSourceTreeWithIndex(
     dbg,
     "named-eval.js",
-    noFissionNoEFT ? 5 : 4,
+    4,
     "Select `named-eval.js`"
   );
   is(getEditorContent(dbg), NAMED_EVAL_CONTENT);
@@ -196,7 +188,7 @@ add_task(async function testSourceTextContent() {
   await selectSourceFromSourceTreeWithIndex(
     dbg,
     "same-url.js",
-    noFissionNoEFT ? 8 : 7,
+    7,
     "Select `same-url.js` in the Main Thread"
   );
 
@@ -209,79 +201,66 @@ add_task(async function testSourceTextContent() {
   const sameUrlSource = findSource(dbg, "same-url.js");
   const sourceActors = dbg.selectors.getSourceActorsForSource(sameUrlSource.id);
 
-  if (isFissionEnabled() || isEveryFrameTargetEnabled()) {
-    const mainThread = dbg.selectors
-      .getAllThreads()
-      .find(thread => thread.name == "Main Thread");
+  const mainThread = dbg.selectors
+    .getAllThreads()
+    .find(thread => thread.name == "Main Thread");
 
-    is(
-      sourceActors.filter(actor => actor.thread == mainThread.actor).length,
-      3,
-      "same-url.js is loaded 3 times in the main thread"
-    );
+  is(
+    sourceActors.filter(actor => actor.thread == mainThread.actor).length,
+    3,
+    "same-url.js is loaded 3 times in the main thread"
+  );
 
-    info(`Close the same-url.js from Main Thread`);
-    await closeTab(dbg, "same-url.js");
+  info(`Close the same-url.js from Main Thread`);
+  await closeTab(dbg, "same-url.js");
 
-    info("Click on the iframe tree node to show sources in the iframe");
-    await clickElement(dbg, "sourceDirectoryLabel", 9);
-    await waitForSourcesInSourceTree(
-      dbg,
-      [
-        "index.html",
-        "named-eval.js",
-        "normal-script.js",
-        "slow-loading-script.js",
-        "same-url.js",
-        "iframe.html",
-        "same-url.js",
-        "new-function.js",
-      ],
-      {
-        noExpand: true,
-      }
-    );
-
-    await selectSourceFromSourceTreeWithIndex(
-      dbg,
+  info("Click on the iframe tree node to show sources in the iframe");
+  await clickElement(dbg, "sourceDirectoryLabel", 9);
+  await waitForSourcesInSourceTree(
+    dbg,
+    [
+      "index.html",
+      "named-eval.js",
+      "normal-script.js",
+      "slow-loading-script.js",
       "same-url.js",
-      12,
-      "Select `same-url.js` in the iframe"
-    );
+      "iframe.html",
+      "same-url.js",
+      "new-function.js",
+    ],
+    {
+      noExpand: true,
+    }
+  );
 
-    is(
-      getEditorContent(dbg),
-      `console.log("same url #3")`,
-      "We get the expected content for same-url.js in the iframe"
-    );
+  await selectSourceFromSourceTreeWithIndex(
+    dbg,
+    "same-url.js",
+    12,
+    "Select `same-url.js` in the iframe"
+  );
 
-    const iframeThread = dbg.selectors
-      .getAllThreads()
-      .find(thread => thread.name == `${BASE_URL}iframe.html`);
-    is(
-      sourceActors.filter(actor => actor.thread == iframeThread.actor).length,
-      1,
-      "same-url.js is loaded one time in the iframe thread"
-    );
-  } else {
-    // There is no iframe thread when fission is off
-    const mainThread = dbg.selectors
-      .getAllThreads()
-      .find(thread => thread.name == "Main Thread");
+  is(
+    getEditorContent(dbg),
+    `console.log("same url #3")`,
+    "We get the expected content for same-url.js in the iframe"
+  );
 
-    is(
-      sourceActors.filter(actor => actor.thread == mainThread.actor).length,
-      4,
-      "same-url.js is loaded 4 times in the main thread without fission"
-    );
-  }
+  const iframeThread = dbg.selectors
+    .getAllThreads()
+    .find(thread => thread.name == `${BASE_URL}iframe.html`);
+  is(
+    sourceActors.filter(actor => actor.thread == iframeThread.actor).length,
+    1,
+    "same-url.js is loaded one time in the iframe thread"
+  );
 
   info(`Close the same-url.js from the iframe`);
   await closeTab(dbg, "same-url.js");
 
   info("Click on the worker tree node to show sources in the worker");
 
-  await clickElement(dbg, "sourceDirectoryLabel", noFissionNoEFT ? 10 : 13);
+  await clickElement(dbg, "sourceDirectoryLabel", 13);
 
   const workerSources = [
     "index.html",
@@ -292,11 +271,8 @@ add_task(async function testSourceTextContent() {
     "iframe.html",
     "same-url.js",
     "new-function.js",
+    "same-url.js",
   ];
-
-  if (!noFissionNoEFT) {
-    workerSources.push("same-url.js");
-  }
 
   await waitForSourcesInSourceTree(dbg, workerSources, {
     noExpand: true,
@@ -305,7 +281,7 @@ add_task(async function testSourceTextContent() {
   await selectSourceFromSourceTreeWithIndex(
     dbg,
     "same-url.js",
-    noFissionNoEFT ? 12 : 15,
+    15,
     "Select `same-url.js` in the worker"
   );
 
@@ -386,6 +362,12 @@ add_task(async function testSourceTextContent() {
     2,
     "We loaded http-error-script.js twice, only before the debugger is opened"
   );
+
+  await reload(dbg, "index.html", ...waitForSources);
+
+  // Verify that iframe source content is fetch correctly after reload
+  await selectSource(dbg, "iframe.html");
+  is(getEditorContent(dbg), IFRAME_CONTENT);
 });
 
 /**

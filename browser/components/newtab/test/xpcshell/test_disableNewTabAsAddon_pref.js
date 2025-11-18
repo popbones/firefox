@@ -3,9 +3,7 @@ https://creativecommons.org/publicdomain/zero/1.0/ */
 
 "use strict";
 
-const { XPCOMUtils } = ChromeUtils.importESModule(
-  "resource://gre/modules/XPCOMUtils.sys.mjs"
-);
+/* import-globals-from ../../../../extensions/newtab/test/xpcshell/head.js */
 
 const {
   AboutNewTabResourceMapping,
@@ -14,17 +12,6 @@ const {
 } = ChromeUtils.importESModule(
   "resource:///modules/AboutNewTabResourceMapping.sys.mjs"
 );
-
-XPCOMUtils.defineLazyServiceGetters(this, {
-  resProto: [
-    "@mozilla.org/network/protocol;1?name=resource",
-    "nsISubstitutingProtocolHandler",
-  ],
-  chromeRegistry: [
-    "@mozilla.org/chrome/chrome-registry;1",
-    "nsIChromeRegistry",
-  ],
-});
 
 // NOTE: this test verifies that when the browser.newtabpage.disableNewTabAsAddon
 // is set to true (set on the xpcshell.toml side for this specific test file),
@@ -46,29 +33,19 @@ add_task(async function test_pref_sanity_check() {
 });
 
 add_task(async function test_bundled_resource_mapping() {
-  // Verify resource and chrome protocols substitutions.
-  const builtinAddonsURL = resProto.getSubstitution("builtin-addons").spec;
-  Assert.equal(
-    resProto.getSubstitution("newtab")?.spec,
-    `${builtinAddonsURL}newtab/`,
-    "Got the expected resource://newtab/ substitution"
-  );
-  Assert.equal(
-    chromeRegistry.convertChromeURL(
-      Services.io.newURI("chrome://newtab/content/css/")
-    )?.spec,
-    `${builtinAddonsURL}newtab/data/css/`,
-    "Got the expected chrome://newtab/content substitution"
-  );
+  assertNewTabResourceMapping();
 });
 
 add_task(async function test_AboutNewTabResourceMapping() {
   Assert.equal(
-    AboutNewTabResourceMapping._addonId,
+    AboutNewTabResourceMapping.addonVersion,
     null,
-    "Expected AboutNewTabResourceMapping addonId to be null"
+    "Expected AboutNewTabResourceMapping addonVersion to be null"
   );
 
+  const resProto = Cc[
+    "@mozilla.org/network/protocol;1?name=resource"
+  ].getService(Ci.nsIResProtocolHandler);
   const expectedRootURISpec = `${resProto.getSubstitution("builtin-addons").spec}newtab/`;
   Assert.equal(
     AboutNewTabResourceMapping._rootURISpec,
@@ -84,6 +61,8 @@ add_task(async function test_AboutNewTabResourceMapping() {
 
   let policy = WebExtensionPolicy.getByID(BUILTIN_ADDON_ID);
   ok(policy, "Found a WebExtensionPolicy instance for the builtin addon id");
+
+  Services.fog.testResetFOG();
   const { id, rootURI, version } =
     AboutNewTabResourceMapping.getPreferredMapping();
   Assert.deepEqual(
@@ -94,6 +73,10 @@ add_task(async function test_AboutNewTabResourceMapping() {
       version: null,
     },
     "AboutNewTabResourceMapping.getPreferredMapping ignores active builtin addon"
+  );
+  Assert.ok(
+    !Glean.newtab.addonXpiUsed.testGetValue(),
+    "Probe says we're not using an XPI"
   );
 });
 

@@ -93,7 +93,14 @@ nsresult Classifier::GetPrivateStoreDirectory(
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Append the provider name to the root store directory.
-  rv = providerDirectory->AppendNative(aProvider);
+  if (aProvider.EqualsLiteral("google5")) {
+    // We reuse the google4 directory for google5 provider because both V4 and
+    // V5 share the same file format. Reusing the directory avoids the need to
+    // migrate the data between the two providers.
+    rv = providerDirectory->AppendNative("google4"_ns);
+  } else {
+    rv = providerDirectory->AppendNative(aProvider);
+  }
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Ensure existence of the provider directory.
@@ -481,6 +488,8 @@ nsresult Classifier::CheckURIFragments(
     return NS_ERROR_FAILURE;
   }
 
+  bool hasAnyHit = false;
+
   // Now check each lookup fragment against the entries in the DB.
   for (uint32_t i = 0; i < aSpecFragments.Length(); i++) {
     Completion lookupHash;
@@ -510,7 +519,15 @@ nsresult Classifier::CheckURIFragments(
       result->mTableName.Assign(cache->TableName());
       result->mPartialHashLength = confirmed ? COMPLETE_SIZE : matchLength;
       result->mProtocolV2 = LookupCache::Cast<LookupCacheV2>(cache);
+
+      hasAnyHit = true;
     }
+  }
+
+  if (hasAnyHit) {
+    glean::urlclassifier::lookup_hit.Get(aTable).Add(1);
+  } else {
+    glean::urlclassifier::lookup_miss.Get(aTable).Add(1);
   }
 
   return NS_OK;

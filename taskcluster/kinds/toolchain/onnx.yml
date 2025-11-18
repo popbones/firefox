@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 ---
 task-defaults:
-    worker-type: b-linux-gcp
+    worker-type: b-linux-amd
     worker:
         max-run-time: 1800
     use-python: "3.11"
@@ -153,21 +153,6 @@ onnxruntime-x86_64-linux-android:
             - "Android"
             - "x86_64"
         toolchain-artifact: public/build/onnxruntime-x86_64-linux-android.tar.zst
-    fetches:
-        toolchain:
-            - linux64-clang-toolchain
-            - android-ndk-linux
-            - android-sdk-linux
-
-onnxruntime-i686-linux-android:
-    description: "ONNX Runtime (android x86)"
-    treeherder:
-        symbol: TL(onnx-android-x86)
-    run:
-        arguments:
-            - "Android"
-            - "x86"
-        toolchain-artifact: public/build/onnxruntime-i686-linux-android.tar.zst
     fetches:
         toolchain:
             - linux64-clang-toolchain

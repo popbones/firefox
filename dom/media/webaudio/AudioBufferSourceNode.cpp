@@ -5,20 +5,22 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "AudioBufferSourceNode.h"
-#include "nsDebug.h"
-#include "mozilla/dom/AudioBufferSourceNodeBinding.h"
-#include "mozilla/dom/AudioParam.h"
-#include "mozilla/FloatingPoint.h"
-#include "nsContentUtils.h"
-#include "nsMathUtils.h"
+
+#include <algorithm>
+#include <limits>
+
 #include "AlignmentUtils.h"
+#include "AudioDestinationNode.h"
 #include "AudioNodeEngine.h"
 #include "AudioNodeTrack.h"
-#include "AudioDestinationNode.h"
 #include "AudioParamTimeline.h"
-#include <limits>
-#include <algorithm>
 #include "Tracing.h"
+#include "mozilla/FloatingPoint.h"
+#include "mozilla/dom/AudioBufferSourceNodeBinding.h"
+#include "mozilla/dom/AudioParam.h"
+#include "nsContentUtils.h"
+#include "nsDebug.h"
+#include "nsMathUtils.h"
 
 namespace mozilla::dom {
 
@@ -697,7 +699,7 @@ void AudioBufferSourceNode::Start(double aWhen, double aOffset,
   mDuration = aDuration.WasPassed() ? aDuration.Value()
                                     : std::numeric_limits<double>::min();
 
-  WEB_AUDIO_API_LOG("%f: %s %u Start(%f, %g, %g)", Context()->CurrentTime(),
+  WEB_AUDIO_API_LOG("{:f}: {} {} Start({:f}, {}, {})", Context()->CurrentTime(),
                     NodeType(), Id(), aWhen, aOffset, mDuration);
 
   // We can't send these parameters without a buffer because we don't know the
@@ -774,8 +776,8 @@ void AudioBufferSourceNode::Stop(double aWhen, ErrorResult& aRv) {
     return;
   }
 
-  WEB_AUDIO_API_LOG("%f: %s %u Stop(%f)", Context()->CurrentTime(), NodeType(),
-                    Id(), aWhen);
+  WEB_AUDIO_API_LOG("{:f}: {} {} Stop({:f})", Context()->CurrentTime(),
+                    NodeType(), Id(), aWhen);
 
   AudioNodeTrack* ns = mTrack;
   if (!ns || !Context()) {

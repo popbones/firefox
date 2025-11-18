@@ -6,20 +6,19 @@
 
 #include "mozilla/dom/CompressionStream.h"
 
+#include "CompressionStreamHelper.h"
 #include "js/TypeDecls.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Attributes.h"
-#include "mozilla/dom/BufferSourceBindingFwd.h"
 #include "mozilla/dom/BufferSourceBinding.h"
+#include "mozilla/dom/BufferSourceBindingFwd.h"
 #include "mozilla/dom/CompressionStreamBinding.h"
 #include "mozilla/dom/ReadableStream.h"
-#include "mozilla/dom/WritableStream.h"
-#include "mozilla/dom/TransformStream.h"
 #include "mozilla/dom/TextDecoderStream.h"
+#include "mozilla/dom/TransformStream.h"
 #include "mozilla/dom/TransformerCallbackHelpers.h"
 #include "mozilla/dom/UnionTypes.h"
-
-#include "CompressionStreamHelper.h"
+#include "mozilla/dom/WritableStream.h"
 
 // See the zlib manual in https://www.zlib.net/manual.html or in
 // https://searchfox.org/mozilla-central/source/modules/zlib/src/zlib.h
@@ -33,14 +32,25 @@ class CompressionStreamAlgorithms : public TransformerAlgorithmsWrapper {
   NS_DECL_CYCLE_COLLECTION_CLASS_INHERITED(CompressionStreamAlgorithms,
                                            TransformerAlgorithmsBase)
 
-  explicit CompressionStreamAlgorithms(CompressionFormat format) {
+  static Result<already_AddRefed<CompressionStreamAlgorithms>, nsresult> Create(
+      CompressionFormat format) {
+    RefPtr<CompressionStreamAlgorithms> alg = new CompressionStreamAlgorithms();
+    MOZ_TRY(alg->Init(format));
+    return alg.forget();
+  }
+
+ private:
+  CompressionStreamAlgorithms() = default;
+
+  [[nodiscard]] nsresult Init(CompressionFormat format) {
     int8_t err = deflateInit2(&mZStream, Z_DEFAULT_COMPRESSION, Z_DEFLATED,
                               ZLibWindowBits(format), 8 /* default memLevel */,
                               Z_DEFAULT_STRATEGY);
     if (err == Z_MEM_ERROR) {
-      MOZ_CRASH("Out of memory");
+      return NS_ERROR_OUT_OF_MEMORY;
     }
     MOZ_ASSERT(err == Z_OK);
+    return NS_OK;
   }
 
   // Step 3 of
@@ -247,10 +257,16 @@ already_AddRefed<CompressionStream> CompressionStream::Constructor(
 
   // Step 6: Set up this's transform with transformAlgorithm set to
   // transformAlgorithm and flushAlgorithm set to flushAlgorithm.
-  auto algorithms = MakeRefPtr<CompressionStreamAlgorithms>(aFormat);
+  Result<already_AddRefed<CompressionStreamAlgorithms>, nsresult> algorithms =
+      CompressionStreamAlgorithms::Create(aFormat);
+  if (algorithms.isErr()) {
+    aRv.ThrowUnknownError("Not enough memory");
+    return nullptr;
+  }
 
+  RefPtr<CompressionStreamAlgorithms> alg = algorithms.unwrap();
   RefPtr<TransformStream> stream =
-      TransformStream::CreateGeneric(aGlobal, *algorithms, aRv);
+      TransformStream::CreateGeneric(aGlobal, *alg, aRv);
   if (aRv.Failed()) {
     return nullptr;
   }

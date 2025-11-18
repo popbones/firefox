@@ -22,6 +22,7 @@
 
 #include "nsCOMPtr.h"
 #include "nsCycleCollectionParticipant.h"
+#include "nsICacheInfoChannel.h"  // nsICacheInfoChannel
 #include "nsIMemoryReporter.h"
 
 #include "jsapi.h"
@@ -36,8 +37,8 @@ class ScriptLoadRequest;
 
 using Utf8Unit = mozilla::Utf8Unit;
 
-void HostAddRefTopLevelScript(const JS::Value& aPrivate);
-void HostReleaseTopLevelScript(const JS::Value& aPrivate);
+void HostAddRefTopLevelScript(const Value& aPrivate);
+void HostReleaseTopLevelScript(const Value& aPrivate);
 
 class ClassicScript;
 class ModuleScript;
@@ -55,12 +56,6 @@ class LoadContextBase;
 // exposed to the memory reporter such that sharing might be accounted for
 // properly.
 class LoadedScript : public nsIMemoryReporter {
-  ScriptKind mKind;
-  const mozilla::dom::ReferrerPolicy mReferrerPolicy;
-  RefPtr<ScriptFetchOptions> mFetchOptions;
-  nsCOMPtr<nsIURI> mURI;
-  nsCOMPtr<nsIURI> mBaseURL;
-
  protected:
   LoadedScript(ScriptKind aKind, mozilla::dom::ReferrerPolicy aReferrerPolicy,
                ScriptFetchOptions* aFetchOptions, nsIURI* aURI);
@@ -131,7 +126,7 @@ class LoadedScript : public nsIMemoryReporter {
   using ScriptTextBuffer = mozilla::Vector<Unit, 0, js::MallocAllocPolicy>;
 
   using MaybeSourceText =
-      mozilla::MaybeOneOf<JS::SourceText<char16_t>, JS::SourceText<Utf8Unit>>;
+      mozilla::MaybeOneOf<SourceText<char16_t>, SourceText<Utf8Unit>>;
 
   bool IsUnknownDataType() const { return mDataType == DataType::eUnknown; }
   bool IsTextSource() const { return mDataType == DataType::eTextSource; }
@@ -155,7 +150,7 @@ class LoadedScript : public nsIMemoryReporter {
     mDataType = DataType::eBytecode;
   }
 
-  void SetStencil(already_AddRefed<JS::Stencil> aStencil) {
+  void SetStencil(already_AddRefed<Stencil> aStencil) {
     SetUnknownDataType();
     mDataType = DataType::eStencil;
     mStencil = aStencil;
@@ -212,19 +207,19 @@ class LoadedScript : public nsIMemoryReporter {
     return IsBytecode() || IsSource() || IsStencil();
   }
 
-  JS::TranscodeBuffer& SRIAndBytecode() {
+  TranscodeBuffer& SRIAndBytecode() {
     // Note: SRIAndBytecode might be called even if the IsSource() returns true,
     // as we want to be able to save the bytecode content when we are loading
     // from source.
     MOZ_ASSERT(CanHaveBytecode());
     return mScriptBytecode;
   }
-  JS::TranscodeRange Bytecode() const {
+  TranscodeRange Bytecode() const {
     MOZ_ASSERT(IsBytecode());
     const auto& bytecode = mScriptBytecode;
     auto offset = mBytecodeOffset;
-    return JS::TranscodeRange(bytecode.begin() + offset,
-                              bytecode.length() - offset);
+    return TranscodeRange(bytecode.begin() + offset,
+                          bytecode.length() - offset);
   }
 
   size_t GetSRILength() const {
@@ -233,7 +228,7 @@ class LoadedScript : public nsIMemoryReporter {
   }
   void SetSRILength(size_t sriLength) {
     MOZ_ASSERT(CanHaveBytecode());
-    mBytecodeOffset = JS::AlignTranscodingBytecodeOffset(sriLength);
+    mBytecodeOffset = AlignTranscodingBytecodeOffset(sriLength);
   }
 
   void DropBytecode() {
@@ -241,7 +236,7 @@ class LoadedScript : public nsIMemoryReporter {
     mScriptBytecode.clearAndFree();
   }
 
-  JS::Stencil* GetStencil() const {
+  Stencil* GetStencil() const {
     MOZ_ASSERT(IsStencil());
     return mStencil;
   }
@@ -252,6 +247,28 @@ class LoadedScript : public nsIMemoryReporter {
   // Determine whether the mScriptData or mScriptBytecode is used.
   DataType mDataType;
 
+  // The consumer-defined number of times that this loaded script is used.
+  //
+  // In DOM ScriptLoader, this is used for counting the number of times that
+  // the in-memory-cached script is used, clamped at UINT8_MAX.
+  uint8_t mFetchCount = 0;
+
+ private:
+  ScriptKind mKind;
+
+ protected:
+  mozilla::dom::ReferrerPolicy mReferrerPolicy;
+
+ public:
+  // Offset of the bytecode in mScriptBytecode.
+  uint32_t mBytecodeOffset;
+
+ private:
+  RefPtr<ScriptFetchOptions> mFetchOptions;
+  nsCOMPtr<nsIURI> mURI;
+  nsCOMPtr<nsIURI> mBaseURL;
+
+ public:
   // Holds script source data for non-inline scripts.
   mozilla::Maybe<
       Variant<ScriptTextBuffer<char16_t>, ScriptTextBuffer<Utf8Unit>>>
@@ -264,10 +281,15 @@ class LoadedScript : public nsIMemoryReporter {
   // Holds the SRI serialized hash and the script bytecode for non-inline
   // scripts. The data is laid out according to ScriptBytecodeDataLayout
   // or, if compression is enabled, ScriptBytecodeCompressedDataLayout.
-  JS::TranscodeBuffer mScriptBytecode;
-  uint32_t mBytecodeOffset;  // Offset of the bytecode in mScriptBytecode
+  TranscodeBuffer mScriptBytecode;
 
-  RefPtr<JS::Stencil> mStencil;
+  RefPtr<Stencil> mStencil;
+
+  // The cache info channel used when saving the bytecode to the necko cache.
+  nsCOMPtr<nsICacheInfoChannel> mCacheInfo;
+
+  // The SRI data and the padding, used when saving the bytecode.
+  JS::TranscodeBuffer mSRI;
 };
 
 // Provide accessors for any classes `Derived` which is providing the
@@ -310,7 +332,7 @@ class LoadedScriptDelegate {
 
   void SetBytecode() { GetLoadedScript()->SetBytecode(); }
 
-  void SetStencil(already_AddRefed<JS::Stencil> aStencil) {
+  void SetStencil(already_AddRefed<Stencil> aStencil) {
     GetLoadedScript()->SetStencil(std::move(aStencil));
   }
 
@@ -351,10 +373,10 @@ class LoadedScriptDelegate {
 
   void ClearScriptText() { GetLoadedScript()->ClearScriptText(); }
 
-  JS::TranscodeBuffer& SRIAndBytecode() {
+  TranscodeBuffer& SRIAndBytecode() {
     return GetLoadedScript()->SRIAndBytecode();
   }
-  JS::TranscodeRange Bytecode() const { return GetLoadedScript()->Bytecode(); }
+  TranscodeRange Bytecode() const { return GetLoadedScript()->Bytecode(); }
 
   size_t GetSRILength() const { return GetLoadedScript()->GetSRILength(); }
   void SetSRILength(size_t sriLength) {
@@ -363,7 +385,7 @@ class LoadedScriptDelegate {
 
   void DropBytecode() { GetLoadedScript()->DropBytecode(); }
 
-  JS::Stencil* GetStencil() const { return GetLoadedScript()->GetStencil(); }
+  Stencil* GetStencil() const { return GetLoadedScript()->GetStencil(); }
 };
 
 class ClassicScript final : public LoadedScript {
@@ -390,9 +412,9 @@ class EventScript final : public LoadedScript {
 class ModuleScript final : public LoadedScript {
   // Those fields are used only after instantiated, and they're reset to
   // null and false when stored into the cache as LoadedScript instance.
-  JS::Heap<JSObject*> mModuleRecord;
-  JS::Heap<JS::Value> mParseError;
-  JS::Heap<JS::Value> mErrorToRethrow;
+  Heap<JSObject*> mModuleRecord;
+  Heap<Value> mParseError;
+  Heap<Value> mErrorToRethrow;
   bool mForPreload = false;
   bool mHadImportMap = false;
 
@@ -421,16 +443,16 @@ class ModuleScript final : public LoadedScript {
   static already_AddRefed<ModuleScript> FromCache(const LoadedScript& aScript);
   already_AddRefed<LoadedScript> ToCache();
 
-  void SetModuleRecord(JS::Handle<JSObject*> aModuleRecord);
-  void SetParseError(const JS::Value& aError);
-  void SetErrorToRethrow(const JS::Value& aError);
+  void SetModuleRecord(Handle<JSObject*> aModuleRecord);
+  void SetParseError(const Value& aError);
+  void SetErrorToRethrow(const Value& aError);
   void SetForPreload(bool aValue);
   void SetHadImportMap(bool aValue);
 
   JSObject* ModuleRecord() const { return mModuleRecord; }
 
-  JS::Value ParseError() const { return mParseError; }
-  JS::Value ErrorToRethrow() const { return mErrorToRethrow; }
+  Value ParseError() const { return mParseError; }
+  Value ErrorToRethrow() const { return mErrorToRethrow; }
   bool HasParseError() const { return !mParseError.isUndefined(); }
   bool HasErrorToRethrow() const { return !mErrorToRethrow.isUndefined(); }
   bool ForPreload() const { return mForPreload; }
@@ -440,7 +462,11 @@ class ModuleScript final : public LoadedScript {
 
   void UnlinkModuleRecord();
 
-  friend void CheckModuleScriptPrivate(LoadedScript*, const JS::Value&);
+  friend void CheckModuleScriptPrivate(LoadedScript*, const Value&);
+
+  void UpdateReferrerPolicy(mozilla::dom::ReferrerPolicy aReferrerPolicy) {
+    mReferrerPolicy = aReferrerPolicy;
+  }
 };
 
 ClassicScript* LoadedScript::AsClassicScript() {

@@ -159,14 +159,14 @@ where
     S: StylesheetInDocument + PartialEq + 'static,
 {
     /// Returns a flusher for `origin`.
-    pub fn flush_origin(&mut self, origin: Origin) -> SheetCollectionFlusher<S> {
+    pub fn flush_origin(&mut self, origin: Origin) -> SheetCollectionFlusher<'_, S> {
         self.collections.borrow_mut_for_origin(&origin).flush()
     }
 
     /// Returns the list of stylesheets for `origin`.
     ///
     /// Only used for UA sheets.
-    pub fn origin_sheets(&mut self, origin: Origin) -> StylesheetCollectionIterator<S> {
+    pub fn origin_sheets(&mut self, origin: Origin) -> StylesheetCollectionIterator<'_, S> {
         self.collections.borrow_mut_for_origin(&origin).iter()
     }
 
@@ -299,7 +299,11 @@ where
     }
 
     fn find_sheet_index(&self, sheet: &S) -> Option<usize> {
-        let rev_pos = self.entries.iter().rev().position(|entry| entry.sheet == *sheet);
+        let rev_pos = self
+            .entries
+            .iter()
+            .rev()
+            .position(|entry| entry.sheet == *sheet);
         rev_pos.map(|i| self.entries.len() - i - 1)
     }
 
@@ -343,7 +347,8 @@ where
     fn insert_before(&mut self, sheet: S, before_sheet: &S) {
         debug_assert!(!self.contains(&sheet));
 
-        let index = self.find_sheet_index(before_sheet)
+        let index = self
+            .find_sheet_index(before_sheet)
             .expect("`before_sheet` stylesheet not found");
 
         // Inserting stylesheets somewhere but at the end changes the validity
@@ -362,11 +367,11 @@ where
     }
 
     /// Returns an iterator over the current list of stylesheets.
-    fn iter(&self) -> StylesheetCollectionIterator<S> {
+    fn iter(&self) -> StylesheetCollectionIterator<'_, S> {
         StylesheetCollectionIterator(self.entries.iter())
     }
 
-    fn flush(&mut self) -> SheetCollectionFlusher<S> {
+    fn flush(&mut self) -> SheetCollectionFlusher<'_, S> {
         let dirty = mem::replace(&mut self.dirty, false);
         let validity = mem::replace(&mut self.data_validity, DataValidity::Valid);
 
@@ -547,8 +552,9 @@ where
 
     /// Returns whether the given set has changed from the last flush.
     pub fn has_changed(&self) -> bool {
-        !self.invalidations.is_empty() ||
-            self.collections
+        !self.invalidations.is_empty()
+            || self
+                .collections
                 .iter_origins()
                 .any(|(collection, _)| collection.dirty)
     }
@@ -559,7 +565,7 @@ where
         &mut self,
         document_element: Option<E>,
         snapshots: Option<&SnapshotMap>,
-    ) -> DocumentStylesheetFlusher<S>
+    ) -> DocumentStylesheetFlusher<'_, S>
     where
         E: TElement,
     {
@@ -591,7 +597,7 @@ where
     }
 
     /// Return an iterator over the flattened view of all the stylesheets.
-    pub fn iter(&self) -> StylesheetIterator<S> {
+    pub fn iter(&self) -> StylesheetIterator<'_, S> {
         StylesheetIterator {
             origins: OriginSet::all().iter_origins(),
             collections: &self.collections,
@@ -675,7 +681,7 @@ where
     sheet_set_methods!("AuthorStylesheetSet");
 
     /// Iterate over the list of stylesheets.
-    pub fn iter(&self) -> StylesheetCollectionIterator<S> {
+    pub fn iter(&self) -> StylesheetCollectionIterator<'_, S> {
         self.collection.iter()
     }
 
@@ -694,7 +700,7 @@ where
         &mut self,
         host: Option<E>,
         snapshots: Option<&SnapshotMap>,
-    ) -> AuthorStylesheetFlusher<S>
+    ) -> AuthorStylesheetFlusher<'_, S>
     where
         E: TElement,
     {

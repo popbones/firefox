@@ -85,6 +85,14 @@ if (!Services.prefs.getBoolPref("dom.viewTransitions.enabled")) {
   });
 }
 
+if (!Services.prefs.getBoolPref("mathml.math_shift.enabled")) {
+  ignoreList.push({
+    sourceName: /\bmathml\.css$/i,
+    errorMessage: /Unknown property.*math-shift/i,
+    isFromDevTools: false,
+  });
+}
+
 let propNameAllowlist = [
   // These custom properties are retrieved directly from CSSOM
   // in videocontrols.xml to get pre-defined style instead of computed
@@ -174,9 +182,6 @@ let propNameAllowlist = [
 
   /* Allow design tokens in devtools without all variables being used there */
   { sourceName: /\/design-system\/tokens-.*\.css$/, isFromDevTools: true },
-
-  // Bug 1908535 to refactor form components to use this token
-  { propName: "--input-space-block", isFromDevTools: false },
 
   // Ignore token properties that follow the pattern --color-[name]-[number]
   // This enables us to provide our full color palette for developers.

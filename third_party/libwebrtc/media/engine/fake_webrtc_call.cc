@@ -20,6 +20,7 @@
 #include "absl/algorithm/container.h"
 #include "absl/strings/string_view.h"
 #include "api/adaptation/resource.h"
+#include "api/array_view.h"
 #include "api/audio_codecs/audio_format.h"
 #include "api/call/audio_sink.h"
 #include "api/crypto/frame_decryptor_interface.h"
@@ -46,7 +47,6 @@
 #include "call/video_send_stream.h"
 #include "media/base/media_channel.h"
 #include "modules/rtp_rtcp/source/rtp_packet_received.h"
-#include "modules/rtp_rtcp/source/rtp_util.h"
 #include "rtc_base/buffer.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/copy_on_write_buffer.h"
@@ -58,8 +58,6 @@
 
 namespace webrtc {
 
-using ::webrtc::Environment;
-using ::webrtc::ParseRtpSsrc;
 
 FakeAudioSendStream::FakeAudioSendStream(int id,
                                          const AudioSendStream::Config& config)
@@ -68,7 +66,7 @@ FakeAudioSendStream::FakeAudioSendStream(int id,
 void FakeAudioSendStream::Reconfigure(const AudioSendStream::Config& config,
                                       SetParametersCallback callback) {
   config_ = config;
-  webrtc::InvokeSetParametersCallback(callback, RTCError::OK());
+  InvokeSetParametersCallback(callback, RTCError::OK());
 }
 
 const AudioSendStream::Config& FakeAudioSendStream::GetConfig() const {
@@ -279,7 +277,7 @@ void FakeVideoSendStream::OnFrame(const VideoFrame& frame) {
               encoder_config_);
     } else {
       VideoEncoder::EncoderInfo encoder_info;
-      auto factory = rtc::make_ref_counted<EncoderStreamFactory>(encoder_info);
+      auto factory = make_ref_counted<EncoderStreamFactory>(encoder_info);
 
       video_streams_ = factory->CreateEncoderStreams(
           env_.field_trials(), frame.width(), frame.height(), encoder_config_);
@@ -295,6 +293,8 @@ void FakeVideoSendStream::SetStats(const VideoSendStream::Stats& stats) {
 VideoSendStream::Stats FakeVideoSendStream::GetStats() {
   return stats_;
 }
+
+void FakeVideoSendStream::SetCsrcs(ArrayView<const uint32_t> csrcs) {}
 
 void FakeVideoSendStream::ReconfigureVideoEncoder(VideoEncoderConfig config) {
   ReconfigureVideoEncoder(std::move(config), nullptr);
@@ -316,7 +316,7 @@ void FakeVideoSendStream::ReconfigureVideoEncoder(
         env_.field_trials(), width, height, config);
   } else {
     VideoEncoder::EncoderInfo encoder_info;
-    auto factory = rtc::make_ref_counted<EncoderStreamFactory>(encoder_info);
+    auto factory = make_ref_counted<EncoderStreamFactory>(encoder_info);
 
     video_streams_ = factory->CreateEncoderStreams(env_.field_trials(), width,
                                                    height, config);
@@ -353,7 +353,7 @@ void FakeVideoSendStream::ReconfigureVideoEncoder(
   codec_settings_set_ = config.encoder_specific_settings != nullptr;
   encoder_config_ = std::move(config);
   ++num_encoder_reconfigurations_;
-  webrtc::InvokeSetParametersCallback(callback, RTCError::OK());
+  InvokeSetParametersCallback(callback, RTCError::OK());
 }
 
 void FakeVideoSendStream::Start() {
@@ -373,7 +373,7 @@ FakeVideoSendStream::GetAdaptationResources() {
 }
 
 void FakeVideoSendStream::SetSource(
-    rtc::VideoSourceInterface<VideoFrame>* source,
+    VideoSourceInterface<VideoFrame>* source,
     const DegradationPreference& degradation_preference) {
   if (source_)
     source_->RemoveSink(this);
@@ -397,9 +397,8 @@ void FakeVideoSendStream::SetSource(
       break;
   }
   if (source)
-    source->AddOrUpdateSink(this, resolution_scaling_enabled_
-                                      ? sink_wants_
-                                      : rtc::VideoSinkWants());
+    source->AddOrUpdateSink(
+        this, resolution_scaling_enabled_ ? sink_wants_ : VideoSinkWants());
 }
 
 void FakeVideoSendStream::GenerateKeyFrame(
@@ -407,8 +406,7 @@ void FakeVideoSendStream::GenerateKeyFrame(
   keyframes_requested_by_rid_ = rids;
 }
 
-void FakeVideoSendStream::InjectVideoSinkWants(
-    const rtc::VideoSinkWants& wants) {
+void FakeVideoSendStream::InjectVideoSinkWants(const VideoSinkWants& wants) {
   sink_wants_ = wants;
   source_->AddOrUpdateSink(this, wants);
 }
@@ -469,8 +467,8 @@ FakeCall::FakeCall(const Environment& env,
     : env_(env),
       network_thread_(network_thread),
       worker_thread_(worker_thread),
-      audio_network_state_(webrtc::kNetworkUp),
-      video_network_state_(webrtc::kNetworkUp),
+      audio_network_state_(kNetworkUp),
+      video_network_state_(kNetworkUp),
       num_created_send_streams_(0),
       num_created_receive_streams_(0) {}
 
@@ -539,13 +537,13 @@ NetworkState FakeCall::GetNetworkState(MediaType media) const {
     case MediaType::ANY:
     case MediaType::UNSUPPORTED:
       ADD_FAILURE() << "GetNetworkState called with unknown parameter.";
-      return webrtc::kNetworkDown;
+      return kNetworkDown;
   }
   // Even though all the values for the enum class are listed above,the compiler
   // will emit a warning as the method may be called with a value outside of the
   // valid enum range, unless this case is also handled.
   ADD_FAILURE() << "GetNetworkState called with unknown parameter.";
-  return webrtc::kNetworkDown;
+  return kNetworkDown;
 }
 
 AudioSendStream* FakeCall::CreateAudioSendStream(
@@ -768,7 +766,7 @@ void FakeCall::OnUpdateSyncGroup(AudioReceiveStreamInterface& stream,
   fake_stream.SetSyncGroup(sync_group);
 }
 
-void FakeCall::OnSentPacket(const rtc::SentPacket& sent_packet) {
+void FakeCall::OnSentPacket(const SentPacketInfo& sent_packet) {
   last_sent_packet_ = sent_packet;
   if (sent_packet.packet_id >= 0) {
     last_sent_nonnegative_packet_id_ = sent_packet.packet_id;

@@ -11,9 +11,9 @@
 
 [package]
 edition = "2021"
-rust-version = "1.82.0"
+rust-version = "1.81.0"
 name = "neqo-udp"
-version = "0.13.4"
+version = "0.16.1"
 authors = ["The Neqo Authors <necko@mozilla.com>"]
 build = "build.rs"
 autolib = false
@@ -40,7 +40,7 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/mozilla/neqo/"
 
 [package.metadata.cargo-machete]
-ignored = ["log"]
+ignored = ["cfg_aliases"]
 
 [features]
 bench = ["neqo-common/bench"]
@@ -59,12 +59,21 @@ default-features = false
 path = "./../neqo-common"
 
 [dependencies.quinn-udp]
-version = "0.5.11"
+version = "0.5.13"
 features = ["direct-log"]
 default-features = false
 
 [build-dependencies]
 cfg_aliases = "0.2"
+
+[target."cfg(unix)".dependencies.libc]
+version = "0.2"
+default-features = false
+
+[target."cfg(windows)".dependencies.windows]
+version = "0.58"
+features = ["Win32_Networking_WinSock"]
+default-features = false
 
 [lints.clippy]
 allow_attributes = "warn"
@@ -112,7 +121,6 @@ return_and_then = "warn"
 self_named_module_files = "warn"
 semicolon_inside_block = "warn"
 string_lit_chars_any = "warn"
-string_to_string = "warn"
 suspicious_xor_used_as_pow = "warn"
 try_err = "warn"
 unnecessary_safety_comment = "warn"
@@ -139,12 +147,10 @@ priority = -1
 
 [lints.rust]
 absolute_paths_not_starting_with_crate = "warn"
-ambiguous_negative_literals = "warn"
 explicit_outlives_requirements = "warn"
 macro_use_extern_crate = "warn"
 missing_abi = "warn"
 non_ascii_idents = "warn"
-redundant_imports = "warn"
 redundant_lifetimes = "warn"
 trivial_numeric_casts = "warn"
 unit_bindings = "warn"

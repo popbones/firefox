@@ -8,8 +8,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
-import android.os.Build.VERSION.SDK_INT
+import android.os.Bundle
 import android.provider.Settings
 import androidx.navigation.NavController
 import mozilla.components.concept.engine.EngineSession
@@ -26,6 +25,8 @@ import org.mozilla.fenix.ext.openSetDefaultBrowserOption
 import org.mozilla.fenix.utils.maybeShowAddSearchWidgetPrompt
 import org.mozilla.fenix.utils.Settings as AppSettings
 
+private const val EXTRA_COMPOSABLE_TOOLBAR = "EXTRA_COMPOSABLE_TOOLBAR"
+
 /**
  * Deep links in the form of `fenix://host` open different parts of the app.
  */
@@ -38,7 +39,7 @@ class HomeDeepLinkIntentProcessor(
     override fun process(intent: Intent, navController: NavController, out: Intent, settings: AppSettings): Boolean {
         val scheme = intent.scheme?.equals(BuildConfig.DEEP_LINK_SCHEME, ignoreCase = true) ?: return false
         return if (scheme) {
-            intent.data?.let { handleDeepLink(it, navController) }
+            intent.data?.let { handleDeepLink(it, intent.extras, settings, navController) }
             true
         } else {
             false
@@ -46,8 +47,13 @@ class HomeDeepLinkIntentProcessor(
     }
 
     @Suppress("ComplexMethod")
-    private fun handleDeepLink(deepLink: Uri, navController: NavController) {
-        handleDeepLinkSideEffects(deepLink, navController)
+    private fun handleDeepLink(
+        deepLink: Uri,
+        extras: Bundle?,
+        settings: AppSettings,
+        navController: NavController,
+    ) {
+        handleDeepLinkSideEffects(deepLink, extras, settings, navController)
 
         val globalDirections = when (deepLink.host) {
             "home", "enable_private_browsing" -> GlobalDirections.Home
@@ -80,8 +86,22 @@ class HomeDeepLinkIntentProcessor(
     /**
      * Handle links that require more than just simple navigation.
      */
-    private fun handleDeepLinkSideEffects(deepLink: Uri, navController: NavController) {
+    private fun handleDeepLinkSideEffects(
+        deepLink: Uri,
+        extras: Bundle?,
+        settings: AppSettings,
+        navController: NavController,
+    ) {
         when (deepLink.host) {
+            "home" -> {
+                if (extras?.containsKey(EXTRA_COMPOSABLE_TOOLBAR) == true) {
+                    val composableToolbarPreference = extras.getBoolean(
+                        EXTRA_COMPOSABLE_TOOLBAR,
+                        settings.shouldUseComposableToolbar,
+                    )
+                    settings.shouldUseComposableToolbar = composableToolbarPreference
+                }
+            }
             "enable_private_browsing" -> {
                 activity.browsingModeManager.mode = BrowsingMode.Private
             }
@@ -119,20 +139,11 @@ class HomeDeepLinkIntentProcessor(
 
     private fun notificationSettings(context: Context, channel: String? = null) =
         Intent().apply {
-            when {
-                SDK_INT >= Build.VERSION_CODES.O -> {
-                    action = channel?.let {
-                        putExtra(Settings.EXTRA_CHANNEL_ID, it)
-                        Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS
-                    } ?: Settings.ACTION_APP_NOTIFICATION_SETTINGS
-                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                }
-                else -> {
-                    action = "android.settings.APP_NOTIFICATION_SETTINGS"
-                    putExtra("app_package", context.packageName)
-                    putExtra("app_uid", context.applicationInfo.uid)
-                }
-            }
+            action = channel?.let {
+                putExtra(Settings.EXTRA_CHANNEL_ID, it)
+                Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS
+            } ?: Settings.ACTION_APP_NOTIFICATION_SETTINGS
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
         }
 
     private fun showShareSheet(deepLink: Uri, navController: NavController) {

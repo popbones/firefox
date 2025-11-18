@@ -8,6 +8,7 @@
 #define DOM_NOTIFICATION_NOTIFICATIONUTILS_H_
 
 #include <cstdint>
+
 #include "mozilla/dom/DOMTypes.h"
 #include "nsCOMPtr.h"
 #include "nsINotificationStorage.h"
@@ -68,6 +69,12 @@ NotificationPermission GetNotificationPermission(
     bool isSecureContext, PermissionCheckPurpose aPurpose);
 
 nsCOMPtr<nsINotificationStorage> GetNotificationStorage(bool isPrivate);
+
+using NotificationsPromise =
+    MozPromise<CopyableTArray<IPCNotification>, nsresult, false>;
+
+already_AddRefed<NotificationsPromise> GetStoredNotificationsForScope(
+    nsIPrincipal* aPrincipal, const nsACString& aScope, const nsAString& aTag);
 
 nsresult GetOrigin(nsIPrincipal* aPrincipal, nsString& aOrigin);
 

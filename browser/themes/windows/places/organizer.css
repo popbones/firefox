@@ -77,8 +77,7 @@
   background-color: var(--organizer-toolbar-background);
   color: var(--organizer-color);
   border-bottom: 1px solid var(--organizer-border-color);
-  padding: 4px;
-  padding-inline-end: 6px;
+  padding-inline: 4px 0;
 
   > toolbarbutton {
     appearance: none;
@@ -106,7 +105,7 @@
   > menu {
     appearance: none;
     color: var(--organizer-color);
-    border-radius: 4px;
+    border-radius: var(--border-radius-small);
     padding-block: 5px;
     padding-inline-start: 5px;
     margin-inline-end: 2px;
@@ -235,7 +234,7 @@ treechildren::-moz-tree-separator(selected, focus) {
   appearance: none;
   padding: 5px;
   border: 1px solid var(--organizer-pane-field-border-color);
-  border-radius: 4px;
+  border-radius: var(--border-radius-small);
   color: var(--organizer-color);
   background-color: var(--organizer-content-background);
   list-style-image: url("chrome://global/skin/icons/arrow-down-12.svg");

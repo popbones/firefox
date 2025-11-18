@@ -72,17 +72,13 @@
        */
       this.muteReason = undefined;
 
-      this.mOverCloseButton = false;
-
-      this.mCorrespondingMenuitem = null;
-
       this.closing = false;
     }
 
     static get inheritedAttributes() {
       return {
         ".tab-background":
-          "selected=visuallyselected,fadein,multiselected,dragover-createGroup",
+          "selected=visuallyselected,fadein,multiselected,dragover-groupTarget",
         ".tab-group-line": "selected=visuallyselected,multiselected",
         ".tab-loading-burst": "pinned,bursting,notselectedsinceload",
         ".tab-content":
@@ -94,7 +90,7 @@
         ".tab-icon-pending":
           "fadein,pinned,busy,progress,selected=visuallyselected,pendingicon",
         ".tab-icon-image":
-          "src=image,triggeringprincipal=iconloadingprincipal,requestcontextid,fadein,pinned,selected=visuallyselected,busy,crashed,sharing,pictureinpicture,pending,discarded",
+          "src=image,requestcontextid,fadein,pinned,selected=visuallyselected,busy,crashed,sharing,pictureinpicture,pending,discarded",
         ".tab-sharing-icon-overlay": "sharing,selected=visuallyselected,pinned",
         ".tab-icon-overlay":
           "sharing,pictureinpicture,crashed,busy,soundplaying,soundplaying-scheduledremoval,pinned,muted,blocked,selected=visuallyselected,activemedia-blocked",
@@ -224,7 +220,11 @@
     }
 
     get visible() {
-      return this.isOpen && !this.hidden && !this.group?.collapsed;
+      return (
+        this.isOpen &&
+        !this.hidden &&
+        (!this.group || this.group.isTabVisibleInGroup(this))
+      );
     }
 
     get hidden() {
@@ -378,6 +378,15 @@
       return null;
     }
 
+    get splitview() {
+      if (
+        this.parentElement?.parentElement?.tagName == "tab-split-view-wrapper"
+      ) {
+        return this.parentElement.parentElement;
+      }
+      return null;
+    }
+
     updateLastAccessed(aDate) {
       this._lastAccessed = this.selected ? Infinity : aDate || Date.now();
     }
@@ -405,15 +414,11 @@
     }
 
     on_mouseover(event) {
-      if (event.target.classList.contains("tab-close-button")) {
-        this.mOverCloseButton = true;
-      }
-
       if (!this.visible) {
         return;
       }
 
-      let tabToWarm = this.mOverCloseButton
+      let tabToWarm = event.target.classList.contains("tab-close-button")
         ? gBrowser._findTabToBlurTo(this)
         : this;
       gBrowser.warmupTab(tabToWarm);
@@ -425,10 +430,6 @@
     }
 
     on_mouseout(event) {
-      if (event.target.classList.contains("tab-close-button")) {
-        this.mOverCloseButton = false;
-      }
-
       // If the new target is not part of this tab then this is a mouseleave event.
       if (!this.contains(event.relatedTarget)) {
         this._mouseleave();
@@ -444,7 +445,7 @@
       if (event.eventPhase == Event.CAPTURING_PHASE) {
         this.style.MozUserFocus = "";
       } else if (
-        this.mOverCloseButton ||
+        event.target.classList?.contains("tab-close-button") ||
         gSharedTabWarning.willShowSharedTabWarning(this)
       ) {
         event.stopPropagation();

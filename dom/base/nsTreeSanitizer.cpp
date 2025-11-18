@@ -6,38 +6,38 @@
 
 #include "nsTreeSanitizer.h"
 
+#include <iterator>
+
 #include "mozilla/Algorithm.h"
 #include "mozilla/ArrayUtils.h"
 #include "mozilla/DeclarationBlock.h"
+#include "mozilla/NullPrincipal.h"
 #include "mozilla/StaticPrefs_dom.h"
 #include "mozilla/StyleSheetInlines.h"
+#include "mozilla/dom/Document.h"
 #include "mozilla/dom/DocumentFragment.h"
 #include "mozilla/dom/HTMLFormElement.h"
 #include "mozilla/dom/HTMLTemplateElement.h"
 #include "mozilla/dom/HTMLUnknownElement.h"
 #include "mozilla/dom/Link.h"
+#include "mozilla/dom/SRIMetadata.h"
 #include "mozilla/dom/SanitizerBinding.h"
 #include "mozilla/dom/ShadowIncludingTreeIterator.h"
-#include "mozilla/dom/SRIMetadata.h"
-#include "mozilla/NullPrincipal.h"
 #include "nsAtom.h"
-#include "nsCSSPropertyID.h"
-#include "nsHashtablesFwd.h"
-#include "nsString.h"
-#include "nsTHashtable.h"
-#include "nsUnicharInputStream.h"
 #include "nsAttrName.h"
+#include "nsCSSPropertyID.h"
+#include "nsComponentManagerUtils.h"
+#include "nsContentUtils.h"
+#include "nsHashtablesFwd.h"
+#include "nsIParserUtils.h"
 #include "nsIScriptError.h"
 #include "nsIScriptSecurityManager.h"
 #include "nsNameSpaceManager.h"
 #include "nsNetUtil.h"
-#include "nsComponentManagerUtils.h"
-#include "nsContentUtils.h"
-#include "nsIParserUtils.h"
-#include "mozilla/dom/Document.h"
 #include "nsQueryObject.h"
-
-#include <iterator>
+#include "nsString.h"
+#include "nsTHashtable.h"
+#include "nsUnicharInputStream.h"
 
 using namespace mozilla;
 using namespace mozilla::dom;
@@ -322,7 +322,7 @@ const nsStaticAtom* const kElementsSVG[] = {
     nsGkAtoms::a,                    // a
     nsGkAtoms::circle,               // circle
     nsGkAtoms::clipPath,             // clipPath
-    nsGkAtoms::colorProfile,         // color-profile
+    nsGkAtoms::color_profile,        // color-profile
     nsGkAtoms::cursor,               // cursor
     nsGkAtoms::defs,                 // defs
     nsGkAtoms::desc,                 // desc
@@ -418,17 +418,17 @@ constexpr const nsStaticAtom* const kAttributesSVG[] = {
     nsGkAtoms::by,        // by
     nsGkAtoms::calcMode,  // calcMode
     // cap-height
-    nsGkAtoms::_class,                     // class
-    nsGkAtoms::clip_path,                  // clip-path
-    nsGkAtoms::clip_rule,                  // clip-rule
-    nsGkAtoms::clipPathUnits,              // clipPathUnits
-    nsGkAtoms::color,                      // color
-    nsGkAtoms::colorInterpolation,         // color-interpolation
-    nsGkAtoms::colorInterpolationFilters,  // color-interpolation-filters
-    nsGkAtoms::cursor,                     // cursor
-    nsGkAtoms::cx,                         // cx
-    nsGkAtoms::cy,                         // cy
-    nsGkAtoms::d,                          // d
+    nsGkAtoms::_class,                       // class
+    nsGkAtoms::clip_path,                    // clip-path
+    nsGkAtoms::clip_rule,                    // clip-rule
+    nsGkAtoms::clipPathUnits,                // clipPathUnits
+    nsGkAtoms::color,                        // color
+    nsGkAtoms::color_interpolation,          // color-interpolation
+    nsGkAtoms::color_interpolation_filters,  // color-interpolation-filters
+    nsGkAtoms::cursor,                       // cursor
+    nsGkAtoms::cx,                           // cx
+    nsGkAtoms::cy,                           // cy
+    nsGkAtoms::d,                            // d
     // descent
     nsGkAtoms::diffuseConstant,    // diffuseConstant
     nsGkAtoms::direction,          // direction
@@ -457,7 +457,7 @@ constexpr const nsStaticAtom* const kAttributesSVG[] = {
     nsGkAtoms::font_stretch,      // font-stretch
     nsGkAtoms::font_style,        // font-style
     nsGkAtoms::font_variant,      // font-variant
-    nsGkAtoms::fontWeight,        // font-weight
+    nsGkAtoms::font_weight,       // font-weight
     nsGkAtoms::format,            // format
     nsGkAtoms::from,              // from
     nsGkAtoms::fx,                // fx
@@ -1125,8 +1125,7 @@ static void SanitizeStyleSheet(const nsAString& aOriginal,
           /* load_data = */ nullptr, &style,
           css::SheetParsingMode::eAuthorSheetFeatures, extraData.get(),
           aDocument->GetCompatibilityMode(),
-          /* reusable_sheets = */ nullptr,
-          /* use_counters = */ nullptr, StyleAllowImportRules::Yes,
+          /* reusable_sheets = */ nullptr, StyleAllowImportRules::Yes,
           aSanitizationKind, &aSanitized)
           .Consume();
 }
@@ -1437,7 +1436,8 @@ void nsTreeSanitizer::SanitizeChildren(nsINode* aRoot) {
         ErrorResult rv;
         while ((child = node->GetFirstChild())) {
           nsCOMPtr<nsINode> refNode = node;
-          parent->InsertBefore(*child, refNode, rv);
+          parent->InsertBeforeInternal(
+              *child, refNode, MutationEffectOnScript::KeepTrustWorthiness, rv);
           if (rv.Failed()) {
             break;
           }

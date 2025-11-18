@@ -14,6 +14,7 @@ import tarfile
 import tempfile
 from collections import defaultdict
 
+import buildconfig
 import mozfile
 import mozpack.path as mozpath
 import requests
@@ -236,7 +237,14 @@ class VendorManifest(MozbuildObject):
                 "Downloading {local_file} from {url}...",
             )
 
-            self.source_host.download_single_file(url, destination)
+            if not self.source_host.download_single_file(url, destination):
+                self.log(
+                    logging.WARNING,
+                    "vendor",
+                    {"local_file": destination},
+                    "Remote file not found, {local_file} removed if it "
+                    "existed, please remove from moz.yaml",
+                )
 
         # Only one of these loops will have content, so just do them both
         for f in self.manifest["vendoring"].get("individual-files", []):
@@ -390,6 +398,8 @@ class VendorManifest(MozbuildObject):
             path = path.replace(
                 "{vendor_dir}", self.manifest["vendoring"]["vendor-directory"]
             )
+        elif "{topsrcdir}" in path:
+            path = path.replace("{topsrcdir}", buildconfig.topsrcdir)
         else:
             path = mozpath.join(self.manifest["vendoring"]["vendor-directory"], path)
         return os.path.abspath(path)
@@ -786,6 +796,7 @@ class VendorManifest(MozbuildObject):
                             "{vendor_dir}",
                             "{yaml_dir}",
                             "{tmpextractdir}",
+                            "{topsrcdir}",
                         ]
                     ):
                         args.append(self.get_full_path(a, support_cwd=True))
@@ -896,21 +907,45 @@ class VendorManifest(MozbuildObject):
         self.logInfo({}, "Importing local patches...")
         try:
             for patch in self.convert_patterns_to_paths(yaml_dir, patches):
-                script = [
-                    "patch",
-                    "-p1",
-                    "-r",
-                    "/dev/stdout",
-                    "--directory",
-                    vendor_dir,
-                    "--input",
-                    os.path.abspath(patch),
-                    "--no-backup-if-mismatch",
-                ]
-                self.run_process(
-                    args=script,
-                    log_name=script,
-                )
+                # Create temporary reject file
+                with tempfile.NamedTemporaryFile(
+                    mode="w+", suffix=".rej", delete=False
+                ) as reject_file:
+                    reject_path = reject_file.name
+
+                try:
+                    script = [
+                        "patch",
+                        "-r",
+                        reject_path,
+                        "-p1",
+                        "--directory",
+                        vendor_dir,
+                        "--input",
+                        os.path.abspath(patch),
+                        "--no-backup-if-mismatch",
+                    ]
+                    self.run_process(
+                        args=script,
+                        log_name=script,
+                    )
+                except Exception as e:
+                    # Check if reject file has content (patch failed)
+                    if os.path.exists(reject_path) and os.path.getsize(reject_path) > 0:
+                        with open(reject_path) as f:
+                            reject_content = f.read()
+                        self.log(
+                            logging.ERROR,
+                            "vendor",
+                            {},
+                            f"Patch rejection details:\n{reject_content}",
+                        )
+                    raise e
+                finally:
+                    # Clean up temporary reject file
+                    if os.path.exists(reject_path):
+                        os.unlink(reject_path)
+
         except Exception as e:
             msgs = [f"Could not apply {patch}, possible reasons:"]
             msgs.append(" - You ran --patch-mode=only before running --patch-mode=none")

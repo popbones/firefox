@@ -34,6 +34,7 @@ import org.mozilla.gecko.mozglue.JNIObject;
 import org.mozilla.gecko.util.GeckoBundle;
 import org.mozilla.gecko.util.ThreadUtils;
 
+/** Accessibility support for GeckoSession. */
 @UiThread
 public class SessionAccessibility {
   private static final String LOGTAG = "GeckoAccessibility";
@@ -521,7 +522,12 @@ public class SessionAccessibility {
     private static native void toggleNativeAccessibility(boolean enable);
   }
 
-  @SuppressWarnings("checkstyle:javadocmethod")
+  /**
+   * Handle a MotionEvent for touch exploration of accessibility nodes.
+   *
+   * @param event The MotionEvent to handle.
+   * @return true if the event was handled, false otherwise.
+   */
   public boolean onMotionEvent(final @NonNull MotionEvent event) {
     ThreadUtils.assertOnUiThread();
 
@@ -537,6 +543,10 @@ public class SessionAccessibility {
     if ((action != MotionEvent.ACTION_HOVER_MOVE)
         && (action != MotionEvent.ACTION_HOVER_ENTER)
         && (action != MotionEvent.ACTION_HOVER_EXIT)) {
+      return false;
+    }
+
+    if (!mAttached) {
       return false;
     }
 

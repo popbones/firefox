@@ -85,6 +85,7 @@ mir_base_class = [
     "MBinaryInstruction",
     "MTernaryInstruction",
     "MQuaternaryInstruction",
+    "MQuinaryInstruction",
 ]
 
 
@@ -131,6 +132,7 @@ def gen_mir_class(
     guard,
     movable,
     folds_to,
+    value_hash,
     congruent_to,
     alias_set,
     might_alias,
@@ -189,7 +191,7 @@ def gen_mir_class(
 
     class_name = "M" + name
 
-    assert len(mir_operands) < 5
+    assert len(mir_operands) < 6
     base_class = mir_base_class[len(mir_operands)]
     assert base_class
     if base_class != "MNullaryInstruction":
@@ -271,6 +273,9 @@ def gen_mir_class(
                 "  bool congruentTo(const MDefinition* ins) const override { "
                 "return congruentIfOperandsEqual(ins); }\\\n"
             )
+    if value_hash:
+        assert value_hash == "custom"
+        code += "  HashNumber valueHash() const override;\\\n"
     if possibly_calls:
         if possibly_calls == "custom":
             code += "  bool possiblyCalls() const override;\\\n"
@@ -360,6 +365,9 @@ def generate_mir_header(c_out, yaml_path):
             folds_to = op.get("folds_to", None)
             assert folds_to in (None, "custom")
 
+            value_hash = op.get("value_hash", None)
+            assert value_hash in (None, "custom")
+
             congruent_to = op.get("congruent_to", None)
             assert congruent_to in (None, "if_operands_equal", "custom")
 
@@ -393,6 +401,7 @@ def generate_mir_header(c_out, yaml_path):
                 guard,
                 movable,
                 folds_to,
+                value_hash,
                 congruent_to,
                 alias_set,
                 might_alias,

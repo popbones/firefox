@@ -395,6 +395,21 @@ class HostCompileFlags(BaseCompileFlags):
         return self._context.config.substs.get("HOST_OPTIMIZE_FLAGS") or []
 
 
+class HostLinkFlags(BaseCompileFlags):
+    def __init__(self, context):
+        self._context = context
+
+        self.flag_variables = (
+            (
+                "HOST_LDFLAGS",
+                context.config.substs.get("HOST_LDFLAGS"),
+                ("HOST_LDFLAGS",),
+            ),
+            ("MOZBUILD", None, ("HOST_LDFLAGS",)),
+        )
+        BaseCompileFlags.__init__(self, context)
+
+
 class AsmFlags(BaseCompileFlags):
     def __init__(self, context):
         self._context = context
@@ -1689,7 +1704,7 @@ VARIABLES = {
         """,
     ),
     "MOZ_SRC_FILES": (
-        ContextDerivedTypedList(SourcePath),
+        ContextDerivedTypedList(SourcePath, StrictOrderingOnAppendList),
         list,
         """This variable contains a list of files that need to be accessible
         under the "moz-src" protocol. They are copied to the moz-src portion
@@ -2056,6 +2071,12 @@ VARIABLES = {
         will be made explicit.
         """,
     ),
+    "DUMP_SYMBOLS_FLAGS": (
+        List,
+        list,
+        """Extra flags passed to the dumpsymbols utility when generating symbols for the crash reporter.
+        """,
+    ),
     "JAR_MANIFESTS": (
         ContextDerivedTypedList(SourcePath, StrictOrderingOnAppendList),
         list,
@@ -2273,6 +2294,14 @@ VARIABLES = {
         being packaged into an extension instead of the main dist/bin results.
         """,
     ),
+    "XPI_PKGNAME": (
+        str,
+        str,
+        """The name of the package associated to an extension XPI to generate.
+
+        Override the name of the package generated for an XPI extension.
+        """,
+    ),
     "DIST_SUBDIR": (
         str,
         str,
@@ -2431,6 +2460,13 @@ VARIABLES = {
         See ``DEFINES`` for specifics.
         """,
     ),
+    "HOST_LINK_FLAGS": (
+        HostLinkFlags,
+        dict,
+        """Recipe for host linker flags for this context. Not to be manipulated
+        directly.
+        """,
+    ),
     "WASM_CFLAGS": (
         List,
         list,
@@ -2520,6 +2556,17 @@ VARIABLES = {
 
            Note that the ordering of flags matters here; these flags will be
            added to the compiler's command line in the same order as they
+           appear in the moz.build file.
+        """,
+    ),
+    "HOST_LDFLAGS": (
+        List,
+        list,
+        """Flags passed to the host linker when linking all of the libraries and
+           executables declared in this directory.
+
+           Note that the ordering of flags matters here; these flags will be
+           added to the linker's command line in the same order as they
            appear in the moz.build file.
         """,
     ),
@@ -2807,9 +2854,9 @@ SPECIAL_VARIABLES = {
         str,
         """Constant defining the relative path of this file.
 
-        The relative path is from ``TOPSRCDIR``. This is defined as relative
-        to the main file being executed, regardless of whether additional
-        files have been included using ``include()``.
+        The relative path is from ``TOPSRCDIR``. When a file is included using
+        ``include()``, this variable reflects the relative path of the current
+        file being processed, not the main file that initiated the inclusion.
         """,
     ),
     "SRCDIR": (

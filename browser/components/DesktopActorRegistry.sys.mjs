@@ -33,6 +33,14 @@ let JSPROCESSACTORS = {
     },
   },
 
+  MozCachedOHTTP: {
+    parent: {
+      esModuleURI:
+        "moz-src:///browser/components/mozcachedohttp/actors/MozCachedOHTTPParent.sys.mjs",
+    },
+    includeParent: true,
+  },
+
   RefreshBlockerObserver: {
     child: {
       esModuleURI: "resource:///actors/RefreshBlockerChild.sys.mjs",
@@ -218,6 +226,7 @@ let JSWINDOWACTORS = {
       esModuleURI: "resource:///actors/BackupUIChild.sys.mjs",
       events: {
         "BackupUI:InitWidget": { wantUntrusted: true },
+        "BackupUI:TriggerCreateBackup": { wantUntrusted: true },
         "BackupUI:EnableScheduledBackups": { wantUntrusted: true },
         "BackupUI:DisableScheduledBackups": { wantUntrusted: true },
         "BackupUI:ShowFilepicker": { wantUntrusted: true },
@@ -489,6 +498,17 @@ let JSWINDOWACTORS = {
     },
     includeChrome: true,
     enablePreference: "browser.ml.linkPreview.enabled",
+  },
+
+  PageAssist: {
+    parent: {
+      esModuleURI: "resource:///actors/PageAssistParent.sys.mjs",
+    },
+    child: {
+      esModuleURI: "resource:///actors/PageAssistChild.sys.mjs",
+    },
+    includeChrome: true,
+    enablePreference: "browser.ml.pageAssist.enabled",
   },
 
   PageInfo: {

@@ -9,11 +9,11 @@
 #include <winnt.h>
 #include <wrl.h>
 
-#include "MediaInfo.h"
 #include "MFMediaEngineExtra.h"
 #include "MFMediaEngineNotify.h"
 #include "MFMediaEngineUtils.h"
 #include "MFMediaSource.h"
+#include "MediaInfo.h"
 #include "PlatformDecoderModule.h"
 #include "mozilla/PMFMediaEngineParent.h"
 
@@ -68,7 +68,7 @@ class MFMediaEngineParent final : public PMFMediaEngineParent {
   ~MFMediaEngineParent();
 
   void CreateMediaEngine();
-  HRESULT SetMediaInfo(const MediaInfoIPDL& aInfo, bool aIsEncrytpedCustomInit);
+  HRESULT SetMediaInfo(const MediaInfoIPDL& aInfo, bool aIsEncryptedCustomInit);
 
   void InitializeDXGIDeviceManager();
 
@@ -89,6 +89,11 @@ class MFMediaEngineParent final : public PMFMediaEngineParent {
 
   Maybe<gfx::IntSize> DetectVideoSizeChange();
   void NotifyVideoResizing();
+
+#ifdef MOZ_WMF_CDM
+  // We will disable HWDRM when receiving error MSPR_E_NO_DECRYPTOR_AVAILABLE.
+  void NotifyDisableHWDRM();
+#endif
 
   // This generates unique id for each MFMediaEngineParent instance, and it
   // would be increased monotonically.

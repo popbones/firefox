@@ -9,12 +9,12 @@
 #ifndef nsContainerFrame_h___
 #define nsContainerFrame_h___
 
-#include "mozilla/Attributes.h"
 #include "LayoutConstants.h"
-#include "nsISelectionDisplay.h"
-#include "nsSplittableFrame.h"
+#include "mozilla/Attributes.h"
 #include "nsFrameList.h"
+#include "nsISelectionDisplay.h"
 #include "nsLineBox.h"
+#include "nsSplittableFrame.h"
 #include "nsTHashSet.h"
 
 class nsOverflowContinuationTracker;
@@ -908,6 +908,13 @@ class nsContainerFrame : public nsSplittableFrame {
   void DisplaySelectionOverlay(
       nsDisplayListBuilder* aBuilder, nsDisplayList* aList,
       uint16_t aContentType = nsISelectionDisplay::DISPLAY_FRAMES);
+
+  /**
+   * Helper for ruby frames that want to accumulate the max ascent/descent of
+   * their children.
+   */
+  mozilla::RubyMetrics RubyMetricsIncludingChildren(
+      float aRubyMetricsFactor) const;
 
   // ==========================================================================
 

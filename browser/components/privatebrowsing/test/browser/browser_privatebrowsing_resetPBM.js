@@ -32,25 +32,15 @@ const SELECTOR_PANEL_COMPLETION_TOAST = "#confirmation-hint";
 async function waitForConfirmPanelShow(win) {
   // Check for the panel, if it's not present yet wait for it to be inserted.
   let panelview = win.document.querySelector(SELECTOR_PANELVIEW);
-  if (!panelview) {
-    let navToolbox = win.document.getElementById("navigator-toolbox");
-    await BrowserTestUtils.waitForMutationCondition(
-      navToolbox,
-      { childList: true, subtree: true },
-      () => {
-        panelview = win.document.querySelector(SELECTOR_PANELVIEW);
-        return !!panelview;
-      }
-    );
-  }
-
   // Panel already visible, we can exit early.
-  if (BrowserTestUtils.isVisible(panelview)) {
+  if (panelview && BrowserTestUtils.isVisible(panelview)) {
     return;
   }
 
   // Wait for panel shown event.
-  await BrowserTestUtils.waitForEvent(panelview.closest("panel"), "popupshown");
+  await BrowserTestUtils.waitForEvent(win, "popupshown", event => {
+    return event.target.querySelector(SELECTOR_PANELVIEW);
+  });
 }
 
 /**
@@ -621,7 +611,11 @@ add_task(async function test_tab_close_warning_suppressed() {
   );
   for (let i = 0; i < maxTabsUndo + 2; i++) {
     let tab = BrowserTestUtils.addTab(win.gBrowser, "about:blank");
-    loadPromises.push(BrowserTestUtils.browserLoaded(tab.linkedBrowser));
+    loadPromises.push(
+      BrowserTestUtils.browserLoaded(tab.linkedBrowser, {
+        wantLoad: "about:blank",
+      })
+    );
   }
   await Promise.all(loadPromises);
 
@@ -769,13 +763,13 @@ add_task(async function test_reset_action_closes_pinned_and_selected_tabs() {
 
   info("Load a list of tabs.");
   let loadPromises = [
-    "https://example.com",
-    "https://example.org",
-    "https://example.net",
+    "https://example.com/",
+    "https://example.org/",
+    "https://example.net/",
     "about:blank",
   ].map(async url => {
     let tab = BrowserTestUtils.addTab(win.gBrowser, url);
-    await BrowserTestUtils.browserLoaded(tab.linkedBrowser);
+    await BrowserTestUtils.browserLoaded(tab.linkedBrowser, { wantLoad: url });
     return tab;
   });
   let tabs = await Promise.all(loadPromises);

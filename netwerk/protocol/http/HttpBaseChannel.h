@@ -71,15 +71,6 @@ extern mozilla::LazyLogModule gHttpLog;
 class OpaqueResponseBlocker;
 class PreferredAlternativeDataTypeParams;
 
-enum CacheDisposition : uint8_t {
-  kCacheUnresolved = 0,
-  kCacheHit = 1,
-  kCacheHitViaReval = 2,
-  kCacheMissedViaReval = 3,
-  kCacheMissed = 4,
-  kCacheUnknown = 5
-};
-
 // These need to be kept in sync with
 // "browser.opaqueResponseBlocking.filterFetchResponse"
 enum class OpaqueResponseFilterFetch { Never, AllowedByORB, BlockedByORB, All };
@@ -128,7 +119,6 @@ class HttpBaseChannel : public nsHashPropertyBag,
                                       nsProxyInfo* aProxyInfo,
                                       uint32_t aProxyResolveFlags,
                                       nsIURI* aProxyURI, uint64_t aChannelId,
-                                      ExtContentPolicyType aContentPolicyType,
                                       nsILoadInfo* aLoadInfo);
 
   // nsIRequest
@@ -329,8 +319,6 @@ class HttpBaseChannel : public nsHashPropertyBag,
 
   NS_IMETHOD GetConnectionInfoHashKey(
       nsACString& aConnectionInfoHashKey) override;
-  NS_IMETHOD GetIntegrityMetadata(nsAString& aIntegrityMetadata) override;
-  NS_IMETHOD SetIntegrityMetadata(const nsAString& aIntegrityMetadata) override;
   NS_IMETHOD GetLastRedirectFlags(uint32_t* aValue) override;
   NS_IMETHOD SetLastRedirectFlags(uint32_t aValue) override;
   NS_IMETHOD GetNavigationStartTimeStamp(TimeStamp* aTimeStamp) override;
@@ -778,7 +766,6 @@ class HttpBaseChannel : public nsHashPropertyBag,
   nsTArray<PreferredAlternativeDataTypeParams> mPreferredCachedAltDataTypes;
   // Holds the name of the alternative data type the channel returned.
   nsCString mAvailableCachedAltDataType;
-  nsString mIntegrityMetadata;
 
   // Classified channel's matched information
   nsCString mMatchedList;

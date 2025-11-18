@@ -9,7 +9,6 @@
 #include "ServiceWorkerManager.h"
 #include "ServiceWorkerPrivate.h"
 #include "ServiceWorkerRegistrationListener.h"
-
 #include "mozilla/Preferences.h"
 #include "mozilla/SchedulerGroup.h"
 #include "mozilla/StaticPrefs_dom.h"
@@ -339,6 +338,7 @@ void ServiceWorkerRegistrationInfo::TryToActivate(
     ServiceWorkerLifetimeExtension&& aLifetimeExtension,
     TryToActivateCallback&& aCallback) {
   MOZ_ASSERT(NS_IsMainThread());
+  ++mNumberOfAttemptedActivations;
   bool controlling = IsControllingClients();
   bool skipWaiting = mWaitingWorker && mWaitingWorker->SkipWaitingFlag();
   bool idle = IsIdle();

@@ -9,6 +9,7 @@ import androidx.navigation.NavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import mozilla.components.concept.storage.Login
 import mozilla.components.concept.storage.LoginsStorage
+import mozilla.components.lib.state.Store
 import mozilla.components.support.test.libstate.ext.waitUntilIdle
 import mozilla.components.support.test.mock
 import mozilla.components.support.test.rule.MainCoroutineRule
@@ -32,10 +33,9 @@ class LoginsMiddlewareTest {
     private lateinit var clipboardManager: ClipboardManager
     private lateinit var navController: NavController
     private lateinit var exitLogins: () -> Unit
-    private lateinit var showUsernameCopiedSnackbar: () -> Unit
-    private lateinit var showPasswordCopiedSnackbar: () -> Unit
     private lateinit var openTab: (String, Boolean) -> Unit
     private lateinit var persistLoginsSortOrder: suspend (LoginsSortOrder) -> Unit
+    private var refreshLoginsList: Store<LoginsState, LoginsAction>.() -> Unit = {}
 
     private val loginList = List(5) {
         Login(
@@ -54,8 +54,6 @@ class LoginsMiddlewareTest {
         exitLogins = { }
         openTab = { _, _ -> }
         persistLoginsSortOrder = { }
-        showUsernameCopiedSnackbar = { }
-        showPasswordCopiedSnackbar = { }
     }
 
     @Test
@@ -196,12 +194,11 @@ class LoginsMiddlewareTest {
         ioDispatcher = coroutineRule.testDispatcher,
         persistLoginsSortOrder = persistLoginsSortOrder,
         clipboardManager = clipboardManager,
-        showUsernameCopiedSnackbar = showUsernameCopiedSnackbar,
-        showPasswordCopiedSnackbar = showPasswordCopiedSnackbar,
+        refreshLoginsList = refreshLoginsList,
     )
 
     private fun LoginsMiddleware.makeStore(
-        initialState: LoginsState = LoginsState(),
+        initialState: LoginsState = LoginsState.default,
     ) = LoginsStore(
         initialState = initialState,
         middleware = listOf(this),

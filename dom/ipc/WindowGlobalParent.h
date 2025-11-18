@@ -12,20 +12,20 @@
 #include "mozilla/Maybe.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/UniquePtr.h"
-#include "mozilla/dom/ClientInfo.h"
+#include "mozilla/dom/CanonicalBrowsingContext.h"
 #include "mozilla/dom/ClientIPCTypes.h"
+#include "mozilla/dom/ClientInfo.h"
 #include "mozilla/dom/DOMRect.h"
 #include "mozilla/dom/PWindowGlobalParent.h"
 #include "mozilla/dom/WindowContext.h"
-#include "mozilla/dom/WindowGlobalActorsBinding.h"
-#include "nsTHashMap.h"
-#include "nsRefPtrHashtable.h"
-#include "nsWrapperCache.h"
-#include "nsISupports.h"
-#include "nsIDOMProcessParent.h"
 #include "mozilla/dom/WindowGlobalActor.h"
-#include "mozilla/dom/CanonicalBrowsingContext.h"
+#include "mozilla/dom/WindowGlobalActorsBinding.h"
 #include "mozilla/net/CookieJarSettings.h"
+#include "nsIDOMProcessParent.h"
+#include "nsISupports.h"
+#include "nsRefPtrHashtable.h"
+#include "nsTHashMap.h"
+#include "nsWrapperCache.h"
 
 class nsIPrincipal;
 class nsIURI;
@@ -160,7 +160,17 @@ class WindowGlobalParent final : public WindowContext,
   already_AddRefed<mozilla::dom::Promise> PermitUnload(
       PermitUnloadAction aAction, uint32_t aTimeout, mozilla::ErrorResult& aRv);
 
-  void PermitUnload(std::function<void(bool)>&& aResolver);
+  void PermitUnload(
+      std::function<void(nsIDocumentViewer::PermitUnloadResult)>&& aResolver);
+
+  void PermitUnloadTraversable(
+      const SessionHistoryInfo& aInfo,
+      nsIDocumentViewer::PermitUnloadAction aAction,
+      std::function<void(nsIDocumentViewer::PermitUnloadResult)>&& aResolver);
+
+  void PermitUnloadChildNavigables(
+      nsIDocumentViewer::PermitUnloadAction aAction,
+      std::function<void(nsIDocumentViewer::PermitUnloadResult)>&& aResolver);
 
   already_AddRefed<mozilla::dom::Promise> DrawSnapshot(
       const DOMRect* aRect, double aScale, const nsACString& aBackgroundColor,
@@ -273,8 +283,9 @@ class WindowGlobalParent final : public WindowContext,
       const IPCClientInfo& aIPCClientInfo);
   mozilla::ipc::IPCResult RecvDestroy();
   mozilla::ipc::IPCResult RecvRawMessage(
-      const JSActorMessageMeta& aMeta, const Maybe<ClonedMessageData>& aData,
-      const Maybe<ClonedMessageData>& aStack);
+      const JSActorMessageMeta& aMeta,
+      const UniquePtr<ClonedMessageData>& aData,
+      const UniquePtr<ClonedMessageData>& aStack);
 
   mozilla::ipc::IPCResult RecvGetContentBlockingEvents(
       GetContentBlockingEventsResolver&& aResolver);

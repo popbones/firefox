@@ -26,6 +26,7 @@ class MessageLoop;
 namespace mozilla::widget {
 
 class WaylandBuffer;
+class BufferTransaction;
 
 // WaylandSurface is a wrapper for Wayland rendering target
 // which is wl_surface / wl_subsurface.
@@ -58,6 +59,11 @@ class WaylandSurface final {
       const WaylandSurfaceLock& aProofOfLock,
       const std::function<void(wl_callback*, uint32_t)>& aFrameCallbackHandler,
       bool aEmulateFrameCallback = false);
+
+  // Clears frame callback handler. It's used if frame callback handler
+  // contains strong reference to WaylandSurface class owner
+  // which we want to clear.
+  void ClearFrameCallbackHandlerLocked(const WaylandSurfaceLock& aProofOfLock);
 
   // Enable/Disable any frame callback emission (includes emulated ones).
   void SetFrameCallbackStateLocked(const WaylandSurfaceLock& aProofOfLock,
@@ -126,16 +132,18 @@ class WaylandSurface final {
   // Attach WaylandBuffer which shows WaylandBuffer content
   // on screen.
   bool AttachLocked(const WaylandSurfaceLock& aSurfaceLock,
-                    RefPtr<WaylandBuffer> aWaylandBuffer);
+                    RefPtr<WaylandBuffer> aBuffer);
+  bool IsBufferAttached(WaylandBuffer* aBuffer);
 
   // If there's any WaylandBuffer recently attached, detach it.
   // It makes the WaylandSurface invisible and it doesn't have any
   // content.
   void RemoveAttachedBufferLocked(const WaylandSurfaceLock& aProofOfLock);
 
-  // Called from Wayland compostor async handler when wl_buffer is
-  // detached or deleted.
-  void BufferFreeCallbackHandler(uintptr_t aWlBufferID, bool aWlBufferDelete);
+  // Remove deleted transaction from WaylandSurface, it may release
+  // referenced WaylandBuffer.
+  void RemoveTransactionLocked(const WaylandSurfaceLock& aSurfaceLock,
+                               RefPtr<BufferTransaction> aTransaction);
 
   // CommitLocked() is needed to call after some of *Locked() method
   // to submit the action to Wayland compositor by wl_surface_commit().
@@ -171,6 +179,7 @@ class WaylandSurface final {
                              const gfx::IntRegion& aRegion);
   void SetOpaqueLocked(const WaylandSurfaceLock& aProofOfLock);
   void ClearOpaqueRegionLocked(const WaylandSurfaceLock& aProofOfLock);
+  void OpaqueCallbackHandler();
 
   bool DisableUserInputLocked(const WaylandSurfaceLock& aProofOfLock);
   void InvalidateRegionLocked(const WaylandSurfaceLock& aProofOfLock,
@@ -193,14 +202,9 @@ class WaylandSurface final {
   }
 
   // Returns scale as float point number. If WaylandSurface is not mapped,
-  // return fractional scale of parent surface.
-  // Returns sNoScale is we can't get it.
+  // return fractional scale of parent surface or monitor.
   static constexpr const double sNoScale = -1;
   double GetScale();
-
-  // The same as GetScale() but returns monitor scale if window scale is
-  // missing.
-  double GetScaleSafe();
 
   // Called when screen ceiled scale changed or set initial scale before we map
   // and paint the surface.
@@ -254,6 +258,10 @@ class WaylandSurface final {
                        RefPtr<WaylandSurface> aParent);
 
   bool EnableColorManagementLocked(const WaylandSurfaceLock& aProofOfLock);
+  void SetColorRepresentationLocked(const WaylandSurfaceLock& aProofOfLock,
+                                    mozilla::gfx::YUVColorSpace aColorSpace,
+                                    bool aFullRange,
+                                    uint32_t aWPChromaLocation);
 
   static void ImageDescriptionFailed(
       void* aData, struct wp_image_description_v1* aImageDescription,
@@ -263,6 +271,12 @@ class WaylandSurface final {
       uint32_t aIdentity);
 
   void AssertCurrentThreadOwnsMutex();
+
+  void ForceCommit() { mSurfaceNeedsCommit = true; }
+  void SetCommitStateLocked(const WaylandSurfaceLock& aProofOfLock,
+                            bool aCommitAllowed) {
+    mCommitAllowed = aCommitAllowed;
+  }
 
  private:
   ~WaylandSurface();
@@ -282,10 +296,11 @@ class WaylandSurface final {
   void Commit(WaylandSurfaceLock* aProofOfLock, bool aForceCommit,
               bool aForceDisplayFlush);
 
-  // Force release/detele all buffers. Some of them may be attached to
-  // compostor and may get wl_buffer::release callback so we need to sync
-  // delete with wayland compostor.
-  void ReleaseAllWaylandBuffersLocked(WaylandSurfaceLock& aSurfaceLock);
+  // Get buffer transaction for WaylandBuffer, create new or recycle one.
+  BufferTransaction* GetNextTransactionLocked(
+      const WaylandSurfaceLock& aSurfaceLock, WaylandBuffer* aBuffer);
+  // Force release/detele all transactions and wl_buffers attached to them.
+  void ReleaseAllWaylandTransactionsLocked(WaylandSurfaceLock& aSurfaceLock);
 
   void RequestFrameCallbackLocked(const WaylandSurfaceLock& aProofOfLock);
   void ClearFrameCallbackLocked(const WaylandSurfaceLock& aProofOfLock);
@@ -336,7 +351,14 @@ class WaylandSurface final {
 
   // wl_surface setup/states
   wl_surface* mSurface = nullptr;
-  bool mSurfaceNeedsCommit = false;
+  mozilla::Atomic<bool, mozilla::Relaxed> mSurfaceNeedsCommit{false};
+  bool mCommitAllowed = true;
+
+  // When subsurface is desynced, we need to commit to parent surface
+  // to see the change in subsurface (this one).
+  // In such case we set mSurfaceNeedsCommit to parent for it.
+  bool mSubsurfaceDesync = true;
+
   wl_subsurface* mSubsurface = nullptr;
   gfx::IntPoint mSubsurfacePosition{-1, -1};
 
@@ -346,7 +368,8 @@ class WaylandSurface final {
   // previous buffer is hold by compositor. We need to keep
   // there buffers live until compositor notify us that we
   // can release them.
-  AutoTArray<RefPtr<WaylandBuffer>, 3> mAttachedBuffers;
+  AutoTArray<RefPtr<BufferTransaction>, 3> mBufferTransactions;
+  uintptr_t mLatestAttachedBuffer = 0;
 
   // Indicates mSurface has buffer attached so we can attach subsurface
   // to it and expect to get frame callbacks from Wayland compositor.
@@ -384,6 +407,9 @@ class WaylandSurface final {
 
   // Frame callback handler called every frame
   FrameCallback mFrameCallbackHandler;
+
+  wl_region* mPendingOpaqueRegion = nullptr;
+  wl_callback* mOpaqueRegionFrameCallback = nullptr;
 
   // WaylandSurface is used from Compositor/Rendering/Main threads.
   mozilla::Mutex mMutex{"WaylandSurface"};
@@ -456,6 +482,7 @@ class WaylandSurface final {
   // HDR support
   bool mHDRSet = false;
   wp_color_management_surface_v1* mColorSurface = nullptr;
+  wp_color_representation_surface_v1* mColorRepresentationSurface = nullptr;
   wp_image_description_v1* mImageDescription = nullptr;
 };
 

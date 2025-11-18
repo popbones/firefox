@@ -99,7 +99,8 @@ TaskDispatcher& TaskQueue::TailDispatcher() {
 // Note aRunnable is passed by ref to support conditional ownership transfer.
 // See Dispatch() in TaskQueue.h for more details.
 nsresult TaskQueue::DispatchLocked(nsCOMPtr<nsIRunnable>& aRunnable,
-                                   uint32_t aFlags, DispatchReason aReason) {
+                                   DispatchFlags aFlags,
+                                   DispatchReason aReason) {
   mQueueMonitor.AssertCurrentThreadOwns();
 
   // Continue to allow dispatches after shutdown until the last message has been
@@ -112,13 +113,13 @@ nsresult TaskQueue::DispatchLocked(nsCOMPtr<nsIRunnable>& aRunnable,
   if (aReason != TailDispatch && (currentThread = GetCurrent()) &&
       RequiresTailDispatch(currentThread) &&
       currentThread->IsTailDispatcherAvailable()) {
-    MOZ_ASSERT(aFlags == NS_DISPATCH_NORMAL,
-               "Tail dispatch doesn't support flags");
     return currentThread->TailDispatcher().AddTask(this, aRunnable.forget());
   }
 
-  PROFILER_MARKER("TaskQueue::DispatchLocked", OTHER, {}, FlowMarker,
-                  Flow::FromPointer(aRunnable.get()));
+  PROFILER_MARKER("TaskQueue::DispatchLocked", OTHER,
+                  {MarkerStack::MaybeCapture(
+                      profiler_feature_active(ProfilerFeature::Flows))},
+                  FlowMarker, Flow::FromPointer(aRunnable.get()));
   LogRunnable::LogDispatch(aRunnable);
   mTasks.Push({std::move(aRunnable), aFlags});
 
@@ -126,7 +127,8 @@ nsresult TaskQueue::DispatchLocked(nsCOMPtr<nsIRunnable>& aRunnable,
     return NS_OK;
   }
   RefPtr<nsIRunnable> runner(new Runner(this));
-  nsresult rv = mTarget->Dispatch(runner.forget(), aFlags);
+  nsresult rv =
+      mTarget->Dispatch(runner.forget(), aFlags | NS_DISPATCH_FALLIBLE);
   if (NS_FAILED(rv)) {
     NS_WARNING("Failed to dispatch runnable to run TaskQueue");
     return rv;
@@ -300,8 +302,9 @@ nsresult TaskQueue::Runner::Run() {
   nsresult rv;
   {
     MonitorAutoLock mon(mQueue->mQueueMonitor);
-    rv = mQueue->mTarget->Dispatch(
-        this, mQueue->mTasks.FirstElement().flags | NS_DISPATCH_AT_END);
+    rv = mQueue->mTarget->Dispatch(this, mQueue->mTasks.FirstElement().flags |
+                                             NS_DISPATCH_AT_END |
+                                             NS_DISPATCH_FALLIBLE);
   }
   if (NS_FAILED(rv)) {
     // Failed to dispatch, shutdown!

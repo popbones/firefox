@@ -5,21 +5,23 @@
 // except according to those terms.
 
 use base64::prelude::*;
-use neqo_bin::server::{HttpServer, ServerRunner};
+use neqo_bin::server::{HttpServer, Runner};
 use neqo_common::{event::Provider, qdebug, qtrace, Datagram, Header};
 use neqo_crypto::{generate_ech_keys, init_db, AllowZeroRtt, AntiReplay};
 use neqo_http3::{
     Error, Http3OrWebTransportStream, Http3Parameters, Http3Server, Http3ServerEvent,
-    WebTransportRequest, WebTransportServerEvent, WebTransportSessionAcceptAction,
+    SessionAcceptAction, WebTransportRequest, WebTransportServerEvent,
 };
 use neqo_transport::server::ConnectionRef;
 use neqo_transport::{
-    ConnectionEvent, ConnectionParameters, Output, RandomConnectionIdGenerator, StreamType,
+    ConnectionEvent, ConnectionParameters, OutputBatch, RandomConnectionIdGenerator, StreamType,
 };
 use std::env;
+use tokio::task::LocalSet;
 
 use std::cell::RefCell;
 use std::io;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::exit;
 use std::rc::Rc;
@@ -152,7 +154,8 @@ impl Http3TestServer {
                 }
             }
         }
-        self.connections_to_close.retain(|expires, _| *expires >= now);
+        self.connections_to_close
+            .retain(|expires, _| *expires >= now);
     }
 
     fn maybe_create_wt_stream(&mut self) {
@@ -183,8 +186,13 @@ impl Http3TestServer {
 }
 
 impl HttpServer for Http3TestServer {
-    fn process(&mut self, dgram: Option<Datagram<&mut [u8]>>, now: Instant) -> Output {
-        let output = self.server.process(dgram, now);
+    fn process_multiple<'a>(
+        &mut self,
+        dgrams: impl IntoIterator<Item = Datagram<&'a mut [u8]>>,
+        now: Instant,
+        max_datagrams: NonZeroUsize,
+    ) -> OutputBatch {
+        let output = self.server.process_multiple(dgrams, now, max_datagrams);
 
         let output = if self.sessions_to_close.is_empty() && self.connections_to_close.is_empty() {
             output
@@ -194,9 +202,9 @@ impl HttpServer for Http3TestServer {
             const MIN_INTERVAL: Duration = Duration::from_millis(100);
 
             match output {
-                Output::None => Output::Callback(MIN_INTERVAL),
-                o @ Output::Datagram(_) => o,
-                Output::Callback(d) => Output::Callback(min(d, MIN_INTERVAL)),
+                OutputBatch::None => OutputBatch::Callback(MIN_INTERVAL),
+                o @ OutputBatch::DatagramBatch(_) => o,
+                OutputBatch::Callback(d) => OutputBatch::Callback(min(d, MIN_INTERVAL)),
             }
         };
 
@@ -265,9 +273,7 @@ impl HttpServer for Http3TestServer {
                                     .stream_reset_send(Error::HttpVersionFallback.code())
                                     .unwrap();
                             } else if path == "/EarlyResponse" {
-                                stream
-                                    .stream_stop_sending(Error::HttpNoError.code())
-                                    .unwrap();
+                                stream.stream_stop_sending(Error::HttpNone.code()).unwrap();
                             } else if path == "/RequestRejected" {
                                 stream
                                     .stream_stop_sending(Error::HttpRequestRejected.code())
@@ -431,7 +437,10 @@ impl HttpServer for Http3TestServer {
                                             Header::new("cache-control", "no-cache"),
                                             Header::new("content-type", "text/plain"),
                                             Header::new("content-length", 100.to_string()),
-                                            Header::new("alt-svc", format!("h3={}", alt_svc.value())),
+                                            Header::new(
+                                                "alt-svc",
+                                                format!("h3={}", alt_svc.value()),
+                                            ),
                                         ])
                                         .unwrap();
                                     self.new_response(stream, vec![b'a'; 100]);
@@ -540,12 +549,10 @@ impl HttpServer for Http3TestServer {
                             let path = ph.value();
                             qtrace!("Serve request {}", path);
                             if path == "/success" {
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                             } else if path == "/redirect" {
                                 session
-                                    .response(&WebTransportSessionAcceptAction::Reject(
+                                    .response(&SessionAcceptAction::Reject(
                                         [
                                             Header::new(":status", "302"),
                                             Header::new("location", "/"),
@@ -555,22 +562,18 @@ impl HttpServer for Http3TestServer {
                                     .unwrap();
                             } else if path == "/reject" {
                                 session
-                                    .response(&WebTransportSessionAcceptAction::Reject(
+                                    .response(&SessionAcceptAction::Reject(
                                         [Header::new(":status", "404")].to_vec(),
                                     ))
                                     .unwrap();
                             } else if path == "/closeafter0ms" {
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                                 if !self.sessions_to_close.contains_key(&now) {
                                     self.sessions_to_close.insert(now, Vec::new());
                                 }
                                 self.sessions_to_close.get_mut(&now).unwrap().push(session);
                             } else if path == "/closeafter100ms" {
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                                 let expires = Instant::now() + Duration::from_millis(100);
                                 if !self.sessions_to_close.contains_key(&expires) {
                                     self.sessions_to_close.insert(expires, Vec::new());
@@ -580,27 +583,21 @@ impl HttpServer for Http3TestServer {
                                     .unwrap()
                                     .push(session);
                             } else if path == "/create_unidi_stream" {
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                                 self.sessions_to_create_stream.push((
                                     session,
                                     StreamType::UniDi,
                                     None,
                                 ));
                             } else if path == "/create_unidi_stream_and_hello" {
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                                 self.sessions_to_create_stream.push((
                                     session,
                                     StreamType::UniDi,
                                     Some(Vec::from("qwerty")),
                                 ));
                             } else if path == "/create_bidi_stream" {
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                                 self.sessions_to_create_stream.push((
                                     session,
                                     StreamType::BiDi,
@@ -608,9 +605,7 @@ impl HttpServer for Http3TestServer {
                                 ));
                             } else if path == "/create_bidi_stream_and_hello" {
                                 self.webtransport_bidi_stream.clear();
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                                 self.sessions_to_create_stream.push((
                                     session,
                                     StreamType::BiDi,
@@ -619,23 +614,19 @@ impl HttpServer for Http3TestServer {
                             } else if path == "/create_bidi_stream_and_large_data" {
                                 self.webtransport_bidi_stream.clear();
                                 let data: Vec<u8> = vec![1u8; 32 * 1024 * 1024];
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                                 self.sessions_to_create_stream.push((
                                     session,
                                     StreamType::BiDi,
                                     Some(data),
                                 ));
                             } else {
-                                session
-                                    .response(&WebTransportSessionAcceptAction::Accept)
-                                    .unwrap();
+                                session.response(&SessionAcceptAction::Accept).unwrap();
                             }
                         }
                         _ => {
                             session
-                                .response(&WebTransportSessionAcceptAction::Reject(
+                                .response(&SessionAcceptAction::Reject(
                                     [Header::new(":status", "404")].to_vec(),
                                 ))
                                 .unwrap();
@@ -681,6 +672,9 @@ impl HttpServer for Http3TestServer {
                     );
                     self.received_datagram = Some(datagram);
                 }
+                Http3ServerEvent::ConnectUdp(_) => {
+                    unimplemented!()
+                }
             }
         }
     }
@@ -699,8 +693,13 @@ impl ::std::fmt::Display for Server {
 }
 
 impl HttpServer for Server {
-    fn process(&mut self, dgram: Option<Datagram<&mut [u8]>>, now: Instant) -> Output {
-        self.0.process(dgram, now)
+    fn process_multiple<'a>(
+        &mut self,
+        dgrams: impl IntoIterator<Item = Datagram<&'a mut [u8]>>,
+        now: Instant,
+        max_datagrams: NonZeroUsize,
+    ) -> OutputBatch {
+        self.0.process_multiple(dgrams, now, max_datagrams)
     }
 
     fn process_events(&mut self, _now: Instant) {
@@ -935,8 +934,13 @@ impl Http3ProxyServer {
 }
 
 impl HttpServer for Http3ProxyServer {
-    fn process(&mut self, dgram: Option<Datagram<&mut [u8]>>, now: Instant) -> Output {
-        let output = self.server.process(dgram, now);
+    fn process_multiple<'a>(
+        &mut self,
+        dgrams: impl IntoIterator<Item = Datagram<&'a mut [u8]>>,
+        now: Instant,
+        max_datagrams: NonZeroUsize,
+    ) -> OutputBatch {
+        let output = self.server.process_multiple(dgrams, now, max_datagrams);
 
         #[cfg(not(target_os = "android"))]
         let output = if self.response_to_send.is_empty() {
@@ -947,9 +951,9 @@ impl HttpServer for Http3ProxyServer {
             const MIN_INTERVAL: Duration = Duration::from_millis(100);
 
             match output {
-                Output::None => Output::Callback(MIN_INTERVAL),
-                o @ Output::Datagram(_) => o,
-                Output::Callback(d) => Output::Callback(min(d, MIN_INTERVAL)),
+                OutputBatch::None => OutputBatch::Callback(MIN_INTERVAL),
+                o @ OutputBatch::DatagramBatch(_) => o,
+                OutputBatch::Callback(d) => OutputBatch::Callback(min(d, MIN_INTERVAL)),
             }
         };
 
@@ -1045,6 +1049,7 @@ impl HttpServer for Http3ProxyServer {
                     );
                 }
                 Http3ServerEvent::WebTransport(_) => {}
+                Http3ServerEvent::ConnectUdp(_) => {}
             }
         }
     }
@@ -1064,8 +1069,13 @@ impl ::std::fmt::Display for NonRespondingServer {
 }
 
 impl HttpServer for NonRespondingServer {
-    fn process(&mut self, _dgram: Option<Datagram<&mut [u8]>>, _now: Instant) -> Output {
-        Output::None
+    fn process_multiple<'a>(
+        &mut self,
+        _dgrams: impl IntoIterator<Item = Datagram<&'a mut [u8]>>,
+        _now: Instant,
+        _max_datagrams: NonZeroUsize,
+    ) -> OutputBatch {
+        OutputBatch::None
     }
 
     fn process_events(&mut self, _now: Instant) {}
@@ -1074,19 +1084,13 @@ impl HttpServer for NonRespondingServer {
         false
     }
 }
-enum ServerType {
-    Http3,
-    Http3Fail,
-    Http3NoResponse,
-    Http3Ech,
-    Http3Proxy,
-}
 
-fn new_runner(
-    server_type: ServerType,
+fn spawn_server<S: HttpServer + Unpin + 'static>(
+    server: S,
     port: u16,
-) -> Result<(SocketAddr, Option<Vec<u8>>, ServerRunner), io::Error> {
-    let mut ech_config = None;
+    task_set: &LocalSet,
+    hosts: &mut Vec<SocketAddr>,
+) -> Result<(), io::Error> {
     let addr: SocketAddr = if cfg!(target_os = "windows") {
         format!("127.0.0.1:{}", port).parse().unwrap()
     } else {
@@ -1109,98 +1113,11 @@ fn new_runner(
         Ok(s) => s,
     };
 
-    let anti_replay = AntiReplay::new(Instant::now(), Duration::from_secs(10), 7, 14)
-        .expect("unable to setup anti-replay");
-    let cid_mgr = Rc::new(RefCell::new(RandomConnectionIdGenerator::new(10)));
+    task_set
+        .spawn_local(Runner::new(server, Box::new(Instant::now), vec![(local_addr, socket)]).run());
+    hosts.push(local_addr);
 
-    let server: Box<dyn HttpServer> = match server_type {
-        ServerType::Http3 => Box::new(Http3TestServer::new(
-            Http3Server::new(
-                Instant::now(),
-                &[" HTTP2 Test Cert"],
-                PROTOCOLS,
-                anti_replay,
-                cid_mgr,
-                Http3Parameters::default()
-                    .max_table_size_encoder(MAX_TABLE_SIZE)
-                    .max_table_size_decoder(MAX_TABLE_SIZE)
-                    .max_blocked_streams(MAX_BLOCKED_STREAMS)
-                    .webtransport(true)
-                    .connection_parameters(ConnectionParameters::default().datagram_size(1200)),
-                None,
-            )
-            .expect("We cannot make a server!"),
-        )),
-        ServerType::Http3Fail => Box::new(Server(
-            neqo_transport::server::Server::new(
-                Instant::now(),
-                &[" HTTP2 Test Cert"],
-                PROTOCOLS,
-                anti_replay,
-                Box::new(AllowZeroRtt {}),
-                cid_mgr,
-                ConnectionParameters::default(),
-            )
-            .expect("We cannot make a server!"),
-        )),
-        ServerType::Http3NoResponse => Box::new(NonRespondingServer::default()),
-        ServerType::Http3Ech => {
-            let mut server = Box::new(Http3TestServer::new(
-                Http3Server::new(
-                    Instant::now(),
-                    &[" HTTP2 Test Cert"],
-                    PROTOCOLS,
-                    anti_replay,
-                    cid_mgr,
-                    Http3Parameters::default()
-                        .max_table_size_encoder(MAX_TABLE_SIZE)
-                        .max_table_size_decoder(MAX_TABLE_SIZE)
-                        .max_blocked_streams(MAX_BLOCKED_STREAMS),
-                    None,
-                )
-                .expect("We cannot make a server!"),
-            ));
-            let ref mut unboxed_server = (*server).server;
-            let (sk, pk) = generate_ech_keys().unwrap();
-            unboxed_server
-                .enable_ech(ECH_CONFIG_ID, ECH_PUBLIC_NAME, &sk, &pk)
-                .expect("unable to enable ech");
-            ech_config = Some(Vec::from(unboxed_server.ech_config()));
-            server
-        }
-        ServerType::Http3Proxy => {
-            let server_config = if env::var("MOZ_HTTP3_MOCHITEST").is_ok() {
-                ("mochitest-cert", 8888)
-            } else {
-                (" HTTP2 Test Cert", -1)
-            };
-            let server = Box::new(Http3ProxyServer::new(
-                Http3Server::new(
-                    Instant::now(),
-                    &[server_config.0],
-                    PROTOCOLS,
-                    anti_replay,
-                    cid_mgr,
-                    Http3Parameters::default()
-                        .max_table_size_encoder(MAX_TABLE_SIZE)
-                        .max_table_size_decoder(MAX_TABLE_SIZE)
-                        .max_blocked_streams(MAX_BLOCKED_STREAMS)
-                        .webtransport(true)
-                        .connection_parameters(ConnectionParameters::default().datagram_size(1200)),
-                    None,
-                )
-                .expect("We cannot make a server!"),
-                server_config.1,
-            ));
-            server
-        }
-    };
-
-    Ok((
-        local_addr,
-        ech_config,
-        ServerRunner::new(Box::new(Instant::now), server, vec![(local_addr, socket)]),
-    ))
+    Ok(())
 }
 
 #[tokio::main]
@@ -1231,30 +1148,120 @@ async fn main() -> Result<(), io::Error> {
 
     init_db(PathBuf::from(args[1].clone())).unwrap();
 
-    let local = tokio::task::LocalSet::new();
+    let local = LocalSet::new();
     let mut hosts = vec![];
-    let mut ech_config = None;
 
     let proxy_port = match env::var("MOZ_HTTP3_PROXY_PORT") {
         Ok(val) => val.parse::<u16>().unwrap(),
         _ => 0,
     };
 
-    for (server_type, port) in [
-        (ServerType::Http3, 0),
-        (ServerType::Http3Fail, 0),
-        (ServerType::Http3Ech, 0),
-        (ServerType::Http3Proxy, proxy_port),
-        (ServerType::Http3NoResponse, 0),
-    ] {
-        let (address, ech, runner) = new_runner(server_type, port)?;
-        hosts.push(address);
-        if let Some(ech) = ech {
-            ech_config = Some(ech);
-        }
+    let anti_replay = || {
+        AntiReplay::new(Instant::now(), Duration::from_secs(10), 7, 14)
+            .expect("unable to setup anti-replay")
+    };
+    let cid_mgr = Rc::new(RefCell::new(RandomConnectionIdGenerator::new(10)));
 
-        local.spawn_local(runner.run());
-    }
+    spawn_server(
+        Http3TestServer::new(
+            Http3Server::new(
+                Instant::now(),
+                &[" HTTP2 Test Cert"],
+                PROTOCOLS,
+                anti_replay(),
+                cid_mgr.clone(),
+                Http3Parameters::default()
+                    .max_table_size_encoder(MAX_TABLE_SIZE)
+                    .max_table_size_decoder(MAX_TABLE_SIZE)
+                    .max_blocked_streams(MAX_BLOCKED_STREAMS)
+                    .webtransport(true)
+                    .connection_parameters(ConnectionParameters::default().datagram_size(1200)),
+                None,
+            )
+            .expect("We cannot make a server!"),
+        ),
+        0,
+        &local,
+        &mut hosts,
+    )?;
+
+    spawn_server(
+        Server(
+            neqo_transport::server::Server::new(
+                Instant::now(),
+                &[" HTTP2 Test Cert"],
+                PROTOCOLS,
+                anti_replay(),
+                Box::new(AllowZeroRtt {}),
+                cid_mgr.clone(),
+                ConnectionParameters::default(),
+            )
+            .expect("We cannot make a server!"),
+        ),
+        0,
+        &local,
+        &mut hosts,
+    )?;
+
+    let ech_config = {
+        let mut server = Http3TestServer::new(
+            Http3Server::new(
+                Instant::now(),
+                &[" HTTP2 Test Cert"],
+                PROTOCOLS,
+                anti_replay(),
+                cid_mgr.clone(),
+                Http3Parameters::default()
+                    .max_table_size_encoder(MAX_TABLE_SIZE)
+                    .max_table_size_decoder(MAX_TABLE_SIZE)
+                    .max_blocked_streams(MAX_BLOCKED_STREAMS),
+                None,
+            )
+            .expect("We cannot make a server!"),
+        );
+        let (sk, pk) = generate_ech_keys().unwrap();
+        server
+            .server
+            .enable_ech(ECH_CONFIG_ID, ECH_PUBLIC_NAME, &sk, &pk)
+            .expect("unable to enable ech");
+        let ech_config = server.server.ech_config().to_vec();
+        spawn_server(server, 0, &local, &mut hosts)?;
+        ech_config
+    };
+
+    spawn_server(
+        {
+            let server_config = if env::var("MOZ_HTTP3_MOCHITEST").is_ok() {
+                ("mochitest-cert", 8888)
+            } else {
+                (" HTTP2 Test Cert", -1)
+            };
+            let server = Http3ProxyServer::new(
+                Http3Server::new(
+                    Instant::now(),
+                    &[server_config.0],
+                    PROTOCOLS,
+                    anti_replay(),
+                    cid_mgr,
+                    Http3Parameters::default()
+                        .max_table_size_encoder(MAX_TABLE_SIZE)
+                        .max_table_size_decoder(MAX_TABLE_SIZE)
+                        .max_blocked_streams(MAX_BLOCKED_STREAMS)
+                        .webtransport(true)
+                        .connection_parameters(ConnectionParameters::default().datagram_size(1200)),
+                    None,
+                )
+                .expect("We cannot make a server!"),
+                server_config.1,
+            );
+            server
+        },
+        proxy_port,
+        &local,
+        &mut hosts,
+    )?;
+
+    spawn_server(NonRespondingServer::default(), 0, &local, &mut hosts)?;
 
     // Note this is parsed by test runner.
     // https://searchfox.org/mozilla-central/rev/e69f323af80c357d287fb6314745e75c62eab92a/testing/mozbase/mozserve/mozserve/servers.py#116-121
@@ -1265,7 +1272,7 @@ async fn main() -> Result<(), io::Error> {
         hosts[2].port(),
         hosts[3].port(),
         hosts[4].port(),
-        BASE64_STANDARD.encode(&ech_config.unwrap())
+        BASE64_STANDARD.encode(ech_config)
     );
 
     local.await;

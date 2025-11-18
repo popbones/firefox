@@ -1276,23 +1276,22 @@ Maybe<EvalScope::ParserData*> ParserBase::newEvalScopeData(
   return NewEvalScopeData(fc_, scope, stencilAlloc(), pc_);
 }
 
-static Maybe<FunctionScope::ParserData*> NewFunctionScopeData(
-    FrontendContext* fc, ParseContext::Scope& scope, bool hasParameterExprs,
-    LifoAlloc& alloc, ParseContext* pc) {
-  ParserBindingNameVector positionalFormals(fc);
-  ParserBindingNameVector formals(fc);
-  ParserBindingNameVector vars(fc);
+Maybe<FunctionScope::ParserData*> ParserBase::newFunctionScopeData(
+    ParseContext::Scope& scope, bool hasParameterExprs) {
+  ParserBindingNameVector positionalFormals(fc_);
+  ParserBindingNameVector formals(fc_);
+  ParserBindingNameVector vars(fc_);
 
   bool allBindingsClosedOver =
-      pc->sc()->allBindingsClosedOver() || scope.tooBigToOptimize();
+      pc_->sc()->allBindingsClosedOver() || scope.tooBigToOptimize();
   bool argumentBindingsClosedOver =
-      allBindingsClosedOver || pc->isGeneratorOrAsync();
-  bool hasDuplicateParams = pc->functionBox()->hasDuplicateParameters;
+      allBindingsClosedOver || pc_->isGeneratorOrAsync();
+  bool hasDuplicateParams = pc_->functionBox()->hasDuplicateParameters;
 
   // Positional parameter names must be added in order of appearance as they are
   // referenced using argument slots.
-  for (size_t i = 0; i < pc->positionalFormalParameterNames().length(); i++) {
-    TaggedParserAtomIndex name = pc->positionalFormalParameterNames()[i];
+  for (size_t i = 0; i < pc_->positionalFormalParameterNames().length(); i++) {
+    TaggedParserAtomIndex name = pc_->positionalFormalParameterNames()[i];
 
     ParserBindingName bindName;
     if (name) {
@@ -1308,9 +1307,9 @@ static Maybe<FunctionScope::ParserData*> NewFunctionScopeData(
       // name should be on the environment, as otherwise the environment
       // object would have multiple, same-named properties.
       if (hasDuplicateParams) {
-        for (size_t j = pc->positionalFormalParameterNames().length() - 1;
+        for (size_t j = pc_->positionalFormalParameterNames().length() - 1;
              j > i; j--) {
-          if (TaggedParserAtomIndex(pc->positionalFormalParameterNames()[j]) ==
+          if (TaggedParserAtomIndex(pc_->positionalFormalParameterNames()[j]) ==
               name) {
             closedOver = false;
             break;
@@ -1326,7 +1325,7 @@ static Maybe<FunctionScope::ParserData*> NewFunctionScopeData(
     }
   }
 
-  for (BindingIter bi = scope.bindings(pc); bi; bi++) {
+  for (BindingIter bi = scope.bindings(pc_); bi; bi++) {
     ParserBindingName binding(bi.name(),
                               allBindingsClosedOver || bi.closedOver());
     switch (bi.kind()) {
@@ -1360,12 +1359,21 @@ static Maybe<FunctionScope::ParserData*> NewFunctionScopeData(
     }
   }
 
+  // This should already be checked by GeneralParser::functionArguments.
+  MOZ_ASSERT(positionalFormals.length() <= UINT16_MAX);
+
+  if (positionalFormals.length() + formals.length() > UINT16_MAX) {
+    error(JSMSG_TOO_MANY_FUN_ARGS);
+    return Nothing();
+  }
+
   FunctionScope::ParserData* bindings = nullptr;
   uint32_t numBindings =
       positionalFormals.length() + formals.length() + vars.length();
 
   if (numBindings > 0) {
-    bindings = NewEmptyBindingData<FunctionScope>(fc, alloc, numBindings);
+    bindings =
+        NewEmptyBindingData<FunctionScope>(fc_, stencilAlloc(), numBindings);
     if (!bindings) {
       return Nothing();
     }
@@ -1380,7 +1388,7 @@ static Maybe<FunctionScope::ParserData*> NewFunctionScopeData(
   return Some(bindings);
 }
 
-// Compute if `NewFunctionScopeData` would return any binding list with any
+// Compute if `newFunctionScopeData` would return any binding list with any
 // entry marked as closed-over. This is done without the need to allocate the
 // binding list. If true, an EnvironmentObject will be needed at runtime.
 bool FunctionScopeHasClosedOverBindings(ParseContext* pc) {
@@ -1402,12 +1410,6 @@ bool FunctionScopeHasClosedOverBindings(ParseContext* pc) {
   }
 
   return false;
-}
-
-Maybe<FunctionScope::ParserData*> ParserBase::newFunctionScopeData(
-    ParseContext::Scope& scope, bool hasParameterExprs) {
-  return NewFunctionScopeData(fc_, scope, hasParameterExprs, stencilAlloc(),
-                              pc_);
 }
 
 VarScope::ParserData* NewEmptyVarScopeData(FrontendContext* fc,
@@ -3878,7 +3880,10 @@ bool Parser<FullParseHandler, Unit>::asmJS(ListNodeType list) {
     return true;
   }
 
-  pc_->functionBox()->useAsm = true;
+  // Mark this function as being in a "use asm" directive.
+  if (!pc_->functionBox()->setUseAsm()) {
+    return false;
+  }
 
   // Attempt to validate and compile this asm.js module. On success, the
   // tokenStream has been advanced to the closing }. On failure, the
@@ -4997,23 +5002,17 @@ GeneralParser<ParseHandler, Unit>::moduleExportName() {
 
 template <class ParseHandler, typename Unit>
 bool GeneralParser<ParseHandler, Unit>::withClause(ListNodeType attributesSet) {
-  MOZ_ASSERT(anyChars.isCurrentTokenType(TokenKind::Assert) ||
-             anyChars.isCurrentTokenType(TokenKind::With));
-
-  if (!options().importAttributes()) {
-    error(JSMSG_IMPORT_ATTRIBUTES_NOT_SUPPORTED);
-    return false;
-  }
+  MOZ_ASSERT(anyChars.isCurrentTokenType(TokenKind::With));
 
   if (!abortIfSyntaxParser()) {
     return false;
   }
 
-  if (!mustMatchToken(TokenKind::LeftCurly, JSMSG_CURLY_AFTER_ASSERT)) {
+  if (!mustMatchToken(TokenKind::LeftCurly, JSMSG_CURLY_AFTER_WITH)) {
     return false;
   }
 
-  // Handle the form |... assert {}|
+  // Handle the form |... with {}|
   TokenKind token;
   if (!tokenStream.getToken(&token)) {
     return false;
@@ -5033,7 +5032,7 @@ bool GeneralParser<ParseHandler, Unit>::withClause(ListNodeType attributesSet) {
     } else if (token == TokenKind::String) {
       keyName = anyChars.currentToken().atom();
     } else {
-      error(JSMSG_ASSERT_KEY_EXPECTED);
+      error(JSMSG_ATTRIBUTE_KEY_EXPECTED);
       return false;
     }
 
@@ -5044,7 +5043,7 @@ bool GeneralParser<ParseHandler, Unit>::withClause(ListNodeType attributesSet) {
         ReportOutOfMemory(this->fc_);
         return false;
       }
-      error(JSMSG_DUPLICATE_ASSERT_KEY, str.get());
+      error(JSMSG_DUPLICATE_ATTRIBUTE_KEY, str.get());
       return false;
     }
     if (!usedAssertionKeys.add(p, keyName)) {
@@ -5055,10 +5054,10 @@ bool GeneralParser<ParseHandler, Unit>::withClause(ListNodeType attributesSet) {
     NameNodeType keyNode;
     MOZ_TRY_VAR_OR_RETURN(keyNode, newName(keyName), false);
 
-    if (!mustMatchToken(TokenKind::Colon, JSMSG_COLON_AFTER_ASSERT_KEY)) {
+    if (!mustMatchToken(TokenKind::Colon, JSMSG_COLON_AFTER_ATTRIBUTE_KEY)) {
       return false;
     }
-    if (!mustMatchToken(TokenKind::String, JSMSG_ASSERT_STRING_LITERAL)) {
+    if (!mustMatchToken(TokenKind::String, JSMSG_WITH_CLAUSE_STRING_LITERAL)) {
       return false;
     }
 
@@ -5336,24 +5335,8 @@ GeneralParser<ParseHandler, Unit>::importDeclaration() {
   NameNodeType moduleSpec;
   MOZ_TRY_VAR(moduleSpec, stringLiteral());
 
-  // The `assert` keyword has a [no LineTerminator here] production before it in
-  // the grammar -- `with` does not. We need to handle this distinction.
-  if (!tokenStream.peekTokenSameLine(&tt, TokenStream::SlashIsRegExp)) {
+  if (!tokenStream.peekToken(&tt, TokenStream::SlashIsRegExp)) {
     return errorResult();
-  }
-
-  // `with` may have an EOL prior, so peek the next token and replace
-  // EOL if the next token is `with`.
-  if (tt == TokenKind::Eol) {
-    // Doing a regular peek won't produce Eol, but the actual next token.
-    TokenKind peekedToken;
-    if (!tokenStream.peekToken(&peekedToken, TokenStream::SlashIsRegExp)) {
-      return errorResult();
-    }
-
-    if (peekedToken == TokenKind::With) {
-      tt = TokenKind::With;
-    }
   }
 
   ListNodeType importAttributeList;
@@ -5708,25 +5691,8 @@ GeneralParser<ParseHandler, Unit>::exportFrom(uint32_t begin, Node specList) {
   MOZ_TRY_VAR(moduleSpec, stringLiteral());
 
   TokenKind tt;
-
-  // The `assert` keyword has a [no LineTerminator here] production before it in
-  // the grammar -- `with` does not. We need to handle this distinction.
-  if (!tokenStream.peekTokenSameLine(&tt, TokenStream::SlashIsRegExp)) {
+  if (!tokenStream.peekToken(&tt, TokenStream::SlashIsRegExp)) {
     return errorResult();
-  }
-
-  // `with` may have an EOL prior, so peek the next token and replace
-  // EOL if the next token is `with`.
-  if (tt == TokenKind::Eol) {
-    // Doing a regular peek won't produce Eol, but the actual next token.
-    TokenKind peekedToken;
-    if (!tokenStream.peekToken(&peekedToken, TokenStream::SlashIsRegExp)) {
-      return errorResult();
-    }
-
-    if (peekedToken == TokenKind::With) {
-      tt = TokenKind::With;
-    }
   }
 
   uint32_t moduleSpecPos = pos().begin;
@@ -12649,30 +12615,25 @@ GeneralParser<ParseHandler, Unit>::importExpr(YieldHandling yieldHandling,
     }
 
     Node optionalArg;
-    if (options().importAttributes()) {
-      if (next == TokenKind::Comma) {
-        tokenStream.consumeKnownToken(TokenKind::Comma,
-                                      TokenStream::SlashIsRegExp);
+    if (next == TokenKind::Comma) {
+      tokenStream.consumeKnownToken(TokenKind::Comma,
+                                    TokenStream::SlashIsRegExp);
+
+      if (!tokenStream.peekToken(&next, TokenStream::SlashIsRegExp)) {
+        return errorResult();
+      }
+
+      if (next != TokenKind::RightParen) {
+        MOZ_TRY_VAR(optionalArg,
+                    assignExpr(InAllowed, yieldHandling, TripledotProhibited));
 
         if (!tokenStream.peekToken(&next, TokenStream::SlashIsRegExp)) {
           return errorResult();
         }
 
-        if (next != TokenKind::RightParen) {
-          MOZ_TRY_VAR(optionalArg, assignExpr(InAllowed, yieldHandling,
-                                              TripledotProhibited));
-
-          if (!tokenStream.peekToken(&next, TokenStream::SlashIsRegExp)) {
-            return errorResult();
-          }
-
-          if (next == TokenKind::Comma) {
-            tokenStream.consumeKnownToken(TokenKind::Comma,
-                                          TokenStream::SlashIsRegExp);
-          }
-        } else {
-          MOZ_TRY_VAR(optionalArg,
-                      handler_.newPosHolder(TokenPos(pos().end, pos().end)));
+        if (next == TokenKind::Comma) {
+          tokenStream.consumeKnownToken(TokenKind::Comma,
+                                        TokenStream::SlashIsRegExp);
         }
       } else {
         MOZ_TRY_VAR(optionalArg,

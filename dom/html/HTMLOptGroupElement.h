@@ -27,10 +27,16 @@ class HTMLOptGroupElement final : public nsGenericHTMLElement {
                                        nsGenericHTMLElement)
 
   // nsINode
-  void InsertChildBefore(nsIContent* aKid, nsIContent* aBeforeThis,
-                         bool aNotify, ErrorResult& aRv) override;
-  void RemoveChildNode(nsIContent* aKid, bool aNotify,
-                       const BatchRemovalState*) override;
+  void InsertChildBefore(
+      nsIContent* aKid, nsIContent* aBeforeThis, bool aNotify, ErrorResult& aRv,
+      nsINode* aOldParent = nullptr,
+      MutationEffectOnScript aMutationEffectOnScript =
+          MutationEffectOnScript::DropTrustWorthiness) override;
+  void RemoveChildNode(
+      nsIContent* aKid, bool aNotify, const BatchRemovalState* aState,
+      nsINode* aNewParent = nullptr,
+      MutationEffectOnScript aMutationEffectOnScript =
+          MutationEffectOnScript::DropTrustWorthiness) override;
 
   // nsIContent
   void GetEventTargetParent(EventChainPreVisitor& aVisitor) override;

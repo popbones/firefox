@@ -6,10 +6,8 @@ package org.mozilla.fenix.home.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,7 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -40,13 +37,13 @@ import org.mozilla.fenix.home.ui.HomepageTestTag.HOMEPAGE_WORDMARK_TEXT
 import org.mozilla.fenix.home.ui.HomepageTestTag.PRIVATE_BROWSING_HOMEPAGE_BUTTON
 import org.mozilla.fenix.theme.FirefoxTheme
 import org.mozilla.fenix.theme.Theme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * Header for the homepage.
  */
 @Composable
 fun HomepageHeader(
-    showPrivateBrowsingButton: Boolean,
     browsingMode: BrowsingMode,
     browsingModeChanged: (BrowsingMode) -> Unit,
 ) {
@@ -61,18 +58,15 @@ fun HomepageHeader(
 
         WordmarkText()
 
-        if (showPrivateBrowsingButton) {
-            Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.weight(1f))
 
-            PrivateBrowsingButton(
-                browsingMode = browsingMode,
-                browsingModeChanged = browsingModeChanged,
-            )
-        }
+        PrivateBrowsingButton(
+            browsingMode = browsingMode,
+            browsingModeChanged = browsingModeChanged,
+        )
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun WordmarkLogo() {
     Image(
@@ -88,7 +82,6 @@ private fun WordmarkLogo() {
     )
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun WordmarkText() {
     Image(
@@ -103,7 +96,6 @@ private fun WordmarkText() {
     )
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun PrivateBrowsingButton(
     browsingMode: BrowsingMode,
@@ -112,7 +104,7 @@ private fun PrivateBrowsingButton(
     IconToggleButton(
         modifier = Modifier
             .background(
-                color = colorResource(getAttr(R.attr.mozac_ic_private_mode_circle_fill_background_color)),
+                color = colorResource(getAttr(iconsR.attr.mozac_ic_private_mode_circle_fill_background_color)),
                 shape = CircleShape,
             )
             .size(40.dp)
@@ -126,8 +118,8 @@ private fun PrivateBrowsingButton(
         },
     ) {
         Icon(
-            tint = colorResource(getAttr(R.attr.mozac_ic_private_mode_circle_fill_icon_color)),
-            painter = painterResource(R.drawable.mozac_ic_private_mode_24),
+            tint = colorResource(getAttr(iconsR.attr.mozac_ic_private_mode_circle_fill_icon_color)),
+            painter = painterResource(iconsR.drawable.mozac_ic_private_mode_24),
             contentDescription = stringResource(R.string.content_description_private_browsing),
         )
     }
@@ -146,19 +138,8 @@ private fun getAttr(resId: Int): Int {
 @PreviewLightDark
 private fun HomepageHeaderPreview() {
     FirefoxTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(color = FirefoxTheme.colors.layer1),
-        ) {
+        Row(modifier = Modifier.background(color = FirefoxTheme.colors.layer1)) {
             HomepageHeader(
-                showPrivateBrowsingButton = true,
-                browsingMode = BrowsingMode.Normal,
-                browsingModeChanged = {},
-            )
-
-            HomepageHeader(
-                showPrivateBrowsingButton = false,
                 browsingMode = BrowsingMode.Normal,
                 browsingModeChanged = {},
             )
@@ -170,19 +151,8 @@ private fun HomepageHeaderPreview() {
 @Preview
 private fun PrivateHomepageHeaderPreview() {
     FirefoxTheme(theme = Theme.Private) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(color = FirefoxTheme.colors.layer1),
-        ) {
+        Row(modifier = Modifier.background(color = FirefoxTheme.colors.layer1)) {
             HomepageHeader(
-                showPrivateBrowsingButton = true,
-                browsingMode = BrowsingMode.Private,
-                browsingModeChanged = {},
-            )
-
-            HomepageHeader(
-                showPrivateBrowsingButton = false,
                 browsingMode = BrowsingMode.Private,
                 browsingModeChanged = {},
             )

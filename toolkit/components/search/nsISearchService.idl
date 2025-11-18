@@ -169,10 +169,17 @@ interface nsISearchEngine : nsISupports
   readonly attribute AString loadPath;
 
   /**
-   * Whether or not this engine is provided by the application, e.g. it is
-   * in the list of configured search engines.
+   * Whether this engine is an app provided config engine, i.e., it comes
+   * from the search-config-v2 and is pre-configured based on the user's
+   * environment such as locale and region.
    */
   readonly attribute boolean isAppProvided;
+
+  /**
+   * Whether this engine is a config search engine, i.e., it comes
+   * from the search-config-v2.
+   */
+  readonly attribute boolean isConfigEngine;
 
   /**
    * Whether or not this engine is an in-memory only search engine.
@@ -513,13 +520,13 @@ interface nsISearchService : nsISupports
 
   /**
    * The currently active search engine.
-   * Unless the application doesn't ship any search plugin, this should never
+   * Unless the application doesn't ship any search engine, this should never
    * be null. If the currently active engine is removed, this attribute will
    * fallback first to the application default engine if it's not hidden, then to
    * the first visible engine, and as a last resort it will unhide the app
    * default engine.
    */
-  attribute nsISearchEngine defaultEngine;
+  readonly attribute nsISearchEngine defaultEngine;
 
   Promise getDefault();
   Promise setDefault(in nsISearchEngine engine, in unsigned short changeReason);
@@ -528,7 +535,7 @@ interface nsISearchService : nsISupports
    * The currently active search engine for private browsing mode.
    * @see defaultEngine.
    */
-  attribute nsISearchEngine defaultPrivateEngine;
+  readonly attribute nsISearchEngine defaultPrivateEngine;
 
   Promise getDefaultPrivate();
   Promise setDefaultPrivate(
@@ -542,17 +549,16 @@ interface nsISearchService : nsISupports
 
   /**
    * Allows the add-on manager to discover if a WebExtension based search engine
-   * may change the default to an application provided search engine.
+   * may change the default to a config search engine.
    * If that WebExtension is on the allow list, then it will override the
    * built-in engine's urls and parameters.
    *
    *  @param extension
-   *        The extension to load from.
+   *   The extension to load from.
    *  @returns An object with two booleans:
-   *        - canChangeToAppProvided: indicates if the WebExtension engine may
-   *            set the named engine as default e.g. it is application provided.
-   *        - canInstallEngine: indicates if the WebExtension engine may be
-   *            installed, e.g. it is not an app-provided engine.
+   *   canChangeToConfigEngine: indicates if the WebExtension engine may set the
+   *     already installed config search engine as default.
+   *   canInstallEngine: indicates if the WebExtension engine may be installed.
    */
   Promise maybeSetAndOverrideDefault(in jsval extension);
 

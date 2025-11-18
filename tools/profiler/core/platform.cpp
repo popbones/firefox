@@ -3584,9 +3584,9 @@ struct JavaMarkerWithDetails {
               MS::Location::MarkerTable};
     schema.SetTooltipLabel("{marker.name}");
     schema.SetChartLabel("{marker.data.name}");
-    schema.SetTableLabel("{marker.name} - {marker.data.name}");
-    schema.AddKeyLabelFormatSearchable("name", "Details", MS::Format::String,
-                                       MS::Searchable::Searchable);
+    schema.SetTableLabel("{marker.data.name}");
+    schema.AddKeyLabelFormat("name", "Details", MS::Format::String,
+                             MS::PayloadFlags::Searchable);
     return schema;
   }
 };
@@ -5210,10 +5210,10 @@ struct UnregisteredThreadLifetimeMarker {
   static MarkerSchema MarkerTypeDisplay() {
     using MS = MarkerSchema;
     MS schema{MS::Location::MarkerChart, MS::Location::MarkerTable};
-    schema.AddKeyFormatSearchable("Thread Id", MS::Format::Integer,
-                                  MS::Searchable::Searchable);
-    schema.AddKeyFormatSearchable("Thread Name", MS::Format::String,
-                                  MS::Searchable::Searchable);
+    schema.AddKeyFormat("Thread Id", MS::Format::Integer,
+                        MS::PayloadFlags::Searchable);
+    schema.AddKeyFormat("Thread Name", MS::Format::String,
+                        MS::PayloadFlags::Searchable);
     schema.AddKeyFormat("End Event", MS::Format::String);
     schema.AddStaticLabelValue(
         "Note",
@@ -5242,13 +5242,12 @@ struct UnregisteredThreadCPUMarker {
   static MarkerSchema MarkerTypeDisplay() {
     using MS = MarkerSchema;
     MS schema{MS::Location::MarkerChart, MS::Location::MarkerTable};
-    schema.AddKeyFormatSearchable("Thread Id", MS::Format::Integer,
-                                  MS::Searchable::Searchable);
+    schema.AddKeyFormat("Thread Id", MS::Format::Integer,
+                        MS::PayloadFlags::Searchable);
     schema.AddKeyFormat("CPU Time", MS::Format::Nanoseconds);
     schema.AddKeyFormat("CPU Utilization", MS::Format::Percentage);
     schema.SetChartLabel("{marker.data.CPU Utilization}");
-    schema.SetTableLabel(
-        "{marker.name} - Activity: {marker.data.CPU Utilization}");
+    schema.SetTableLabel("Activity: {marker.data.CPU Utilization}");
     return schema;
   }
 };
@@ -7616,8 +7615,7 @@ struct WakeUpCountMarker {
     MS schema{MS::Location::MarkerChart, MS::Location::MarkerTable};
     schema.AddKeyFormat("Count", MS::Format::Integer);
     schema.SetTooltipLabel("{marker.name} - {marker.data.label}");
-    schema.SetTableLabel(
-        "{marker.name} - {marker.data.label}: {marker.data.count}");
+    schema.SetTableLabel("{marker.data.label}: {marker.data.count}");
     return schema;
   }
 };
@@ -7739,7 +7737,8 @@ bool profiler_capture_backtrace_into(ProfileChunkedBuffer& aChunkedBuffer,
   MOZ_RELEASE_ASSERT(CorePS::Exists());
 
   if (!profiler_is_active() ||
-      aCaptureOptions == StackCaptureOptions::NoStack) {
+      aCaptureOptions == StackCaptureOptions::NoStack ||
+      profiler_is_locked_on_current_thread()) {
     return false;
   }
 

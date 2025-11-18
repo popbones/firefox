@@ -27,8 +27,8 @@ if typing.TYPE_CHECKING:
 # Type of a TOML value.
 TomlItem = typing.Union[
     str,
-    typing.List["TomlItem"],
-    typing.Dict[str, "TomlItem"],
+    list["TomlItem"],
+    dict[str, "TomlItem"],
     bool,
     int,
     float,
@@ -74,8 +74,71 @@ Cargo.lock to the HEAD version, run `git checkout -- Cargo.lock` or
 `hg revert Cargo.lock`.
 """
 
+# Some crates here would also be caught by the name prefix check,
+# but putting specific crates here allows for more granular advice
+# for what to use instead. Even more crates could have granular
+# advice here, but it's probably not worthwhile to provide granular
+# advice about crates whose vendoring is unlikely to be attempted,
+# such as the `rust_icu_` crates.
+PACKAGES_WE_DONT_WANT = {
+    "icu": "Use the specific ICU4X crate (crates whose name starts with icu_) instead of the metacrate.",
+    "rust_icu": "Use ICU4X (crates whose name starts with icu_) instead",
+    "unic": "Use ICU4X (crates whose name starts with icu_) instead",
+    "unicode-canonical-combining-class": "Use icu_normalizer instead",
+    "unicode-case-mapping": "Use icu_casemap instead",
+    "unicode-bidi-mirroring": "Use icu_properties instead",
+    "unicode-ccc": "Use icu_normalizer instead",
+    "unicode-general-category": "Use icu_properties instead",
+    "unicode-id": "Use icu_properties instead",
+    "unicode-id-start": "Use icu_properties instead",
+    # Impractical to require icu_properties instead of unicode-ident at this time.
+    #    "unicode-ident": "Use icu_properties instead",
+    "unicode-joining-type": "Use icu_properties instead",
+    "unicode-linebreak": "Use icu_segmenter instead",
+    # Exception until bug 1986265 is fixed.
+    #    "unicode-normalization": "Use icu_normalizer instead",
+    "unicode-properties": "Use icu_properties instead",
+    "unicode-script": "Use icu_properties instead",
+    "unicode-segmentation": "Use icu_segmenter instead",
+    "unicode-xid": "Use icu_properties instead",
+    "unicode_categories": "Use icu_properties instead",
+    "unicode_names": "Avoid including data for Unicode character names",
+    "unicode_names2": "Avoid including data for Unicode character names",
+    "feruca": "Use icu_collator instead",
+    "idna_mapping": "Make sure to use a version of idna_adapter that uses ICU4X",
+    "unic-bidi": "Use unicode-bidi instead",
+    "unic-idna": "Use idna instead",
+    "unic-normal": "Use icu_normalizer instead",
+    "unic-segment": "Use icu_segmenter instead",
+    "unic-ucd": "Use icu_properties instead",
+    "num-format": "Use icu_decimal instead",
+    "encoding": "Use encoding_rs instead",
+    # Impractical to require icu_casemap instead of unicase at this time.
+    #    "unicase": "Use icu_casemap instead",
+}
 
-PACKAGES_WE_DONT_WANT = {}
+PREFIXES_WE_DONT_WANT = {
+    "unicode-": "Use ICU4X (crates whose name starts with icu_) instead",
+    "unic-": "Use ICU4X (crates whose name starts with icu_) instead",
+    "rust_icu_": "Use ICU4X (crates whose name starts with icu_) instead",
+    "unicode_": "Use ICU4X (crates whose name starts with icu_) instead",
+}
+
+ALLOWED_DESPITE_PREFIX = {
+    "unicode-bidi",  # Out of scope for ICU4X; used with ICU4X data
+    "unicode-bidi-ffi",  # FFI for previous
+    "unicode-ident",  # Impractical to require icu_properties at this time
+    "unicode-normalization",  # Exception until bug 1986265 is fixed.
+    "unicode-width",  # icu_properties has the raw data but not the algorithm
+    "unic-char-property",  # Until https://github.com/denoland/rust-urlpattern/pull/67 is fixed
+    "unic-char-range",  # Until https://github.com/denoland/rust-urlpattern/pull/67 is fixed
+    "unic-common",  # Until https://github.com/denoland/rust-urlpattern/pull/67 is fixed
+    "unic-ucd-ident",  # Until https://github.com/denoland/rust-urlpattern/pull/67 is fixed
+    "unic-ucd-version",  # Until https://github.com/denoland/rust-urlpattern/pull/67 is fixed
+    "unic-langid",  # We want to migrate to icu_locale eventually
+    "unic-langid-ffi",  # FFI for previous
+    "unic-langid-impl",  # Implementation detail of unic-langid
+}
 
 PACKAGES_WE_ALWAYS_WANT_AN_OVERRIDE_OF = [
     "autocfg",
@@ -86,15 +149,14 @@ PACKAGES_WE_ALWAYS_WANT_AN_OVERRIDE_OF = [
 ]
 
 
-# Historically duplicated crates. Eventually we want this list to be empty.
-# If you do need to make changes increasing the number of duplicates, please
-# add a comment as to why.
-TOLERATED_DUPES = {
-    # Transition from time 0.1 to 0.3 underway, but chrono is stuck on 0.1
-    # and hasn't been updated in 1.5 years (an hypothetical update is
-    # expected to remove the dependency on time altogether).
-    "time": 2,
-}
+def dont_want_package(name):
+    if reason := PACKAGES_WE_DONT_WANT.get(name):
+        return reason
+    if name in ALLOWED_DESPITE_PREFIX:
+        return None
+    for prefix, reason in PREFIXES_WE_DONT_WANT.items():
+        if name.startswith(prefix):
+            return reason
 
 
 class VendorRust(MozbuildObject):
@@ -147,18 +209,24 @@ class VendorRust(MozbuildObject):
                 )
             return cargo
 
-    def check_cargo_version(self, cargo):
-        """
-        Ensure that Cargo is new enough.
-        """
+    def cargo_version(self, cargo):
         out = (
             subprocess.check_output([cargo, "--version"])
             .splitlines()[0]
             .decode("UTF-8")
         )
         if not out.startswith("cargo"):
+            raise RuntimeError("Unexpected `cargo --version` output")
+        return LooseVersion(out.split()[1])
+
+    def check_cargo_version(self, cargo):
+        """
+        Ensure that Cargo is new enough.
+        """
+        try:
+            version = self.cargo_version(cargo)
+        except RuntimeError:
             return False
-        version = LooseVersion(out.split()[1])
         # Cargo 1.85.0 changed vendoring in a way that creates a lot of noise
         # if we go back and forth between vendoring with an older version and
         # a newer version. Only allow the newer versions.
@@ -204,36 +272,6 @@ Please commit or stash these changes before vendoring, or re-run with `--ignore-
                 ),
             )
         return modified
-
-    def check_openssl(self):
-        """
-        Set environment flags for building with openssl.
-
-        MacOS doesn't include openssl, but the openssl-sys crate used by
-        mach-vendor expects one of the system. It's common to have one
-        installed in /usr/local/opt/openssl by homebrew, but custom link
-        flags are necessary to build against it.
-        """
-
-        test_paths = ["/usr/include", "/usr/local/include"]
-        if any(
-            [os.path.exists(os.path.join(path, "openssl/ssl.h")) for path in test_paths]
-        ):
-            # Assume we can use one of these system headers.
-            return None
-
-        if os.path.exists("/usr/local/opt/openssl/include/openssl/ssl.h"):
-            # Found a likely homebrew install.
-            self.log(
-                logging.INFO, "openssl", {}, "Using OpenSSL in /usr/local/opt/openssl"
-            )
-            return {
-                "OPENSSL_INCLUDE_DIR": "/usr/local/opt/openssl/include",
-                "OPENSSL_LIB_DIR": "/usr/local/opt/openssl/lib",
-            }
-
-        self.log(logging.ERROR, "openssl", {}, "OpenSSL not found!")
-        return None
 
     def _ensure_cargo(self):
         """
@@ -301,6 +339,7 @@ Please commit or stash these changes before vendoring, or re-run with `--ignore-
         ],
         "BSD-3-Clause": [
             "subtle",
+            "uritemplate-next",
         ],
     }
 
@@ -440,7 +479,7 @@ Please commit or stash these changes before vendoring, or re-run with `--ignore-
             with open(toml_file, encoding="utf-8") as fh:
                 toml_data = toml.load(fh)
 
-            package_entry: typing.Dict[str, TomlItem] = toml_data["package"]
+            package_entry: dict[str, TomlItem] = toml_data["package"]
             license = package_entry.get("license", None)
             license_file = package_entry.get("license-file", None)
 
@@ -599,7 +638,9 @@ license file's hash.
         # We use check_call instead of mozprocess to ensure errors are displayed.
         # We do an |update -p| here to regenerate the Cargo.lock file with minimal
         # changes. See bug 1324462
-        res = subprocess.run([cargo, "update", "-p", "gkrust"], cwd=self.topsrcdir)
+        res = subprocess.run(
+            [cargo, "update", "-p", "gkrust"], cwd=self.topsrcdir, check=False
+        )
         if res.returncode:
             self.log(logging.ERROR, "cargo_update_failed", {}, "Cargo update failed.")
             return False
@@ -637,14 +678,14 @@ license file's hash.
                             "and comes from {source}.",
                         )
                         failed = True
-                elif package["name"] in PACKAGES_WE_DONT_WANT:
+                elif reason := dont_want_package(package["name"]):
                     self.log(
                         logging.ERROR,
                         "undesirable",
                         {
                             "crate": package["name"],
                             "version": package["version"],
-                            "reason": PACKAGES_WE_DONT_WANT[package["name"]],
+                            "reason": reason,
                         },
                         "Crate {crate} is not desirable: {reason}",
                     )
@@ -660,74 +701,16 @@ license file's hash.
                         if all(d.split()[0] != name for d in p.get("dependencies", []))
                     ]
                 )
-                expected = TOLERATED_DUPES.get(name, 1)
-                if num > expected:
+                if num > 1:
                     self.log(
                         logging.ERROR,
                         "duplicate_crate",
                         {
                             "crate": name,
                             "num": num,
-                            "expected": expected,
-                            "file": Path(__file__).relative_to(self.topsrcdir),
                         },
-                        "There are {num} different versions of crate {crate} "
-                        "(expected {expected}). Please avoid the extra duplication "
-                        "or adjust TOLERATED_DUPES in {file} if not possible "
-                        "(but we'd prefer the former).",
-                    )
-                    failed = True
-                elif num < expected and num > 1:
-                    self.log(
-                        logging.ERROR,
-                        "less_duplicate_crate",
-                        {
-                            "crate": name,
-                            "num": num,
-                            "expected": expected,
-                            "file": Path(__file__).relative_to(self.topsrcdir),
-                        },
-                        "There are {num} different versions of crate {crate} "
-                        "(expected {expected}). Please adjust TOLERATED_DUPES in "
-                        "{file} to reflect this improvement.",
-                    )
-                    failed = True
-                elif num < expected and num > 0:
-                    self.log(
-                        logging.ERROR,
-                        "less_duplicate_crate",
-                        {
-                            "crate": name,
-                            "file": Path(__file__).relative_to(self.topsrcdir),
-                        },
-                        "Crate {crate} is not duplicated anymore. "
-                        "Please adjust TOLERATED_DUPES in {file} to reflect this improvement.",
-                    )
-                    failed = True
-                elif name in TOLERATED_DUPES and expected <= 1:
-                    self.log(
-                        logging.ERROR,
-                        "broken_allowed_dupes",
-                        {
-                            "crate": name,
-                            "file": Path(__file__).relative_to(self.topsrcdir),
-                        },
-                        "Crate {crate} is not duplicated. Remove it from "
-                        "TOLERATED_DUPES in {file}.",
-                    )
-                    failed = True
-
-            for name in TOLERATED_DUPES:
-                if name not in grouped:
-                    self.log(
-                        logging.ERROR,
-                        "outdated_allowed_dupes",
-                        {
-                            "crate": name,
-                            "file": Path(__file__).relative_to(self.topsrcdir),
-                        },
-                        "Crate {crate} is not in Cargo.lock anymore. Remove it from "
-                        "TOLERATED_DUPES in {file}.",
+                        "There are {num} different versions of crate {crate}. "
+                        "Please avoid the extra duplication.",
                     )
                     failed = True
 
@@ -830,7 +813,10 @@ license file's hash.
             return False
 
         res = subprocess.run(
-            [cargo, "vendor", vendor_dir], cwd=self.topsrcdir, stdout=subprocess.PIPE
+            [cargo, "vendor", vendor_dir],
+            cwd=self.topsrcdir,
+            stdout=subprocess.PIPE,
+            check=False,
         )
         if res.returncode:
             self.log(logging.ERROR, "cargo_vendor_failed", {}, "Cargo vendor failed.")
@@ -859,9 +845,8 @@ license file's hash.
             self.log(
                 logging.ERROR,
                 "vendor_failed",
-                {},
-                """cargo vendor didn't output a unique replace-with. Found: %s."""
-                % replaces,
+                dict(replaces=replaces),
+                """cargo vendor didn't output a unique replace-with. Found: {replaces}.""",
             )
             return False
 
@@ -881,6 +866,81 @@ license file's hash.
                     directory=replace["directory"],
                 )
             )
+
+        # cargo 1.89 started adding things that older versions didn't add, but
+        # it's a tough sell to bump the vendoring requirement to 1.89 when we're
+        # still using 1.86 on CI.
+        if self.cargo_version(cargo) >= "1.89":
+            for package in cargo_lock["package"]:
+                # Crates vendored from crates.io are affected by changes, but not
+                # those vendored from git.
+                if not package.get("source", "").startswith("registry+"):
+                    continue
+                package_dir = Path(vendor_dir) / package["name"]
+                # Cargo.toml.orig was not included before but now is.
+                unlinked = ["Cargo.toml.orig"]
+                with (package_dir / "Cargo.toml").open(encoding="utf-8") as fh:
+                    toml_data = toml.load(fh)
+                    cargo_package = toml_data.get("package", {})
+                    # A readme explicitly listed in package.readme is now included
+                    # even when it's not in package.include.
+                    if readme := cargo_package.get("readme"):
+                        if includes := cargo_package.get("include"):
+                            if not any(
+                                mozpath.match(readme, include.removeprefix("/"))
+                                for include in includes
+                            ):
+                                try:
+                                    (package_dir / readme).unlink()
+                                    unlinked.append(readme)
+                                except FileNotFoundError:
+                                    pass
+
+                # dotfiles weren't included before, but now are.
+                for path in package_dir.glob("**/.*"):
+                    # The checksum file is handled separately because it needs to
+                    # be updated.
+                    if path.name == ".cargo-checksum.json":
+                        continue
+                    if path.is_dir():
+                        for root_path, dirs, files in os.walk(path, topdown=False):
+                            root = Path(root_path)
+                            for name in files:
+                                to_unlink = root / name
+                                try:
+                                    to_unlink.unlink()
+                                    unlinked.append(
+                                        mozpath.normsep(
+                                            str(to_unlink.relative_to(package_dir))
+                                        )
+                                    )
+                                except FileNotFoundError:
+                                    pass
+                            for name in dirs:
+                                try:
+                                    (root / name).rmdir()
+                                except OSError:
+                                    pass
+                    else:
+                        try:
+                            path.unlink()
+                            unlinked.append(
+                                mozpath.normsep(str(path.relative_to(package_dir)))
+                            )
+                        except FileNotFoundError:
+                            pass
+
+                # Update the checksums with the changes we made.
+                checksum_json = package_dir / ".cargo-checksum.json"
+                with checksum_json.open(encoding="utf-8") as fh:
+                    checksum_data = json.load(fh)
+                for path in unlinked:
+                    try:
+                        del checksum_data["files"][path]
+                    except KeyError:
+                        pass
+                with checksum_json.open(mode="w", encoding="utf-8") as fh:
+                    json.dump(checksum_data, fh, separators=(",", ":"))
 
         if not self._check_licenses(vendor_dir) and not force:
             self.log(

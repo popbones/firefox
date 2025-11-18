@@ -8,12 +8,12 @@
 #define nsMathMLContainerFrame_h___
 
 #include "mozilla/Attributes.h"
-#include "nsContainerFrame.h"
-#include "nsBlockFrame.h"
-#include "nsInlineFrame.h"
-#include "nsMathMLOperators.h"
-#include "nsMathMLFrame.h"
 #include "mozilla/Likely.h"
+#include "nsBlockFrame.h"
+#include "nsContainerFrame.h"
+#include "nsInlineFrame.h"
+#include "nsMathMLFrame.h"
+#include "nsMathMLOperators.h"
 
 namespace mozilla {
 class PresShell;
@@ -120,7 +120,7 @@ class nsMathMLContainerFrame : public nsContainerFrame, public nsMathMLFrame {
   //        re-laid too (e.g., this happens with <munder>, <mover>,
   //        <munderover>).
   // nsresult AttributeChanged(int32_t aNameSpaceID, nsAtom* aAttribute,
-  //                           int32_t aModType) override;
+  //                           AttrModType aModType) override;
 
   // helper function to apply mirroring to a horizontal coordinate, if needed.
   nscoord MirrorIfRTL(nscoord aParentWidth, nscoord aChildWidth,
@@ -187,13 +187,13 @@ class nsMathMLContainerFrame : public nsContainerFrame, public nsMathMLFrame {
    *        any space you want for border/padding in the desired size you
    *        return.
    */
-  virtual nsresult Place(DrawTarget* aDrawTarget, const PlaceFlags& aFlags,
-                         ReflowOutput& aDesiredSize);
+  virtual void Place(DrawTarget* aDrawTarget, const PlaceFlags& aFlags,
+                     ReflowOutput& aDesiredSize);
 
   // helper to re-sync the automatic data in our children and notify our parent
   // to reflow us when changes (e.g., append/insert/remove) happen in our child
   // list
-  virtual nsresult ChildListChanged(int32_t aModType);
+  virtual nsresult ChildListChanged();
 
   // helper to get the preferred size that a container frame should use to fire
   // the stretch on its stretchy child frames.
@@ -211,8 +211,8 @@ class nsMathMLContainerFrame : public nsContainerFrame, public nsMathMLFrame {
    * (typically invalid markup) was encountered during reflow. Parameters are
    * the same as Place().
    */
-  nsresult PlaceAsMrow(DrawTarget* aDrawTarget, const PlaceFlags& aFlags,
-                       ReflowOutput& aDesiredSize);
+  void PlaceAsMrow(DrawTarget* aDrawTarget, const PlaceFlags& aFlags,
+                   ReflowOutput& aDesiredSize);
 
   /*
    * Helper to call ReportErrorToConsole for parse errors involving
@@ -359,12 +359,6 @@ class nsMathMLContainerFrame : public nsContainerFrame, public nsMathMLFrame {
   // overflows, the frame bounds, and mBoundingMetrics to set and store the
   // overflow.
   void GatherAndStoreOverflow(ReflowOutput* aMetrics);
-
-  /**
-   * Call DidReflow() if the NS_FRAME_IN_REFLOW frame bit is set on aFirst
-   * and all its next siblings. The method does nothing if aFirst == nullptr.
-   */
-  static void DidReflowChildren(nsIFrame* aFirst);
 
   /**
    * Recompute mIntrinsicISize if it's not already up to date.

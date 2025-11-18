@@ -140,14 +140,14 @@ impl ColorSpace {
     #[inline]
     pub fn is_rgb_or_xyz_like(&self) -> bool {
         match self {
-            Self::Srgb |
-            Self::SrgbLinear |
-            Self::DisplayP3 |
-            Self::A98Rgb |
-            Self::ProphotoRgb |
-            Self::Rec2020 |
-            Self::XyzD50 |
-            Self::XyzD65 => true,
+            Self::Srgb
+            | Self::SrgbLinear
+            | Self::DisplayP3
+            | Self::A98Rgb
+            | Self::ProphotoRgb
+            | Self::Rec2020
+            | Self::XyzD50
+            | Self::XyzD65 => true,
             _ => false,
         }
     }
@@ -191,7 +191,7 @@ bitflags! {
 
 /// An absolutely specified color, using either rgb(), rgba(), lab(), lch(),
 /// oklab(), oklch() or color().
-#[derive(Copy, Clone, Debug, MallocSizeOf, PartialEq, ToShmem)]
+#[derive(Copy, Clone, Debug, MallocSizeOf, PartialEq, ToShmem, ToTyped)]
 #[cfg_attr(feature = "servo", derive(Deserialize, Serialize))]
 #[repr(C)]
 pub struct AbsoluteColor {
@@ -504,11 +504,11 @@ impl AbsoluteColor {
                 ChannelKeyword::H => self.c2(),
                 _ => return Err(()),
             },
-            ColorSpace::SrgbLinear |
-            ColorSpace::DisplayP3 |
-            ColorSpace::A98Rgb |
-            ColorSpace::ProphotoRgb |
-            ColorSpace::Rec2020 => match channel_keyword {
+            ColorSpace::SrgbLinear
+            | ColorSpace::DisplayP3
+            | ColorSpace::A98Rgb
+            | ColorSpace::ProphotoRgb
+            | ColorSpace::Rec2020 => match channel_keyword {
                 ChannelKeyword::R => self.c0(),
                 ChannelKeyword::G => self.c1(),
                 ChannelKeyword::B => self.c2(),

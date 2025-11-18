@@ -4,19 +4,20 @@
 
 package org.mozilla.fenix.settings.creditcards
 
-import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
+import android.widget.AdapterView
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.MenuProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,7 +59,6 @@ class CreditCardEditorFragment :
 
     private lateinit var interactor: CreditCardEditorInteractor
 
-    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -90,14 +90,20 @@ class CreditCardEditorFragment :
                     placeCursorAtEnd()
                     showKeyboard()
                 }
-                expiryMonthDropDown.setOnTouchListener { view, _ ->
-                    view?.hideKeyboard()
-                    false
-                }
-                expiryYearDropDown.setOnTouchListener { view, _ ->
-                    view?.hideKeyboard()
-                    false
-                }
+                expiryMonthDropDown.onItemSelectedListener =
+                    object : AdapterView.OnItemSelectedListener {
+                        override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                            expiryMonthDropDown.hideKeyboard()
+                        }
+                        override fun onNothingSelected(parent: AdapterView<*>) = Unit
+                    }
+                expiryYearDropDown.onItemSelectedListener =
+                    object : AdapterView.OnItemSelectedListener {
+                        override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                            expiryYearDropDown.hideKeyboard()
+                        }
+                        override fun onNothingSelected(parent: AdapterView<*>) = Unit
+                    }
             }
         }
     }
@@ -150,7 +156,7 @@ class CreditCardEditorFragment :
     }
 
     private fun showDeleteDialog(onPositiveClickListener: DialogInterface.OnClickListener) {
-        deleteDialog = AlertDialog.Builder(requireContext()).apply {
+        deleteDialog = MaterialAlertDialogBuilder(requireContext()).apply {
             setMessage(R.string.credit_cards_delete_dialog_confirmation_2)
             setNegativeButton(R.string.credit_cards_cancel_button) { dialog: DialogInterface, _ ->
                 dialog.cancel()

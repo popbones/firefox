@@ -1,11 +1,11 @@
 plugins {
     alias(libs.plugins.kotlin.android)
+    id 'com.android.library'
+    id 'checkstyle'
+    id 'org.mozilla.apilint'
 }
 
 import groovy.json.JsonOutput
-
-apply plugin: 'com.android.library'
-apply plugin: 'checkstyle'
 
 // The SDK binding generation tasks depend on the JAR creation task of the
 // :annotations project.
@@ -20,8 +20,8 @@ android {
     useLibrary 'android.test.mock'
 
     defaultConfig {
-        targetSdkVersion = project.ext.targetSdkVersion
-        minSdkVersion = project.ext.minSdkVersion
+        targetSdkVersion project.ext.targetSdkVersion
+        minSdkVersion 21 // this will be updated to project.ext.minSdkVersion: https://bugzilla.mozilla.org/show_bug.cgi?id=1978592
         manifestPlaceholders = project.ext.manifestPlaceholders
 
         versionCode project.ext.versionCode
@@ -215,14 +215,13 @@ configurations {
 
 dependencies {
     implementation libs.androidx.annotation
+    implementation libs.androidx.annotation.experimental
     implementation libs.androidx.collection
     implementation libs.androidx.core
-
-    implementation libs.play.services.fido
-    implementation "org.yaml:snakeyaml:2.2"
-
     implementation libs.androidx.lifecycle.common
     implementation libs.androidx.lifecycle.process
+    implementation libs.play.services.fido
+    implementation "org.yaml:snakeyaml:2.2"
 
     if (mozconfig.substs.MOZ_ANDROID_HLS_SUPPORT) {
         implementation project(":exoplayer2")
@@ -230,17 +229,16 @@ dependencies {
 
     testImplementation platform(libs.junit.bom)
     testImplementation libs.junit4
-    testRuntimeOnly libs.junit.vintage
     testRuntimeOnly libs.junit.platform.launcher
-    testImplementation libs.testing.robolectric
+    testRuntimeOnly libs.junit.vintage
+    testImplementation libs.robolectric
 
-    androidTestImplementation libs.testing.coroutines
     androidTestImplementation libs.androidx.core.ktx
-    androidTestImplementation libs.androidx.test.runner
-    androidTestImplementation libs.androidx.test.rules
+    androidTestImplementation libs.androidx.test.espresso.core
     androidTestImplementation libs.androidx.test.junit
-    androidTestImplementation libs.androidx.espresso.core
-
+    androidTestImplementation libs.androidx.test.rules
+    androidTestImplementation libs.androidx.test.runner
+    androidTestImplementation libs.kotlinx.coroutines.test
     androidTestImplementation 'com.koushikdutta.async:androidasync:3.1.0'
 }
 
@@ -327,6 +325,11 @@ android.libraryVariants.all { variant ->
              variant.aidlCompileProvider.get().sourceOutputDir.asFile.get()
         )
         options.addStringOption("Xmaxwarns", "1000")
+        if (!project.hasProperty('android-lint')) {
+            // It's not helpful to produce 100s of lint warnings during regular
+            // builds.  (When linting, it is helpful.)
+            options.addBooleanOption("Xdoclint:-missing", true)
+        }
 
         classpath += files(android.getBootClasspath())
         classpath += variant.javaCompileProvider.get().classpath
@@ -546,8 +549,6 @@ tasks.register("generateSDKBindings", JavaExec) {
 
 preBuild.dependsOn(":verifyGleanVersion")
 
-apply plugin: 'org.mozilla.apilint'
-
 apiLint {
     // TODO: Change this to `org` after hiding org.mozilla.gecko
     packageFilter = 'org.mozilla.geckoview'
@@ -570,6 +571,7 @@ apiLint {
         'org.json',
         'org.mozilla.geckoview',
     ]
+    helpCommand = { variantName -> "\$ ./mach gradle :geckoview:apiUpdateFile${variantName}" }
 }
 
 // generateDebugLintModel and other lint tasks that depend on it check the geckoview assets folder

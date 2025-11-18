@@ -31,6 +31,7 @@ skip-if = [
   "win10_2009 && bits == 64 && !debug", # Bug 1652119
   "win11_2009 && bits == 64 && !debug", # Bug 1652119
   "socketprocess_networking", # Bug 1759035
+  "os == 'linux' && os_version == '24.04' && processor == 'x86_64' && display == 'x11' && opt", # Bug 1987229
 ]
 run-sequentially = "very high failure rate in parallel"
 
@@ -45,6 +46,10 @@ skip-if = ["socketprocess_networking"] # Bug 1759035
 
 ["test_tracking_db_service.js"]
 skip-if = ["os == 'android'"] # Bug 1697936
+
+["test_url_classifier_allow_list_category_pref_migration.js"]
+
+["test_user_interaction_pref.js"]
 
 ["test_validate_strip_on_share_list.js"]
 

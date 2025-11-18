@@ -258,6 +258,10 @@ config("common_inherited_config") {
   if (is_ubsan) {
     cflags += [ "-fsanitize=float-cast-overflow" ]
   }
+
+  if (rtc_allow_deprecated_namespaces) {
+    defines += [ "WEBRTC_ALLOW_DEPRECATED_NAMESPACES" ]
+  }
 }
 
 # TODO(bugs.webrtc.org/9693): Remove the possibility to suppress this warning
@@ -382,8 +386,7 @@ config("common_config") {
 
   if (is_clang) {
     cflags += [
-      # TODO(webrtc:13219): Fix -Wshadow instances and enable.
-      "-Wno-shadow",
+      "-Wshadow",
 
       # See https://reviews.llvm.org/D56731 for details about this
       # warning.
@@ -599,7 +602,6 @@ if (!build_with_chromium) {
         "api/video_codecs:video_encoder_factory_template_libvpx_vp9_adapter",
         "api/video_codecs:video_encoder_factory_template_open_h264_adapter",
         "logging:rtc_event_log_api",
-#        "p2p:rtc_p2p",
         "pc:libjingle_peerconnection",
         "pc:rtc_pc",
         "sdk",
@@ -639,6 +641,10 @@ if (!build_with_chromium) {
 
     if (rtc_enable_protobuf) {
       deps += [ "logging:rtc_event_log_proto" ]
+    }
+
+    if (rtc_include_internal_audio_device) {
+      deps += [ "api/audio:create_audio_device_module" ]
     }
   }
 
@@ -688,6 +694,8 @@ if (rtc_include_tests && !build_with_chromium) {
       "api:rtc_api_unittests",
       "api/audio:audio_api_unittests",
       "api/audio_codecs/test:audio_codecs_api_unittests",
+      "api/crypto:crypto_options_unittest",
+      "api/crypto:options",
       "api/numerics:numerics_unittests",
       "api/task_queue:pending_task_safety_flag_unittests",
       "api/test/metrics:metrics_unittests",
@@ -878,4 +886,15 @@ group("poison_environment_construction") {
 }
 
 group("poison_software_video_codecs") {
+}
+
+if (!build_with_chromium) {
+  # Write debug logs to gn_logs.txt.
+  # This is also required for Siso builds.
+  import("//chromium/build/gn_logs.gni")
+  lines = [
+            "Generated during 'gn gen' by //BUILD.gn.",
+            "",
+          ] + build_gn_logs
+  write_file("$root_build_dir/gn_logs.txt", lines)
 }

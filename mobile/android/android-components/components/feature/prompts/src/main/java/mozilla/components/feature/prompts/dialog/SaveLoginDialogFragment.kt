@@ -46,7 +46,7 @@ import mozilla.components.support.ktx.android.view.hideKeyboard
 import mozilla.components.support.ktx.android.view.toScope
 import mozilla.components.support.utils.ext.getParcelableCompat
 import kotlin.reflect.KProperty
-import com.google.android.material.R as MaterialR
+import com.google.android.material.R as materialR
 
 private const val KEY_LOGIN_HINT = "KEY_LOGIN_HINT"
 private const val KEY_LOGIN_USERNAME = "KEY_LOGIN_USERNAME"
@@ -90,7 +90,6 @@ internal class SaveLoginDialogFragment : PromptDialogFragment() {
     private var loginValid = false
     private var validateStateUpdate: Job? = null
 
-    private var onShowSnackbarAfterLoginChange: (Boolean) -> Unit = { _ -> }
     private var isUpdate = false
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
@@ -107,8 +106,7 @@ internal class SaveLoginDialogFragment : PromptDialogFragment() {
                 CoroutineScope(IO).launch {
                     delay(KEYBOARD_HIDING_DELAY)
                     launch(Main) {
-                        val bottomSheet =
-                            findViewById<View>(MaterialR.id.design_bottom_sheet) as FrameLayout
+                        val bottomSheet = findViewById<View>(materialR.id.design_bottom_sheet) as FrameLayout
                         val behavior = BottomSheetBehavior.from(bottomSheet)
                         behavior.state = BottomSheetBehavior.STATE_EXPANDED
                     }
@@ -184,8 +182,6 @@ internal class SaveLoginDialogFragment : PromptDialogFragment() {
         )
         emitSaveFact()
         dismiss()
-
-        onShowSnackbarAfterLoginChange.invoke(isUpdate)
     }
 
     @VisibleForTesting
@@ -404,7 +400,6 @@ internal class SaveLoginDialogFragment : PromptDialogFragment() {
          * @param hint a value that helps to determine the appropriate prompting behavior.
          * @param entry represents login information on a given domain.
          * @param icon represents the icon to be displayed on the dialog.
-         * @param onShowSnackbarAfterLoginChange callback to display a snackbar after save/update.
          * */
         fun newInstance(
             sessionId: String,
@@ -413,7 +408,6 @@ internal class SaveLoginDialogFragment : PromptDialogFragment() {
             hint: Int,
             entry: LoginEntry,
             icon: Bitmap? = null,
-            onShowSnackbarAfterLoginChange: (Boolean) -> Unit,
         ): SaveLoginDialogFragment {
             val fragment = SaveLoginDialogFragment()
             val arguments = fragment.arguments ?: Bundle()
@@ -432,7 +426,6 @@ internal class SaveLoginDialogFragment : PromptDialogFragment() {
             }
 
             fragment.arguments = arguments
-            fragment.onShowSnackbarAfterLoginChange = onShowSnackbarAfterLoginChange
             return fragment
         }
     }

@@ -545,13 +545,6 @@
     "comment": "TODO: add a comment explaining why this expectation is required (include links to issues)"
   },
   {
-    "testIdPattern": "[page.spec] Page Page.pdf should respect timeout",
-    "platforms": ["darwin", "linux", "win32"],
-    "parameters": ["firefox"],
-    "expectations": ["SKIP"],
-    "comment": "https://github.com/puppeteer/puppeteer/issues/12152"
-  },
-  {
     "testIdPattern": "[page.spec] Page Page.setBypassCSP *",
     "platforms": ["darwin", "linux", "win32"],
     "parameters": ["firefox", "webDriverBiDi"],
@@ -1027,13 +1020,6 @@
     "comment": "TODO: add a comment explaining why this expectation is required (include links to issues)"
   },
   {
-    "testIdPattern": "[launcher.spec] Launcher specs Puppeteer Puppeteer.connect should be able to reconnect to a disconnected browser",
-    "platforms": ["darwin", "linux", "win32"],
-    "parameters": ["firefox", "webDriverBiDi"],
-    "expectations": ["FAIL"],
-    "comment": "TODO: add a comment explaining why this expectation is required (include links to issues)"
-  },
-  {
     "testIdPattern": "[launcher.spec] Launcher specs Puppeteer Puppeteer.connect should support acceptInsecureCerts option",
     "platforms": ["darwin", "linux", "win32"],
     "parameters": ["firefox", "webDriverBiDi"],
@@ -1104,25 +1090,11 @@
     "comment": "For some reason it times out on MacOS. Perhaps it's a bug in chromium-bidi"
   },
   {
-    "testIdPattern": "[navigation.spec] navigation Page.goto should work when a page redirects on DOMContentLoaded",
-    "platforms": ["darwin", "linux", "win32"],
-    "parameters": ["firefox", "webDriverBiDi"],
-    "expectations": ["FAIL"],
-    "comment": "https://github.com/puppeteer/puppeteer/issues/12929 and https://github.com/w3c/webdriver-bidi/issues/763"
-  },
-  {
     "testIdPattern": "[navigation.spec] navigation Page.goto should work when navigating to a URL with a client redirect",
     "platforms": ["darwin", "linux", "win32"],
     "parameters": ["cdp", "chrome"],
     "expectations": ["FAIL"],
     "comment": "In CDP implementation, we get the client redirect response."
-  },
-  {
-    "testIdPattern": "[navigation.spec] navigation Page.goto should work when navigating to a URL with a client redirect",
-    "platforms": ["darwin", "linux", "win32"],
-    "parameters": ["firefox", "webDriverBiDi"],
-    "expectations": ["FAIL"],
-    "comment": "https://github.com/puppeteer/puppeteer/issues/12929 and https://github.com/w3c/webdriver-bidi/issues/763"
   },
   {
     "testIdPattern": "[navigation.spec] navigation Page.goto should work when page calls history API in beforeunload",
@@ -1422,6 +1394,13 @@
     "parameters": ["firefox", "webDriverBiDi"],
     "expectations": ["FAIL"],
     "comment": "`HTTPRequest.resourceType()` has no eqivalent in BiDi spec"
+  },
+  {
+    "testIdPattern": "[requestinterception.spec] request interception Page.setRequestInterception should cache stylesheet if cache enabled",
+    "platforms": ["darwin", "linux", "win32"],
+    "parameters": ["firefox", "webDriverBiDi"],
+    "expectations": ["FAIL"],
+    "comment": "Cached stylesheets cannot be intercepted in Firefox. https://github.com/puppeteer/puppeteer/issues/14234"
   },
   {
     "testIdPattern": "[screenshot.spec] Screenshots ElementHandle.screenshot should run in parallel with page.close()",

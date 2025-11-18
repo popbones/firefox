@@ -91,6 +91,7 @@ MACH_COMMANDS = {
     "data-review": MachCommandReference(
         "toolkit/components/glean/build_scripts/mach_commands.py"
     ),
+    "devtools-node-test": MachCommandReference("devtools/mach_commands.py"),
     "doc": MachCommandReference("tools/moztreedocs/mach_commands.py"),
     "doctor": MachCommandReference("python/mozbuild/mozbuild/mach_commands.py"),
     "environment": MachCommandReference("python/mozbuild/mozbuild/mach_commands.py"),
@@ -122,6 +123,9 @@ MACH_COMMANDS = {
     "gifft": MachCommandReference(
         "toolkit/components/telemetry/build_scripts/mach_commands.py"
     ),
+    "gecko-trace": MachCommandReference(
+        "toolkit/components/gecko-trace/mach_commands.py"
+    ),
     "glean": MachCommandReference(
         "toolkit/components/glean/build_scripts/mach_commands.py"
     ),
@@ -134,6 +138,7 @@ MACH_COMMANDS = {
     "ide": MachCommandReference("python/mozbuild/mozbuild/backend/mach_commands.py"),
     "import-pr": MachCommandReference("tools/vcs/mach_commands.py"),
     "install": MachCommandReference("python/mozbuild/mozbuild/mach_commands.py"),
+    "intermittents": MachCommandReference("testing/intermittents_mach_commands.py"),
     "install-moz-phab": MachCommandReference("tools/phabricator/mach_commands.py"),
     "jit-test": MachCommandReference("testing/mach_commands.py"),
     "jsapi-tests": MachCommandReference("testing/mach_commands.py"),
@@ -161,6 +166,7 @@ MACH_COMMANDS = {
     "newtab": MachCommandReference("browser/extensions/newtab/mach_commands.py"),
     "node": MachCommandReference("tools/mach_commands.py"),
     "npm": MachCommandReference("tools/mach_commands.py"),
+    "nss-uplift": MachCommandReference("security/mach_commands.py"),
     "package": MachCommandReference("python/mozbuild/mozbuild/mach_commands.py"),
     "package-multi-locale": MachCommandReference(
         "python/mozbuild/mozbuild/mach_commands.py"
@@ -221,6 +227,7 @@ MACH_COMMANDS = {
     "uniffi": MachCommandReference(
         "toolkit/components/uniffi-bindgen-gecko-js/mach_commands.py"
     ),
+    "update": MachCommandReference("tools/update-programs/mach_commands.py"),
     "update-glean": MachCommandReference(
         "toolkit/components/glean/build_scripts/mach_commands.py"
     ),
@@ -293,7 +300,7 @@ class DecoratorVisitor(ast.NodeVisitor):
             kwarg_dict = {}
 
             for name, arg in zip(["command", "subcommand"], decorator.args):
-                kwarg_dict[name] = arg.s
+                kwarg_dict[name] = arg.value
 
             for keyword in decorator.keywords:
                 if keyword.arg not in relevant_kwargs:

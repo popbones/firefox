@@ -9,16 +9,14 @@
 #ifndef nsImageFrame_h___
 #define nsImageFrame_h___
 
-#include "nsAtomicContainerFrame.h"
-#include "nsIObserver.h"
-
-#include "imgINotificationObserver.h"
-
-#include "nsDisplayList.h"
 #include "imgIContainer.h"
+#include "imgINotificationObserver.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/DebugOnly.h"
 #include "mozilla/StaticPtr.h"
+#include "nsAtomicContainerFrame.h"
+#include "nsDisplayList.h"
+#include "nsIObserver.h"
 #include "nsIReflowCallback.h"
 #include "nsTObserverArray.h"
 
@@ -94,7 +92,7 @@ class nsImageFrame : public nsAtomicContainerFrame, public nsIReflowCallback {
                        nsEventStatus*) override;
   Cursor GetCursor(const nsPoint&) override;
   nsresult AttributeChanged(int32_t aNameSpaceID, nsAtom* aAttribute,
-                            int32_t aModType) final;
+                            AttrModType aModType) final;
 
   void OnVisibilityChange(
       Visibility aNewVisibility,
@@ -314,7 +312,7 @@ class nsImageFrame : public nsAtomicContainerFrame, public nsIReflowCallback {
   bool ShouldUseMappedAspectRatio() const;
 
   nsAtom* GetViewTransitionName() const;
-  Maybe<nsSize> GetViewTransitionSnapshotSize() const;
+  Maybe<nsSize> GetViewTransitionBorderBoxSize() const;
   mozilla::wr::ImageKey GetViewTransitionImageKey(
       mozilla::layers::RenderRootStateManager*,
       mozilla::wr::IpcResourceUpdateQueue&) const;
@@ -457,6 +455,7 @@ class nsDisplayImage final : public nsPaintedDisplayItem {
    *         Not necessarily contained in this item's bounds.
    */
   nsRect GetDestRect() const;
+  nsRect GetDestRectViewTransition() const;
 
   nsRect GetBounds(bool* aSnap) const {
     *aSnap = true;

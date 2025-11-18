@@ -7,14 +7,14 @@
 #ifndef LAYOUT_SVG_SVGTEXTFRAME_H_
 #define LAYOUT_SVG_SVGTEXTFRAME_H_
 
+#include "gfxMatrix.h"
+#include "gfxRect.h"
+#include "gfxTextRun.h"
 #include "mozilla/Attributes.h"
 #include "mozilla/PresShellForwards.h"
 #include "mozilla/RefPtr.h"
 #include "mozilla/SVGContainerFrame.h"
 #include "mozilla/gfx/2D.h"
-#include "gfxMatrix.h"
-#include "gfxRect.h"
-#include "gfxTextRun.h"
 #include "nsIContent.h"  // for GetContent
 #include "nsStubMutationObserver.h"
 #include "nsTextFrame.h"
@@ -203,7 +203,7 @@ class SVGTextFrame final : public SVGDisplayContainerFrame {
   void DidSetComputedStyle(ComputedStyle* aOldComputedStyle) override;
 
   nsresult AttributeChanged(int32_t aNamespaceID, nsAtom* aAttribute,
-                            int32_t aModType) override;
+                            AttrModType aModType) override;
 
   nsContainerFrame* GetContentInsertionFrame() override {
     return PrincipalChildList().FirstChild()->GetContentInsertionFrame();

@@ -7,26 +7,25 @@
 #include "nsRangeFrame.h"
 
 #include "ListMutationObserver.h"
+#include "gfxContext.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/PresShell.h"
+#include "mozilla/ServoStyleSet.h"
 #include "mozilla/TouchEvents.h"
-
-#include "gfxContext.h"
-#include "nsContentCreatorFunctions.h"
-#include "nsCSSRendering.h"
-#include "nsDisplayList.h"
-#include "nsIContent.h"
-#include "nsLayoutUtils.h"
 #include "mozilla/dom/Document.h"
-#include "nsGkAtoms.h"
+#include "mozilla/dom/Element.h"
 #include "mozilla/dom/HTMLDataListElement.h"
 #include "mozilla/dom/HTMLInputElement.h"
 #include "mozilla/dom/HTMLOptionElement.h"
-#include "mozilla/dom/MutationEventBinding.h"
-#include "nsPresContext.h"
+#include "nsCSSRendering.h"
+#include "nsContentCreatorFunctions.h"
+#include "nsDisplayList.h"
+#include "nsGkAtoms.h"
+#include "nsIContent.h"
+#include "nsIMutationObserver.h"
+#include "nsLayoutUtils.h"
 #include "nsNodeInfoManager.h"
-#include "mozilla/dom/Element.h"
-#include "mozilla/ServoStyleSet.h"
+#include "nsPresContext.h"
 #include "nsTArray.h"
 
 #ifdef ACCESSIBILITY
@@ -134,7 +133,12 @@ void nsRangeFrame::BuildDisplayList(nsDisplayListBuilder* aBuilder,
   const nsStyleDisplay* disp = StyleDisplay();
   if (IsThemed(disp)) {
     DisplayBorderBackgroundOutline(aBuilder, aLists);
-    // Don't paint our children.
+    // Don't paint our children, but let the thumb be hittable for events.
+    if (auto* thumb = mThumbDiv->GetPrimaryFrame();
+        thumb && aBuilder->IsForEventDelivery() && !HidesContent()) {
+      nsDisplayListSet set(aLists, aLists.Content());
+      BuildDisplayListForChild(aBuilder, thumb, set, DisplayChildFlag::Inline);
+    }
   } else {
     BuildDisplayListForInline(aBuilder, aLists);
   }
@@ -548,7 +552,8 @@ void nsRangeFrame::DoUpdateRangeProgressFrame(
 }
 
 nsresult nsRangeFrame::AttributeChanged(int32_t aNameSpaceID,
-                                        nsAtom* aAttribute, int32_t aModType) {
+                                        nsAtom* aAttribute,
+                                        AttrModType aModType) {
   NS_ASSERTION(mTrackDiv, "The track div must exist!");
   NS_ASSERTION(mThumbDiv, "The thumb div must exist!");
 
@@ -578,7 +583,7 @@ nsresult nsRangeFrame::AttributeChanged(int32_t aNameSpaceID,
       PresShell()->FrameNeedsReflow(this, IntrinsicDirty::None,
                                     NS_FRAME_IS_DIRTY);
     } else if (aAttribute == nsGkAtoms::list) {
-      const bool isRemoval = aModType == MutationEvent_Binding::REMOVAL;
+      const bool isRemoval = aModType == AttrModType::Removal;
       if (mListMutationObserver) {
         mListMutationObserver->Detach();
         if (isRemoval) {
@@ -609,7 +614,7 @@ nscoord nsRangeFrame::IntrinsicISize(const IntrinsicSizeInput& aInput,
   if (aType == IntrinsicISizeType::MinISize) {
     const auto* pos = StylePosition();
     auto wm = GetWritingMode();
-    const auto iSize = pos->ISize(wm, StyleDisplay()->mPosition);
+    const auto iSize = pos->ISize(wm, AnchorPosResolutionParams::From(this));
     if (iSize->HasPercent()) {
       // https://drafts.csswg.org/css-sizing-3/#percentage-sizing
       // https://drafts.csswg.org/css-sizing-3/#min-content-zero

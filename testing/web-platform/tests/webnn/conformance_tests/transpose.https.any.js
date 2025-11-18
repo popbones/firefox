@@ -19,11 +19,6 @@
 // MLOperand transpose(
 //     MLOperand input, optional MLTransposeOptions options = {});
 
-
-const getTransposePrecisionTolerance = () => {
-  return {metricType: 'ULP', value: 0};
-};
-
 const transposeTests = [
   {
     'name': 'transpose float32 0D constant tensor default options',
@@ -700,11 +695,5 @@ const transposeTests = [
   }
 ];
 
-if (navigator.ml) {
-  transposeTests.forEach((test) => {
-    webnn_conformance_test(
-        buildAndExecuteGraph, getTransposePrecisionTolerance, test);
-  });
-} else {
-  test(() => assert_implements(navigator.ml, 'missing navigator.ml'));
-}
+webnn_conformance_test(
+    transposeTests, buildAndExecuteGraph, getZeroULPTolerance);

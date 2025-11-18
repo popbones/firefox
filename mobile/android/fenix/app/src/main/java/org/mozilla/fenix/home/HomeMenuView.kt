@@ -15,7 +15,6 @@ import mozilla.appservices.places.BookmarkRoot
 import mozilla.components.browser.menu.view.MenuButton
 import mozilla.components.concept.sync.FxAEntryPoint
 import mozilla.telemetry.glean.private.NoExtras
-import org.mozilla.fenix.BrowserDirection
 import org.mozilla.fenix.GleanMetrics.Events
 import org.mozilla.fenix.GleanMetrics.HomeScreen
 import org.mozilla.fenix.HomeActivity
@@ -23,6 +22,7 @@ import org.mozilla.fenix.R
 import org.mozilla.fenix.components.accounts.AccountState
 import org.mozilla.fenix.components.accounts.FenixFxAEntryPoint
 import org.mozilla.fenix.components.menu.MenuAccessPoint
+import org.mozilla.fenix.components.usecases.FenixBrowserUseCases
 import org.mozilla.fenix.ext.nav
 import org.mozilla.fenix.ext.settings
 import org.mozilla.fenix.settings.SupportUtils
@@ -37,8 +37,9 @@ import org.mozilla.fenix.GleanMetrics.HomeMenu as HomeMenuMetrics
  *
  * @param context An Android [Context].
  * @param lifecycleOwner [LifecycleOwner] for the view.
- * @param homeActivity [HomeActivity] used to open URLs in a new tab.
+ * @param homeActivity [HomeActivity] used for accessing various app components.
  * @param navController [NavController] used for navigation.
+ * @param fenixBrowserUseCases [FenixBrowserUseCases] used to open URLs when clicked.
  * @param menuButton The [MenuButton] that will be used to create a menu when the button is
  * clicked.
  * @param fxaEntrypoint The source entry point to FxA.
@@ -49,6 +50,7 @@ class HomeMenuView(
     private val lifecycleOwner: LifecycleOwner,
     private val homeActivity: HomeActivity,
     private val navController: NavController,
+    private val fenixBrowserUseCases: FenixBrowserUseCases,
     private val menuButton: WeakReference<MenuButton>,
     private val fxaEntrypoint: FxAEntryPoint = FenixFxAEntryPoint.HomeMenu,
 ) {
@@ -170,23 +172,32 @@ class HomeMenuView(
             }
             HomeMenu.Item.Help -> {
                 HomeMenuMetrics.helpTapped.record(NoExtras())
-                homeActivity.openToBrowserAndLoad(
+
+                navController.nav(
+                    R.id.homeFragment,
+                    HomeFragmentDirections.actionGlobalBrowser(),
+                )
+                fenixBrowserUseCases.loadUrlOrSearch(
                     searchTermOrURL = SupportUtils.getSumoURLForTopic(
                         context = context,
                         topic = SupportUtils.SumoTopic.HELP,
                     ),
                     newTab = true,
-                    from = BrowserDirection.FromHome,
+                    private = homeActivity.browsingModeManager.mode.isPrivate,
                 )
             }
             HomeMenu.Item.WhatsNew -> {
                 WhatsNew.userViewedWhatsNew(context)
                 Events.whatsNewTapped.record(Events.WhatsNewTappedExtra(source = "HOME"))
 
-                homeActivity.openToBrowserAndLoad(
+                navController.nav(
+                    R.id.homeFragment,
+                    HomeFragmentDirections.actionGlobalBrowser(),
+                )
+                fenixBrowserUseCases.loadUrlOrSearch(
                     searchTermOrURL = SupportUtils.WHATS_NEW_URL,
                     newTab = true,
-                    from = BrowserDirection.FromHome,
+                    private = homeActivity.browsingModeManager.mode.isPrivate,
                 )
             }
             HomeMenu.Item.Quit -> {

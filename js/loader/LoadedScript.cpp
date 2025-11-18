@@ -28,7 +28,8 @@ NS_INTERFACE_MAP_BEGIN_CYCLE_COLLECTION(LoadedScript)
   NS_INTERFACE_MAP_ENTRY(nsISupports)
 NS_INTERFACE_MAP_END
 
-NS_IMPL_CYCLE_COLLECTION(LoadedScript, mFetchOptions, mURI, mBaseURL)
+NS_IMPL_CYCLE_COLLECTION(LoadedScript, mFetchOptions, mURI, mBaseURL,
+                         mCacheInfo)
 
 NS_IMPL_CYCLE_COLLECTING_ADDREF(LoadedScript)
 NS_IMPL_CYCLE_COLLECTING_RELEASE(LoadedScript)
@@ -36,26 +37,26 @@ NS_IMPL_CYCLE_COLLECTING_RELEASE(LoadedScript)
 LoadedScript::LoadedScript(ScriptKind aKind,
                            mozilla::dom::ReferrerPolicy aReferrerPolicy,
                            ScriptFetchOptions* aFetchOptions, nsIURI* aURI)
-    : mKind(aKind),
+    : mDataType(DataType::eUnknown),
+      mKind(aKind),
       mReferrerPolicy(aReferrerPolicy),
+      mBytecodeOffset(0),
       mFetchOptions(aFetchOptions),
       mURI(aURI),
-      mDataType(DataType::eUnknown),
-      mReceivedScriptTextLength(0),
-      mBytecodeOffset(0) {
+      mReceivedScriptTextLength(0) {
   MOZ_ASSERT(mFetchOptions);
   MOZ_ASSERT(mURI);
 }
 
 LoadedScript::LoadedScript(const LoadedScript& aOther)
-    : mKind(aOther.mKind),
+    : mDataType(DataType::eStencil),
+      mKind(aOther.mKind),
       mReferrerPolicy(aOther.mReferrerPolicy),
+      mBytecodeOffset(0),
       mFetchOptions(aOther.mFetchOptions),
       mURI(aOther.mURI),
       mBaseURL(aOther.mBaseURL),
-      mDataType(DataType::eStencil),
       mReceivedScriptTextLength(0),
-      mBytecodeOffset(0),
       mStencil(aOther.mStencil) {
   MOZ_ASSERT(mFetchOptions);
   MOZ_ASSERT(mURI);
@@ -131,8 +132,8 @@ void LoadedScript::AssociateWithScript(JSScript* aScript) {
   // increment our reference count by calling HostAddRefTopLevelScript(). This
   // is decremented by HostReleaseTopLevelScript() below when the JSScript dies.
 
-  MOZ_ASSERT(JS::GetScriptPrivate(aScript).isUndefined());
-  JS::SetScriptPrivate(aScript, JS::PrivateValue(this));
+  MOZ_ASSERT(GetScriptPrivate(aScript).isUndefined());
+  SetScriptPrivate(aScript, PrivateValue(this));
 }
 
 nsresult LoadedScript::GetScriptSource(JSContext* aCx,
@@ -147,8 +148,7 @@ nsresult LoadedScript::GetScriptSource(JSContext* aCx,
     scriptLoadContext->GetInlineScriptText(inlineData);
 
     size_t nbytes = inlineData.Length() * sizeof(char16_t);
-    JS::UniqueTwoByteChars chars(
-        static_cast<char16_t*>(JS_malloc(aCx, nbytes)));
+    UniqueTwoByteChars chars(static_cast<char16_t*>(JS_malloc(aCx, nbytes)));
     if (!chars) {
       return NS_ERROR_OUT_OF_MEMORY;
     }
@@ -166,7 +166,7 @@ nsresult LoadedScript::GetScriptSource(JSContext* aCx,
 
   size_t length = ScriptTextLength();
   if (IsUTF16Text()) {
-    JS::UniqueTwoByteChars chars;
+    UniqueTwoByteChars chars;
     chars.reset(ScriptText<char16_t>().extractOrCopyRawBuffer());
     if (!chars) {
       JS_ReportOutOfMemory(aCx);
@@ -183,7 +183,7 @@ nsresult LoadedScript::GetScriptSource(JSContext* aCx,
   }
 
   MOZ_ASSERT(IsUTF8Text());
-  mozilla::UniquePtr<Utf8Unit[], JS::FreePolicy> chars;
+  mozilla::UniquePtr<Utf8Unit[], FreePolicy> chars;
   chars.reset(ScriptText<Utf8Unit>().extractOrCopyRawBuffer());
   if (!chars) {
     JS_ReportOutOfMemory(aCx);
@@ -200,16 +200,16 @@ nsresult LoadedScript::GetScriptSource(JSContext* aCx,
 }
 
 inline void CheckModuleScriptPrivate(LoadedScript* script,
-                                     const JS::Value& aPrivate) {
+                                     const Value& aPrivate) {
 #ifdef DEBUG
   if (script->IsModuleScript()) {
     JSObject* module = script->AsModuleScript()->mModuleRecord.unbarrieredGet();
-    MOZ_ASSERT_IF(module, JS::GetModulePrivate(module) == aPrivate);
+    MOZ_ASSERT_IF(module, GetModulePrivate(module) == aPrivate);
   }
 #endif
 }
 
-void HostAddRefTopLevelScript(const JS::Value& aPrivate) {
+void HostAddRefTopLevelScript(const Value& aPrivate) {
   // Increment the reference count of a LoadedScript object that is now pointed
   // to by a JSScript. The reference count is decremented by
   // HostReleaseTopLevelScript() below.
@@ -219,7 +219,7 @@ void HostAddRefTopLevelScript(const JS::Value& aPrivate) {
   script->AddRef();
 }
 
-void HostReleaseTopLevelScript(const JS::Value& aPrivate) {
+void HostReleaseTopLevelScript(const Value& aPrivate) {
   // Decrement the reference count of a LoadedScript object that was pointed to
   // by a JSScript. The reference count was originally incremented by
   // HostAddRefTopLevelScript() above.
@@ -306,7 +306,7 @@ already_AddRefed<LoadedScript> ModuleScript::ToCache() {
 
 void ModuleScript::Shutdown() {
   if (mModuleRecord) {
-    JS::ClearModuleEnvironment(mModuleRecord);
+    ClearModuleEnvironment(mModuleRecord);
   }
 
   UnlinkModuleRecord();
@@ -322,9 +322,9 @@ void ModuleScript::UnlinkModuleRecord() {
     // writing undefined into the module private, so it won't create any
     // black-gray edges.
     JSObject* module = mModuleRecord.unbarrieredGet();
-    if (JS::IsCyclicModule(module)) {
-      MOZ_ASSERT(JS::GetModulePrivate(module).toPrivate() == this);
-      JS::ClearModulePrivate(module);
+    if (IsCyclicModule(module)) {
+      MOZ_ASSERT(GetModulePrivate(module).toPrivate() == this);
+      ClearModulePrivate(module);
     }
     mModuleRecord = nullptr;
   }
@@ -335,26 +335,26 @@ ModuleScript::~ModuleScript() {
   UnlinkModuleRecord();
 }
 
-void ModuleScript::SetModuleRecord(JS::Handle<JSObject*> aModuleRecord) {
+void ModuleScript::SetModuleRecord(Handle<JSObject*> aModuleRecord) {
   MOZ_ASSERT(!mModuleRecord);
   MOZ_ASSERT_IF(IsModuleScript(), !AsModuleScript()->HasParseError());
   MOZ_ASSERT_IF(IsModuleScript(), !AsModuleScript()->HasErrorToRethrow());
 
   mModuleRecord = aModuleRecord;
 
-  if (JS::IsCyclicModule(mModuleRecord)) {
+  if (IsCyclicModule(mModuleRecord)) {
     // Make module's host defined field point to this object. The JS engine will
     // increment our reference count by calling HostAddRefTopLevelScript(). This
     // is decremented when the field is cleared in UnlinkModuleRecord() above or
     // when the module record dies.
-    MOZ_ASSERT(JS::GetModulePrivate(mModuleRecord).isUndefined());
-    JS::SetModulePrivate(mModuleRecord, JS::PrivateValue(this));
+    MOZ_ASSERT(GetModulePrivate(mModuleRecord).isUndefined());
+    SetModulePrivate(mModuleRecord, PrivateValue(this));
   }
 
   mozilla::HoldJSObjects(this);
 }
 
-void ModuleScript::SetParseError(const JS::Value& aError) {
+void ModuleScript::SetParseError(const Value& aError) {
   MOZ_ASSERT(!aError.isUndefined());
   MOZ_ASSERT(!HasParseError());
   MOZ_ASSERT(!HasErrorToRethrow());
@@ -364,7 +364,7 @@ void ModuleScript::SetParseError(const JS::Value& aError) {
   mozilla::HoldJSObjects(this);
 }
 
-void ModuleScript::SetErrorToRethrow(const JS::Value& aError) {
+void ModuleScript::SetErrorToRethrow(const Value& aError) {
   MOZ_ASSERT(!aError.isUndefined());
 
   // This is only called after SetModuleRecord() or SetParseError() so we don't

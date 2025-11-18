@@ -5,15 +5,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "mozilla/dom/XULResizerElement.h"
-#include "mozilla/dom/XULResizerElementBinding.h"
 
 #include "mozilla/EventDispatcher.h"
+#include "mozilla/MouseEvents.h"
 #include "mozilla/PresShell.h"
 #include "mozilla/dom/Document.h"
 #include "mozilla/dom/DocumentInlines.h"
-#include "mozilla/MouseEvents.h"
+#include "mozilla/dom/XULResizerElementBinding.h"
 #include "nsContentUtils.h"
-#include "nsICSSDeclaration.h"
+#include "nsDOMCSSDeclaration.h"
 #include "nsIFrame.h"
 #include "nsLayoutUtils.h"
 #include "nsPresContext.h"
@@ -292,7 +292,7 @@ void XULResizerElement::ResizeContent(nsIContent* aContent,
   if (!inlineStyleContent) {
     return;
   }
-  nsCOMPtr<nsICSSDeclaration> decl = inlineStyleContent->Style();
+  nsCOMPtr<nsDOMCSSDeclaration> decl = inlineStyleContent->Style();
   if (aOriginalSizeInfo) {
     decl->GetPropertyValue("width"_ns, aOriginalSizeInfo->width);
     decl->GetPropertyValue("height"_ns, aOriginalSizeInfo->height);

@@ -272,6 +272,15 @@ const AVAILABLE_SHIMS = [
     onlyIfBlockedByETP: true,
   },
   {
+    id: "AmazonAdSystem",
+    platform: "all",
+    name: "Amazon Ad System",
+    bug: "1977375",
+    file: "empty-shim.txt",
+    matches: ["*://aax.amazon-adsystem.com/e/dtb/bid/*/prebid*"],
+    onlyIfBlockedByETP: true,
+  },
+  {
     id: "BmAuth",
     platform: "all",
     name: "BmAuth by 9c9media",
@@ -500,6 +509,11 @@ const AVAILABLE_SHIMS = [
       "okcfox.co",
       "turnto10.com",
       "wcti12.com",
+      "wjactv.com",
+      "keprtv.com",
+      "katu.com",
+      "kfoxtv.com",
+      "thenationaldesk.com",
     ],
     matches: [
       "*://www.googletagservices.com/tag/js/gpt.js*",
@@ -658,32 +672,6 @@ const AVAILABLE_SHIMS = [
     ],
   },
   {
-    id: "Vidible",
-    branch: ["nightly"],
-    platform: "all",
-    name: "Vidible",
-    bug: "1713710",
-    file: "vidible.js",
-    logos: ["play.svg"],
-    matches: [
-      "*://*.vidible.tv/*/vidible-min.js*",
-      "*://vdb-cdn-files.s3.amazonaws.com/*/vidible-min.js*",
-    ],
-    needsShimHelpers: ["optIn"],
-    onlyIfBlockedByETP: true,
-    unblocksOnOptIn: [
-      "*://delivery.vidible.tv/jsonp/pid=*/vid=*/*.js*",
-      "*://delivery.vidible.tv/placement/*",
-      "*://img.vidible.tv/prod/*",
-      "*://cdn-ssl.vidible.tv/prod/player/js/*.js",
-      "*://hlsrv.vidible.tv/prod/*.m3u8*",
-      "*://videos.vidible.tv/prod/*.key*",
-      "*://videos.vidible.tv/prod/*.mp4*",
-      "*://videos.vidible.tv/prod/*.webm*",
-      "*://videos.vidible.tv/prod/*.ts*",
-    ],
-  },
-  {
     id: "Kinja",
     platform: "all",
     name: "Kinja",
@@ -775,7 +763,10 @@ const AVAILABLE_SHIMS = [
     contentScripts: [
       {
         js: "microsoftOfficeAuth.js",
-        matches: ["*://usc-excel.officeapps.live.com/*"],
+        matches: [
+          "*://usc-excel.officeapps.live.com/*",
+          "*://excel.officeapps.live.com/*",
+        ],
         runAt: "document_start",
         allFrames: true,
       },

@@ -7,9 +7,13 @@ import { SearchOneOffs } from "moz-src:///browser/components/search/SearchOneOff
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarUtils: "resource:///modules/UrlbarUtils.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
+  UrlbarUtils: "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs",
 });
+
+/**
+ * @import {LegacySearchOneOffButton} from "moz-src:///browser/components/search/SearchOneOffs.sys.mjs"
+ */
 
 /**
  * The one-off search buttons in the urlbar.
@@ -112,7 +116,7 @@ export class UrlbarSearchOneOffs extends SearchOneOffs {
   /**
    * The selected one-off including the search-settings button.
    *
-   * @param {DOMElement|null} button
+   * @param {?LegacySearchOneOffButton} button
    *   The selected one-off button. Null if no one-off is selected.
    */
   set selectedButton(button) {
@@ -259,7 +263,7 @@ export class UrlbarSearchOneOffs extends SearchOneOffs {
    * Sets the tooltip for a one-off button with an engine.  This should set
    * either the `tooltiptext` attribute or the relevant l10n ID.
    *
-   * @param {element} button
+   * @param {LegacySearchOneOffButton} button
    *   The one-off button.
    */
   setTooltipForEngineButton(button) {

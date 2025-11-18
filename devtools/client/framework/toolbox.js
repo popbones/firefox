@@ -87,6 +87,7 @@ loader.lazyRequireGetter(
 const lazy = {};
 ChromeUtils.defineESModuleGetters(lazy, {
   AppConstants: "resource://gre/modules/AppConstants.sys.mjs",
+  ExtensionUtils: "resource://gre/modules/ExtensionUtils.sys.mjs",
   TYPES: "resource://devtools/shared/highlighters.mjs",
 });
 loader.lazyRequireGetter(this, "flags", "resource://devtools/shared/flags.js");
@@ -310,6 +311,9 @@ function Toolbox({
    * registered by devtools-startup.js module.
    */
   this._windowHostShortcuts = null;
+
+  // List of currently displayed panel's iframes
+  this._visibleIframes = new Set();
 
   this._toolRegistered = this._toolRegistered.bind(this);
   this._toolUnregistered = this._toolUnregistered.bind(this);
@@ -2315,7 +2319,7 @@ Toolbox.prototype = {
     }
 
     const ui = ResponsiveUIManager.getResponsiveUIForTab(localTab);
-    await ui.responsiveFront.setElementPickerState(state, pickerType);
+    await ui.setElementPickerState(state, pickerType);
   },
 
   /**
@@ -2354,7 +2358,7 @@ Toolbox.prototype = {
   _getPickerTooltip() {
     let shortcut = L10N.getStr("toolbox.elementPicker.key");
     shortcut = KeyShortcuts.parseElectronKey(shortcut);
-    shortcut = KeyShortcuts.stringify(shortcut);
+    shortcut = KeyShortcuts.stringifyShortcut(shortcut);
     const shortcutMac = L10N.getStr("toolbox.elementPicker.mac.key");
     const isMac = Services.appinfo.OS === "Darwin";
 
@@ -2969,20 +2973,42 @@ Toolbox.prototype = {
    * background.
    */
   setIframeVisible(iframe, visible) {
-    const state = visible ? "visible" : "hidden";
+    // Ideally, we would use <xul:browser type="content"> element in order to have top level BrowsingContexts
+    // for each panel. But:
+    //   1) It looks like nested <xul:browser type="content"> aren't creating top level BCs
+    //   2) Using type="content" against panels breaks a few things.
+    // Also see bug 1405342 for outdated approach.
+    //
+    // So keep using the following workaround which only fakes `visibilitychange`
+    // enough to make the `visiblityChangeHanderStore` to work.
     const win = iframe.contentWindow;
     const doc = win.document;
-    if (doc.visibilityState != state) {
-      // 1) Overload document's `visibilityState` attribute
+    if (visible && !this._visibleIframes.has(iframe)) {
+      this._visibleIframes.add(iframe);
+
+      // Overload document's `visibilityState` attribute
       // Use defineProperty, as by default `document.visbilityState` is read only.
       Object.defineProperty(doc, "visibilityState", {
-        value: state,
+        get: () => {
+          // Also acknowledge the toolbox visibility, which take the lead over
+          // any panel visiblity
+          return this.win?.browsingContext.isActive ? "visible" : "hidden";
+        },
         configurable: true,
       });
+    } else if (!visible && this._visibleIframes.has(iframe)) {
+      this._visibleIframes.delete(iframe);
 
-      // 2) Fake the 'visibilitychange' event
-      doc.dispatchEvent(new win.Event("visibilitychange"));
+      Object.defineProperty(doc, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+    } else {
+      return;
     }
+
+    // Fake the 'visibilitychange' event
+    doc.dispatchEvent(new win.Event("visibilitychange"));
   },
 
   /**
@@ -3500,7 +3526,7 @@ Toolbox.prototype = {
       return url;
     }
     // Only moz-extension URL should be shortened into the URL pathname.
-    if (parsedURL.protocol !== "moz-extension:") {
+    if (!lazy.ExtensionUtils.isExtensionUrl(parsedURL)) {
       return url;
     }
     return parsedURL.pathname;
@@ -4481,6 +4507,7 @@ Toolbox.prototype = {
             this._descriptorFront = null;
             this.resourceCommand = null;
             this.commands = null;
+            this._visibleIframes.clear();
 
             // Force GC to prevent long GC pauses when running tests and to free up
             // memory in general when the toolbox is closed.

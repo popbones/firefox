@@ -156,13 +156,18 @@ add_task(async function test_tabGroupCollapseAndExpand() {
 
   group.collapsed = true;
   Assert.ok(group.collapsed, "group is collapsed via API");
-  gBrowser.selectedTab = group.tabs[0];
-  Assert.ok(!group.collapsed, "group is expanded after selecting tab");
 
-  group.collapsed = true;
-  Assert.ok(group.collapsed, "group is collapsed via API");
   gBrowser.moveTabToGroup(tab2, group);
-  Assert.ok(!group.collapsed, "group is expanded after moving tab into group");
+  Assert.ok(
+    group.collapsed,
+    "group stays collapsed after moving inactive tab into group"
+  );
+
+  group.querySelector(".tab-group-overflow-count").click();
+  Assert.ok(
+    !group.collapsed,
+    "group is expanded after clicking the overflow counter"
+  );
 
   await removeTabGroup(group);
 });
@@ -191,130 +196,182 @@ add_task(async function test_tabGroupCollapsedTabsNotVisible() {
 
 /*
  * Tests that if a tab group is collapsed while the selected tab is in the group,
- * the selected tab will change to be the adjacent tab just after the group.
- *
- * This tests that the tab after the group will be prioritized over the tab
- * just before the group, if both exist.
+ * the selected tab will remain visible while the rest of the tabs hide.
  */
-add_task(async function test_tabGroupCollapseSelectsAdjacentTabAfter() {
+add_task(async function test_tabGroupCollapseWhileSelected() {
   let tabInGroup = BrowserTestUtils.addTab(gBrowser, "about:blank");
-  let group = gBrowser.addTabGroup([tabInGroup]);
-  let adjacentTabAfter = BrowserTestUtils.addTab(gBrowser, "about:blank");
+  let secondTabInGroup = BrowserTestUtils.addTab(gBrowser, "about:blank");
+  let group = gBrowser.addTabGroup([tabInGroup, secondTabInGroup]);
 
   gBrowser.selectedTab = tabInGroup;
 
+  let collapseFinished = BrowserTestUtils.waitForEvent(
+    window,
+    "TabGroupCollapse"
+  );
   group.collapsed = true;
+  await collapseFinished;
   Assert.equal(
     gBrowser.selectedTab,
-    adjacentTabAfter,
-    "selected tab becomes adjacent tab after group on collapse"
+    tabInGroup,
+    "Tab remains selected after group is collapsed"
   );
-
-  BrowserTestUtils.removeTab(adjacentTabAfter);
-  // TODO gBrowser.removeTabs breaks if the tab is not in a visible state
-  group.collapsed = false;
-  await removeTabGroup(group);
-});
-
-/*
- * Tests that if a tab group is collapsed while the selected tab is in the group,
- * the selected tab will change to be the adjacent tab just before the group,
- * if no tabs exist after the group
- */
-add_task(async function test_tabGroupCollapseSelectsAdjacentTabBefore() {
-  let adjacentTabBefore = BrowserTestUtils.addTab(gBrowser, "about:blank");
-  let tabInGroup = BrowserTestUtils.addTab(gBrowser, "about:blank");
-  let group = gBrowser.addTabGroup([tabInGroup]);
-
-  gBrowser.selectedTab = tabInGroup;
-
-  group.collapsed = true;
-  Assert.equal(
-    gBrowser.selectedTab,
-    adjacentTabBefore,
-    "selected tab becomes adjacent tab after group on collapse"
-  );
-
-  BrowserTestUtils.removeTab(adjacentTabBefore);
-  group.collapsed = false;
-  await removeTabGroup(group);
-});
-
-add_task(async function test_tabGroupCollapseCreatesNewTabIfAllTabsInGroup() {
-  // This test has to be run in a new window because there is currently no
-  // API to remove a tab from a group, which breaks tests following this one
-  // This can be removed once the group remove API is implemented
-  let fgWindow = await BrowserTestUtils.openNewBrowserWindow();
-
-  let group = fgWindow.gBrowser.addTabGroup(fgWindow.gBrowser.tabs);
-
-  Assert.equal(fgWindow.gBrowser.tabs.length, 1, "only one tab exists");
-  Assert.equal(
-    fgWindow.gBrowser.tabs[0].group,
-    group,
-    "sole existing tab is in group"
-  );
-
-  group.collapsed = true;
-
-  Assert.equal(
-    fgWindow.gBrowser.tabs.length,
-    2,
-    "new tab is created if group is collapsed and all tabs are in group"
-  );
-  Assert.equal(
-    fgWindow.gBrowser.selectedTab,
-    fgWindow.gBrowser.tabs[1],
-    "new tab becomes selected tab"
-  );
-  Assert.equal(
-    fgWindow.gBrowser.selectedTab.group,
-    null,
-    "new tab is not in group"
-  );
-
-  // TODO gBrowser.removeTabs breaks if the tab is not in a visible state
-  group.collapsed = false;
-  await removeTabGroup(group);
-  await BrowserTestUtils.closeWindow(fgWindow);
-});
-
-add_task(async function test_collapseAllGroups() {
-  // When collapsing a group and no tabs exist outside of collapsed groups, a
-  // new tab should be opened.
-  let fgWindow = await BrowserTestUtils.openNewBrowserWindow();
-
-  Assert.equal(fgWindow.gBrowser.tabs.length, 1, "only one tab exists");
-  let [tab1] = fgWindow.gBrowser.tabs;
-  let tab2 = BrowserTestUtils.addTab(fgWindow.gBrowser, "about:blank", {
-    skipAnimation: true,
-  });
-  let group1 = fgWindow.gBrowser.addTabGroup([tab1]);
-  let group2 = fgWindow.gBrowser.addTabGroup([tab2]);
-
-  Assert.ok(tab1.selected, "tab1 is selected initially");
-  group1.collapsed = true;
-  Assert.ok(tab2.selected, "tab2 is selected after collapsing group1");
-
-  let newTabPromise = BrowserTestUtils.waitForEvent(fgWindow, "TabOpen");
-  group2.collapsed = true;
-  info("Waiting for new tab to open");
-  let { target: newTab } = await newTabPromise;
-  Assert.ok(group2.collapsed, "successfully collapsed group2");
-  Assert.ok(group1.collapsed, "group1 is still collapsed");
   Assert.ok(
-    newTab.selected,
-    "opened a new tab and selected it after collapsing group2"
+    tabInGroup.visible,
+    "Grouped tab remains visible after group is collapsed because it's selected"
   );
 
-  await BrowserTestUtils.closeWindow(fgWindow);
+  Assert.ok(
+    !secondTabInGroup.visible,
+    "The other tab in the collapsed group is no longer visible"
+  );
+
+  Assert.equal(
+    group.querySelector(".tab-group-overflow-count").textContent,
+    "+1",
+    "Collapsed group overflow indicator indicates 1 additional tab"
+  );
+
+  BrowserTestUtils.removeTab(secondTabInGroup);
+
+  // TODO gBrowser.removeTabs breaks if the tab is not in a visible state
+  group.collapsed = false;
+  await removeTabGroup(group);
+});
+
+/**
+ * Bug 1979067 - The collapsed tab group's overflow counter should be included in the bounds
+ * calculations that determine whether the tabstrip scroll button is enabled.
+ */
+add_task(async function test_tabGroupOverflowCounterScrollable() {
+  let win = await BrowserTestUtils.openNewBrowserWindow();
+  await BrowserTestUtils.overflowTabs(null, win, {
+    overflowAtStart: false,
+    overflowTabFactor: 3,
+  });
+  let group = win.gBrowser.addTabGroup([
+    win.gBrowser.tabs.at(-2),
+    win.gBrowser.tabs.at(-1),
+  ]);
+  win.gBrowser.selectedTab = win.gBrowser.tabs.at(-2);
+  // collapse and expand once to place grouped tab at end of tabstrip
+  await TabGroupTestUtils.toggleCollapsed(group);
+  await TabGroupTestUtils.toggleCollapsed(group);
+  // collapsing again here causes the overflow counter to be placed off screen
+  await TabGroupTestUtils.toggleCollapsed(group);
+  Assert.ok(
+    !win.gBrowser.tabContainer.arrowScrollbox.hasAttribute("scrolledtoend"),
+    "Scrollbox correctly overflows at end"
+  );
+  await TabGroupTestUtils.removeTabGroup(group);
+  BrowserTestUtils.closeWindow(win);
+});
+
+add_task(async function test_multiselectedTabsInTabGroupDeselectedOnCollapse() {
+  let tabInGroup = BrowserTestUtils.addTab(gBrowser, "about:blank");
+  let secondTabInGroup = BrowserTestUtils.addTab(gBrowser, "about:blank");
+  let group = gBrowser.addTabGroup([tabInGroup, secondTabInGroup]);
+  let tabOutsideOfGroup = BrowserTestUtils.addTab(gBrowser, "about:blank");
+
+  gBrowser.selectedTab = tabOutsideOfGroup;
+
+  gBrowser.addToMultiSelectedTabs(tabInGroup);
+  gBrowser.addToMultiSelectedTabs(secondTabInGroup);
+  Assert.deepEqual(
+    gBrowser.selectedTabs,
+    [tabInGroup, secondTabInGroup, tabOutsideOfGroup],
+    "all tabs should be multiselected"
+  );
+
+  let collapseFinished = BrowserTestUtils.waitForEvent(
+    window,
+    "TabGroupCollapse"
+  );
+  group.collapsed = true;
+  await collapseFinished;
+
+  Assert.deepEqual(
+    gBrowser.selectedTabs,
+    [tabOutsideOfGroup],
+    "tabs in the collapsed tab group should no longer be multiselected"
+  );
+
+  // TODO gBrowser.removeTabs breaks if the tab is not in a visible state
+  // group.collapsed = false;
+  await removeTabGroup(group);
+  await BrowserTestUtils.removeTab(tabOutsideOfGroup);
+});
+
+add_task(async function test_groupHasActiveTab() {
+  let [tab1, tab2, tab3] = createManyTabs(3);
+  let group1 = gBrowser.addTabGroup([tab1]);
+  let group2 = gBrowser.addTabGroup([tab2]);
+
+  async function activeTabTest(tabsMode) {
+    info(`hasactivetab test for ${tabsMode} tabs mode`);
+    info("tab3 is ungrouped and active");
+    gBrowser.selectedTab = tab3;
+    Assert.ok(!group1.hasActiveTab, "group1 hasactivetab=false");
+    Assert.ok(!group2.hasActiveTab, "group2 hasactivetab=false");
+    info("tab1 is in group1 and active");
+    gBrowser.selectedTab = tab1;
+    Assert.ok(group1.hasActiveTab, "group1 hasactivetab=true");
+    Assert.ok(!group2.hasActiveTab, "group2 hasactivetab=false");
+    info("tab2 is in group2 and active");
+    gBrowser.selectedTab = tab2;
+    Assert.ok(!group1.hasActiveTab, "group1 hasactivetab=false");
+    Assert.ok(group2.hasActiveTab, "group2 hasactivetab=true");
+    info("tab3 is still ungrouped and active");
+    gBrowser.selectedTab = tab3;
+    Assert.ok(!group1.hasActiveTab, "group1 hasactivetab=false");
+    Assert.ok(!group2.hasActiveTab, "group2 hasactivetab=false");
+    info("tab3 enters group1 as the active tab");
+    let tab3InGroup1 = BrowserTestUtils.waitForEvent(group1, "TabGrouped");
+    group1.addTabs([tab3]);
+    await tab3InGroup1;
+    Assert.ok(group1.hasActiveTab, "group1 hasactivetab=true");
+    Assert.ok(!group2.hasActiveTab, "group2 hasactivetab=false");
+    info("tab3 enters group2 as the active tab");
+    let tab3InGroup2 = BrowserTestUtils.waitForEvent(group2, "TabGrouped");
+    group2.addTabs([tab3]);
+    await tab3InGroup2;
+    Assert.ok(!group1.hasActiveTab, "group1 hasactivetab=false");
+    Assert.ok(group2.hasActiveTab, "group2 hasactivetab=true");
+    info("tab3 becomes ungrouped again as the active tab");
+    let tab3Moved = BrowserTestUtils.waitForEvent(tab3, "TabMove");
+    gBrowser.moveTabToEnd(tab3);
+    await tab3Moved;
+    Assert.ok(!group1.hasActiveTab, "group1 hasactivetab=false");
+    Assert.ok(!group2.hasActiveTab, "group2 hasactivetab=false");
+  }
+
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["sidebar.revamp", true],
+      ["sidebar.verticalTabs", true],
+    ],
+  });
+  await activeTabTest("vertical");
+  await SpecialPowers.popPrefEnv();
+  await SpecialPowers.pushPrefEnv({
+    set: [
+      ["sidebar.revamp", true],
+      ["sidebar.verticalTabs", false],
+    ],
+  });
+  await activeTabTest("horizontal");
+  await SpecialPowers.popPrefEnv();
+
+  await removeTabGroup(group1);
+  await removeTabGroup(group2);
+  BrowserTestUtils.removeTab(tab3);
 });
 
 add_task(async function test_closingLastTabBeforeCollapsedTabGroup() {
   // If there is one standalone tab that's active and there is a collapsed
   // tab group, and the user closes the standalone tab, the first tab of
-  // the collapsed tab group should become the active tab (also expanding
-  // the tab group in the process)
+  // the collapsed tab group should become the active tab
+
   let fgWindow = await BrowserTestUtils.openNewBrowserWindow();
 
   Assert.equal(fgWindow.gBrowser.tabs.length, 1, "only one tab exists");
@@ -340,7 +397,6 @@ add_task(async function test_closingLastTabBeforeCollapsedTabGroup() {
     groupedTab1,
     "first tab in the group should be the active tab"
   );
-  Assert.ok(!group.collapsed, "tab group should now be expanded");
 
   await BrowserTestUtils.closeWindow(fgWindow);
 });
@@ -377,7 +433,6 @@ add_task(async function test_closingLastTabAfterCollapsedTabGroup() {
     groupedTab2,
     "last tab in the group should be the active tab"
   );
-  Assert.ok(!group.collapsed, "tab group should now be expanded");
 
   await BrowserTestUtils.closeWindow(fgWindow);
 });
@@ -758,9 +813,10 @@ add_task(async function test_tabGroupSelect() {
   Assert.ok(group.tabs[1].selected, "Second tab is still selected");
   group.collapsed = true;
   Assert.ok(group.collapsed, "Group is collapsed");
+  Assert.ok(group.tabs[1].selected, "Second tab is still selected");
+  gBrowser.selectTabAtIndex(tab3._tPos);
   Assert.ok(tab3.selected, "Tab 3 is selected");
   group.select();
-  Assert.ok(!group.collapsed, "Group is no longer collapsed");
   Assert.ok(group.tabs[0].selected, "First tab in group is selected");
 
   await removeTabGroup(group);
@@ -919,6 +975,10 @@ add_task(async function test_saveAndCloseGroupViaMiddleClick() {
   Assert.ok(SessionStore.getSavedTabGroup(group.id), "Group is in savedGroups");
 
   SessionStore.forgetSavedTabGroup(group.id);
+  // Move the mouse off the tab strip to prevent conflicts in subsequent tests.
+  EventUtils.synthesizeMouseAtCenter(document.documentElement, {
+    type: "mouseover",
+  });
 });
 
 add_task(async function test_pinningInteractionsWithTabGroups() {

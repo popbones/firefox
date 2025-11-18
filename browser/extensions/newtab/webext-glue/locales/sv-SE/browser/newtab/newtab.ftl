@@ -56,6 +56,9 @@ newtab-topsites-add-shortcut-header = Ny genväg
 newtab-topsites-edit-topsites-header = Redigera mest besökta
 newtab-topsites-edit-shortcut-header = Redigera genväg
 newtab-topsites-add-shortcut-label = Lägg till genväg
+newtab-topsites-add-shortcut-title =
+    .title = Lägg till genväg
+    .aria-label = Lägg till genväg
 newtab-topsites-title-label = Titel
 newtab-topsites-title-input =
     .placeholder = Ange en titel
@@ -84,6 +87,14 @@ newtab-confirm-delete-history-p2 = Den här åtgärden kan inte ångras.
 ## Top Sites - Sponsored label
 
 newtab-topsite-sponsored = Sponsrad
+
+## Label used by screen readers for pinned top sites
+
+# Variables:
+#   $title (string) - The label or hostname of the site.
+topsite-label-pinned =
+    .aria-label = { $title } (fäst)
+    .title = { $title }
 
 ## Context Menu - Action Tooltips.
 
@@ -308,19 +319,32 @@ newtab-custom-pocket-subtitle = Särskilt innehåll valt av { -pocket-brand-name
 newtab-custom-stories-toggle =
     .label = Rekommenderade berättelser
     .description = Exceptionellt innehåll kurerat av { -brand-product-name }-familjen
+newtab-custom-stories-personalized-toggle =
+    .label = Berättelser
+newtab-custom-stories-personalized-checkbox-label = Personliga berättelser baserade på din aktivitet
 newtab-custom-pocket-sponsored = Sponsrade berättelser
 newtab-custom-pocket-show-recent-saves = Visa senast sparade
 newtab-custom-recent-title = Senaste aktivitet
 newtab-custom-recent-subtitle = Ett urval av senaste webbplatser och innehåll
-newtab-custom-recent-toggle =
-    .label = Senaste aktivitet
-    .description = Ett urval av senaste webbplatser och innehåll
 newtab-custom-weather-toggle =
     .label = Väder
     .description = Dagens prognos i korthet
 newtab-custom-trending-search-toggle =
     .label = Trendiga sökningar
     .description = Populära och ofta sökta ämnen
+newtab-custom-widget-weather-toggle =
+    .label = Väder
+newtab-custom-widget-trending-search-toggle =
+    .label = Populära sökningar
+newtab-custom-widget-lists-toggle =
+    .label = Listor
+newtab-custom-widget-timer-toggle =
+    .label = Timer
+newtab-custom-widget-section-title = Widgetar
+# Tooltip for close button
+newtab-custom-close-menu-button =
+    .title = Stäng
+    .aria-label = Stäng meny
 newtab-custom-close-button = Stäng
 newtab-custom-settings = Hantera fler inställningar
 
@@ -333,6 +357,7 @@ newtab-wallpaper-custom-color = Välj en färg
 # Variables
 #   $file_size (number) - The number of the maximum image file size (in MB) that may be uploaded
 newtab-wallpaper-error-max-file-size = Bilden överskred gränsen för filstorleken på { $file_size } MB. Prova att ladda upp en mindre fil.
+newtab-wallpaper-error-upload-file-type = Vi kunde inte ladda upp din fil. Försök igen med en bildfil.
 newtab-wallpaper-error-file-type = Vi kunde inte ladda upp din fil. Försök igen med en annan filtyp.
 newtab-wallpaper-light-red-panda = Röd panda
 newtab-wallpaper-light-mountain = Vita berg
@@ -438,7 +463,6 @@ newtab-weather-menu-change-location = Ändra plats
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Sök plats
     .aria-label = Sök plats
-newtab-weather-change-location-search-input = Sök plats
 newtab-weather-menu-weather-display = Vädervisning
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -504,6 +528,9 @@ newtab-topic-selection-button-pick-interests = Välj dina intressen
 newtab-section-follow-button = Följ
 newtab-section-following-button = Följer
 newtab-section-unfollow-button = Sluta följa
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = Finjustera ditt flöde
+newtab-section-follow-highlight-subtitle = Följ dina intressen för att se mer av vad du gillar.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -536,6 +563,12 @@ newtab-custom-wallpaper-title = Anpassade bakgrundsbilder finns här
 newtab-custom-wallpaper-subtitle = Ladda upp din egen bakgrundsbild eller välj en anpassad färg för att göra { -brand-product-name } till din.
 newtab-custom-wallpaper-cta = Prova den
 
+## Strings for new user activation custom wallpaper highlight
+
+newtab-new-user-custom-wallpaper-title = Välj en bakgrundsbild för att göra { -brand-product-name } till din
+newtab-new-user-custom-wallpaper-subtitle = Få varje ny flik att kännas som hemma med anpassade bakgrunder och färger.
+newtab-new-user-custom-wallpaper-cta = Prova det nu
+
 ## Strings for download mobile highlight
 
 newtab-download-mobile-highlight-title = Hämta { -brand-product-name } för mobil
@@ -545,6 +578,11 @@ newtab-download-mobile-highlight-body-variant-b = Fortsätt där du slutade när
 newtab-download-mobile-highlight-body-variant-c = Visste du att du kan ta med { -brand-product-name } när du är på språng? Samma webbläsare. I fickan.
 newtab-download-mobile-highlight-image =
     .aria-label = QR-kod för att ladda ner { -brand-product-name } för mobil
+
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = Dina favoriter nära till hands
+newtab-shortcuts-highlight-subtitle = Lägg till en genväg så att du har dina favoritwebbplatser bara ett klick bort.
 
 ## Strings for reporting ads and content
 
@@ -571,11 +609,84 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
-# "Trending on Google" refers to the trending topics coming from Google Search, usually seen when a user is focused on the search bar
-newtab-trending-searches-trending-on-google = Trender på Google
 newtab-trending-searches-show-trending =
     .title = Visa trendiga sökningar
 newtab-trending-searches-hide-trending =
     .title = Dölj trendiga sökningar
 newtab-trending-searches-learn-more = Läs mer
 newtab-trending-searches-dismiss = Dölj trendiga sökningar
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = Populära sökningar
+
+## Strings for task / to-do list productivity widget
+
+# "Add one" means adding a new task to the list (e.g., "Walk the dog")
+newtab-widget-lists-empty-cta = Möjligheterna är oändliga. Lägg till en.
+# A simple label next to the default list name letting users know this is a new / beta feature
+newtab-widget-lists-label-new =
+    .label = Ny
+newtab-widget-lists-label-beta =
+    .label = Beta
+# When tasks have been previous marked as complete, they will appear in their own separate list beneath incomplete items
+# Variables:
+#   $number (number) - Amount of list items marked complete
+newtab-widget-lists-completed-list = Slutförd ({ $number })
+newtab-widget-task-list-menu-copy = Kopiera
+newtab-widget-lists-menu-edit = Redigera listnamn
+newtab-widget-lists-menu-create = Skapa en ny lista
+newtab-widget-lists-menu-delete = Ta bort denna lista
+newtab-widget-lists-menu-copy = Kopiera lista till urklipp
+newtab-widget-lists-menu-hide = Dölj alla listor
+newtab-widget-lists-menu-learn-more = Läs mer
+newtab-widget-lists-input-add-an-item =
+    .placeholder = Lägg till ett objekt
+newtab-widget-lists-input-error = Inkludera text för att lägga till ett objekt.
+newtab-widget-lists-input-menu-open-link = Öppna länk
+newtab-widget-lists-input-menu-move-up = Flytta upp
+newtab-widget-lists-input-menu-move-down = Flytta ned
+newtab-widget-lists-input-menu-delete = Ta bort
+newtab-widget-lists-input-menu-edit = Redigera
+newtab-widget-lists-name-label-default =
+    .label = Uppgiftslista
+newtab-widget-lists-name-placeholder-default =
+    .placeholder = Uppgiftslista
+# The placeholder value of the name field for a newly created list
+newtab-widget-lists-name-placeholder-new =
+    .placeholder = Ny lista
+
+## Strings for timer productivity widget
+## When the timer ends, a system notification may be shown. Depending on which mode the timer is in, that message would be shown
+
+newtab-widget-timer-notification-title = Timer
+newtab-widget-timer-notification-focus = Fokustiden är ute. Bra jobbat. Behöver du en paus?
+newtab-widget-timer-notification-break = Din paus är över. Redo att fokusera?
+newtab-widget-timer-notification-warning = Aviseringar är avstängda
+newtab-widget-timer-mode-focus =
+    .label = Fokus
+newtab-widget-timer-mode-break =
+    .label = Paus
+newtab-widget-timer-play =
+    .title = Spela
+newtab-widget-timer-pause =
+    .title = Pausa
+newtab-widget-timer-label-play =
+    .label = Spela
+newtab-widget-timer-label-pause =
+    .label = Pausa
+newtab-widget-timer-reset =
+    .title = Återställ
+newtab-widget-timer-menu-notifications = Stäng av aviseringar
+newtab-widget-timer-menu-notifications-on = Slå på aviseringar
+newtab-widget-timer-menu-hide = Dölj timer
+newtab-widget-timer-menu-learn-more = Läs mer
+# Message that appears when widgets are full-height. This reminds users that there is more New Tab content to see if they scroll
+newtab-widget-keep-scrolling = Bläddra för mer
+newtab-widget-message-title = Håll fokus med listor och en inbyggd timer
+# to-dos stands for "things to do".
+newtab-widget-message-copy = Från snabba påminnelser till dagliga att-göra-uppgifter, fokussessioner till stretchpauser — håll dig fokuserad och i tid.
+newtab-promo-card-title = Stöd { -brand-product-name }
+newtab-promo-card-body = Våra sponsorer stöder vårt uppdrag att bygga en bättre webb
+newtab-promo-card-cta = Läs mer
+newtab-promo-card-dismiss-button =
+    .title = Ignorera
+    .aria-label = Ignorera

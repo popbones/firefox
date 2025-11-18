@@ -106,12 +106,8 @@
   <string name="mozac_feature_prompts_suggest_strong_password_use_password">پاس‌ورڈ نوں ورتو</string>
   <!-- Pressing this will dismiss the suggested strong password dialog -->
   <string name="mozac_feature_prompts_suggest_strong_password_dismiss">ہݨے نہیں</string>
-  <!-- Title for showing the suggest strong password saved confirmation snackbar -->
-  <string name="mozac_feature_prompts_suggest_strong_password_saved_snackbar_title">پاس‌ورڈ سنبھالیا</string>
   <!-- Title for showing the suggest strong password updated confirmation snackbar -->
   <string name="mozac_feature_prompts_suggest_strong_password_updated_snackbar_title">پاس‌ورڈ اپڈیٹ کیتا گیا</string>
-  <!-- Title for showing the username updated confirmation snackbar -->
-  <string name="mozac_feature_prompt_login_snackbar_username_updated">ورتݨ ناں نوں اپڈیٹ کیتا</string>
   <!-- Strings shown in a dialog that appear when users try to refresh a certain kind of webpages -->
   <string name="mozac_feature_prompt_repost_title">فیر بھیجیو؟</string>
   <string name="mozac_feature_prompt_repost_message">ایس صفحے نوں مڑ تازہ کرن نال تاشہ کاروائیاں نوں دہرایا جاۓگا؛ جیویں کہ بھگتان بھیجݨ یاں ٹپݨی نوں دو وار پا لایا جاۓگا۔</string>

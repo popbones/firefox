@@ -14,11 +14,12 @@
 #include "DepthOrderedFrameList.h"
 #include "FrameMetrics.h"
 #include "LayoutConstants.h"
+#include "TouchManager.h"
+#include "Units.h"
+#include "Visibility.h"
 #include "mozilla/ArenaObjectID.h"
 #include "mozilla/Attributes.h"
-#include "mozilla/dom/DocumentBinding.h"
 #include "mozilla/FlushType.h"
-#include "mozilla/layers/FocusTarget.h"
 #include "mozilla/Logging.h"
 #include "mozilla/MemoryReporting.h"
 #include "mozilla/PresShellForwards.h"
@@ -26,10 +27,12 @@
 #include "mozilla/StaticPtr.h"
 #include "mozilla/UniquePtr.h"
 #include "mozilla/WeakPtr.h"
-#include "nsColor.h"
+#include "mozilla/dom/DocumentBinding.h"
+#include "mozilla/layers/FocusTarget.h"
 #include "nsCOMArray.h"
-#include "nsCoord.h"
 #include "nsCSSFrameConstructor.h"
+#include "nsColor.h"
+#include "nsCoord.h"
 #include "nsDOMNavigationTiming.h"
 #include "nsFrameState.h"
 #include "nsIContent.h"
@@ -45,9 +48,6 @@
 #include "nsTHashSet.h"
 #include "nsThreadUtils.h"
 #include "nsWeakReference.h"
-#include "TouchManager.h"
-#include "Units.h"
-#include "Visibility.h"
 
 #ifdef ACCESSIBILITY
 #  include "nsAccessibilityService.h"
@@ -306,6 +306,12 @@ class PresShell final : public nsStubDocumentObserver,
   Document* GetDocument() const { return mDocument; }
 
   nsPresContext* GetPresContext() const { return mPresContext; }
+
+  /**
+   * Return the corresponding in-process root PresShell which is associated with
+   * the root nsPresContext of mPresContext.
+   */
+  PresShell* GetRootPresShell() const;
 
   nsViewManager* GetViewManager() const { return mViewManager; }
 
@@ -753,6 +759,23 @@ class PresShell final : public nsStubDocumentObserver,
                                const nsIFrame* aPositionedFrame) const;
   void AddAnchorPosAnchor(const nsAtom* aName, nsIFrame* aFrame);
   void RemoveAnchorPosAnchor(const nsAtom* aName, nsIFrame* aFrame);
+  enum class AnchorPosUpdateResult {
+    NotApplicable,
+    Flushed,
+    NeedReflow,
+  };
+  AnchorPosUpdateResult UpdateAnchorPosLayout();
+  void UpdateAnchorPosLayoutForScroll(ScrollContainerFrame* aScrollContainer);
+
+  inline void AddAnchorPosPositioned(nsIFrame* aFrame) {
+    if (!mAnchorPosPositioned.Contains(aFrame)) {
+      mAnchorPosPositioned.AppendElement(aFrame);
+    }
+  }
+
+  inline void RemoveAnchorPosPositioned(nsIFrame* aFrame) {
+    mAnchorPosPositioned.RemoveElement(aFrame);
+  }
 
 #ifdef MOZ_REFLOW_PERF
   void DumpReflows();
@@ -1240,6 +1263,10 @@ class PresShell final : public nsStubDocumentObserver,
 
   nsPoint GetLayoutViewportOffset() const;
   nsSize GetLayoutViewportSize() const;
+
+  // Returns the size used for window.inner{Height,Width}. Unlike the above
+  // layout viewport size, this size includes the scrollbar gutters.
+  nsSize GetInnerSize() const;
 
   /**
    * Documents belonging to an invisible DocShell must not be painted ever.
@@ -1808,8 +1835,25 @@ class PresShell final : public nsStubDocumentObserver,
    */
   static Modifiers GetCurrentModifiers() { return sCurrentModifiers; }
 
+  /**
+   * Inserts mLazyAnchorPosAnchorChanges into mAnchorPosAnchors. Because the
+   * anchor lookup uses tree-ordered sorting, we're implicitly assuming
+   * that when AddAnchorPosAnchor and RemoveAnchorPosAnchor are called,
+   * the frame tree structure is valid globally.
+   *
+   * This assumption does not always hold - e.g. when the initial construction
+   * frame tree is deferred: the frame tree can may be in an indeterminate state
+   * where a frame has a parent but the parent does not have that frame as its
+   * child. Therefore, the defer tree position comparison may be deferred to a
+   * point where we know the frame tree is stable.
+   */
+  void MergeAnchorPosAnchorChanges();
+
  private:
   ~PresShell();
+
+  template <bool AreWeMerging>
+  void AddAnchorPosAnchorImpl(const nsAtom* aName, nsIFrame* aFrame);
 
   void SetIsActive(bool aIsActive);
   bool ComputeActiveness() const;
@@ -3097,8 +3141,6 @@ class PresShell final : public nsStubDocumentObserver,
     static StaticRefPtr<dom::Element> sLastKeyDownEventTargetElement;
   };
 
-  PresShell* GetRootPresShell() const;
-
   bool IsTransparentContainerElement() const;
   ColorScheme DefaultBackgroundColorScheme() const;
   nscolor GetDefaultBackgroundColorToDraw() const;
@@ -3117,6 +3159,7 @@ class PresShell final : public nsStubDocumentObserver,
   static void MarkFramesInListApproximatelyVisible(const nsDisplayList& aList);
   void MarkFramesInSubtreeApproximatelyVisible(nsIFrame* aFrame,
                                                const nsRect& aRect,
+                                               const nsRect& aPreserve3DRect,
                                                bool aRemoveOnly = false);
 
   void DecApproximateVisibleCount(
@@ -3194,7 +3237,17 @@ class PresShell final : public nsStubDocumentObserver,
   // A hash table of heap allocated weak frames.
   nsTHashSet<WeakFrame*> mWeakFrames;
 
+  struct AnchorPosAnchorChange {
+    RefPtr<const nsAtom> mName;
+    nsIFrame* mFrame;
+  };
+  // Holds deferred anchor changes. These changes should be deferred when
+  // the frame tree is under construction and the tree position of an anchor
+  // cannot be determined.
+  nsTArray<AnchorPosAnchorChange> mLazyAnchorPosAnchorChanges;
+
   nsTHashMap<RefPtr<const nsAtom>, nsTArray<nsIFrame*>> mAnchorPosAnchors;
+  nsTArray<nsIFrame*> mAnchorPosPositioned;
 
   // Reflow roots that need to be reflowed.
   DepthOrderedFrameList mDirtyRoots;

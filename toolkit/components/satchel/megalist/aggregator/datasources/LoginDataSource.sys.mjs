@@ -184,8 +184,8 @@ export class LoginDataSource extends DataSourceBase {
       this.#header.executeUpdateLogin = login => this.#updateLogin(login);
       this.#header.executeDeleteLogin = login => this.#deleteLogin(login);
       this.#header.executeDiscardChanges = options => this.#cancelEdit(options);
-      this.#header.executeConfirmDiscardChanges = options =>
-        this.#discardChangesConfirmed(options);
+      this.#header.executeConfirmDiscardChanges = () =>
+        this.discardChangesConfirmed();
 
       this.#exportPasswordsStrings = {
         OSReauthMessage: strings.exportPasswordsOSReauthMessage,
@@ -374,6 +374,8 @@ export class LoginDataSource extends DataSourceBase {
   #addObservers() {
     Services.obs.addObserver(this, "passwordmgr-storage-changed");
     Services.obs.addObserver(this, "passwordmgr-crypto-login");
+    Services.obs.addObserver(this, "passwordmgr-crypto-loginCanceled");
+
     Services.prefs.addObserver("signon.rememberSignons", this);
     Services.prefs.addObserver(
       "signon.management.page.breach-alerts.enabled",
@@ -388,6 +390,7 @@ export class LoginDataSource extends DataSourceBase {
   #removeObservers() {
     Services.obs.removeObserver(this, "passwordmgr-storage-changed");
     Services.obs.removeObserver(this, "passwordmgr-crypto-login");
+    Services.obs.addObserver(this, "passwordmgr-crypto-loginCanceled");
 
     Services.prefs.removeObserver("signon.rememberSignons", this);
     Services.prefs.removeObserver(
@@ -410,7 +413,9 @@ export class LoginDataSource extends DataSourceBase {
     const { BrowserWindowTracker } = ChromeUtils.importESModule(
       "resource:///modules/BrowserWindowTracker.sys.mjs"
     );
-    const browsingContext = BrowserWindowTracker.getTopWindow().browsingContext;
+    const browsingContext = BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    }).browsingContext;
     let { result, path } = await this.openFilePickerDialog(
       title,
       buttonLabel,
@@ -430,13 +435,17 @@ export class LoginDataSource extends DataSourceBase {
     if (result != Ci.nsIFilePicker.returnCancel) {
       try {
         const summary = await LoginCSVImport.importFromCSV(path);
-        const counts = { added: 0, modified: 0 };
+        const counts = { added: 0, modified: 0, no_change: 0, error: 0 };
 
         for (const item of summary) {
-          if (item.result in counts) {
-            counts[item.result] += 1;
+          const type = item.result;
+          if (type.includes("error")) {
+            counts.error++;
+          } else {
+            counts[type]++;
           }
         }
+
         this.setNotification({
           id: "import-success",
           l10nArgs: counts,
@@ -445,13 +454,15 @@ export class LoginDataSource extends DataSourceBase {
 
         this.#recordLoginsUpdate("import");
       } catch (e) {
-        this.setNotification({
-          id: "import-error",
-          url: IMPORT_FILE_SUPPORT_URL,
-          commands: {
-            onRetry: "Import",
-          },
-        });
+        if (e.result !== Cr.NS_ERROR_ABORT) {
+          this.setNotification({
+            id: "import-error",
+            url: IMPORT_FILE_SUPPORT_URL,
+            commands: {
+              onRetry: "Import",
+            },
+          });
+        }
       }
     }
   }
@@ -480,7 +491,9 @@ export class LoginDataSource extends DataSourceBase {
     const { BrowserWindowTracker } = ChromeUtils.importESModule(
       "resource:///modules/BrowserWindowTracker.sys.mjs"
     );
-    const browser = BrowserWindowTracker.getTopWindow().gBrowser;
+    const browser = BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    }).gBrowser;
     try {
       lazy.MigrationUtils.showMigrationWizard(browser.ownerGlobal, {
         entrypoint: lazy.MigrationUtils.MIGRATION_ENTRYPOINTS.PASSWORDS,
@@ -543,7 +556,9 @@ export class LoginDataSource extends DataSourceBase {
     const { BrowserWindowTracker } = ChromeUtils.importESModule(
       "resource:///modules/BrowserWindowTracker.sys.mjs"
     );
-    const browsingContext = BrowserWindowTracker.getTopWindow().browsingContext;
+    const browsingContext = BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    }).browsingContext;
 
     const isOSAuthEnabled = LoginHelper.getOSAuthEnabled();
 
@@ -609,7 +624,9 @@ export class LoginDataSource extends DataSourceBase {
     const { BrowserWindowTracker } = ChromeUtils.importESModule(
       "resource:///modules/BrowserWindowTracker.sys.mjs"
     );
-    const browser = BrowserWindowTracker.getTopWindow().gBrowser;
+    const browser = BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    }).gBrowser;
     browser.ownerGlobal.switchToTabHavingURI(url, true, {
       ignoreFragment: "whenComparingAndReplace",
     });
@@ -624,7 +641,9 @@ export class LoginDataSource extends DataSourceBase {
     const { BrowserWindowTracker } = ChromeUtils.importESModule(
       "resource:///modules/BrowserWindowTracker.sys.mjs"
     );
-    const win = BrowserWindowTracker.getTopWindow();
+    const win = BrowserWindowTracker.getTopWindow({
+      allowFromInactiveWorkspace: true,
+    });
 
     const { title, message, confirmButton } = await this.localizeStrings({
       title: titleL10n,
@@ -733,24 +752,8 @@ export class LoginDataSource extends DataSourceBase {
     }
   }
 
-  #cancelEdit(options = {}) {
-    this.setNotification({
-      id: "discard-changes",
-      fromSidebar: options.fromSidebar,
-      passwordIndex: options.passwordIndex,
-    });
-  }
-
-  #discardChangesConfirmed(options = {}) {
-    if (options.fromSidebar) {
-      const { BrowserWindowTracker } = ChromeUtils.importESModule(
-        "resource:///modules/BrowserWindowTracker.sys.mjs"
-      );
-      const window = BrowserWindowTracker.getTopWindow();
-      window.SidebarController.hide();
-    } else {
-      this.discardChangesConfirmed();
-    }
+  #cancelEdit() {
+    this.setNotification({ id: "discard-changes" });
   }
 
   #handleLoginStorageErrors(origin, error) {
@@ -927,6 +930,12 @@ export class LoginDataSource extends DataSourceBase {
       message == "signon.management.page.vulnerable-passwords.enabled"
     ) {
       this.#reloadDataSource();
+
+      if (topic === "passwordmgr-crypto-login") {
+        this.setPrimaryPasswordAuthenticated(true);
+      }
+    } else if (topic == "passwordmgr-crypto-loginCanceled") {
+      this.setPrimaryPasswordAuthenticated(false);
     }
   }
 }

@@ -103,7 +103,6 @@ class EverythingFailsByDefaultTrustDomain : public TrustDomain {
 
   Result CheckRevocation(EndEntityOrCA, const CertID&, Time, Duration,
                          /*optional*/ const Input*,
-                         /*optional*/ const Input*,
                          /*optional*/ const Input*) override {
     ADD_FAILURE();
     return NotReached("CheckRevocation should not be called",
@@ -168,12 +167,6 @@ class EverythingFailsByDefaultTrustDomain : public TrustDomain {
                       Result::FATAL_ERROR_LIBRARY_FAILURE);
   }
 
-  Result NetscapeStepUpMatchesServerAuth(Time, bool&) override {
-    ADD_FAILURE();
-    return NotReached("NetscapeStepUpMatchesServerAuth should not be called",
-                      Result::FATAL_ERROR_LIBRARY_FAILURE);
-  }
-
   virtual void NoteAuxiliaryExtension(AuxiliaryExtension, Input) override {
     ADD_FAILURE();
   }
@@ -215,11 +208,6 @@ class DefaultCryptoTrustDomain : public EverythingFailsByDefaultTrustDomain {
 
   Result CheckValidityIsAcceptable(Time, Time, EndEntityOrCA,
                                    KeyPurposeId) override {
-    return Success;
-  }
-
-  Result NetscapeStepUpMatchesServerAuth(Time, /*out*/ bool& matches) override {
-    matches = true;
     return Success;
   }
 

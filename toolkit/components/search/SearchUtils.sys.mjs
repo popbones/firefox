@@ -7,13 +7,12 @@
 import { AppConstants } from "resource://gre/modules/AppConstants.sys.mjs";
 import { XPCOMUtils } from "resource://gre/modules/XPCOMUtils.sys.mjs";
 
-const lazy = {};
-
-ChromeUtils.defineLazyGetter(lazy, "logConsole", () => {
-  return console.createInstance({
-    prefix: "SearchUtils",
-    maxLogLevel: SearchUtils.loggingEnabled ? "Debug" : "Warn",
-  });
+const lazy = XPCOMUtils.declareLazy({
+  logConsole: () =>
+    console.createInstance({
+      prefix: "SearchUtils",
+      maxLogLevel: SearchUtils.loggingEnabled ? "Debug" : "Warn",
+    }),
 });
 
 const BinaryInputStream = Components.Constructor(
@@ -171,13 +170,14 @@ export var SearchUtils = {
     DEFAULT_PRIVATE: "engine-default-private",
   },
 
-  URL_TYPE: {
+  URL_TYPE: Object.freeze({
     SUGGEST_JSON: "application/x-suggestions+json",
     SEARCH: "text/html",
     OPENSEARCH: "application/opensearchdescription+xml",
     TRENDING_JSON: "application/x-trending+json",
     SEARCH_FORM: "searchform",
-  },
+    VISUAL_SEARCH: "application/x-visual-search+html",
+  }),
 
   ENGINES_URLS: {
     "prod-main":
@@ -289,7 +289,7 @@ export var SearchUtils = {
    *   The current settings version.
    */
   get SETTINGS_VERSION() {
-    return 12;
+    return 13;
   },
 
   /**
@@ -578,7 +578,7 @@ export var SearchUtils = {
    *   Mime type of the payload.
    * @param {number} [size]
    *   Desired icon size.
-   * @returns {[Uint8Array, string]}
+   * @returns {[Uint8Array<ArrayBuffer>, string]}
    *   An array of two elements - an array containing the rescaled icon
    *   and a string for the content type.
    * @throws if the icon cannot be rescaled or the rescaled icon is too big.
@@ -610,13 +610,6 @@ XPCOMUtils.defineLazyPreferenceGetter(
   SearchUtils,
   "loggingEnabled",
   BROWSER_SEARCH_PREF + "log",
-  false
-);
-
-XPCOMUtils.defineLazyPreferenceGetter(
-  SearchUtils,
-  "rustSelectorFeatureGate",
-  BROWSER_SEARCH_PREF + "rustSelector.featureGate",
   false
 );
 

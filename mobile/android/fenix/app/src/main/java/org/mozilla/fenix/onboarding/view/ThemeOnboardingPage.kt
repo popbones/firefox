@@ -30,8 +30,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -42,8 +46,9 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
 import mozilla.components.compose.base.annotation.FlexibleWindowLightDarkPreview
-import mozilla.components.compose.base.button.PrimaryButton
+import mozilla.components.compose.base.button.FilledButton
 import mozilla.components.compose.base.utils.inComposePreview
 import mozilla.components.lib.state.ext.observeAsState
 import mozilla.components.ui.colors.PhotonColors
@@ -51,6 +56,7 @@ import org.mozilla.fenix.R
 import org.mozilla.fenix.onboarding.store.OnboardingStore
 import org.mozilla.fenix.onboarding.store.applyThemeIfRequired
 import org.mozilla.fenix.theme.FirefoxTheme
+import mozilla.components.ui.icons.R as iconsR
 
 /**
  * The default ratio of the image height to the parent height.
@@ -173,7 +179,7 @@ fun ThemeOnboardingPage(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                PrimaryButton(
+                FilledButton(
                     text = primaryButton.text,
                     modifier = Modifier
                         .width(width = FirefoxTheme.layout.size.maxWidth.small)
@@ -222,11 +228,12 @@ private fun SelectableImageItem(
     selectedOption: ThemeOptionType,
     onClick: (ThemeOptionType) -> Unit,
 ) {
+    var isMultilineLabel by remember { mutableStateOf(false) }
     val isSelectedOption = themeOption.themeType == selectedOption
 
     Column(
         modifier = Modifier
-            .width(columnWidth)
+            .width(if (isMultilineLabel) LocalDensity.current.fontScale * columnWidth else columnWidth)
             .clickable(
                 onClickLabel = stringResource(R.string.onboarding_customize_theme_a11y_action_label_select),
                 onClick = {
@@ -263,6 +270,7 @@ private fun SelectableImageItem(
 
         Text(
             text = themeOption.label,
+            onTextLayout = { if (!isMultilineLabel) { isMultilineLabel = it.lineCount > 1 } },
             color = FirefoxTheme.colors.textPrimary,
             modifier = Modifier.padding(vertical = 6.dp),
             style = FirefoxTheme.typography.caption,
@@ -279,7 +287,7 @@ private fun SelectableImageItem(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.mozac_ic_checkmark_24),
+                    painter = painterResource(id = iconsR.drawable.mozac_ic_checkmark_24),
                     contentDescription = null, // decorative only.
                     modifier = Modifier.size(12.dp),
                     tint = PhotonColors.White,

@@ -4,12 +4,13 @@
 
 package mozilla.components.browser.state.engine.middleware
 
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import mozilla.components.browser.state.action.BrowserAction
 import mozilla.components.browser.state.action.InitAction
 import mozilla.components.browser.state.action.LocaleAction
 import mozilla.components.browser.state.action.TranslationsAction
-import mozilla.components.browser.state.selector.findTab
 import mozilla.components.browser.state.state.BrowserState
 import mozilla.components.browser.state.state.TabSessionState
 import mozilla.components.browser.state.state.TranslationsBrowserState
@@ -36,16 +37,15 @@ import mozilla.components.concept.engine.translate.TranslationSupport
 import mozilla.components.lib.state.MiddlewareContext
 import mozilla.components.support.test.any
 import mozilla.components.support.test.argumentCaptor
+import mozilla.components.support.test.eq
 import mozilla.components.support.test.ext.joinBlocking
-import mozilla.components.support.test.libstate.ext.waitUntilIdle
 import mozilla.components.support.test.mock
-import mozilla.components.support.test.rule.MainCoroutineRule
 import mozilla.components.support.test.whenever
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.Mockito.atLeastOnce
+import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.never
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
@@ -53,24 +53,15 @@ import java.util.Locale
 
 class TranslationsMiddlewareTest {
 
-    @get:Rule
-    val coroutinesTestRule = MainCoroutineRule()
-    private val scope = coroutinesTestRule.scope
-    private val engine: Engine = mock()
-    private val engineSession: EngineSession = mock()
-    private val tab: TabSessionState = spy(
-        createTab(
-            url = "https://www.firefox.com",
-            title = "Firefox",
-            id = "1",
-            engineSession = engineSession,
-        ),
-    )
-    private val translationsMiddleware = TranslationsMiddleware(engine = engine, scope = scope)
-    private val tabs = spy(listOf(tab))
-    private val state = spy(BrowserState(tabs = tabs, selectedTabId = tab.id))
-    private val store = spy(BrowserStore(middleware = listOf(translationsMiddleware), initialState = state))
-    private val context = mock<MiddlewareContext<BrowserState, BrowserAction>>()
+    private val scope = TestScope(StandardTestDispatcher())
+    private lateinit var engine: Engine
+    private lateinit var engineSession: EngineSession
+    private lateinit var tab: TabSessionState
+    private lateinit var translationsMiddleware: TranslationsMiddleware
+    private lateinit var tabs: List<TabSessionState>
+    private lateinit var state: BrowserState
+    private lateinit var store: BrowserStore
+    private lateinit var context: MiddlewareContext<BrowserState, BrowserAction>
 
     // Mock Variables
     private val mockFrom = Language(code = "es", localizedDisplayName = "Spanish")
@@ -83,19 +74,30 @@ class TranslationsMiddlewareTest {
     private val mockSize: Long = 1234
     private val mockLanguage = Language(mockFrom.code, mockFrom.localizedDisplayName)
     private val mockLanguageModel = LanguageModel(mockLanguage, mockDownloaded, mockSize)
-    private val mockLanguageModels = mutableListOf(mockLanguageModel)
+    private lateinit var mockLanguageModels: MutableList<LanguageModel>
 
     @Before
     fun setup() {
+        engine = mock()
+        engineSession = mock()
+        tab = spy(
+            createTab(
+                url = "https://www.firefox.com",
+                title = "Firefox",
+                id = "1",
+                engineSession = engineSession,
+            ),
+        )
+        tabs = spy(listOf(tab))
+        state = spy(BrowserState(tabs = tabs, selectedTabId = tab.id))
+        translationsMiddleware = TranslationsMiddleware(engine = engine, scope = scope)
+        store = spy(BrowserStore(middleware = listOf(translationsMiddleware), initialState = state))
+        context = mock<MiddlewareContext<BrowserState, BrowserAction>>()
+
         whenever(context.store).thenReturn(store)
         whenever(context.state).thenReturn(state)
-    }
 
-    private fun waitForIdle() {
-        scope.testScheduler.runCurrent()
-        scope.testScheduler.advanceUntilIdle()
-        coroutinesTestRule.testDispatcher.scheduler.advanceUntilIdle()
-        store.waitUntilIdle()
+        mockLanguageModels = mutableListOf(mockLanguageModel)
     }
 
     /**
@@ -110,10 +112,11 @@ class TranslationsMiddlewareTest {
         val mockSessionState = TranslationsState(
             translationEngineState = TranslationEngineState(mockDetectedLanguages),
         )
-        whenever(store.state.findTab(tab.id)?.translationsState).thenReturn(mockSessionState)
 
         val mockBrowserState = TranslationsBrowserState(isEngineSupported = true, supportedLanguages = mockSupportedLanguages, languageModels = mockLanguageModels)
-        whenever(store.state.translationEngine).thenReturn(mockBrowserState)
+
+        doReturn(mockSessionState).`when`(tab).translationsState
+        doReturn(mockBrowserState).`when`(state).translationEngine
     }
 
     @Test
@@ -126,6 +129,7 @@ class TranslationsMiddlewareTest {
             )
 
         translationsMiddleware.invoke(context = context, next = {}, action = action)
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify results
         val languageCallback = argumentCaptor<((TranslationSupport) -> Unit)>()
@@ -137,7 +141,7 @@ class TranslationsMiddlewareTest {
         )
         languageCallback.value.invoke(supportedLanguages)
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(context.store, atLeastOnce()).dispatch(
             TranslationsAction.SetSupportedLanguagesAction(
@@ -151,8 +155,6 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_SUPPORTED_LANGUAGES,
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -165,6 +167,7 @@ class TranslationsMiddlewareTest {
             )
 
         translationsMiddleware.invoke(context = context, next = {}, action = action)
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify results
         val errorCaptor = argumentCaptor<((Throwable) -> Unit)>()
@@ -172,7 +175,7 @@ class TranslationsMiddlewareTest {
         verify(engine, atLeastOnce()).getSupportedTranslationLanguages(onSuccess = any(), onError = errorCaptor.capture())
         errorCaptor.value.invoke(Throwable())
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store, atLeastOnce()).dispatch(
             TranslationsAction.EngineExceptionAction(
@@ -187,8 +190,6 @@ class TranslationsMiddlewareTest {
                 translationError = TranslationError.CouldNotLoadLanguagesError(any()),
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -196,12 +197,11 @@ class TranslationsMiddlewareTest {
         // Send Action
         // Note: Will cause a double InitAction
         translationsMiddleware.invoke(context = context, next = {}, action = InitAction)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store, atLeastOnce()).dispatch(
             TranslationsAction.InitTranslationsBrowserState,
         )
-        waitForIdle()
     }
 
     @Test
@@ -212,18 +212,18 @@ class TranslationsMiddlewareTest {
             scope = scope,
         )
         middleware.invoke(context = context, next = {}, action = InitAction)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store, never()).dispatch(
             TranslationsAction.InitTranslationsBrowserState,
         )
-        waitForIdle()
     }
 
     @Test
     fun `WHEN InitTranslationsBrowserState is dispatched AND the engine is supported THEN SetSupportedLanguagesAction is also dispatched`() = runTest {
         // Send Action
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.InitTranslationsBrowserState)
+        scope.testScheduler.advanceUntilIdle()
 
         // Set the engine to support
         val engineSupportedCallback = argumentCaptor<((Boolean) -> Unit)>()
@@ -233,6 +233,7 @@ class TranslationsMiddlewareTest {
             onError = any(),
         )
         engineSupportedCallback.value.invoke(true)
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify results for language query
         val languageCallback = argumentCaptor<((TranslationSupport) -> Unit)>()
@@ -243,7 +244,7 @@ class TranslationsMiddlewareTest {
         )
         languageCallback.value.invoke(supportedLanguages)
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verifying at least once
         verify(store, atLeastOnce()).dispatch(
@@ -251,15 +252,13 @@ class TranslationsMiddlewareTest {
                 supportedLanguages = supportedLanguages,
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
     fun `WHEN InitTranslationsBrowserState is dispatched AND the engine is supported THEN SetLanguageSettingsAction is also dispatched`() = runTest {
         // Send Action
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.InitTranslationsBrowserState)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Set the engine to support
         val engineSupportedCallback = argumentCaptor<((Boolean) -> Unit)>()
@@ -269,6 +268,7 @@ class TranslationsMiddlewareTest {
             onError = any(),
         )
         engineSupportedCallback.value.invoke(true)
+        scope.testScheduler.advanceUntilIdle()
 
         // Check expectations
         val languageSettingsCallback = argumentCaptor<((Map<String, LanguageSetting>) -> Unit)>()
@@ -278,21 +278,20 @@ class TranslationsMiddlewareTest {
         )
         val mockLanguageSetting = mapOf("en" to LanguageSetting.OFFER)
         languageSettingsCallback.value.invoke(mockLanguageSetting)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store, atLeastOnce()).dispatch(
             TranslationsAction.SetLanguageSettingsAction(
                 languageSettings = mockLanguageSetting,
             ),
         )
-        waitForIdle()
     }
 
     @Test
     fun `WHEN InitTranslationsBrowserState is dispatched AND an error occurs THEN TranslateExceptionAction is dispatched for language settings`() = runTest {
         // Send Action
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.InitTranslationsBrowserState)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Set the engine to support
         val engineSupportedCallback = argumentCaptor<((Boolean) -> Unit)>()
@@ -302,6 +301,7 @@ class TranslationsMiddlewareTest {
             onError = any(),
         )
         engineSupportedCallback.value.invoke(true)
+        scope.testScheduler.advanceUntilIdle()
 
         // Check expectations
         val errorCallback = argumentCaptor<((Throwable) -> Unit)>()
@@ -310,21 +310,20 @@ class TranslationsMiddlewareTest {
             onError = errorCallback.capture(),
         )
         errorCallback.value.invoke(Throwable())
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store, atLeastOnce()).dispatch(
             TranslationsAction.EngineExceptionAction(
                 error = TranslationError.CouldNotLoadLanguageSettingsError(any()),
             ),
         )
-        waitForIdle()
     }
 
     @Test
     fun `WHEN InitTranslationsBrowserState is dispatched AND the engine is supported THEN SetLanguageModelsAction is also dispatched`() = runTest {
         // Send Action
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.InitTranslationsBrowserState)
-
+        scope.testScheduler.advanceUntilIdle()
         // Set the engine to support
         val engineSupportedCallback = argumentCaptor<((Boolean) -> Unit)>()
         // At least once, since InitAction also will trigger this
@@ -333,12 +332,11 @@ class TranslationsMiddlewareTest {
             onError = any(),
         )
         engineSupportedCallback.value.invoke(true)
+        scope.testScheduler.advanceUntilIdle()
 
         val languageCallback = argumentCaptor<((List<LanguageModel>) -> Unit)>()
         verify(engine, atLeastOnce()).getTranslationsModelDownloadStates(onSuccess = languageCallback.capture(), onError = any())
         languageCallback.value.invoke(mockLanguageModels)
-
-        waitForIdle()
 
         // Verifying at least once
         verify(store, atLeastOnce()).dispatch(
@@ -352,6 +350,7 @@ class TranslationsMiddlewareTest {
     fun `WHEN InitTranslationsBrowserState is dispatched AND the engine is supported THEN SetNeverTranslateSitesAction is also dispatched`() = runTest {
         // Send Action
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.InitTranslationsBrowserState)
+        scope.testScheduler.advanceUntilIdle()
 
         // Set the engine to support
         val engineSupportedCallback = argumentCaptor<((Boolean) -> Unit)>()
@@ -361,13 +360,12 @@ class TranslationsMiddlewareTest {
             onError = any(),
         )
         engineSupportedCallback.value.invoke(true)
+        scope.testScheduler.advanceUntilIdle()
 
         val neverTranslateSitesCallBack = argumentCaptor<((List<String>) -> Unit)>()
         verify(engine, atLeastOnce()).getNeverTranslateSiteList(onSuccess = neverTranslateSitesCallBack.capture(), onError = any())
         val mockNeverTranslate = listOf("www.mozilla.org")
         neverTranslateSitesCallBack.value.invoke(mockNeverTranslate)
-
-        waitForIdle()
 
         // Verifying at least once
         verify(store, atLeastOnce()).dispatch(
@@ -382,7 +380,7 @@ class TranslationsMiddlewareTest {
         // Send Action
         // Note: Implicitly called once due to connection with InitAction
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.InitTranslationsBrowserState)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Check expectations
         val errorCallback = argumentCaptor<((Throwable) -> Unit)>()
@@ -391,7 +389,7 @@ class TranslationsMiddlewareTest {
             onError = errorCallback.capture(),
         )
         errorCallback.value.invoke(IllegalStateException())
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store, atLeastOnce()).dispatch(
             TranslationsAction.EngineExceptionAction(
@@ -405,6 +403,7 @@ class TranslationsMiddlewareTest {
         // Send Action
         // Will invoke a double InitAction
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.InitTranslationsBrowserState)
+        scope.testScheduler.advanceUntilIdle()
 
         // Set the engine to not support
         val engineNotSupportedCallback = argumentCaptor<((Boolean) -> Unit)>()
@@ -416,7 +415,6 @@ class TranslationsMiddlewareTest {
 
         // Verify language query was never called
         verify(engine, never()).getSupportedTranslationLanguages(onSuccess = any(), onError = any())
-        waitForIdle()
     }
 
     @Test
@@ -427,7 +425,7 @@ class TranslationsMiddlewareTest {
         // Action
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.TranslateExpectedAction(tab.id))
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verifying at least once
         verify(store).dispatch(
@@ -437,8 +435,6 @@ class TranslationsMiddlewareTest {
                 toLanguage = mockTo,
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -447,7 +443,7 @@ class TranslationsMiddlewareTest {
         // Action
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.TranslateExpectedAction(tab.id))
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verifying no dispatch
         verify(store, never()).dispatch(
@@ -458,9 +454,10 @@ class TranslationsMiddlewareTest {
             ),
         )
 
+        scope.testScheduler.advanceUntilIdle()
+
         // Verify language query was never called
         verify(engine, never()).getTranslationsModelDownloadStates(onSuccess = any(), onError = any())
-        waitForIdle()
     }
 
     @Test
@@ -484,7 +481,7 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_PAGE_SETTINGS,
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Check Behavior
         // Popup always offer behavior
@@ -499,6 +496,7 @@ class TranslationsMiddlewareTest {
         )
         val languageResponse = LanguageSetting.ALWAYS
         languageSettingCallback.value.invoke(languageResponse)
+        scope.testScheduler.advanceUntilIdle()
 
         // Never translate site behavior behavior
         val neverTranslateSiteCallback = argumentCaptor<((Boolean) -> Unit)>()
@@ -507,6 +505,7 @@ class TranslationsMiddlewareTest {
             onException = any(),
         )
         neverTranslateSiteCallback.value.invoke(mockPageSettings.neverTranslateSite!!)
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store).dispatch(
             TranslationsAction.SetPageSettingsAction(
@@ -514,7 +513,6 @@ class TranslationsMiddlewareTest {
                 pageSettings = mockPageSettings,
             ),
         )
-        waitForIdle()
     }
 
     @Test
@@ -530,7 +528,7 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_PAGE_SETTINGS,
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Check Behavior
         // Page language behavior
@@ -541,6 +539,7 @@ class TranslationsMiddlewareTest {
             onError = languageErrorCallback.capture(),
         )
         languageErrorCallback.value.invoke(Throwable())
+        scope.testScheduler.advanceUntilIdle()
 
         // Never translate site behavior behavior
         val neverTranslateSiteErrorCallback = argumentCaptor<((Throwable) -> Unit)>()
@@ -549,6 +548,7 @@ class TranslationsMiddlewareTest {
             onException = neverTranslateSiteErrorCallback.capture(),
         )
         neverTranslateSiteErrorCallback.value.invoke(Throwable())
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store).dispatch(
             TranslationsAction.TranslateExceptionAction(
@@ -557,8 +557,6 @@ class TranslationsMiddlewareTest {
                 translationError = TranslationError.CouldNotLoadPageSettingsError(any()),
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -583,7 +581,7 @@ class TranslationsMiddlewareTest {
                 setting = true,
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify Dispatch
         verify(store).dispatch(
@@ -603,7 +601,7 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_AUTOMATIC_LANGUAGE_SETTINGS,
             )
         translationsMiddleware.invoke(context = context, next = {}, action = action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Check expectations
         val languageSettingsCallback = argumentCaptor<((Map<String, LanguageSetting>) -> Unit)>()
@@ -614,14 +612,13 @@ class TranslationsMiddlewareTest {
         )
         val mockLanguageSetting = mapOf("en" to LanguageSetting.OFFER)
         languageSettingsCallback.value.invoke(mockLanguageSetting)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store, atLeastOnce()).dispatch(
             TranslationsAction.SetLanguageSettingsAction(
                 languageSettings = mockLanguageSetting,
             ),
         )
-        waitForIdle()
     }
 
     @Test
@@ -629,6 +626,8 @@ class TranslationsMiddlewareTest {
         // Page settings needs additional setup
         setupMockState()
         val pageSettingCallback = argumentCaptor<(() -> Unit)>()
+
+        // This is going to execute onSuccess callback when setLanguageSetting is called
         whenever(
             engine.setLanguageSetting(
                 languageCode = any(),
@@ -646,15 +645,31 @@ class TranslationsMiddlewareTest {
                 setting = true,
             )
         translationsMiddleware.invoke(context = context, next = {}, action = action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Check expectations
-        val languageSettingsCallback = argumentCaptor<((Map<String, LanguageSetting>) -> Unit)>()
-        verify(engine).getLanguageSettings(
-            onSuccess = languageSettingsCallback.capture(),
+
+        verify(engine).setLanguageSetting(
+            languageCode = eq("es"),
+            languageSetting = eq(LanguageSetting.ALWAYS),
+            onSuccess = pageSettingCallback.capture(),
             onError = any(),
         )
-        waitForIdle()
+
+        // the success callback is going to be executed, which will trigger a FETCH_AUTOMATIC_LANGUAGE_SETTINGS action
+        verify(context.store).dispatch(
+            TranslationsAction.OperationRequestedAction(
+                tabId = tab.id,
+                operation = TranslationOperation.FETCH_AUTOMATIC_LANGUAGE_SETTINGS,
+            ),
+        )
+
+        scope.testScheduler.advanceUntilIdle()
+
+        verify(engine).getLanguageSettings(
+            onSuccess = any(),
+            onError = any(),
+        )
     }
 
     @Test
@@ -666,7 +681,7 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_AUTOMATIC_LANGUAGE_SETTINGS,
             )
         translationsMiddleware.invoke(context = context, next = {}, action = action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Check expectations
         val errorCallback = argumentCaptor<((Throwable) -> Unit)>()
@@ -675,7 +690,7 @@ class TranslationsMiddlewareTest {
             onError = errorCallback.capture(),
         )
         errorCallback.value.invoke(Throwable())
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store, atLeastOnce()).dispatch(
             TranslationsAction.EngineExceptionAction(
@@ -690,7 +705,6 @@ class TranslationsMiddlewareTest {
                 translationError = TranslationError.CouldNotLoadLanguageSettingsError(any()),
             ),
         )
-        waitForIdle()
     }
 
     @Test
@@ -716,7 +730,7 @@ class TranslationsMiddlewareTest {
                 setting = true,
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify Dispatch
         verify(store).dispatch(
@@ -725,7 +739,6 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_PAGE_SETTINGS,
             ),
         )
-        waitForIdle()
     }
 
     @Test
@@ -750,7 +763,7 @@ class TranslationsMiddlewareTest {
                 setting = true,
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify Dispatch
         verify(store).dispatch(
@@ -759,7 +772,6 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_PAGE_SETTINGS,
             ),
         )
-        waitForIdle()
     }
 
     @Test
@@ -772,6 +784,8 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_NEVER_TRANSLATE_SITES,
             )
         translationsMiddleware.invoke(context, {}, action)
+        scope.testScheduler.advanceUntilIdle()
+
         verify(engine).getNeverTranslateSiteList(onSuccess = sitesCallback.capture(), onError = any())
         sitesCallback.value.invoke(neverTranslateSites)
 
@@ -780,8 +794,6 @@ class TranslationsMiddlewareTest {
                 neverTranslateSites = neverTranslateSites,
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -792,7 +804,7 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_NEVER_TRANSLATE_SITES,
             ),
         ).joinBlocking()
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         verify(store).dispatch(
             TranslationsAction.TranslateExceptionAction(
@@ -801,7 +813,6 @@ class TranslationsMiddlewareTest {
                 translationError = TranslationError.CouldNotLoadNeverTranslateSites(any()),
             ),
         )
-        waitForIdle()
     }
 
     @Test
@@ -820,6 +831,7 @@ class TranslationsMiddlewareTest {
                 toLanguage = translationSize.toLanguage,
             )
         translationsMiddleware.invoke(context = context, next = {}, action = action)
+        scope.testScheduler.advanceUntilIdle()
 
         val sizeCaptor = argumentCaptor<((Long) -> Unit)>()
         verify(engine).getTranslationsPairDownloadSize(
@@ -836,8 +848,6 @@ class TranslationsMiddlewareTest {
                 translationSize = translationSize,
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -849,6 +859,7 @@ class TranslationsMiddlewareTest {
                 toLanguage = Language("fr", "French"),
             )
         translationsMiddleware.invoke(context = context, next = {}, action = action)
+        scope.testScheduler.advanceUntilIdle()
 
         val errorCaptor = argumentCaptor<((Throwable) -> Unit)>()
         verify(engine).getTranslationsPairDownloadSize(
@@ -858,6 +869,7 @@ class TranslationsMiddlewareTest {
             onError = errorCaptor.capture(),
         )
         errorCaptor.value.invoke(TranslationError.CouldNotDetermineDownloadSizeError(cause = null))
+        scope.testScheduler.advanceUntilIdle()
 
         verify(context.store).dispatch(
             TranslationsAction.SetTranslationDownloadSizeAction(
@@ -870,8 +882,6 @@ class TranslationsMiddlewareTest {
                 ),
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -891,7 +901,7 @@ class TranslationsMiddlewareTest {
                 origin = "google.com",
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         val neverTranslateSitesCallBack = argumentCaptor<((List<String>) -> Unit)>()
         verify(engine, atLeastOnce()).getNeverTranslateSiteList(onSuccess = neverTranslateSitesCallBack.capture(), onError = any())
@@ -904,7 +914,6 @@ class TranslationsMiddlewareTest {
                 neverTranslateSites = mockNeverTranslate,
             ),
         )
-        waitForIdle()
     }
 
     @Test
@@ -918,6 +927,7 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_LANGUAGE_MODELS,
             )
         translationsMiddleware.invoke(context, {}, action)
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify results
         verify(engine, atLeastOnce()).getTranslationsModelDownloadStates(onSuccess = languageCallback.capture(), onError = any())
@@ -928,8 +938,6 @@ class TranslationsMiddlewareTest {
                 languageModels = mockLanguageModels,
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -948,7 +956,7 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_LANGUAGE_MODELS,
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify Dispatch
         verify(store, atLeastOnce()).dispatch(
@@ -964,14 +972,13 @@ class TranslationsMiddlewareTest {
                 translationError = TranslationError.ModelCouldNotRetrieveError(any()),
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
     fun `WHEN InitTranslationsBrowserState is dispatched AND the engine is supported THEN SetOfferTranslateSettingAction is also dispatched`() = runTest {
         // Send Action
         translationsMiddleware.invoke(context = context, next = {}, action = TranslationsAction.InitTranslationsBrowserState)
+        scope.testScheduler.advanceUntilIdle()
 
         // Set the engine to support
         val engineSupportedCallback = argumentCaptor<((Boolean) -> Unit)>()
@@ -981,10 +988,11 @@ class TranslationsMiddlewareTest {
             onError = any(),
         )
         engineSupportedCallback.value.invoke(true)
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify results for offer
         verify(engine, atLeastOnce()).getTranslationsOfferPopup()
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verifying at least once
         verify(store, atLeastOnce()).dispatch(
@@ -992,8 +1000,6 @@ class TranslationsMiddlewareTest {
                 offerTranslation = false,
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -1010,7 +1016,7 @@ class TranslationsMiddlewareTest {
                 operation = TranslationOperation.FETCH_OFFER_SETTING,
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify Dispatch
         verify(store, atLeastOnce()).dispatch(
@@ -1026,8 +1032,6 @@ class TranslationsMiddlewareTest {
                 pageSettings = any(),
             ),
         )
-
-        waitForIdle()
     }
 
     @Test
@@ -1038,11 +1042,10 @@ class TranslationsMiddlewareTest {
                 offerTranslation = true,
             )
         translationsMiddleware.invoke(context, {}, action)
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify offer was set
         verify(engine, atLeastOnce()).setTranslationsOfferPopup(offer = true)
-        waitForIdle()
     }
 
     @Test
@@ -1055,7 +1058,7 @@ class TranslationsMiddlewareTest {
             )
         translationsMiddleware.invoke(context, {}, action)
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Mock engine error
         val updateLanguagesErrorCallback = argumentCaptor<((Throwable) -> Unit)>()
@@ -1067,7 +1070,7 @@ class TranslationsMiddlewareTest {
         )
         updateLanguagesErrorCallback.value.invoke(Throwable())
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Verify Dispatch
         val languageSettingsCallback = argumentCaptor<((Map<String, LanguageSetting>) -> Unit)>()
@@ -1077,7 +1080,6 @@ class TranslationsMiddlewareTest {
         )
         val mockLanguageSetting = mapOf("en" to LanguageSetting.OFFER)
         languageSettingsCallback.value.invoke(mockLanguageSetting)
-        waitForIdle()
     }
 
     @Test
@@ -1091,7 +1093,7 @@ class TranslationsMiddlewareTest {
             )
         translationsMiddleware.invoke(context, {}, action)
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Mock success from engine
         val updateModelsErrorCallback = argumentCaptor<(() -> Unit)>()
@@ -1102,7 +1104,7 @@ class TranslationsMiddlewareTest {
         )
         updateModelsErrorCallback.value.invoke()
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Should set the latest state
         verify(store, atLeastOnce()).dispatch(
@@ -1127,7 +1129,7 @@ class TranslationsMiddlewareTest {
             )
         translationsMiddleware.invoke(context, {}, action)
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Mock failure from engine
         val updateModelsErrorCallback = argumentCaptor<((Throwable) -> Unit)>()
@@ -1137,7 +1139,6 @@ class TranslationsMiddlewareTest {
             onError = updateModelsErrorCallback.capture(),
         )
         updateModelsErrorCallback.value.invoke(Throwable())
-        waitForIdle()
 
         // Verify expected error state set
         val responseLanguageModels = mutableListOf(
@@ -1161,7 +1162,7 @@ class TranslationsMiddlewareTest {
     fun `WHEN UpdateLocaleAction is dispatched THEN SetLanguageSettingsAction AND SetLanguageModelsAction are also dispatched`() = runTest {
         // Send Action
         translationsMiddleware.invoke(context = context, next = {}, action = LocaleAction.UpdateLocaleAction(locale = Locale.forLanguageTag("es")))
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Mock responses
         val languageCallback = argumentCaptor<((TranslationSupport) -> Unit)>()
@@ -1176,7 +1177,7 @@ class TranslationsMiddlewareTest {
         verify(engine, atLeastOnce()).getTranslationsModelDownloadStates(onSuccess = modelCallback.capture(), onError = any())
         modelCallback.value.invoke(mockLanguageModels)
 
-        waitForIdle()
+        scope.testScheduler.advanceUntilIdle()
 
         // Check expectations
         // Verifying at least once due to this also occurring at initialization
@@ -1190,7 +1191,5 @@ class TranslationsMiddlewareTest {
                 languageModels = mockLanguageModels,
             ),
         )
-
-        waitForIdle()
     }
 }

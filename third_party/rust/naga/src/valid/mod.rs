@@ -35,6 +35,9 @@ pub use r#type::{Disalignment, PushConstantError, TypeError, TypeFlags, WidthErr
 
 use self::handles::InvalidHandleError;
 
+/// Maximum size of a type, in bytes.
+pub const MAX_TYPE_SIZE: u32 = 0x4000_0000; // 1GB
+
 bitflags::bitflags! {
     /// Validation flags.
     ///
@@ -128,13 +131,26 @@ bitflags::bitflags! {
         const CUBE_ARRAY_TEXTURES = 1 << 15;
         /// Support for 64-bit signed and unsigned integers.
         const SHADER_INT64 = 1 << 16;
-        /// Support for subgroup operations.
-        /// Implies support for subgroup operations in both fragment and compute stages,
-        /// but not necessarily in the vertex stage, which requires [`Capabilities::SUBGROUP_VERTEX_STAGE`].
+        /// Support for subgroup operations (except barriers) in fragment and compute shaders.
+        ///
+        /// Subgroup operations in the vertex stage require
+        /// [`Capabilities::SUBGROUP_VERTEX_STAGE`] in addition to `Capabilities::SUBGROUP`.
+        /// (But note that `create_validator` automatically sets
+        /// `Capabilities::SUBGROUP` whenever `Features::SUBGROUP_VERTEX` is
+        /// available.)
+        ///
+        /// Subgroup barriers require [`Capabilities::SUBGROUP_BARRIER`] in addition to
+        /// `Capabilities::SUBGROUP`.
         const SUBGROUP = 1 << 17;
-        /// Support for subgroup barriers.
+        /// Support for subgroup barriers in compute shaders.
+        ///
+        /// Requires [`Capabilities::SUBGROUP`]. Without it, enables nothing.
         const SUBGROUP_BARRIER = 1 << 18;
-        /// Support for subgroup operations in the vertex stage.
+        /// Support for subgroup operations (not including barriers) in the vertex stage.
+        ///
+        /// Without [`Capabilities::SUBGROUP`], enables nothing. (But note that
+        /// `create_validator` automatically sets `Capabilities::SUBGROUP`
+        /// whenever `Features::SUBGROUP_VERTEX` is available.)
         const SUBGROUP_VERTEX_STAGE = 1 << 19;
         /// Support for [`AtomicFunction::Min`] and [`AtomicFunction::Max`] on
         /// 64-bit integers in the [`Storage`] address space, when the return
@@ -165,6 +181,29 @@ bitflags::bitflags! {
         const RAY_HIT_VERTEX_POSITION = 1 << 25;
         /// Support for 16-bit floating-point types.
         const SHADER_FLOAT16 = 1 << 26;
+        /// Support for [`ImageClass::External`]
+        const TEXTURE_EXTERNAL = 1 << 27;
+        /// Support for `quantizeToF16`, `pack2x16float`, and `unpack2x16float`, which store
+        /// `f16`-precision values in `f32`s.
+        const SHADER_FLOAT16_IN_FLOAT32 = 1 << 28;
+    }
+}
+
+impl Capabilities {
+    /// Returns the extension corresponding to this capability, if there is one.
+    ///
+    /// This is used by integration tests.
+    #[cfg(feature = "wgsl-in")]
+    #[doc(hidden)]
+    pub const fn extension(&self) -> Option<crate::front::wgsl::ImplementedEnableExtension> {
+        use crate::front::wgsl::ImplementedEnableExtension as Ext;
+        match *self {
+            Self::DUAL_SOURCE_BLENDING => Some(Ext::DualSourceBlending),
+            // NOTE: `SHADER_FLOAT16_IN_FLOAT32` _does not_ require the `f16` extension
+            Self::SHADER_FLOAT16 => Some(Ext::F16),
+            Self::CLIP_DISTANCE => Some(Ext::ClipDistances),
+            _ => None,
+        }
     }
 }
 
@@ -180,7 +219,11 @@ bitflags::bitflags! {
     #[cfg_attr(feature = "deserialize", derive(serde::Deserialize))]
     #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
     pub struct SubgroupOperationSet: u8 {
-        /// Elect, Barrier
+        /// Barriers
+        // Possibly elections, when that is supported.
+        // https://github.com/gfx-rs/wgpu/issues/6042#issuecomment-3272603431
+        // Contrary to what the name "basic" suggests, HLSL/DX12 support the
+        // other subgroup operations, but do not support subgroup barriers.
         const BASIC = 1 << 0;
         /// Any, All
         const VOTE = 1 << 1;
@@ -454,7 +497,19 @@ impl crate::TypeInner {
 }
 
 impl Validator {
-    /// Construct a new validator instance.
+    /// Create a validator for Naga [`Module`]s.
+    ///
+    /// The `flags` argument indicates which stages of validation the
+    /// returned `Validator` should perform. Skipping stages can make
+    /// validation somewhat faster, but the validator may not reject some
+    /// invalid modules. Regardless of `flags`, validation always returns
+    /// a usable [`ModuleInfo`] value on success.
+    ///
+    /// If `flags` contains everything in `ValidationFlags::default()`,
+    /// then the returned Naga [`Validator`] will reject any [`Module`]
+    /// that would use capabilities not included in `capabilities`.
+    ///
+    /// [`Module`]: crate::Module
     pub fn new(flags: ValidationFlags, capabilities: Capabilities) -> Self {
         let subgroup_operations = if capabilities.contains(Capabilities::SUBGROUP) {
             use SubgroupOperationSet as S;

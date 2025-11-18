@@ -87,31 +87,7 @@ static MOZ_ALWAYS_INLINE bool WeakCollectionPutEntryInternal(
   return true;
 }
 
-// https://tc39.es/ecma262/#sec-canbeheldweakly
-static MOZ_ALWAYS_INLINE bool CanBeHeldWeakly(JSContext* cx,
-                                              HandleValue value) {
-  // 1. If v is an Object, return true.
-  if (value.isObject()) {
-    return true;
-  }
-
-#ifdef NIGHTLY_BUILD
-  bool symbolsAsWeakMapKeysEnabled =
-      JS::Prefs::experimental_symbols_as_weakmap_keys();
-
-  // 2. If v is a Symbol and KeyForSymbol(v) is undefined, return true.
-  if (symbolsAsWeakMapKeysEnabled && value.isSymbol() &&
-      value.toSymbol()->code() != JS::SymbolCode::InSymbolRegistry) {
-    return true;
-  }
-#endif
-
-  // 3. Return false.
-  return false;
-}
-
 static unsigned GetErrorNumber(bool isWeakMap) {
-#ifdef NIGHTLY_BUILD
   bool symbolsAsWeakMapKeysEnabled =
       JS::Prefs::experimental_symbols_as_weakmap_keys();
 
@@ -119,7 +95,6 @@ static unsigned GetErrorNumber(bool isWeakMap) {
     return isWeakMap ? JSMSG_WEAKMAP_KEY_CANT_BE_HELD_WEAKLY
                      : JSMSG_WEAKSET_VAL_CANT_BE_HELD_WEAKLY;
   }
-#endif
 
   return isWeakMap ? JSMSG_WEAKMAP_KEY_MUST_BE_AN_OBJECT
                    : JSMSG_WEAKSET_VAL_MUST_BE_AN_OBJECT;

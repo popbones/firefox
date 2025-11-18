@@ -8,6 +8,9 @@
 newtab-page-title = Novo separador
 newtab-settings-button =
     .title = Personalizar a sua página de novo separador
+newtab-customize-panel-icon-button =
+    .title = Personalizar esta página
+newtab-customize-panel-icon-button-label = Personalizar
 newtab-personalize-settings-icon-label =
     .title = Personalizar o novo separador
     .aria-label = Definições
@@ -53,6 +56,9 @@ newtab-topsites-add-shortcut-header = Novo atalho
 newtab-topsites-edit-topsites-header = Editar site mais visitado
 newtab-topsites-edit-shortcut-header = Editar atalho
 newtab-topsites-add-shortcut-label = Adicionar atalho
+newtab-topsites-add-shortcut-title =
+    .title = Adicionar atalho
+    .aria-label = Adicionar atalho
 newtab-topsites-title-label = Título
 newtab-topsites-title-input =
     .placeholder = Digite um título
@@ -309,9 +315,6 @@ newtab-custom-pocket-sponsored = Histórias patrocinadas
 newtab-custom-pocket-show-recent-saves = Mostrar coisas guardadas recentemente
 newtab-custom-recent-title = Atividade recente
 newtab-custom-recent-subtitle = Uma seleção de sites e conteúdos recentes
-newtab-custom-recent-toggle =
-    .label = Atividade recente
-    .description = Uma seleção de sites e conteúdos recentes
 newtab-custom-weather-toggle =
     .label = Meteorologia
     .description = Visão geral da meteorologia para hoje
@@ -435,7 +438,6 @@ newtab-weather-menu-change-location = Alterar localização
 newtab-weather-change-location-search-input-placeholder =
     .placeholder = Pesquisar localização
     .aria-label = Pesquisar localização
-newtab-weather-change-location-search-input = Pesquisar localização
 newtab-weather-menu-weather-display = Apresentação da meteorologia
 # Display options are:
 # - Simple: Displays a current weather condition icon and the current temperature
@@ -501,6 +503,9 @@ newtab-topic-selection-button-pick-interests = Escolha os seus interesses
 newtab-section-follow-button = Seguir
 newtab-section-following-button = A seguir
 newtab-section-unfollow-button = Deixar de seguir
+# A modal may appear next to the Follow button, directing users to try out the feature
+newtab-section-follow-highlight-title = Ajuste a sua feed
+newtab-section-follow-highlight-subtitle = Siga os seus interesses para ver mais do que gosta.
 
 ## Button to block/unblock listed topics
 ## "Block", "unblocked", and "blocked" are social media terms that refer to hiding a section of stories.
@@ -543,6 +548,11 @@ newtab-download-mobile-highlight-body-variant-c = Sabia que pode levar o { -bran
 newtab-download-mobile-highlight-image =
     .aria-label = Código QR para transferir o { -brand-product-name } para dispositivos móveis
 
+## Strings for shortcuts highlight
+
+newtab-shortcuts-highlight-title = Os seus favoritos na ponta dos seus dedos
+newtab-shortcuts-highlight-subtitle = Adicione um atalho para manter os seus sites favoritos a um clique de distância.
+
 ## Strings for reporting ads and content
 
 newtab-report-content-why-reporting-this =
@@ -568,11 +578,11 @@ newtab-toast-thanks-for-reporting =
 
 ## Strings for trending searches
 
-# "Trending on Google" refers to the trending topics coming from Google Search, usually seen when a user is focused on the search bar
-newtab-trending-searches-trending-on-google = Em alta no Google
 newtab-trending-searches-show-trending =
     .title = Mostrar pesquisas em alta
 newtab-trending-searches-hide-trending =
     .title = Ocultar pesquisas em alta
 newtab-trending-searches-learn-more = Saber mais
 newtab-trending-searches-dismiss = Ocultar pesquisas em alta
+# "Trending searches refers to popular searches from search engines
+newtab-trending-searches-title = Pesquisas populares

@@ -5,26 +5,27 @@
 import {
   UrlbarProvider,
   UrlbarUtils,
-} from "resource:///modules/UrlbarUtils.sys.mjs";
+} from "moz-src:///browser/components/urlbar/UrlbarUtils.sys.mjs";
 
 const lazy = {};
 
 ChromeUtils.defineESModuleGetters(lazy, {
-  UrlbarResult: "resource:///modules/UrlbarResult.sys.mjs",
-  UrlbarPrefs: "resource:///modules/UrlbarPrefs.sys.mjs",
-  UrlbarTokenizer: "resource:///modules/UrlbarTokenizer.sys.mjs",
+  UrlbarResult: "moz-src:///browser/components/urlbar/UrlbarResult.sys.mjs",
+  UrlbarPrefs: "moz-src:///browser/components/urlbar/UrlbarPrefs.sys.mjs",
+  UrlbarTokenizer:
+    "moz-src:///browser/components/urlbar/UrlbarTokenizer.sys.mjs",
 });
 
 const RESULT_MENU_COMMANDS = {
   DISMISS: "dismiss",
 };
-const CLIPBOARD_IMPRESSION_LIMIT = 2;
+export const CLIPBOARD_IMPRESSION_LIMIT = 2;
 
 /**
  * A provider that returns a suggested url to the user based
  * on a valid URL stored in the clipboard.
  */
-class ProviderClipboard extends UrlbarProvider {
+export class UrlbarProviderClipboard extends UrlbarProvider {
   #previousClipboard = {
     value: "",
     impressionsLeft: CLIPBOARD_IMPRESSION_LIMIT,
@@ -32,10 +33,6 @@ class ProviderClipboard extends UrlbarProvider {
 
   constructor() {
     super();
-  }
-
-  get name() {
-    return "UrlbarProviderClipboard";
   }
 
   /**
@@ -112,9 +109,9 @@ class ProviderClipboard extends UrlbarProvider {
 
   async startQuery(queryContext, addCallback) {
     // If the query was started, isActive should have cached a url already.
-    let result = new lazy.UrlbarResult(
-      UrlbarUtils.RESULT_TYPE.URL,
-      UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
+    let result = new lazy.UrlbarResult({
+      type: UrlbarUtils.RESULT_TYPE.URL,
+      source: UrlbarUtils.RESULT_SOURCE.OTHER_LOCAL,
       ...lazy.UrlbarResult.payloadAndSimpleHighlights(queryContext.tokens, {
         fallbackTitle: [
           UrlbarUtils.prepareUrlForDisplay(this.#previousClipboard.value, {
@@ -125,8 +122,8 @@ class ProviderClipboard extends UrlbarProvider {
         url: [this.#previousClipboard.value, UrlbarUtils.HIGHLIGHT.NONE],
         icon: "chrome://global/skin/icons/clipboard.svg",
         isBlockable: true,
-      })
-    );
+      }),
+    });
 
     addCallback(this, result);
   }
@@ -154,6 +151,3 @@ class ProviderClipboard extends UrlbarProvider {
     }
   }
 }
-
-const UrlbarProviderClipboard = new ProviderClipboard();
-export { UrlbarProviderClipboard, CLIPBOARD_IMPRESSION_LIMIT };

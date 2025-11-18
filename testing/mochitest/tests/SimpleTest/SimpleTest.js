@@ -1274,15 +1274,35 @@ SimpleTest.promiseClipboardChange = async function (
  * @param {String} aErrorMsg
  *        The message displayed when the condition failed to pass
  *        before timeout.
+ * @param interval
+ *        The time interval to poll the condition function. Defaults
+ *        to 100ms.
+ * @param maxTries
+ *        The number of times to poll before giving up and rejecting
+ *        if the condition has not yet returned true. Defaults to 30
+ *        (~3 seconds for 100ms intervals)
  */
-SimpleTest.waitForCondition = function (aCond, aCallback, aErrorMsg) {
-  this.promiseWaitForCondition(aCond, aErrorMsg).then(() => aCallback());
+SimpleTest.waitForCondition = function (
+  aCond,
+  aCallback,
+  aErrorMsg,
+  interval = 100,
+  maxTries = 30
+) {
+  this.promiseWaitForCondition(aCond, aErrorMsg, interval, maxTries).then(() =>
+    aCallback()
+  );
 };
-SimpleTest.promiseWaitForCondition = async function (aCond, aErrorMsg) {
-  for (let tries = 0; tries < 30; ++tries) {
+SimpleTest.promiseWaitForCondition = async function (
+  aCond,
+  aErrorMsg,
+  interval = 100,
+  maxTries = 30
+) {
+  for (let tries = 0; tries < maxTries; ++tries) {
     // Wait 100ms between checks.
     await new Promise(resolve => {
-      SimpleTest._originalSetTimeout.apply(window, [resolve, 100]);
+      SimpleTest._originalSetTimeout.apply(window, [resolve, interval]);
     });
 
     let conditionPassed;
@@ -2250,6 +2270,12 @@ function add_setup(generatorFunction) {
   return add_task(generatorFunction, { isSetup: true });
 }
 
+// Import Mochia methods in the test scope
+SpecialPowers.Services.scriptloader.loadSubScript(
+  "resource://testing-common/Mochia.js",
+  this
+);
+
 // Request complete log when using failure patterns so that failure info
 // from infra can be useful.
 if (usesFailurePatterns()) {
@@ -2262,11 +2288,3 @@ addEventListener("message", async event => {
     SimpleTest.finish();
   }
 });
-
-/* import-globals-from ../../../modules/Mochia.js */
-SpecialPowers.Services.scriptloader.loadSubScript(
-  "resource://testing-common/Mochia.js",
-  this
-);
-
-Mochia(this);

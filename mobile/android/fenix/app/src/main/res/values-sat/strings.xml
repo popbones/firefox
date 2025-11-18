@@ -11,10 +11,6 @@
   -->
   <string name="content_description_menu">ᱰᱷᱮᱨ ᱮᱴᱟᱜᱟᱜ</string>
   <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">ᱯᱨᱟᱭᱣᱮᱴ ᱵᱽᱨᱟᱣᱡᱤᱝ ᱦᱩᱭ ᱦᱚᱪᱚᱭ ᱢᱮ</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
-  <string name="content_description_disable_private_browsing_button" moz:removedIn="142" tools:ignore="UnusedResources">ᱯᱨᱟᱭᱣᱮᱴ ᱵᱽᱨᱟᱣᱡᱤᱝ ᱵᱟᱝ ᱦᱩᱭ ᱦᱚᱪᱚᱜ ᱢᱮ</string>
-  <!-- Content description (not visible, for screen readers etc.): "Private Browsing" menu button. -->
   <string name="content_description_private_browsing">ᱱᱤᱡᱮᱨᱟᱜ ᱵᱽᱨᱟᱣᱡᱤᱝ</string>
   <!-- Placeholder text shown in the search bar before a user enters text for the default engine -->
   <string name="search_hint">ᱥᱮᱸᱫᱽᱨᱟ ᱟᱨ ᱵᱟᱝ ᱴᱷᱤᱠᱬᱟᱹ ᱟᱫᱮᱨ ᱢᱮ</string>
@@ -32,8 +28,16 @@
   <string name="no_open_tabs_description">ᱟᱢᱟᱜ ᱠᱷᱩᱞᱟᱹ ᱟᱠᱟᱱ ᱴᱮᱵᱽ ᱠᱚ ᱫᱚ ᱱᱚᱰᱮ ᱫᱮᱠᱷᱟᱣᱜᱼᱟ ᱾</string>
   <!-- No Private Tabs Message Description -->
   <string name="no_private_tabs_description">ᱟᱢᱟᱜ ᱱᱤᱡᱚᱨᱟᱜ ᱴᱮᱵᱽ ᱠᱚ ᱫᱚ ᱱᱚᱰᱮ ᱩᱫᱩᱜ ᱦᱩᱭᱩᱜ-ᱟ ᱾</string>
+  <!-- The header text displayed on the private tabs page when no private tabs are open -->
+  <string name="tab_manager_empty_private_tabs_page_header">ᱱᱤᱡᱮᱨᱟᱜ ᱵᱽᱨᱟᱣᱡᱤᱝ</string>
+  <!-- The supplementary text displayed on the private tabs page when no private tabs are open. %1$s is the name of the app (for example "Firefox") -->
+  <string name="tab_manager_empty_private_tabs_page_description">%1$s ᱫᱚ ᱟᱢᱟᱜ ᱦᱤᱛᱟᱹᱞ ᱟᱨ ᱠᱩᱠᱤ ᱠᱚ ᱵᱟᱭ ᱩᱭᱦᱟᱹᱨ ᱟᱭ, ᱦᱮᱞᱮ ᱱᱟᱶᱟ ᱵᱩᱠᱢᱟᱨᱠ ᱫᱚ ᱥᱟᱧᱪᱟᱣ ᱜᱮᱭᱟ ᱾</string>
+  <!-- The header text displayed on the normal tabs page when no normal tabs are open -->
+  <string name="tab_manager_empty_normal_tabs_page_header">ᱥᱮᱸᱫᱽᱨᱟ ᱮᱦᱚᱵ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫ ᱱᱟᱶᱟ ᱴᱮᱵᱽ ᱵᱮᱱᱟᱣ ᱢᱮ</string>
   <!-- Tab tray multi select title in app bar. %1$d is the number of tabs selected -->
   <string name="tab_tray_multi_select_title">%1$d ᱵᱟᱪᱷᱟᱣᱮᱱᱟ</string>
+  <!-- Tab tray multi select title in app bar when no tabs are selected -->
+  <string name="tab_tray_multi_select_title_empty">ᱴᱮᱵᱽ ᱠᱚ ᱵᱟᱪᱷᱟᱣ ᱢᱮ</string>
   <!-- Label of button in create collection dialog for creating a new collection -->
   <string name="tab_tray_add_new_collection">ᱱᱟᱶᱟ ᱛᱩᱢᱟᱹᱞ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
   <!-- Label of editable text in create collection dialog for naming a new collection -->
@@ -44,6 +48,12 @@
   <string name="tab_tray_close_multiselect_content_description">ᱢᱟᱹᱞᱴᱤᱥᱤᱞᱮᱠᱼᱴ ᱢᱳᱰ ᱵᱟᱹᱰ</string>
   <!-- Content description for save to collection button while in multiselect mode in tab tray -->
   <string name="tab_tray_collection_button_multiselect_content_description">ᱵᱟᱪᱷᱟᱣᱠᱟᱱ ᱴᱮᱵᱽ ᱠᱚ ᱛᱩᱢᱟᱹᱞ ᱥᱟᱺᱪᱟᱣ ᱢᱮ</string>
+  <!-- The header text displayed on the synced tabs page when the user is not logged into an account. -->
+  <string name="tab_manager_empty_synced_tabs_page_header">ᱡᱟᱦᱟᱸ ᱥᱟᱫᱷᱚᱱ ᱠᱷᱚᱱ ᱴᱮᱵᱽᱠᱚ ᱥᱟᱵ ᱢᱮ</string>
+  <!-- The supplementary text displayed on the synced tabs page when the user is not logged into an account. -->
+  <string name="tab_manager_empty_synced_tabs_page_description">ᱟᱢᱟᱜ ᱡᱷᱚᱛᱚ ᱥᱟᱫᱷᱚᱱ ᱠᱷᱚᱱ ᱥᱤᱱᱠᱮᱰ ᱴᱮᱵᱽ ᱪᱟᱞᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱥᱩᱦᱤ ᱮᱢ ᱢᱮ ᱾</string>
+  <!-- The action text displayed on the synced tabs page when the user is not logged into an account, prompting the user to sign into their account. When clicked, it takes the user to the account sign-in flow. -->
+  <string name="tab_manager_empty_synced_tabs_page_sign_in_cta">ᱵᱚᱞᱚᱱ ᱥᱩᱦᱤ</string>
   <!--
     Home - Bookmarks
 
@@ -56,14 +66,10 @@
   <string name="home_bookmarks_menu_item_remove">ᱚᱪᱚᱜᱽ ᱢᱮ</string>
   <!-- About content. %1$s is the name of the app (for example "Firefox"). -->
   <string name="about_content">%1$s ᱛᱮᱭᱟᱨ ᱦᱩᱭ ᱠᱟᱱᱟ ᱢᱳᱡᱤᱞᱟ ᱫᱟᱨᱟᱭᱛᱮ ᱾</string>
-  <!--
-    Private Browsing
-
-    Explanation for private browsing displayed to users on home view when they first enable private mode.
-    %1$s is the name of the app (for example "Firefox").
-  -->
-  <string name="private_browsing_placeholder_description_2" moz:removedIn="141" tools:ignore="UnusedResources">%1$s ᱟᱢᱟᱜ ᱥᱮᱸᱫᱽᱨᱟ ᱟᱨ ᱵᱽᱨᱟᱣᱡᱤᱝ ᱱᱟᱜᱟᱢ ᱯᱷᱟᱨᱪᱟᱭ ᱛᱟᱦᱮᱱᱟ ᱱᱤᱡᱮᱨᱟᱜ ᱴᱮᱵᱽ ᱠᱷᱚᱱ ᱡᱚᱠᱷᱚᱱ ᱟᱢ ᱚᱱᱟ ᱵᱚᱸᱫᱚᱭ ᱛᱟᱦᱮᱱᱟᱢ ᱵᱟᱝᱠᱷᱟᱱ ᱮᱯ ᱵᱟᱹᱜᱤ ᱜᱷᱟᱹᱰᱤᱠ ᱾ ᱡᱚᱦᱚᱜᱽ ᱱᱚᱶᱟ ᱫᱚ ᱮᱱᱚᱱᱚᱢᱟᱥ ᱵᱟᱭ ᱵᱮᱱᱟᱣ ᱢᱮᱭᱟ ᱣᱮᱵᱥᱟᱭᱤᱴ ᱨᱮ ᱟᱨ ᱟᱢᱟᱜ ᱤᱱᱴᱚᱨᱱᱮᱴ ᱥᱮᱣᱟ ᱮᱢᱚᱜᱤᱪ ᱠᱷᱚᱱ, ᱱᱚᱶᱟ ᱫᱚ ᱟᱥᱟᱱ ᱵᱮᱱᱟᱣ ᱛᱟᱦᱮᱱᱟᱭ ᱟᱢᱟᱜ ᱚᱱᱞᱟᱭᱤᱱ ᱠᱟᱹᱢᱤ ᱠᱚ ᱱᱤᱡᱮᱨᱟᱜ ᱫᱚᱦᱚ ᱞᱟᱹᱜᱤᱫ ᱩᱱᱠᱩ ᱠᱷᱚᱱ ᱡᱟᱦᱟᱸᱭ ᱠᱚ ᱱᱚᱶᱟ ᱥᱟᱫᱷᱚᱱ ᱵᱮᱵᱷᱟᱨ ᱛᱟᱦᱮᱱᱼᱟ ᱾</string>
+  <!-- Private Browsing -->
   <string name="private_browsing_common_myths">ᱱᱤᱡᱮᱨᱟᱜ ᱵᱽᱨᱟᱣᱡᱤᱝ ᱵᱟᱵᱚᱛ ᱥᱚᱢᱟᱱ ᱮᱰᱮ ᱠᱚ</string>
+  <!-- Text to be announced by the accessibility service to inform the user that the private browsing mode is currently active. -->
+  <string name="private_browsing_a11y_session_announcement">ᱯᱨᱭᱣᱮᱴ ᱵᱽᱨᱟᱣᱩᱡᱤᱸᱜ ᱠᱟᱹᱢᱤ\u0020</string>
   <!--
     True Private Browsing Mode
 
@@ -93,22 +99,8 @@
   <string name="open_in_app_cfr_positive_button_text">ᱥᱟᱡᱟᱣ ᱠᱚ ᱨᱮ ᱪᱟᱞᱟᱜ ᱢᱮ</string>
   <!-- Text for the negative action button -->
   <string name="open_in_app_cfr_negative_button_text">ᱵᱟᱹᱰ</string>
-  <!--
-    Private browsing erase action "contextual feature recommendation" (CFR)
+  <!-- Private browsing erase action "contextual feature recommendation" (CFR) -->
 
-    Text for the message displayed in the contextual feature recommendation popup promoting the erase private browsing feature.
-  -->
-  <string name="erase_action_cfr_message" moz:removedIn="141" tools:ignore="UnusedResources">ᱢᱤᱫᱴᱟᱹᱝ ᱱᱟᱶᱟ ᱯᱚᱨᱤᱵᱮᱴ ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱮᱛᱚᱦᱚᱵ ᱞᱟᱹᱜᱤᱫ ᱱᱚᱱᱰᱮ ᱚᱛᱟᱭ ᱢᱮ ᱾ ᱟᱢᱟᱜ ᱱᱟᱜᱟᱢ, ᱠᱩᱠᱤ ᱠᱚ ᱢᱮᱴᱟᱣ ᱢᱮ — ᱡᱚᱛᱚ ᱡᱤᱱᱤᱥ ᱾</string>
-  <!--
-    Toolbar "contextual feature recommendation" (CFR)
-
-    Text for the title displayed in the contextual feature recommendation popup promoting the navigation bar.
-  -->
-  <string name="navbar_cfr_title" moz:removedIn="140" tools:ignore="UnusedResources">ᱱᱟᱣᱟ ᱱᱮᱵᱷᱤᱜᱮᱥᱚᱱ ᱥᱟᱶᱛᱮ ᱩᱥᱟᱹᱨᱟᱛᱮ ᱵᱽᱨᱟᱣᱡᱽ ᱢᱮ</string>
-  <!-- Text for the message displayed in the contextual feature recommendation popup promoting the navigation bar. -->
-  <string name="navbar_cfr_message_2" moz:removedIn="140" tools:ignore="UnusedResources">ᱢᱤᱫᱴᱟᱹᱝ ᱣᱮᱵᱽᱥᱟᱭᱤᱴ ᱨᱮ, ᱱᱚᱣᱟ ᱵᱟᱨ ᱫᱚ ᱰᱷᱮᱨ ᱵᱽᱨᱟᱣᱡᱤᱝ ᱨᱮᱭᱟᱜ ᱡᱟᱭᱜᱟ ᱞᱟᱹᱜᱤᱫ ᱞᱟᱛᱟᱨ ᱥᱮᱫ ᱥᱠᱨᱚᱞ ᱟ ᱚᱱᱟ ᱫᱚ ᱠᱷᱚᱥᱨᱚᱫᱚᱜ ᱟ ᱾</string>
-  <!-- Text for the message displayed for the popup promoting the long press of navigation in the navigation bar. -->
-  <string name="navbar_navigation_buttons_cfr_message" moz:removedIn="140" tools:ignore="UnusedResources">ᱱᱚᱶᱟ ᱴᱮᱵᱽ ᱱᱟᱜᱟᱢ ᱨᱮ ᱥᱟᱦᱴᱟ ᱛᱟᱞᱟ ᱨᱮ ᱩᱪᱟᱹᱲᱚᱜ ᱞᱟᱹᱜᱤᱫ ᱥᱟᱨ ᱪᱤᱱᱦᱟᱹ ᱨᱮ ᱴᱤᱯᱟᱹᱣ ᱢᱮ ᱾</string>
   <!--
     Address bar swipe "contextual feature recommendation" (CFR)
 
@@ -201,33 +193,14 @@
   <string name="browser_menu_stop">ᱛᱤᱸᱜᱩ</string>
   <!-- Browser menu button that opens the extensions manager -->
   <string name="browser_menu_extensions">ᱮᱠᱥᱴᱮᱱᱥᱚᱱᱠᱚ</string>
-  <!--
-    Browser menu banner header text for extensions onboarding.
-    %s is the name of the app (for example "Firefox").
-  -->
-  <string name="browser_menu_extensions_banner_onboarding_header" moz:removedIn="141" tools:ignore="UnusedResources">%s ᱫᱚ ᱟᱢᱟᱜ ᱠᱟᱜ ᱢᱮ</string>
   <!-- Browser menu banner header text for extensions onboarding when all installed extensions have been disabled. -->
   <string name="browser_menu_disabled_extensions_banner_onboarding_header">ᱟᱢ ᱴᱷᱮᱱ ᱮᱠᱥᱴᱮᱱᱥᱚᱱ ᱵᱚᱦᱟᱞ ᱢᱮᱱᱟᱜ ᱠᱟᱫᱟ, ᱢᱮᱱᱠᱷᱟᱱ ᱵᱟᱝ ᱮᱢ ᱟᱠᱟᱱᱟ</string>
-  <!--
-    Browser menu banner body text for extensions onboarding.
-    %s is the name of the app (for example "Firefox").
-  -->
-  <string name="browser_menu_extensions_banner_onboarding_body" moz:removedIn="141" tools:ignore="UnusedResources">ᱟᱢᱟᱜ ᱱᱤᱥᱚᱱ ᱟᱨ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱨᱮᱭᱟᱜ ᱡᱚᱛᱚᱱ ᱟᱨ %sᱦᱟᱜ ᱧᱮᱞ ᱵᱤᱲᱟᱹᱣ ᱫᱷᱟᱹᱵᱤᱡ, ᱮᱠᱥᱴᱮᱱᱥᱚᱱᱠᱚᱫᱚ ᱟᱢᱟᱜ ᱵᱽᱨᱟᱣᱡᱤᱝ ᱯᱟᱨᱦᱟᱲᱦᱚᱪᱷᱚᱭᱟᱭ ᱾</string>
-  <!--
-    Browser menu banner body text for extensions onboarding when all installed extensions have been disabled.
-    %s is the label of the button that opens the extension manager (for example "Manage extensions").
-  -->
-  <string name="browser_menu_disabled_extensions_banner_onboarding_body" moz:removedIn="141" tools:ignore="UnusedResources">ᱮᱠᱥᱴᱮᱱᱥᱚᱱ ᱵᱮᱵᱷᱟᱨ ᱞᱟᱹᱜᱤᱫ, ᱥᱮᱴᱤᱝ ᱨᱮ ᱵᱟᱝᱠᱷᱟᱱ ᱞᱟᱛᱟᱨ ᱨᱮ “%s” ᱵᱟᱪᱷᱟᱣ ᱠᱟᱛᱮ ᱮᱢᱪᱷᱚᱭ ᱢᱮ ᱾</string>
-  <!-- Browser menu banner link text for learning more about extensions -->
-  <string name="browser_menu_extensions_banner_learn_more" moz:removedIn="141" tools:ignore="UnusedResources">ᱰᱷᱮᱨ ᱥᱮᱬᱟᱭ ᱢᱮ</string>
   <!-- Browser menu button that opens the extensions manager -->
   <string name="browser_menu_manage_extensions">ᱮᱠᱮᱴᱮᱱᱮᱚᱱ ᱠᱚ ᱢᱮᱱᱟᱡᱽ ᱢᱮ</string>
   <!-- Browser menu group that contains additional settings in collapsed state -->
   <string name="browser_menu_more_settings">ᱰᱷᱮᱨ</string>
   <!-- Browser menu group that contains additional settings in expanded state -->
-  <string name="browser_menu_less_settings">ᱠᱟ.ᱡ</string>
-  <!-- Content description (not visible, for screen readers etc.): Section heading for recommended extensions. -->
-  <string name="browser_menu_recommended_section_content_description" moz:removedIn="141" tools:ignore="UnusedResources">ᱵᱟᱛᱟᱣ ᱠᱟᱱ ᱯᱟᱥᱱᱟᱣᱨᱠᱚ</string>
+  <string name="browser_menu_less_settings" moz:removedIn="144" tools:ignore="UnusedResources">ᱠᱟ.ᱡ</string>
   <!--
     Content description (not visible, for screen readers etc.): Label for plus icon used to add extension.
     %1$s is the name of the extension (for example: ClearURLs).
@@ -259,28 +232,18 @@
   <string name="browser_menu_add_to_homescreen">ᱚᱲᱟᱜ ᱥᱠᱨᱤᱱ ᱨᱮ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
   <!-- Browser menu toggle that adds a PWA of the site on the device home screen. -->
   <string name="browser_menu_add_app_to_homescreen">ᱚᱲᱟᱜ ᱥᱠᱨᱤᱱ ᱨᱮ ᱮᱯ ᱥᱮᱞᱮᱫ ᱢᱮ</string>
-  <!-- Browser menu toggle that adds a shortcut to the site on the device home screen. -->
-  <string name="browser_menu_add_to_homescreen_2" moz:removedIn="141" tools:ignore="UnusedResources">ᱚᱲᱟᱜ ᱥᱠᱨᱤᱱ ᱨᱮ ᱥᱮᱞᱮᱫᱽ ᱢᱮ…</string>
-  <!-- Browser menu toggle that adds a PWA of the site on the device home screen. -->
-  <string name="browser_menu_add_app_to_homescreen_2" moz:removedIn="141" tools:ignore="UnusedResources">ᱚᱲᱟᱜ ᱥᱠᱨᱤᱱ ᱨᱮ ᱮᱯ ᱥᱮᱞᱮᱫ ᱢᱮ‌ …</string>
   <!-- Text for notifying users that Xiaomi devices require additional permissions to add to home screen -->
   <string name="browser_menu_add_to_homescreen_xiaomi">Xiaomi ᱥᱟᱷᱚᱱ ᱠᱚ ᱚᱲᱟᱜ ᱥᱠᱨᱤᱱ ᱨᱮ ᱠᱷᱟᱴᱚ ᱠᱚ ᱥᱮᱞᱮᱫ ᱞᱟᱹᱜᱤᱫ ᱟᱨᱦᱚᱸ ᱟᱫᱮᱨ ᱮᱢ ᱛᱮ ᱦᱩᱭᱩᱜᱼᱟ ᱾ ᱟᱢᱟᱜ ᱥᱟᱡᱟᱣ ᱠᱚ ᱧᱮᱞ ᱵᱤᱲᱟᱹᱣ ᱢᱮ ᱾</string>
   <!-- Content description (not visible, for screen readers etc.) for the Resync tabs button -->
   <string name="resync_button_content_description">ᱨᱤᱥᱭᱝᱠ</string>
   <!-- Browser menu button that opens the find in page menu -->
   <string name="browser_menu_find_in_page">ᱥᱟᱦᱴᱟ ᱨᱮ ᱥᱮᱸᱫᱽᱨᱟᱭ ᱢᱮ</string>
-  <!-- Browser menu button that opens the find in page menu -->
-  <string name="browser_menu_find_in_page_2" moz:removedIn="141" tools:ignore="UnusedResources">ᱥᱟᱦᱴᱟ ᱨᱮ ᱯᱟᱱᱛᱮ ᱢᱮ…</string>
   <!-- Browser menu button that opens the translations dialog, which has options to translate the current browser page. -->
   <string name="browser_menu_translations">ᱥᱟᱦᱴᱟ ᱛᱚᱨᱡᱚᱢᱟᱭ ᱢᱮ</string>
-  <!-- Browser menu button that saves the current tab to a collection -->
-  <string name="browser_menu_save_to_collection" moz:removedIn="141" tools:ignore="UnusedResources">ᱛᱩᱢᱟᱹᱞ ᱨᱮ ᱥᱟᱺᱪᱟᱣ ᱢᱮ…</string>
   <!-- Browser menu button that saves the current tab to a collection -->
   <string name="browser_menu_save_to_collection_2">ᱛᱩᱢᱟᱹᱞ ᱨᱮ ᱥᱟᱺᱪᱟᱣ ᱢᱮ</string>
   <!-- Browser menu button that open a share menu to share the current site -->
   <string name="browser_menu_share">ᱦᱟᱹᱴᱤᱧ</string>
-  <!-- Browser menu button that open a share menu to share the current site -->
-  <string name="browser_menu_share_2" moz:removedIn="141" tools:ignore="UnusedResources">ᱦᱟᱹᱴᱤᱧ ᱢᱮ…</string>
   <!--
     Browser menu button shown in custom tabs that opens the current tab in Fenix
     %1$s is the name of the app (for example "Firefox").
@@ -315,30 +278,21 @@
   <!-- Browser menu label to sign in to sync on the device using Mozilla accounts -->
   <string name="browser_menu_sign_in">ᱵᱚᱞᱚᱱ ᱥᱩᱦᱤ</string>
   <!-- Browser menu caption label for the "Sign in" browser menu item described in `browser_menu_sign_in` -->
-  <string name="browser_menu_sign_in_caption" moz:removedIn="141" tools:ignore="UnusedResources">ᱫᱟᱱᱟᱝ ᱥᱟᱵᱟᱫᱽ, ᱴᱮᱵᱽ ᱟᱨ ᱟᱨᱦᱚᱸ ᱟᱭᱢᱟ ᱡᱤᱱᱤᱥᱠᱚ ᱟᱹᱭᱩᱨ ᱢᱤᱫ ᱢᱮ</string>
+  <string name="browser_menu_sign_in_caption_3">ᱥᱤᱱᱠ ᱫᱟᱱᱟᱝ ᱥᱟᱵᱟᱫᱽ, ᱵᱩᱠᱢᱟᱨᱠ, ᱟᱨ ᱟᱭᱢᱟ ᱡᱤᱱᱤᱥ</string>
   <!-- Browser menu label to sign back in to sync on the device when the user's account needs to be reauthenticated -->
   <string name="browser_menu_sign_back_in_to_sync">ᱥᱭᱝᱠ ᱞᱟᱹᱜᱤᱫ ᱵᱚᱞᱚᱱ ᱥᱩᱦᱤ ᱢᱮ</string>
   <!-- Browser menu caption label for the "Sign back in to sync" browser menu item described in `browser_menu_sign_back_in_to_sync` when there is an error in syncing -->
   <string name="browser_menu_syncing_paused_caption">ᱟᱹᱭᱩᱨ ᱢᱤᱫ ᱛᱷᱩᱢ ᱠᱟᱱᱟ</string>
+  <!-- Browser menu caption label for an authenticated user -->
+  <string name="browser_menu_signed_in_caption">ᱟᱢ ᱪᱮᱫ ᱵᱮᱠ ᱟᱯ ᱟᱨ ᱥᱤᱱᱠ ᱮᱢ ᱪᱟᱞᱟᱣ ᱢᱮ</string>
   <!-- Browser menu label that creates a private tab -->
   <string name="browser_menu_new_private_tab">ᱱᱟᱶᱟ ᱱᱤᱡᱮᱨᱟᱠ ᱴᱮᱵᱽ</string>
   <!-- Browser menu label that navigates to the Password screen -->
   <string name="browser_menu_passwords">ᱫᱟᱱᱟᱝ ᱥᱟᱵᱟᱫᱽ ᱠᱚ</string>
-  <!--
-    Browser menu label that navigates to the SUMO page for the Firefox for Android release notes.
-    %1$s is the name of the app (for example "Firefox").
-  -->
-  <string name="browser_menu_new_in_firefox" moz:removedIn="141" tools:ignore="UnusedResources">%1$s ᱨᱮ ᱱᱟᱶᱟ</string>
-  <!-- Browser menu label that toggles the request for the desktop site of the currently visited page -->
-  <string name="browser_menu_switch_to_desktop_site" moz:removedIn="141" tools:ignore="UnusedResources">ᱰᱮᱥᱠᱴᱚᱯ ᱥᱟᱭᱤᱴ ᱛᱮ ᱪᱟᱞᱟᱜ ᱢᱮ</string>
-  <!-- Browser menu label that toggles the request for the mobile site of the currently visited page -->
-  <string name="browser_menu_switch_to_mobile_site">ᱢᱳᱵᱟᱭᱤᱞ ᱥᱟᱭᱤᱴ ᱛᱮ ᱩᱪᱟᱹᱲᱚᱜ ᱢᱮ</string>
-  <!-- Browser menu label that navigates to the page tools sub-menu -->
-  <string name="browser_menu_tools" moz:removedIn="141" tools:ignore="UnusedResources">ᱦᱟᱹᱛᱤᱭᱟᱹᱨ ᱠᱚ</string>
-  <!-- Content description (not visible, for screen readers etc.): Back button for all menu redesign sub-menu -->
-  <string name="browser_menu_back_button_content_description" moz:removedIn="141" tools:ignore="UnusedResources">ᱢᱩᱞ ᱡᱟᱭᱜᱟ ᱛᱮ ᱨᱩᱣᱟᱹᱲ ᱢᱮ</string>
-  <!-- Content description (not visible, for screen readers etc.) for bottom sheet handlebar main menu. -->
-  <string name="browser_main_menu_handlebar_content_description">ᱢᱩᱞ ᱢᱮᱱᱩ ᱥᱤᱴ ᱵᱚᱱᱫᱚᱭ ᱢᱮ</string>
+  <!-- Content description (not visible, for screen readers etc.) for the handle used to drag the main menu at the bottom of the screen. -->
+  <string name="browser_close_main_menu_handlebar_content_description">ᱢᱮᱱᱩ ᱵᱚᱱᱫᱚᱭ ᱢᱮ</string>
+  <!-- Content description (not visible, for screen readers etc.) for main menu navigation header. -->
+  <string name="browser_main_menu_content_description_navigation_header">ᱯᱟᱱᱛᱮ ᱚᱲᱟᱜ</string>
   <!-- Content description (not visible, for screen readers etc.) for main menu help button. -->
   <string name="browser_main_menu_content_description_help_button">ᱜᱚᱲᱚ</string>
   <!-- Content description (not visible, for screen readers etc.) for main menu settings button. -->
@@ -351,53 +305,40 @@
   <string name="browser_tools_menu_handlebar_content_description">ᱦᱟᱹᱛᱤᱭᱟᱨ ᱢᱮᱱᱩ ᱥᱤᱴ ᱵᱚᱱᱫᱚᱭ ᱢᱮ</string>
   <!-- Content description (not visible, for screen readers etc.) for bottom sheet handlebar custom tab menu. -->
   <string name="browser_custom_tab_menu_handlebar_content_description">ᱠᱟᱥᱴᱚᱢ ᱴᱮᱵᱽ ᱢᱮᱱᱩ ᱥᱤᱴ ᱵᱚᱱᱫᱚᱭ ᱢᱮ</string>
-  <!-- Browser menu description that describes the various tools related menu items inside of the tools sub-menu when the "Report broken site" feature is available -->
-  <string name="browser_menu_tools_description_with_translate_with_report_site_2" moz:removedIn="141" tools:ignore="UnusedResources">ᱯᱟᱲᱦᱟᱣᱤᱭᱟᱹ ᱧᱮᱞ, ᱛᱚᱨᱡᱚᱢᱟ, ᱨᱟᱹᱯᱩᱫ ᱥᱟᱭᱤᱴ ᱠᱷᱚᱵᱚᱨ ᱢᱮ, ᱪᱷᱟᱯᱟ, ᱦᱟᱹᱴᱤᱧ, ᱮᱯ ᱡᱷᱤᱡᱽ ᱢᱮ</string>
-  <!-- Browser menu description that describes the various tools related menu items inside of the tools sub-menu -->
-  <string name="browser_menu_tools_description_with_translate_without_report_site" moz:removedIn="141" tools:ignore="UnusedResources">ᱯᱟᱲᱦᱟᱣᱤᱭᱟᱹ ᱧᱮᱞ, ᱛᱚᱨᱡᱚᱢᱟ, ᱪᱷᱟᱯᱟ, ᱦᱟᱹᱴᱤᱧ, ᱮᱯ ᱡᱷᱤᱡᱽ ᱢᱮ</string>
-  <!-- Browser menu description that describes the various tools related menu items inside of the tools sub-menu when the "Report broken site" feature is available -->
-  <string name="browser_menu_tools_description_with_report_site_2" moz:removedIn="141" tools:ignore="UnusedResources">ᱯᱟᱲᱦᱟᱣᱤᱭᱟᱹ ᱧᱮᱞ, ᱨᱟᱹᱯᱩᱫ ᱥᱟᱭᱤᱴ ᱨᱤᱯᱚᱨᱴ, ᱪᱷᱟᱯᱟ, ᱦᱟᱹᱴᱤᱧ, ᱮᱯ ᱡᱷᱤᱡᱽ ᱢᱮ ᱾</string>
-  <!-- Browser menu description that describes the various tools related menu items inside of the tools sub-menu -->
-  <string name="browser_menu_tools_description_without_report_site" moz:removedIn="141" tools:ignore="UnusedResources">ᱯᱟᱲᱦᱟᱣᱤᱭᱟᱹ ᱧᱮᱞ, ᱪᱷᱟᱯᱟ, ᱦᱟᱹᱴᱤᱧ, ᱮᱯ ᱡᱷᱤᱡᱽ ᱢᱮ</string>
-  <!--
-    Browser menu label that navigates to the save sub-menu, which contains various save related menu items such as
-    bookmarking a page, saving to collection, shortcut or as a PDF, and adding to home screen
-  -->
-  <string name="browser_menu_save" moz:removedIn="141" tools:ignore="UnusedResources">ᱥᱟᱺᱪᱟᱣ ᱢᱮ</string>
-  <!-- Browser menu description that describes the various save related menu items inside of the save sub-menu -->
-  <string name="browser_menu_save_description" moz:removedIn="141" tools:ignore="UnusedResources">ᱵᱩᱠᱢᱟᱨᱠ, ᱠᱷᱟᱴᱚᱢᱟᱪᱷᱟ, ᱚᱲᱟᱜ, ᱛᱩᱢᱟᱹᱞ, PDF ᱥᱮᱞᱮᱫ ᱢᱮ</string>
-  <!-- Browser menu label that bookmarks the currently visited page -->
-  <string name="browser_menu_bookmark_this_page" moz:removedIn="141" tools:ignore="UnusedResources">ᱱᱚᱶᱟ ᱥᱟᱦᱴᱟ ᱵᱩᱩᱠᱢᱟᱨᱠ ᱢᱮ</string>
   <!-- Browser menu label that bookmarks the currently visited page -->
   <string name="browser_menu_bookmark_this_page_2">ᱥᱟᱦᱴᱟ ᱯᱩᱛᱷᱤᱪᱤᱱᱦᱟᱹᱭ ᱢᱮ</string>
   <!-- Browser menu label that navigates to the edit bookmark screen for the current bookmarked page -->
   <string name="browser_menu_edit_bookmark">ᱵᱩᱠᱢᱟᱨᱠ ᱥᱟᱯᱲᱟᱣ ᱢᱮ</string>
   <!-- Browser menu label that the saves the currently visited page as a PDF -->
-  <string name="browser_menu_save_as_pdf" moz:removedIn="141" tools:ignore="UnusedResources">PDF ᱞᱮᱠᱷᱟ ᱥᱟᱺᱪᱟᱣ ᱢᱮ…</string>
-  <!-- Browser menu label for turning ON reader view of the current visited page -->
-  <string name="browser_menu_turn_on_reader_view" moz:removedIn="141" tools:ignore="UnusedResources">ᱯᱟᱲᱦᱟᱣ ᱧᱮᱞᱡᱚᱝ ᱞᱮᱠᱷᱟ ᱮᱢ ᱪᱷᱚᱭ ᱢᱮ</string>
-  <!-- Browser menu label for turning OFF reader view of the current visited page -->
-  <string name="browser_menu_turn_off_reader_view" moz:removedIn="141" tools:ignore="UnusedResources">ᱯᱟᱲᱦᱟᱣ ᱧᱮᱞᱡᱚᱝ ᱞᱮᱠᱷᱟ ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
-  <!-- Browser menu button that reopens a private tab as a regular tab -->
-  <string name="browser_menu_open_in_normal_tab" moz:removedIn="141" tools:ignore="UnusedResources">ᱵᱤᱱ-ᱯᱨᱟᱭᱣᱮᱴ ᱴᱮᱵᱽ ᱛᱮ ᱩᱪᱟᱹᱲ ᱢᱮ</string>
+  <string name="browser_menu_save_as_pdf_2">PDF ᱞᱮᱠᱷᱟ ᱥᱟᱺᱪᱟᱣ ᱢᱮ</string>
   <!-- Browser menu label for navigating to the translation feature, which provides language translation options the current visited page -->
-  <string name="browser_menu_translate_page" moz:removedIn="141" tools:ignore="UnusedResources">ᱥᱟᱦᱴᱟ ᱛᱚᱨᱡᱚᱢᱟᱭ ᱢᱮ…</string>
+  <string name="browser_menu_translate_page_2">ᱥᱟᱦᱴᱟ ᱛᱚᱨᱡᱚᱢᱟᱭ ᱢᱮ</string>
   <!-- Browser menu label for navigating to the Web Compat Reporter feature, which provides users the ability to send bug reports for broken sites. -->
   <string name="browser_menu_webcompat_reporter">ᱨᱟᱹᱯᱩᱫ ᱥᱟᱭᱤᱴ ᱠᱷᱚᱵᱚᱨ ᱢᱮ …</string>
-  <!--
-    Browser menu label that is displayed when the current page has been translated by the translation feature.
-    %1$s is the name of the language that page was translated to (e.g. English).
-  -->
-  <string name="browser_menu_translated_to" moz:removedIn="141" tools:ignore="UnusedResources">%1$s ᱛᱮ ᱛᱚᱨᱡᱚᱢᱟ ᱠᱟᱱᱟ</string>
+  <!-- Browser menu label for navigating to the Web Compat Reporter feature, which provides users the ability to send bug reports for broken sites. -->
+  <string name="browser_menu_webcompat_reporter_2">ᱨᱟᱹᱯᱩᱫ ᱥᱟᱭᱤᱴ ᱨᱤᱯᱚᱨᱴ ᱢᱮ</string>
   <!-- Browser menu label that is displayed when the current page has been translated by the translation feature. -->
   <string name="browser_menu_translated">ᱛᱚᱨᱡᱚᱢᱟ ᱟᱠᱟᱱᱟ</string>
   <!-- Browser menu label for the print feature -->
-  <string name="browser_menu_print" moz:removedIn="141" tools:ignore="UnusedResources">ᱪᱷᱟᱯᱟ…</string>
+  <string name="browser_menu_print_2">ᱪᱷᱟᱯᱟ</string>
   <!--
     Browser menu label for the Delete browsing data on quit feature.
     %1$s is the name of the app (for example "Firefox").
   -->
   <string name="browser_menu_delete_browsing_data_on_quit">%1$s ᱵᱟᱹᱜᱤ ᱢᱮ</string>
+  <!--
+    Content description for a banner within the menu which prompt the user to make this app their default browser.
+    %1$s is the name of the app (for example "Firefox").
+  -->
+  <string name="browser_menu_default_banner_title">%1$s ᱟᱢᱟᱜ ᱢᱩᱞ ᱞᱮᱠᱷᱟᱛᱮ ᱫᱮᱠᱷᱟᱣ ᱢᱮ</string>
+  <!-- Label text within the set as default banner -->
+  <string name="browser_menu_default_banner_subtitle" moz:removedIn="143" tools:ignore="UnusedResources">ᱛᱤᱱᱟᱹᱜ ᱜᱟᱱ ᱥᱮᱠᱮᱱᱰ ᱞᱟᱜᱟᱜᱼᱟ ᱾ ᱡᱟᱦᱟᱸ ᱚᱠᱛᱚ ᱨᱮᱜᱮ ᱵᱚᱫᱚᱞ ᱢᱮ ᱾</string>
+  <!-- Label text within the set as default banner -->
+  <string name="browser_menu_default_banner_subtitle_2">ᱩᱥᱟᱹᱨᱟ, ᱯᱨᱟᱭᱣᱮᱴ, ᱟᱨ ᱟᱢ ᱞᱟᱹᱜᱤᱫ ᱛᱮᱭᱟᱨ ᱟᱠᱟᱱᱟ ᱾</string>
+  <!-- Content description (not visible, for screen readers etc.) for the button that dismisses the set as default banner in the menu -->
+  <string name="browser_menu_default_banner_dismiss_promotion">ᱯᱨᱚᱢᱚᱥᱚᱱ ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
+  <!-- Content description (not visible, for screen readers etc.) for recommended extensions in main menu -->
+  <string name="browser_menu_recommended_extensions_content_description">ᱰᱷᱮᱨ ᱵᱤᱵᱨᱚᱬ</string>
   <!--
     Menu "contextual feature recommendation" (CFR)
 
@@ -418,11 +359,6 @@
     Content description for the Home screen button on the browser toolbar
   -->
   <string name="browser_toolbar_home">ᱚᱲᱟᱜ ᱥᱠᱨᱤᱱ</string>
-  <!--
-    Content description (not visible, for screen readers etc.): Erase button: Erase the browsing
-    history and go back to the home screen.
-  -->
-  <string name="browser_toolbar_erase" moz:removedIn="141" tools:ignore="UnusedResources">ᱵᱽᱨᱟᱣᱡᱤᱝ ᱱᱟᱜᱟᱢ ᱢᱮᱴᱟᱣ ᱢᱮ</string>
   <!-- Content description for the translate page toolbar button that opens the translations dialog when no translation has occurred. -->
   <string name="browser_toolbar_translate">ᱥᱟᱦᱴᱟ ᱛᱚᱨᱡᱚᱢᱟᱭ ᱢᱮ</string>
   <!--
@@ -481,24 +417,8 @@
   <!--
     Home onboarding
 
-    Home onboarding dialog welcome screen title text.
+    Content description (not visible, for screen readers etc.): Close button for the home onboarding dialog
   -->
-  <string name="onboarding_home_welcome_title_2" moz:removedIn="141" tools:ignore="UnusedResources">ᱱᱤᱡᱚᱨᱟᱜ ᱞᱮᱠᱷᱟ ᱤᱱᱴᱚᱨᱱᱮᱴ ᱨᱮ ᱟᱢᱟᱜ ᱥᱟᱹᱜᱩᱱ ᱫᱟᱨᱟᱢ</string>
-  <!-- Home onboarding dialog welcome screen description text. -->
-  <string name="onboarding_home_welcome_description" moz:removedIn="141" tools:ignore="UnusedResources">ᱰᱷᱮᱨ ᱨᱚᱝ ᱠᱚ ᱾ ᱵᱮᱥ ᱱᱤᱥᱚᱱ ᱾ ᱞᱟᱵᱷ ᱨᱮ ᱚᱱᱟ ᱥᱚᱯᱚᱛᱷ ᱜᱮ ᱡᱷᱚᱛᱚ ᱦᱚᱲ ᱾</string>
-  <!-- Home onboarding dialog sign into sync screen title text. -->
-  <string name="onboarding_home_sync_title_3" moz:removedIn="141" tools:ignore="UnusedResources">ᱯᱚᱨᱫᱟ ᱵᱚᱫᱚᱞ ᱫᱚ ᱱᱤᱛᱚᱜ ᱟᱹᱰᱤ ᱤᱫᱤᱜ ᱠᱟᱱᱟ</string>
-  <!-- Home onboarding dialog sign into sync screen description text. -->
-  <string name="onboarding_home_sync_description" moz:removedIn="141" tools:ignore="UnusedResources">ᱚᱲᱟᱜ ᱥᱟᱦᱴᱟ ᱨᱮ ᱱᱤᱛᱚᱜ ᱡᱟᱦᱟᱸ ᱠᱷᱚᱱ ᱮᱢ ᱟᱲᱟᱜ ᱞᱮᱜᱼᱟ ᱮᱴᱟᱜ ᱥᱟᱫᱷᱚᱱ ᱨᱮᱭᱟᱜ ᱴᱮᱵᱽ ᱠᱷᱚᱱ ᱯᱟᱧᱡᱟ ᱫᱟᱲᱮᱭᱟᱜᱼᱟᱢ ᱾</string>
-  <!-- Text for the button to continue the onboarding on the home onboarding dialog. -->
-  <string name="onboarding_home_get_started_button" moz:removedIn="141" tools:ignore="UnusedResources">ᱫᱮᱞᱟ ᱮᱛᱦᱚᱵ ᱞᱮᱜᱮ ᱵᱚᱱ</string>
-  <!-- Text for the button to navigate to the sync sign in screen on the home onboarding dialog. -->
-  <string name="onboarding_home_sign_in_button" moz:removedIn="141" tools:ignore="UnusedResources">ᱵᱚᱞᱚᱱ ᱥᱩᱦᱤ</string>
-  <!-- Text for the button to skip the onboarding on the home onboarding dialog. -->
-  <string name="onboarding_home_skip_button" moz:removedIn="141" tools:ignore="UnusedResources">ᱟᱲᱟᱜ</string>
-  <!-- Onboarding home screen sync popup dialog message, shown on top of Recent Synced Tabs in the Jump back in section. -->
-  <string name="sync_cfr_message" moz:removedIn="142" tools:ignore="UnusedResources">ᱟᱢᱟᱜ ᱴᱮᱵᱽ ᱫᱚ ᱟᱹᱭᱩᱨ ᱢᱤᱫᱚᱜ ᱠᱟᱱᱟ! ᱮᱴᱟᱜ ᱥᱟᱫᱷᱚᱱ ᱨᱮᱭᱟᱜ ᱴᱮᱵᱽ ᱠᱷᱚᱱ ᱯᱟᱧᱡᱟ ᱫᱟᱲᱮᱭᱟᱜᱼᱟᱢ ᱾</string>
-  <!-- Content description (not visible, for screen readers etc.): Close button for the home onboarding dialog -->
   <string name="onboarding_home_content_description_close_button">ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
   <!--
     Juno first user onboarding flow experiment, strings are marked unused as they are only referenced by Nimbus experiments.
@@ -567,45 +487,6 @@
   <string name="juno_onboarding_add_search_widget_positive_button" tools:ignore="BrandUsage,UnusedResources">refox ᱣᱤᱡᱮᱴ ᱥᱮᱞᱮᱫ ᱢᱮ</string>
   <!-- Text for the button to dismiss the screen and move on with the flow -->
   <string name="juno_onboarding_add_search_widget_negative_button" tools:ignore="UnusedResources">ᱱᱤᱛᱚᱜ ᱫᱚ ᱵᱟᱝᱟ</string>
-  <!--
-    Onboarding header for the add-ons card used by Nimbus experiments. Nimbus experiments do not support string placeholders.
-    Note: The word "Firefox" should NOT be translated
-  -->
-  <string name="onboarding_add_on_header" moz:removedIn="140" tools:ignore="BrandUsage,UnusedResources">ᱮᱠᱥᱴᱮᱱᱥᱚᱱ ᱥᱟᱶ ᱟᱢᱟᱜ Firefox ᱠᱟᱥᱴᱚᱢᱟᱭᱤᱡᱽ ᱢᱮ</string>
-  <!-- Onboarding sub header for the add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_sub_header" moz:removedIn="140" tools:ignore="UnusedResources">ᱟᱢᱟᱜ ᱨᱩᱠᱷᱤᱭᱟᱹ, ᱩᱛᱟᱹᱨ ᱟᱨ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱹᱲᱛᱤ ᱞᱟᱹᱜᱤᱫ ᱛᱮᱥᱟᱨ ᱯᱟᱨᱴᱤ ᱮᱠᱥᱴᱮᱱᱥᱚᱱ ᱥᱮᱞᱮᱫ ᱢᱮ᱾</string>
-  <!-- Onboarding add-ons card, for checking more add-ons on, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_explore_more_extensions_2" moz:removedIn="140" tools:ignore="UnusedResources">ᱟᱨᱦᱚᱸ ᱮᱠᱥᱴᱮᱱᱥᱚᱱᱠᱚ ᱯᱟᱧᱡᱟᱭ ᱢᱮ</string>
-  <!-- Onboarding add-ons card, button for start browsing, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_start_browsing_button_2" moz:removedIn="140" tools:ignore="UnusedResources">ᱵᱽᱨᱟᱣᱩᱡᱤᱝ ᱮᱦᱚᱵᱽ ᱢᱮ</string>
-  <!-- Ublock name for the onboarding add-ons card, used by Nimbus experiments. Note: The word "Ublock Origin" is a brand name should NOT be translated -->
-  <string name="onboarding_add_on_ublock_name" moz:removedIn="140" tools:ignore="UnusedResources">uBlock Origin</string>
-  <!-- Ublock description for the onboarding add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_ublock_description" moz:removedIn="140" tools:ignore="UnusedResources">ᱵᱤᱜᱽᱭᱟᱯ ᱠᱚ ᱯᱨᱚᱵᱷᱟᱣ ᱟᱨ ᱦᱩᱱᱟᱹᱨ ᱞᱮᱠᱟᱛᱮ ᱵᱞᱚᱠ ᱢᱮ ᱾</string>
-  <!-- Privacy Badger name for the onboarding add-ons card, used by Nimbus experiments. Note: The word "Privacy Badger" is a brand name should NOT be translated -->
-  <string name="onboarding_add_on_privacy_badger_name" moz:removedIn="140" tools:ignore="UnusedResources">Privacy Badger</string>
-  <!-- Privacy Badger description for the onboarding add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_privacy_badger_description" moz:removedIn="140" tools:ignore="UnusedResources">ᱮᱱᱴᱤ-ᱴᱨᱮᱠᱤᱝ ᱨᱮᱢᱚ ᱾ ᱵᱟᱝ ᱧᱮᱞᱚᱜ ᱴᱨᱮᱠᱟᱨ ᱠᱚ ᱟᱨ ᱡᱟᱹᱥᱛᱤ ᱵᱤᱜᱽᱭᱟᱯ ᱠᱚ ᱵᱚᱱᱫᱚᱭ ᱢᱮ ᱾</string>
-  <!-- Search by Image name for the onboarding add-ons card, used by Nimbus experiments. Note: The word "Search by Image" is a brand name should NOT be translated -->
-  <string name="onboarding_add_on_search_by_image_name" moz:removedIn="140" tools:ignore="UnusedResources">ᱪᱤᱛᱟᱹᱨ ᱞᱮᱠᱟᱛᱮ ᱥᱮᱸᱫᱽᱨᱟ</string>
-  <!-- Search by Image description for the onboarding add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_search_by_image_description" moz:removedIn="140" tools:ignore="UnusedResources">ᱢᱤᱫ ᱢᱚᱡᱟᱱ ᱪᱤᱛᱟᱹᱨ ᱧᱮᱞ ᱢᱮ ᱟᱨ ᱱᱚᱶᱟ ᱵᱟᱨᱮᱛᱮ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱲᱟᱭ ᱢᱮ ᱾</string>
-  <!-- Dark Reader name for the onboarding add-ons card, used by Nimbus experiments. Note: The word "Dark Reader" is a brand name should NOT be translated -->
-  <string name="onboarding_add_on_dark_reader_name" moz:removedIn="140" tools:ignore="UnusedResources">ᱧᱩᱛ ᱯᱟᱲᱦᱟᱣᱤᱡ</string>
-  <!-- Privacy Badger description for the onboarding add-ons card, used by Nimbus experiments. -->
-  <string name="onboarding_add_on_dark_reader_description" moz:removedIn="140" tools:ignore="UnusedResources">ᱢᱚᱵᱟᱭᱤᱞ ᱣᱮᱵᱽ ᱞᱟᱹᱜᱤᱫ ᱠᱟᱥᱴᱚᱢ ᱰᱟᱨᱠ ᱢᱳᱰ ᱾</string>
-  <!-- Label for the number of reviews for an add-on. %1$s is the formatted number of reviews e.g. "1,234", "12,345", "123,456". -->
-  <string name="onboarding_add_on_reviews_label" moz:removedIn="140" tools:ignore="UnusedResources">ᱨᱤᱵᱷᱤᱭᱩᱡ ᱠᱚ: %1$s</string>
-  <!-- Content description for the add-on icon. -->
-  <string name="onboarding_add_on_icon_content_description" moz:removedIn="140" tools:ignore="UnusedResources">ᱮᱰ-ᱚᱱ ᱪᱤᱱᱦᱟᱹ</string>
-  <!-- Content description for the an installed add-on icon. -->
-  <string name="onboarding_installed_add_on_icon_content_description" moz:removedIn="140" tools:ignore="UnusedResources">ᱮᱰ-ᱚᱱ ᱪᱤᱱᱦᱟᱹ ᱵᱚᱦᱟᱞ ᱮᱱᱟ</string>
-  <!-- Content description for the an installing add-on icon. -->
-  <string name="onboarding_installing_add_on_icon_content_description" moz:removedIn="140" tools:ignore="UnusedResources">ᱮᱰ-ᱚᱱ ᱪᱤᱱᱦᱟᱹ ᱵᱚᱦᱟᱞᱚᱜ ᱠᱟᱱᱟ</string>
-  <!-- Content description for the add add-on button. -->
-  <string name="onboarding_add_on_add_button_content_description" moz:removedIn="140" tools:ignore="UnusedResources">ᱮᱰ-ᱚᱱ ᱵᱩᱛᱟᱹᱢ ᱥᱮᱞᱮᱫ ᱢᱮ</string>
-  <!-- Content description for the star rating group. %1$s is the rating. -->
-  <string name="onboarding_add_on_star_rating_content_description" moz:removedIn="140" tools:ignore="UnusedResources">5 ᱠᱷᱚᱱ %1$s ᱨᱮᱴ ᱟᱠᱟᱱᱟ</string>
   <!-- Title for the privacy preferences dialog shown during onboarding. Note: The word "Firefox" should NOT be translated. -->
   <string name="onboarding_preferences_dialog_title" tools:ignore="BrandUsage">ᱯᱷᱟᱭᱟᱨᱯᱷᱚᱠᱥ ᱵᱮᱥ ᱵᱮᱱᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱟᱞᱮ ᱜᱚᱲᱚ ᱞᱮᱢ</string>
   <!-- Title for the crash reporting option in the privacy preferences dialog shown during onboarding. -->
@@ -625,8 +506,6 @@
   <!-- Terms of service sub header label. -->
   <string name="onboarding_terms_of_service_sub_header_2">ᱩᱥᱟᱹᱨᱟ ᱟᱨ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱣᱮᱵᱽ ᱵᱽᱨᱟᱣᱩᱡᱤᱝ</string>
   <!-- Terms of service onboarding page continue button label. -->
-  <string name="onboarding_term_of_service_agree_and_continue_button_label" moz:removedIn="140" tools:ignore="UnusedResources">ᱨᱮᱵᱮᱱ ᱢᱮ ᱟᱨ ᱞᱟᱦᱟᱜ ᱢᱮ</string>
-  <!-- Terms of service onboarding page continue button label. -->
   <string name="onboarding_term_of_service_agree_and_continue_button_label_2">ᱞᱮᱛᱟᱲ</string>
   <!-- Line one of the terms of service onboarding page. %1$s is replaced by an active link, using onboarding_term_of_service_line_one_link_text_2 as text (“Firefox Terms of Use”). -->
   <string name="onboarding_term_of_service_line_one_2">ᱞᱟᱦᱟᱜ ᱠᱟᱛᱮ, ᱟᱢ %1$s ᱨᱮᱢ ᱦᱮᱸᱥᱮᱨᱤᱭᱟᱹ ᱮᱫᱟ ᱾</string>
@@ -645,7 +524,9 @@
   <!-- Marketing onboarding page body. 'Firefox' is intentionally hardcoded. -->
   <string name="onboarding_marketing_body" tools:ignore="BrandUsage,UnusedResources">ᱛᱤᱱ ᱨᱮ ᱟᱢ Firefox ᱪᱮᱫ ᱞᱮᱠᱟᱢ ᱧᱟᱢ ᱠᱮᱫᱟ ᱟᱨ ᱚᱱᱟᱢ ᱵᱮᱵᱷᱟᱨ ᱠᱮᱫᱟ, ᱟᱢ ᱟᱞᱮ ᱵᱽᱨᱟᱣᱡᱚᱨ ᱵᱟᱹᱲᱛᱤ ᱦᱚᱲ ᱥᱟᱶ ᱩᱯᱨᱩᱢ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱮᱢᱟᱞᱮᱭᱟ ᱾</string>
   <!-- Marketing onboarding page opt-in checkbox. 'Mozilla' is intentionally hardcoded. -->
-  <string name="onboarding_marketing_opt_in_checkbox" tools:ignore="UnusedResources">Mozilla ᱨᱮᱱ ᱢᱟᱨᱠᱮᱴᱤᱝ ᱴᱮᱠᱱᱚᱞᱚᱡᱤ ᱵᱷᱟᱜᱫᱟᱨ ᱠᱚ ᱥᱟᱶᱛᱮ ᱠᱚᱢ ᱠᱷᱚᱱ ᱠᱚᱢ ᱰᱟᱴᱟ ᱦᱟᱹᱴᱤᱧ ᱢᱮ ᱾ ᱱᱚᱶᱟ ᱰᱟᱴᱟ ᱫᱚ ᱛᱤᱥ ᱦᱚᱸ ᱵᱟᱝ ᱟᱹᱠᱷᱨᱤᱧ ᱟᱠᱟᱱᱟ ᱥᱮ ᱰᱷᱟᱶᱨᱟ ᱫᱮᱠᱷᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱵᱟᱭ ᱟᱹᱠᱷᱨᱤᱧᱚᱜᱼᱟ ᱾</string>
+  <string name="onboarding_marketing_opt_in_checkbox" moz:removedIn="143" tools:ignore="UnusedResources">Mozilla ᱨᱮᱱ ᱢᱟᱨᱠᱮᱴᱤᱝ ᱴᱮᱠᱱᱚᱞᱚᱡᱤ ᱵᱷᱟᱜᱫᱟᱨ ᱠᱚ ᱥᱟᱶᱛᱮ ᱠᱚᱢ ᱠᱷᱚᱱ ᱠᱚᱢ ᱰᱟᱴᱟ ᱦᱟᱹᱴᱤᱧ ᱢᱮ ᱾ ᱱᱚᱶᱟ ᱰᱟᱴᱟ ᱫᱚ ᱛᱤᱥ ᱦᱚᱸ ᱵᱟᱝ ᱟᱹᱠᱷᱨᱤᱧ ᱟᱠᱟᱱᱟ ᱥᱮ ᱰᱷᱟᱶᱨᱟ ᱫᱮᱠᱷᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱵᱟᱭ ᱟᱹᱠᱷᱨᱤᱧᱚᱜᱼᱟ ᱾</string>
+  <!-- Marketing onboarding page opt-out checkbox. Unchecking the box does not increase data collection. Our data practices remain the same. 'Mozilla' is intentionally hardcoded. -->
+  <string name="onboarding_marketing_opt_out_checkbox">Mozilla ᱨᱮᱱ ᱢᱟᱨᱠᱮᱴᱤᱝ ᱴᱮᱠᱱᱚᱞᱚᱡᱤ ᱵᱷᱟᱜᱫᱟᱨ ᱠᱚ ᱥᱟᱶᱛᱮ ᱰᱟᱴᱟ ᱦᱟᱹᱴᱤᱧ ᱢᱮ ᱾ ᱱᱚᱶᱟ ᱰᱟᱴᱟ ᱫᱚ ᱛᱤᱥ ᱦᱚᱸ ᱵᱟᱝ ᱟᱹᱠᱷᱨᱤᱧ ᱟᱠᱟᱱᱟ ᱥᱮ ᱰᱷᱟᱶᱨᱟ ᱫᱮᱠᱷᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱵᱟᱭ ᱟᱹᱠᱷᱨᱤᱧᱚᱜᱼᱟ ᱾</string>
   <!-- Marketing onboarding page clickable link text to "learn more" on how data is used. -->
   <string name="onboarding_marketing_learn_more" tools:ignore="UnusedResources">ᱟᱵᱚ ᱰᱟᱴᱟ ᱪᱮᱫ ᱞᱮᱠᱟ ᱵᱚᱱ ᱵᱮᱵᱷᱟᱨᱮᱫᱟ</string>
   <!-- Marketing onboarding page button label. Button to confirm choice and start browsing. -->
@@ -761,17 +642,15 @@
   <!-- Preference for opening links in a private tab -->
   <string name="preferences_open_links_in_a_private_tab">ᱞᱤᱝᱠ ᱠᱚ ᱱᱤᱡᱮᱨᱟᱜ ᱴᱮᱵᱽ ᱨᱮ ᱡᱷᱤᱡᱽ ᱢᱮ</string>
   <!-- Preference for allowing screenshots to be taken while in a private tab -->
-  <string name="preferences_allow_screenshots_in_private_mode">ᱱᱤᱡᱮᱨᱟᱜ ᱵᱽᱨᱟᱣᱡᱤᱝ ᱨᱮ ᱥᱠᱨᱤᱱᱥᱚᱴ ᱠᱚ ᱦᱮᱥᱟᱨᱤᱭᱟᱹ ᱢᱮ</string>
+  <string name="preferences_allow_screenshots_in_private_mode" tools:ignore="UnusedResources" moz:removedIn="144">ᱱᱤᱡᱮᱨᱟᱜ ᱵᱽᱨᱟᱣᱡᱤᱝ ᱨᱮ ᱥᱠᱨᱤᱱᱥᱚᱴ ᱠᱚ ᱦᱮᱥᱟᱨᱤᱭᱟᱹ ᱢᱮ</string>
   <!-- Will inform the user of the risk of activating Allow screenshots in private browsing option -->
-  <string name="preferences_screenshots_in_private_mode_disclaimer">ᱡᱩᱫᱤ ᱢᱟᱸᱡᱩᱨ ᱮᱱᱟ, ᱯᱨᱟᱭᱣᱮᱴ ᱴᱮᱵᱽ ᱠᱚ ᱫᱚ ᱧᱮᱞᱚᱜ ᱜᱮᱭᱟ ᱡᱩᱫᱤ ᱢᱟᱹᱞᱴᱤᱯᱟᱹᱞ ᱮᱯ ᱠᱚ ᱠᱷᱩᱞᱟᱹ ᱛᱟᱦᱮᱸᱱᱟ</string>
+  <string name="preferences_screenshots_in_private_mode_disclaimer" tools:ignore="UnusedResources" moz:removedIn="144">ᱡᱩᱫᱤ ᱢᱟᱸᱡᱩᱨ ᱮᱱᱟ, ᱯᱨᱟᱭᱣᱮᱴ ᱴᱮᱵᱽ ᱠᱚ ᱫᱚ ᱧᱮᱞᱚᱜ ᱜᱮᱭᱟ ᱡᱩᱫᱤ ᱢᱟᱹᱞᱴᱤᱯᱟᱹᱞ ᱮᱯ ᱠᱚ ᱠᱷᱩᱞᱟᱹ ᱛᱟᱦᱮᱸᱱᱟ</string>
   <!-- Preference for adding private browsing shortcut -->
   <string name="preferences_add_private_browsing_shortcut">ᱱᱤᱡᱮᱨᱟᱜ ᱵᱽᱨᱟᱣᱩᱡᱤᱝ ᱠᱷᱟᱴᱚᱢᱟᱪᱷᱟ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
   <!-- Preference for enabling "HTTPS-Only" mode -->
   <string name="preferences_https_only_title">ᱠᱷᱟᱹᱞᱤᱼHTTPS ᱢᱳᱰ</string>
   <!-- Preference title for using the screen lock to hide tabs in private browsing -->
   <string name="preferences_pbm_lock_screen_title">ᱯᱨᱟᱭᱣᱮᱴ ᱵᱽᱨᱟᱣᱩᱡᱤᱝ ᱨᱮ ᱴᱮᱵᱽ ᱩᱠᱩ ᱞᱟᱹᱜᱤᱫ ᱥᱠᱨᱤᱱ ᱞᱚᱠ ᱵᱮᱵᱷᱟᱨ ᱢᱮ</string>
-  <!-- Informs the user how to access the tabs when "Use screen lock to hide tabs in private browsing" is enabled -->
-  <string name="preferences_pbm_lock_screen_summary" moz:removedIn="140" tools:ignore="UnusedResources">ᱠᱟᱹᱴᱩᱵ ᱪᱤᱛᱟᱹᱨ, ᱪᱮᱦᱨᱟ ᱠᱟᱹᱴᱷᱤ, ᱵᱟᱝᱠᱷᱟᱱ PIN ᱥᱟᱶ ᱴᱮᱵᱽ ᱧᱮᱞ ᱢᱮ ᱾</string>
   <!-- Informs the user how to access the tabs when "Use screen lock to hide tabs in private browsing" is enabled -->
   <string name="preferences_pbm_lock_screen_summary_2">ᱟᱢᱟᱜ ᱠᱟᱹᱴᱩᱵ ᱪᱤᱛᱟᱹᱨ, ᱯᱤᱱ, ᱵᱟᱝᱠᱷᱟᱱ ᱪᱮᱦᱨᱟ ᱚᱱᱞᱚᱠ ᱥᱟᱶ ᱴᱮᱵᱽ ᱧᱮᱞ ᱢᱮ ᱾</string>
   <!-- Label for cookie banner section in quick settings panel. -->
@@ -838,16 +717,22 @@
   <string name="preferences_category_account">ᱠᱷᱟᱛᱟ</string>
   <!-- Preference for changing where the AddressBar is positioned -->
   <string name="preferences_toolbar_2">ᱴᱷᱤᱠᱬᱟᱹᱵᱟᱨ ᱡᱟᱭᱜᱟ</string>
+  <!-- Preference for changing toolbar layout -->
+  <string name="preferences_toolbar_layout">ᱴᱩᱞᱵᱟᱨ ᱞᱮᱭᱟᱣᱩᱴ</string>
   <!-- Preference for changing default theme to dark or light mode -->
   <string name="preferences_theme">ᱩᱭᱦᱟᱹᱨ</string>
   <!-- Preference for customizing the home screen -->
   <string name="preferences_home_2">ᱚᱲᱟᱜ ᱥᱟᱦᱴᱟ</string>
+  <!-- Preference for customizing the app icon -->
+  <string name="preferences_app_icon">ᱮᱯ ᱪᱤᱱᱦᱟᱹ</string>
+  <!-- Preference for showing the tab strip -->
+  <string name="preferences_tab_strip">ᱴᱮᱵᱽ ᱵᱟᱨ ᱫᱮᱠᱷᱟᱣ</string>
   <!-- Preference for gestures based actions -->
   <string name="preferences_gestures">ᱪᱤᱱᱦᱟᱹ ᱠᱚ</string>
   <!-- Preference for settings related to visual options -->
   <string name="preferences_customize">ᱠᱩᱥᱤᱭᱟᱜ ᱛᱮᱭᱟᱨ</string>
   <!-- Preference description for banner about signing in -->
-  <string name="preferences_sign_in_description_2">ᱟᱢᱟᱜ ᱴᱮᱵᱽ ᱠᱚ, ᱵᱩᱠᱢᱟᱨᱠ ᱠᱚ, ᱫᱟᱱᱟᱝ ᱥᱟᱵᱟᱫᱽ ᱠᱚ ᱟᱨ ᱵᱟᱹᱲᱛᱤ ᱠᱚ ᱛᱚᱞ ᱡᱚᱠᱷᱟᱭ ᱞᱟᱹᱜᱤᱫ ᱥᱩᱦᱤ ᱮᱢ ᱢᱮ ᱾</string>
+  <string name="preferences_sign_in_description_2" tools:ignore="UnusedResources" moz:removedIn="145">ᱟᱢᱟᱜ ᱴᱮᱵᱽ ᱠᱚ, ᱵᱩᱠᱢᱟᱨᱠ ᱠᱚ, ᱫᱟᱱᱟᱝ ᱥᱟᱵᱟᱫᱽ ᱠᱚ ᱟᱨ ᱵᱟᱹᱲᱛᱤ ᱠᱚ ᱛᱚᱞ ᱡᱚᱠᱷᱟᱭ ᱞᱟᱹᱜᱤᱫ ᱥᱩᱦᱤ ᱮᱢ ᱢᱮ ᱾</string>
   <!-- Preference shown instead of account display name while account profile information isn't available yet. -->
   <string name="preferences_account_default_name_2">Mozilla ᱠᱷᱟᱛᱟ</string>
   <!-- Preference text for account title when there was an error syncing FxA -->
@@ -856,8 +741,6 @@
   <string name="preferences_language">ᱯᱟᱹᱨᱥᱤ</string>
   <!-- Preference for translations -->
   <string name="preferences_translations">ᱛᱚᱨᱡᱚᱢᱟᱠᱚ</string>
-  <!-- Preference for data choices -->
-  <string name="preferences_data_choices">ᱥᱟᱹᱠᱷᱤᱭᱟᱹᱛ ᱠᱩᱥᱤᱭᱟᱜ ᱠᱚ</string>
   <!-- Preference for data collection -->
   <string name="preferences_data_collection">ᱟᱸᱠᱲᱟ ᱛᱩᱢᱟᱹᱞ</string>
   <!-- Preference for developers -->
@@ -918,8 +801,14 @@
   <string name="preferences_open_links_in_apps_ask">ᱠᱷᱩᱞᱟᱹ ᱢᱟᱲᱟᱝ ᱨᱮ ᱠᱩᱠᱞᱤ ᱢᱮ</string>
   <!-- Preference for open links in third party apps never open in apps option -->
   <string name="preferences_open_links_in_apps_never">ᱛᱤᱥ ᱦᱚᱸ ᱵᱟᱝ</string>
-  <!-- Preference for open download with an external download manager app -->
-  <string name="preferences_external_download_manager" tools:ignore="UnusedResources" moz:removedIn="141">ᱵᱟᱦᱨᱮ ᱨᱮᱭᱟᱜ ᱰᱟᱣᱱᱞᱳᱰ ᱢᱮᱱᱮᱡᱟᱹᱨ</string>
+  <!-- Preference title for choosing an app to handle downloads -->
+  <string name="preferences_choose_app_for_downloads">ᱮᱴᱟᱜ ᱮᱯ ᱥᱟᱶ ᱰᱟᱣᱱᱞᱳᱰ ᱠᱚ ᱢᱮᱱᱮᱡᱽ ᱢᱮ</string>
+  <!-- Title for the setting to automatically clean up downloaded files. %s is the name of the app (for example "Firefox"). -->
+  <string name="preferences_downloads_settings_clean_up_files_title">%s ᱟᱨ ᱥᱟᱫᱷᱚᱱ ᱠᱷᱚᱱ ᱢᱮᱴᱟᱣ ᱢᱮ</string>
+  <!-- Summary for the setting to automatically clean up downloaded files -->
+  <string name="preferences_downloads_settings_clean_up_files_summary">ᱟᱢᱟᱜ ᱰᱟᱣᱱᱞᱳᱰ ᱢᱮᱱᱮᱡᱟᱨ ᱠᱷᱚᱱ ᱨᱮᱫ ᱠᱚ ᱚᱪᱚᱜ ᱠᱷᱟᱱ ᱟᱢᱟᱜ ᱥᱟᱫᱷᱚᱱ ᱠᱷᱚᱱ ᱦᱚᱸ ᱚᱪᱚᱜᱼᱟ</string>
+  <!-- Preference for downloads -->
+  <string name="preferences_downloads">ᱰᱟᱣᱱᱞᱚᱰ ᱠᱚ</string>
   <!-- Preference for enabling gecko engine logs -->
   <string name="preferences_enable_gecko_logs">Gecko ᱞᱚᱜᱽ ᱮᱢ ᱪᱷᱚᱭ ᱢᱮ</string>
   <!-- Message to indicate users that we are quitting the application to apply the changes -->
@@ -937,17 +826,25 @@
   <!--
     Add-on Permissions
 
-    The title of the required permissions section from addon's permissions screen
+    The title of the origin permission option allowing a user to enable the extension to run on all sites
   -->
-  <string name="addons_permissions_heading_required" tools:ignore="UnusedResources" moz:removedIn="141">ᱞᱟᱹᱠᱛᱤ</string>
-  <!-- The title of the optional permissions section from addon's permissions screen -->
-  <string name="addons_permissions_heading_optional" tools:ignore="UnusedResources" moz:removedIn="141">ᱢᱚᱱᱮᱛᱮᱭᱟᱜ</string>
-  <!-- The title of the origin permission option allowing a user to enable the extension to run on all sites -->
   <string name="addons_permissions_allow_for_all_sites">ᱡᱷᱚᱛᱚ ᱥᱟᱭᱤᱴ ᱞᱟᱹᱜᱤᱫ ᱮᱢᱪᱷᱚᱭ ᱢᱮ</string>
   <!-- The subtitle for the allow for all sites preference toggle -->
   <string name="addons_permissions_allow_for_all_sites_subtitle">ᱟᱢ ᱡᱩᱫᱤ ᱱᱚᱶᱟ ᱮᱠᱥᱴᱮᱱᱥᱚᱱ ᱪᱮᱛᱟᱱ ᱨᱮ ᱵᱷᱚᱨᱥᱟ ᱮᱫ ᱠᱷᱟᱱ, ᱟᱢ ᱫᱚ ᱡᱷᱚᱛᱚ ᱣᱮᱵᱽᱥᱟᱭᱤᱴ ᱨᱮ ᱦᱚᱠᱮᱢ ᱮᱢ ᱫᱟᱲᱮ ᱟᱭᱟ ᱾</string>
   <!-- The text shown when an extension does not require permissions -->
   <string name="addons_does_not_require_permissions">ᱱᱚᱶᱟ ᱮᱠᱥᱴᱮᱱᱥᱚᱱ ᱨᱮ ᱡᱟᱦᱟᱸ ᱦᱚᱠ ᱞᱟᱹᱠᱛᱤ ᱵᱟᱹᱱᱩᱜ ᱟᱹᱱᱤᱡ ᱾</string>
+  <!-- The description of data collection permissions listed in the addon's permissions screen.  %1$s is a formatted list of permissions. -->
+  <string name="addons_permissions_required_data_collection_description_2">ᱰᱮᱵᱷᱞᱚᱯᱚᱨ ᱢᱮᱱ ᱠᱮᱫᱟᱭ ᱱᱚᱣᱟ ᱮᱠᱥᱴᱮᱱᱥᱚᱱ ᱡᱟᱣᱨᱟ ᱮᱫᱟᱭ: %1$s</string>
+  <!-- The description of the "none" data collection permission, when the extension doesn't collect anything according to the developer. -->
+  <string name="addons_permissions_none_required_data_collection_description">ᱰᱮᱵᱷᱞᱚᱯᱚᱨ ᱢᱮᱱ ᱠᱮᱫᱟᱭ ᱱᱚᱣᱟ ᱵᱟᱹᱲᱛᱤ ᱞᱟᱹᱜᱤᱫ ᱰᱟᱴᱟ ᱡᱟᱣᱨᱟ ᱨᱮᱭᱟᱜ ᱞᱟᱹᱠᱛᱤ ᱵᱟᱹᱱᱩᱜᱼᱟ ᱾</string>
+  <!-- The title of the required permissions section from addon's permissions screen. -->
+  <string name="addons_permissions_heading_required_permissions">ᱞᱟᱹᱠᱛᱤᱭᱟᱱ ᱟᱹᱭᱫᱟᱹᱨ :</string>
+  <!-- The title of the optional permissions section from addon's permissions screen. -->
+  <string name="addons_permissions_heading_optional_permissions">ᱚᱯᱥᱚᱱᱟᱞ ᱟᱹᱭᱫᱟᱹᱨ :</string>
+  <!-- The title of the required data collection permissions section from addon's permissions screen. -->
+  <string name="addons_permissions_heading_required_data_collection">ᱞᱟᱹᱠᱛᱤᱭᱟᱱ ᱰᱟᱴᱟ ᱡᱟᱣᱨᱟ ᱺ</string>
+  <!-- The title of the optional data collection permissions section from addon's permissions screen. -->
+  <string name="addons_permissions_heading_optional_data_collection">ᱚᱯᱥᱚᱱᱟᱞ ᱰᱟᱴᱟ ᱡᱟᱣᱨᱟ :</string>
   <!--
     Add-on Preferences
 
@@ -978,11 +875,7 @@
   -->
   <string name="customize_toggle_recently_visited">ᱱᱤᱛᱚᱜᱟᱜ ᱦᱤᱨᱤᱭᱟᱜ</string>
   <!-- Title for the customize home screen section with Pocket. -->
-  <string name="customize_toggle_pocket_2" tools:ignore="UnusedResources" moz:removedIn="140">ᱢᱚᱱᱮᱼᱜᱷᱟᱱᱴᱟ ᱠᱟᱹᱦᱱᱤᱠᱚ</string>
-  <!-- Title for the customize home screen section with Pocket. -->
   <string name="customize_toggle_pocket_3">ᱠᱟᱹᱦᱱᱤᱠᱚ</string>
-  <!-- Summary for the customize home screen section with Pocket. %s is "Pocket". -->
-  <string name="customize_toggle_pocket_summary" tools:ignore="UnusedResources" moz:removedIn="140">%s ᱫᱟᱨᱟᱭ ᱛᱮ ᱫᱟᱲᱮ ᱮᱢ ᱠᱟᱱ ᱚᱱᱚᱞᱠᱚ</string>
   <!-- Title for the customize home screen section with sponsored Pocket stories. -->
   <string name="customize_toggle_pocket_sponsored">ᱜᱟᱲᱚ ᱠᱟᱱ ᱠᱟᱹᱦᱱᱤ ᱠᱚ</string>
   <!-- Title for the opening wallpaper settings screen -->
@@ -996,9 +889,9 @@
   -->
   <string name="wallpapers_item_name_content_description">ᱠᱟᱸᱛᱷᱪᱤᱛᱟᱹᱨ ᱡᱤᱱᱤᱥ : %1$s</string>
   <!-- Snackbar message for when wallpaper is selected -->
-  <string name="wallpaper_updated_snackbar_message">ᱠᱟᱸᱛᱷᱪᱤᱛᱟᱹᱨ ᱦᱟᱹᱞᱤᱭᱟᱹᱠ ᱮᱱᱟ !</string>
+  <string name="wallpaper_updated_snackbar_message" tools:ignore="UnusedResources" moz:removedIn="144">ᱠᱟᱸᱛᱷᱪᱤᱛᱟᱹᱨ ᱦᱟᱹᱞᱤᱭᱟᱹᱠ ᱮᱱᱟ !</string>
   <!-- Snackbar label for action to view selected wallpaper -->
-  <string name="wallpaper_updated_snackbar_action">ᱧᱮᱞ</string>
+  <string name="wallpaper_updated_snackbar_action" tools:ignore="UnusedResources" moz:removedIn="144">ᱧᱮᱞ</string>
   <!-- Snackbar message for when wallpaper couldn't be downloaded -->
   <string name="wallpaper_download_error_snackbar_message">ᱠᱟᱱᱛᱷᱪᱤᱛᱟᱹᱨ ᱰᱟᱣᱱᱞᱳᱰ ᱵᱟᱭ ᱜᱟᱱ ᱞᱮᱱᱟ</string>
   <!-- Snackbar label for action to retry downloading the wallpaper -->
@@ -1058,7 +951,7 @@
   <!-- Title for the "Retro 2004" themed alternative app icon variant in the icon picker screen. This app icon uses the classic Firefox logo from 2004. -->
   <string name="alternative_app_icon_option_retro_2004">Retro 2004</string>
   <!-- Title for the "Retro 2017" themed alternative app icon variant in the icon picker screen. This app icon uses the Firefox logo from 2017, with a more modernized design. -->
-  <string name="alternative_app_icon_option_retro_2017">Retro 2017</string>
+  <string name="alternative_app_icon_option_retro_2017" tools:ignore="UnusedResources" moz:removedIn="144">Retro 2017</string>
   <!-- Title for the "Pixelated" themed alternative app icon variant in the icon picker screen. This app icon features a pixel-art style, resembling retro 8-bit graphics. -->
   <string name="alternative_app_icon_option_pixelated">Pixelated</string>
   <!-- Title for the "Minimal" themed alternative app icon variant in the icon picker screen. The app icon presents a simplified, flat and monochrome version of the Firefox logo. -->
@@ -1066,11 +959,25 @@
   <!-- Title for the "Pride" themed alternative app icon variant in the icon picker screen. The app icon incorporates a rainbow color scheme in support of the LGBTQ+ community. -->
   <string name="alternative_app_icon_option_pride">ᱜᱚᱨᱚᱵ</string>
   <!-- Title for the "Cute" themed alternative app icon variant in the icon picker screen. The app icon features a playful design with an adorable aesthetic. -->
-  <string name="alternative_app_icon_option_cute">ᱪᱮᱦᱨᱟ</string>
+  <string name="alternative_app_icon_option_cute" tools:ignore="UnusedResources" moz:removedIn="144">ᱪᱮᱦᱨᱟ</string>
   <!-- Title for the "Momo" themed alternative app icon variant in the icon picker screen. The app icon was created by artist @heyheymomodraws and features a unique hand-drawn style with a friendly fox. -->
   <string name="alternative_app_icon_option_momo">Momo</string>
   <!-- Subtitle for the "Momo" themed alternative app icon variant in the icon picker screen. The app icon was created by artist @heyheymomodraws and features a unique hand-drawn style with a friendly fox. -->
   <string name="alternative_app_icon_option_momo_subtitle">\u0040heyheymomodraws ᱦᱚᱛᱮᱛᱮ ᱵᱮᱱᱟᱣ ᱟᱠᱟᱱᱟ</string>
+  <!-- Title for the "Solid colors" group of alternative app icon variants in the icon picker screen. This group contains icons with flat, uniform color backgrounds. -->
+  <string name="alternative_app_icon_group_solid_colors">ᱠᱮᱴᱮᱡ ᱨᱚᱝ</string>
+  <!-- Title for the "Gradients" group of alternative app icon variants in the icon picker screen. This group contains icons with gradient backgrounds inspired by natural light conditions. -->
+  <string name="alternative_app_icon_group_gradients">ᱜᱽᱨᱮᱰᱤᱭᱮᱱᱴᱥ</string>
+  <!-- Title for the "Other" group of alternative app icon variants in the icon picker screen. This group includes retro, pixel art, themed, and artist-created icons. -->
+  <string name="alternative_app_icon_group_other">ᱮᱴᱟᱜᱽ-ᱟᱜ</string>
+  <!-- Title to show in alert when user selects an alternative app icon -->
+  <string name="restart_warning_dialog_title">ᱮᱯ ᱪᱤᱱᱦᱟᱹ ᱵᱚᱫᱚᱞ ᱢᱮ?</string>
+  <!-- Message to warn users that applying an alternative app icon requires an app restart -->
+  <string name="restart_warning_dialog_body" tools:ignore="UnusedResources" moz:removedIn="144">ᱟᱭᱠᱚᱱ ᱵᱚᱫᱚᱞ ᱞᱟᱹᱜᱤᱫ ᱮᱯ ᱫᱚᱦᱲᱟ ᱪᱟᱹᱞᱩ ᱞᱟᱹᱠᱛᱤᱜ ᱠᱟᱱᱟ ᱾</string>
+  <!-- Dialog button text for confirming the app restart to apply the selected icon -->
+  <string name="restart_warning_dialog_button_positive" tools:ignore="UnusedResources" moz:removedIn="144">ᱱᱤᱛ ᱫᱚᱦᱲᱟ ᱮᱦᱚᱵ ᱢᱮ</string>
+  <!-- Dialog button text for cancelling app icon change -->
+  <string name="restart_warning_dialog_button_negative">ᱵᱟᱹᱰᱨᱟᱹ</string>
   <!--
     Add-ons general availability nimbus message
 
@@ -1179,10 +1086,26 @@
   <string name="exceptions_empty_message_learn_more_link">ᱰᱷᱮᱨ ᱥᱮᱬᱟᱭ ᱢᱮ</string>
   <!-- Preference switch for usage and technical data collection -->
   <string name="preference_usage_data_2">ᱴᱮᱠᱱᱤᱠᱟᱞ ᱟᱨ ᱤᱱᱴᱟᱨᱮᱠᱥᱚᱱ ᱰᱟᱴᱟ ᱵᱷᱮᱡᱟᱭ ᱢᱮ</string>
-  <!-- Preference switch for usage and technical learn more link -->
-  <string name="preference_usage_data_learn_more">ᱰᱷᱮᱨ ᱥᱮᱬᱟᱭ ᱢᱮ</string>
+  <!-- Preference switch for usage and technical learn more link in new compose -->
+  <string name="preference_usage_data_learn_more_2">ᱴᱮᱠᱱᱤᱠᱟᱞ ᱰᱟᱴᱟ ᱵᱟᱵᱚᱛ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱲᱟᱭ ᱢᱮ</string>
   <!-- Preference description for marketing data collection. Note: The words "Firefox" should NOT be translated -->
   <string name="preferences_usage_data_description_1" tools:ignore="BrandUsage">ᱟᱢᱟᱜ ᱥᱟᱫᱷᱚᱱ, ᱦᱟᱨᱰᱣᱮᱭᱟᱨ ᱥᱟᱡᱟᱣ ᱟᱨ ᱵᱮᱵᱷᱟᱨ ᱵᱟᱵᱚᱛ ᱰᱟᱴᱟ ᱟᱞᱮ Firefox ᱨᱮᱭᱟᱜ ᱜᱩᱱᱠᱚ, ᱠᱟᱹᱢᱤᱦᱚᱨᱟ ᱟᱨ ᱥᱴᱮᱵᱤᱞᱤᱴᱤ ᱥᱩᱫᱷᱟᱹᱨ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱞᱮ ᱮᱢᱟᱭᱟ ᱾</string>
+  <!-- Preference switch for daily usage ping data collection -->
+  <string name="preferences_daily_usage_ping_title">ᱫᱤᱱᱟᱹᱢ ᱵᱮᱵᱷᱟᱨ ping</string>
+  <string name="preferences_daily_usage_ping_description">ᱱᱚᱣᱟ ᱫᱚ Mozilla ᱮᱠᱴᱤᱵᱷ ᱵᱮᱵᱷᱟᱨᱤᱭᱟᱹ ᱠᱚ ᱟᱱᱩᱢᱟᱱ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱮᱢᱟ ᱠᱚᱣᱟᱭ ᱾</string>
+  <string name="preferences_daily_usage_ping_learn_more">ᱫᱤᱱᱟᱹᱢ ᱵᱮᱵᱷᱟᱨ ping ᱵᱟᱵᱚᱛ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱲᱟᱭ ᱢᱮ</string>
+  <!-- Title for the crash reporting option in the privacy preferences dialog shown during onboarding. -->
+  <string name="crash_reporting_snack_bar_message">ᱨᱤᱯᱚᱨᱴ ᱵᱷᱮᱡᱟ ᱦᱩᱭ ᱮᱱᱟ</string>
+  <!-- Text for sumo link to learn more about crash reports in data collection screen -->
+  <string name="preferences_crashes_learn_more">ᱠᱨᱟᱥ ᱨᱤᱯᱚᱨᱴ ᱵᱟᱵᱚᱛ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱲᱟᱭ ᱢᱮ</string>
+  <!-- Title Headers for data collection settings screen -->
+  <string name="crash_reports_data_category">ᱨᱟᱹᱯᱩᱫ ᱨᱤᱯᱚᱨᱴ ᱠᱚ</string>
+  <string name="usage_data_category">ᱵᱮᱵᱷᱟᱨ ᱰᱟᱴᱟ</string>
+  <string name="studies_data_category">ᱯᱟᱲᱦᱟᱣ ᱠᱚ</string>
+  <string name="technical_data_category">ᱴᱮᱠᱱᱤᱠᱟᱞ ᱰᱟᱴᱟ</string>
+  <string name="crash_reporting_description">ᱠᱨᱟᱥ ᱨᱤᱯᱚᱨᱴ ᱟᱞᱮ ᱵᱽᱨᱟᱣᱩᱡᱟᱨ ᱨᱮᱭᱟᱜ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱠᱚ ᱵᱤᱰᱟᱹᱣ ᱟᱨ ᱥᱟᱹᱛ ᱨᱮᱭᱟᱜ ᱫᱟᱣ ᱮ ᱮᱢᱟ ᱞᱮᱭᱟ ᱾ ᱠᱷᱚᱵᱚᱨ ᱨᱮ ᱯᱚᱨᱥᱚᱱᱟᱞ ᱵᱟᱝᱠᱷᱟᱱ ᱥᱮᱱᱥᱮᱴᱤᱵᱷ ᱰᱟᱴᱟ ᱥᱮᱞᱮᱫ ᱛᱟᱦᱮᱸ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾</string>
+  <!-- Section title for campaign measurement in data collections screen -->
+  <string name="preferences_marketing_data_title">ᱠᱮᱢᱯᱮᱭᱱ ᱡᱚᱠᱷᱟ</string>
   <!-- Preference switch for campaign measurement data (marketing data) collection -->
   <string name="preferences_marketing_data_2">ᱠᱮᱢᱯᱮᱭᱱ ᱡᱚᱠᱷᱟ ᱰᱟᱴᱟ</string>
   <!--
@@ -1192,16 +1115,6 @@
   <string name="preferences_marketing_data_description_4" tools:ignore="BrandUsage">ᱟᱢ ᱪᱮᱫ ᱞᱮᱠᱟ Firefox \u0020ᱮᱢ ᱧᱟᱢ ᱠᱮᱫᱟ ᱟᱨ ᱚᱱᱟ Mozilla ᱨᱮᱱ ᱢᱟᱨᱠᱮᱴᱤᱝ ᱴᱮᱠᱱᱚᱞᱚᱡᱤ ᱵᱷᱟᱜᱫᱟᱨ ᱠᱚ ᱥᱟᱶ ᱮᱢ ᱵᱮᱵᱷᱟᱨ ᱮᱫᱟ ᱚᱱᱟ ᱞᱟᱹᱭ ᱢᱮ ᱾</string>
   <!-- Learn more link for marketing data preference -->
   <string name="preferences_marketing_data_learn_more">ᱢᱟᱨᱠᱮᱴᱤᱝ ᱰᱟᱴᱟ ᱵᱟᱵᱚᱛ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱲᱟᱭ ᱢᱮ</string>
-  <!-- Preference switch for daily usage ping data collection -->
-  <string name="preferences_daily_usage_ping_title">ᱫᱤᱱᱟᱹᱢ ᱵᱮᱵᱷᱟᱨ ping</string>
-  <string name="preferences_daily_usage_ping_description">ᱱᱚᱣᱟ ᱫᱚ Mozilla ᱮᱠᱴᱤᱵᱷ ᱵᱮᱵᱷᱟᱨᱤᱭᱟᱹ ᱠᱚ ᱟᱱᱩᱢᱟᱱ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱮᱢᱟ ᱠᱚᱣᱟᱭ ᱾</string>
-  <string name="preferences_daily_usage_ping_learn_more">ᱫᱤᱱᱟᱹᱢ ᱵᱮᱵᱷᱟᱨ ping ᱵᱟᱵᱚᱛ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱲᱟᱭ ᱢᱮ</string>
-  <!-- Preference switch title for automatically submitting crash reports -->
-  <string name="preferences_automatically_send_crashes_title">ᱟᱡ ᱛᱮ ᱰᱤᱜᱟᱹᱣ ᱠᱷᱚᱵᱚᱨ ᱵᱷᱮᱡᱟᱭᱟ</string>
-  <!-- Preference switch description for automatically submitting crash reports -->
-  <string name="preferences_automatically_send_crashes_description">ᱱᱚᱣᱟ ᱟᱞᱮ ᱵᱽᱨᱟᱣᱩᱡᱟᱨ ᱨᱮᱱᱟᱜ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱧᱮᱞ ᱟᱨ ᱥᱟᱹᱛ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱮᱢᱟ ᱞᱮᱭᱟ ᱾ ᱨᱤᱯᱳᱨᱴ ᱨᱮ ᱯᱚᱨᱥᱚᱱᱟᱞ ᱵᱟᱝᱠᱷᱟᱱ ᱥᱮᱱᱥᱮᱴᱤᱵᱷ ᱰᱟᱴᱟ ᱥᱮᱞᱮᱫ ᱛᱟᱦᱮᱸ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾</string>
-  <!-- Learn more link for crash reporting preference -->
-  <string name="onboarding_preferences_dialog_crash_reporting_learn_more">ᱠᱨᱟᱥ ᱨᱤᱯᱚᱨᱴ ᱵᱟᱵᱚᱛ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱲᱟᱭ ᱢᱮ</string>
   <!-- Title for studies preferences -->
   <string name="preference_experiments_2">ᱯᱟᱲᱦᱟᱣ ᱠᱚ</string>
   <!-- Summary for studies preferences -->
@@ -1211,7 +1124,7 @@
 
     Header of the Sync and save your data preference view
   -->
-  <string name="preferences_sync_2">ᱥᱭᱝᱠᱢᱮ ᱟᱨ ᱟᱢᱟᱜ ᱰᱟᱴᱟ ᱥᱟᱺᱪᱟᱣ ᱛᱟᱢ</string>
+  <string name="preferences_sync_2" tools:ignore="UnusedResources" moz:removedIn="145">ᱥᱭᱝᱠᱢᱮ ᱟᱨ ᱟᱢᱟᱜ ᱰᱟᱴᱟ ᱥᱟᱺᱪᱟᱣ ᱛᱟᱢ</string>
   <!-- Preference for reconnecting to FxA sync -->
   <string name="preferences_sync_sign_in_to_reconnect">ᱫᱩᱲᱟᱹ ᱡᱚᱲᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱛᱮ ᱵᱚᱞᱚᱱ ᱥᱩᱦᱤ ᱢᱮ</string>
   <!-- Preference for removing FxA account -->
@@ -1230,6 +1143,18 @@
   <string name="preference_top_toolbar">ᱪᱮᱛᱟᱱ</string>
   <!-- Preference for using bottom toolbar -->
   <string name="preference_bottom_toolbar">ᱞᱟᱛᱟᱨ</string>
+  <!-- Preference for using simple toolbar -->
+  <string name="preference_simple_toolbar">ᱟᱞᱜᱟ</string>
+  <!-- Preference for using expanded toolbar -->
+  <string name="preference_expanded_toolbar">ᱯᱟᱥᱱᱟᱣ ᱟᱠᱟᱱᱟ</string>
+  <!-- Preference description indicating the toolbar location preference is disabled when the tab strip is enabled -->
+  <string name="preference_toolbar_pref_disabled_explanation">ᱴᱮᱵᱽ ᱵᱟᱨ ᱩᱫᱩᱜᱚᱜ ᱡᱷᱚᱜ ᱴᱷᱤᱠᱟᱹᱱᱟ ᱵᱟᱨ ᱪᱮᱛᱟᱱ ᱨᱮ ᱛᱟᱦᱮᱱ ᱞᱟᱹᱠᱛᱤᱭᱟ ᱾</string>
+  <!--
+    App icon Preferences
+
+    Title for the preference that lets the user pick a new app icon
+  -->
+  <string name="preference_select_app_icon_title">ᱮᱯ ᱪᱤᱱᱦᱟᱹ ᱵᱟᱪᱷᱟᱣ ᱢᱮ</string>
   <!--
     Theme Preferences
 
@@ -1243,6 +1168,12 @@
   <!-- Preference for using following device theme -->
   <string name="preference_follow_device_theme">ᱥᱟᱫᱷᱚᱱ ᱩᱭᱦᱟᱹᱨ ᱯᱟᱸᱡᱟᱭ ᱢᱮ</string>
   <!--
+    Tab Strip Preferences
+
+    Preferences for showing tab strip
+  -->
+  <string name="preference_tab_strip_show">ᱴᱮᱵᱽ ᱵᱟᱨ ᱩᱫᱩᱜᱽ ᱢᱮ</string>
+  <!--
     Gestures Preferences
 
     Preferences for using pull to refresh in a webpage
@@ -1252,8 +1183,6 @@
   <string name="preference_gestures_dynamic_toolbar">ᱴᱩᱞᱵᱟᱨ ᱩᱠᱩ ᱞᱟᱹᱜᱤᱫᱛᱮ ᱛᱚᱛᱨᱚᱭ ᱢᱮ</string>
   <!-- Preference for showing the opened tabs by swiping up on the toolbar -->
   <string name="preference_gestures_swipe_toolbar_show_tabs">ᱴᱮᱵᱽ ᱠᱚ ᱠᱷᱩᱞᱟᱹ ᱞᱟᱹᱜᱤᱫ ᱴᱩᱞᱵᱟᱨ ᱥᱣᱟᱭᱤᱯ ᱢᱮ</string>
-  <!-- Preference for using the dynamic toolbars -->
-  <string name="preference_gestures_dynamic_toolbar_2" moz:removedIn="140" tools:ignore="UnusedResources">ᱴᱷᱤᱠᱬᱟᱹᱵᱟᱨ ᱟᱨ ᱦᱟᱹᱛᱷᱤᱭᱟᱹᱨᱵᱟᱨ ᱩᱠᱩ ᱞᱟᱹᱜᱤᱫ ᱠᱷᱚᱥᱨᱚᱫ ᱢᱮ</string>
   <!-- Preference for switching tabs by swiping horizontally on the addressbar -->
   <string name="preference_gestures_swipe_toolbar_switch_tabs_2">ᱴᱮᱵᱽ ᱠᱚ ᱵᱚᱫᱚᱞ‌ ᱞᱟᱹᱜᱤᱫ ᱥᱟᱭᱤᱰ ᱴᱷᱤᱠᱬᱟᱹᱵᱟᱨ ᱠᱷᱚᱥᱨᱚᱫ ᱢᱮ</string>
   <!--
@@ -1395,6 +1324,11 @@
   <!--
     Sessions
 
+    Title for the list of tabs in the current normal session used by a11y services
+    The %1$s will be replaced by the number of opened normal tabs
+  -->
+  <string name="tabs_header_normal_tabs_counter_title">ᱥᱟᱫᱷᱟᱨᱚᱱ ᱴᱮᱵᱽ ᱠᱚ ᱡᱷᱤᱡᱽ ᱢᱮ: %1$s᱾ ᱴᱮᱵᱽ ᱵᱚᱫᱚᱞ ᱞᱟᱹᱜᱤᱫ ᱴᱤᱯᱟᱹᱣ ᱢᱮ ᱾</string>
+  <!--
     Title for the list of tabs in the current private session used by a11y services
     The %1$s will be replaced by the number of opened private tabs
   -->
@@ -1404,6 +1338,18 @@
     The %1$s will be replaced by the number of opened synced tabs
   -->
   <string name="tabs_header_synced_tabs_counter_title">ᱥᱤᱱᱥᱰ ᱴᱮᱵᱽ ᱠᱚ ᱡᱷᱤᱡᱽ ᱢᱮ: %1$s ᱾ ᱴᱮᱵᱽ ᱵᱚᱫᱚᱞ ᱞᱟᱹᱜᱤᱫ ᱴᱤᱯᱟᱹᱣ ᱢᱮ ᱾</string>
+  <!-- Text for the tabs header private tabs -->
+  <string name="tabs_header_private_tabs_title">ᱯᱨᱟᱭᱣᱮᱴ</string>
+  <!-- Text for the tabs header normal tabs -->
+  <string name="tabs_header_normal_tabs_title">ᱴᱮᱵᱽ ᱠᱚ</string>
+  <!-- Text for the tabs header synced tabs -->
+  <string name="tabs_header_synced_tabs_title">ᱥᱭᱝᱠ</string>
+  <!-- Text for the new tab button in the Tab Manager to indicate opening a new normal tab -->
+  <string name="tab_manager_floating_action_button_new_normal_tab">ᱱᱟᱶᱟ ᱴᱮᱵᱽ</string>
+  <!-- Text for the new tab button in the Tab Manager to indicate opening a new private tab -->
+  <string name="tab_manager_floating_action_button_new_private_tab">ᱱᱟᱶᱟ ᱱᱤᱡᱮᱨᱟᱜ ᱴᱮᱵᱽ</string>
+  <!-- Text for floating action button in the Tab Manager used to initiate a re-sync of synced tabs -->
+  <string name="tab_manager_floating_action_button_sync_tabs">ᱴᱮᱵᱽ ᱠᱚ ᱟᱹᱭᱩᱨ ᱢᱤᱫ ᱢᱮ</string>
   <!-- Content description (not visible, for screen readers etc.): Add tab button. Adds a news tab when pressed -->
   <string name="add_tab">ᱴᱮᱵᱽ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
   <!-- Content description (not visible, for screen readers etc.): Add tab button. Adds a news tab when pressed -->
@@ -1469,9 +1415,9 @@
   <!-- Text for the button to clear all history -->
   <string name="history_delete_all">ᱱᱟᱜᱟᱢ ᱢᱮᱴᱟᱣ ᱢᱮ</string>
   <!-- Text for the snackbar to confirm that multiple browsing history items has been deleted -->
-  <string name="history_delete_multiple_items_snackbar">ᱱᱟᱜᱟᱢ ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
+  <string name="history_delete_multiple_items_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">ᱱᱟᱜᱟᱢ ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
   <!-- Text for the snackbar to confirm that a single browsing history item has been deleted. %1$s is the shortened URL of the deleted history item. -->
-  <string name="history_delete_single_item_snackbar">%1$s ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
+  <string name="history_delete_single_item_snackbar" tools:ignore="UnusedResources" moz:removedIn="143">%1$s ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
   <!-- Context description text for the button to delete a single history item -->
   <string name="history_delete_item">ᱢᱮᱴᱟᱣ ᱢᱮ</string>
   <!--
@@ -1498,6 +1444,8 @@
     %1$d is the number of items deleted.
   -->
   <string name="download_delete_multiple_items_snackbar_2">ᱡᱤᱱᱤᱥ ᱠᱚ ᱢᱮᱴᱟᱣ ᱮᱱᱟ: %1$d</string>
+  <!-- Title for the dialog that prompts the user to choose an app for downloading a file. -->
+  <string name="download_app_dialog_title">ᱨᱮᱫ ᱥᱟᱶ ᱰᱟᱱᱣᱱᱞᱳᱰ ᱢᱮ :</string>
   <!-- Text for the snackbar to confirm that a single download item has been removed. %1$s is the name of the download item. -->
   <string name="download_delete_single_item_snackbar_2">“%1$s” ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
   <!-- Text for the snackbar to confirm that downloads are in progress. -->
@@ -1542,6 +1490,16 @@
   <string name="download_navigate_back_description">ᱯᱟᱹᱪᱷᱞᱟᱹᱥᱮᱱ ᱪᱟᱞᱟᱜ ᱢᱮ</string>
   <!-- Content description for the toolbar back button while searching the downloads -->
   <string name="download_close_search_description">ᱨᱩᱣᱟᱹᱲ ᱟᱨ ᱥᱮᱸᱫᱽᱨᱟ ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
+  <!--
+    Content description for the search bar clear text button on the downloads screen
+
+    Content description for pause action button on the downloads screen
+  -->
+  <string name="download_pause_action">ᱛᱤᱝᱜᱩ</string>
+  <!-- Content description for resume action button on the downloads screen -->
+  <string name="download_resume_action">ᱫᱩᱦᱲᱟᱹ ᱮᱦᱚᱵ</string>
+  <!-- Content description for retry download action button on the downloads screen -->
+  <string name="download_retry_action">ᱫᱚᱲᱟ ᱠᱩᱨᱩᱢᱩᱴᱩ</string>
   <string name="download_clear_search_description">ᱯᱷᱟᱨᱪᱟ</string>
   <!-- Text for the button to share the download URL -->
   <string name="download_share_url">URL ᱦᱟᱹᱴᱤᱧ ᱢᱮ</string>
@@ -1572,13 +1530,6 @@
   <!-- Description of an in progress download item, displayed in the downloads list when the download has just started. -->
   <string name="download_item_in_progress_description_preparing">ᱰᱟᱣᱱᱞᱚᱰ ᱛᱮᱭᱟᱨᱚᱜ ᱠᱟᱱᱟ …</string>
   <!--
-    Description of an in progress download item, displayed in the downloads list.
-    %1$s is the current file size that has been downloaded.
-    %2$s is the total size of the downloaded file.
-    %3$s is the amount of time remaining to complete the download.
-  -->
-  <string name="download_item_in_progress_description" moz:removedIn="141" tools:ignore="UnusedResources">%1$s / %2$s • %3$s ᱥᱟᱨᱮᱡ ᱠᱟᱱᱟ</string>
-  <!--
     Description of an in progress download item, displayed in the downloads list when the download time remaining is known.
     %1$s is the current file size that has been downloaded.
     %2$s is the total size of the downloaded file.
@@ -1592,15 +1543,21 @@
   -->
   <string name="download_item_in_progress_description_pending">%1$s / %2$s • ᱛᱟᱺᱜᱤ ᱨᱮ</string>
   <!--
+    Description of an in progress download item, displayed in the downloads list when the total download size is unknown. This results in the estimated download time remaining to be unknown also.
+    %1$s is the current file size that has been downloaded.
+  -->
+  <string name="download_item_in_progress_description_unknown_total_size">%1$s • ᱵᱟᱝ ᱵᱟᱰᱟᱭ ᱚᱠᱛᱚ</string>
+  <!--
     Description of a paused download item, displayed in the downloads list.
     %1$s is the current file size that has been downloaded.
     %2$s is the total size of the downloaded file.
   -->
   <string name="download_item_paused_description">%1$s / %2$s • ᱛᱷᱩᱢ</string>
-  <!-- Text to indicate that an in progress download is paused. -->
-  <string name="download_item_status_paused" moz:removedIn="141" tools:ignore="UnusedResources">ᱛᱷᱩᱢ</string>
-  <!-- Text to indicate that the download speed of an in progress download is being calculated. -->
-  <string name="download_item_download_speed_pending" moz:removedIn="141" tools:ignore="UnusedResources">ᱛᱟᱹᱝᱜᱤᱨᱮ</string>
+  <!--
+    Description of a paused download item, displayed in the downloads list when the total download size is unknown.
+    %1$s is the current file size that has been downloaded.
+  -->
+  <string name="download_item_paused_description_unknown_total_size">%1$s • ᱛᱷᱤᱨ ᱟᱠᱟᱱᱟ</string>
   <!-- Text to indicate that a download has failed to download. -->
   <string name="download_item_status_failed">ᱰᱟᱣᱱᱞᱚᱰ ᱰᱤᱜᱟᱹᱣᱮᱱᱟ</string>
   <!-- Text for the snackbar action button to view failed download details. -->
@@ -1631,8 +1588,12 @@
     The title of the Web Compat Reporter feature. This is displayed in the top app bar.
   -->
   <string name="webcompat_reporter_screen_title">ᱨᱟᱹᱯᱩᱫ ᱥᱟᱭᱤᱴ ᱠᱷᱚᱵᱚᱨ ᱢᱮ</string>
-  <!-- The description of the Web Compat Reporter feature. %1$s is the name of the app (for example "Firefox"). -->
-  <string name="webcompat_reporter_description">ᱡᱷᱚᱛᱚ ᱦᱚᱲ ᱞᱟᱹᱜᱤᱫ %1$s ᱵᱮᱥ ᱵᱮᱱᱟᱣ ᱜᱚᱲᱚ ᱮᱢᱚᱜ ᱢᱮ ᱾ ᱢᱚᱡᱤᱞᱟ ᱠᱟᱹᱢᱤᱭᱟᱹ ᱠᱚ ᱟᱢ ᱵᱷᱮᱡᱟ ᱟᱠᱟᱫ ᱵᱟᱯᱟᱰᱟᱭ ᱠᱚ ᱣᱮᱵᱽᱥᱟᱭᱤᱴ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱠᱚ ᱥᱟᱹᱛ ᱞᱟᱹᱜᱤᱫ ᱠᱚ ᱵᱮᱵᱷᱟᱨᱟ ᱾</string>
+  <!-- The description of the Web Compat Reporter feature, which has a "learn more" button text for navigating to a SUMO link to learn more about reporting a broken site. %1$s is the name of the app (for example "Firefox"). -->
+  <string name="webcompat_reporter_description_2" moz:removedIn="143" tools:ignore="UnusedResources">ᱟᱢᱟᱜ ᱨᱤᱯᱚᱨᱴ ᱟᱞᱮ ᱵᱩᱡᱷᱟᱹᱣ ᱟᱨ ᱥᱟᱹᱛ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱮᱢᱟ ᱞᱮᱭᱟ %1$s ᱨᱮ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱠᱚ ᱡᱷᱚᱛᱚ ᱦᱚᱲ ᱞᱟᱹᱜᱤᱫ ᱵᱮᱥ ᱦᱩᱭᱩᱜ ᱞᱟᱹᱜᱤᱫ ᱾ ᱵᱟᱹᱲᱛᱤ ᱵᱟᱲᱟᱭ ᱢᱮ</string>
+  <!-- The description of the Web Compat Reporter feature, which has a "learn more" button text for navigating to a SUMO link to learn more about reporting a broken site. %1$s is the name of the app (for example "Firefox") and %2$s is the learn more button. -->
+  <string name="webcompat_reporter_description_3">ᱟᱢᱟᱜ ᱨᱤᱯᱚᱨᱴ ᱟᱞᱮ ᱵᱩᱡᱷᱟᱹᱣ ᱟᱨ ᱥᱟᱹᱛ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱮᱢᱟ ᱞᱮᱭᱟ %1$s ᱨᱮ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱠᱚ ᱡᱷᱚᱛᱚ ᱦᱚᱲ ᱞᱟᱹᱜᱤᱫ ᱵᱮᱥ ᱦᱩᱭᱩᱜ ᱞᱟᱹᱜᱤᱫ ᱾ %2$s</string>
+  <!-- The button text for navigating to the SUMO link to learn more about reporting a broken site. -->
+  <string name="webcompat_reporter_learn_more">ᱰᱷᱮᱨ ᱥᱮᱬᱟᱭ ᱢᱮ</string>
   <!-- The text field label of the URL text field. This is displayed above the user-inputted URL. -->
   <string name="webcompat_reporter_label_url">URL</string>
   <!-- The error message of the URL text field when an invalid URL has been entered. -->
@@ -1640,37 +1601,31 @@
   <!-- The label/title of a field in the Web Compat Reporter feature for explaining a high-level reason why the site is broken. -->
   <string name="webcompat_reporter_label_whats_broken_2">ᱪᱮᱫ ᱨᱟᱹᱯᱩᱫ ᱮᱱᱟ ?</string>
   <!-- The placeholder text for the dropdown where a user selects a high-level reason why the site is broken. -->
-  <string name="webcompat_reporter_choose_reason">ᱠᱟᱨᱚᱬ ᱵᱟᱛᱟᱣ ᱢᱮ</string>
+  <string name="webcompat_reporter_choose_reason_2">ᱢᱤᱫ ᱠᱟᱨᱚᱱ ᱵᱟᱪᱷᱟᱣ ᱢᱮ</string>
   <!-- The error message of the dropdown, prompting the user to select a high-level reason why the site is broken. -->
   <string name="webcompat_reporter_choose_reason_error">ᱫᱟᱭᱟ ᱠᱟᱛᱮ ᱢᱤᱫ ᱠᱟᱨᱚᱱ ᱵᱟᱪᱷᱟᱣ ᱢᱮ</string>
   <!-- The label/title of an optional field in the Web Compat Reporter feature for adding additional information. -->
   <string name="webcompat_reporter_label_description">ᱮᱴᱠᱮᱴᱚᱬᱮ ᱵᱟᱛᱟᱣ ᱢᱮ (ᱩᱱᱟᱹᱜ ᱵᱟᱝ ᱞᱟᱹᱠᱛᱤ)</string>
   <!-- The button text for navigating away from the feature to provide more information on the broken site's bug report. -->
-  <string name="webcompat_reporter_send_more_info">ᱵᱟᱹᱲᱛᱤ ᱵᱟᱰᱟᱭ ᱵᱷᱮᱡᱟᱭ ᱢᱮ</string>
+  <string name="webcompat_reporter_send_more_info" moz:removedIn="144" tools:ignore="UnusedResources">ᱵᱟᱹᱲᱛᱤ ᱵᱟᱰᱟᱭ ᱵᱷᱮᱡᱟᱭ ᱢᱮ</string>
   <!-- The button text for the cancel button to leave the Web Compat Reporter feature. -->
   <string name="webcompat_reporter_cancel">ᱵᱟᱹᱰᱨᱟᱹ</string>
   <!-- The button text for the send button to submit the provided form data. -->
   <string name="webcompat_reporter_send">ᱠᱩᱞ ᱢᱮ</string>
   <!-- Text for a snackbar to confirm the successful submission of a WebCompat report. -->
-  <string name="webcompat_reporter_success_snackbar_text">ᱟᱢᱟᱜ ᱨᱤᱯᱚᱨᱴ ᱠᱩᱞ ᱮᱱᱟ</string>
+  <string name="webcompat_reporter_success_snackbar_text" moz:removedIn="144" tools:ignore="UnusedResources">ᱟᱢᱟᱜ ᱨᱤᱯᱚᱨᱴ ᱠᱩᱞ ᱮᱱᱟ</string>
   <!-- Button text for closing or dismissing the snackbar shown after successfully submitting a WebCompat report. -->
-  <string name="webcompat_reporter_dismiss_success_snackbar_text">ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
+  <string name="webcompat_reporter_dismiss_success_snackbar_text" moz:removedIn="144" tools:ignore="UnusedResources">ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
+  <!-- Placeholder text for the description field to prompt the user on what they should type. -->
+  <string name="webcompat_reporter_problem_description_placeholder_text">ᱪᱮᱫ ᱦᱩᱭ ᱟᱠᱟᱱᱟ? ᱪᱮᱫ ᱦᱩᱭ ᱞᱟᱹᱠᱛᱤ ᱛᱟᱦᱮᱸ ᱠᱟᱱᱟ?</string>
   <!--
     These reason strings are dropdown options on a WebCompat reporter form, indicating what is broken on the site.
 
-    Broken site reason text for site slow or not working
+    Broken site reason text for site doesn’t load
   -->
-  <string name="webcompat_reporter_reason_slow" moz:removedIn="140" tools:ignore="UnusedResources">ᱥᱟᱭᱤᱴ ᱫᱚ ᱵᱟᱭ ᱥᱮ ᱵᱟᱭ ᱠᱟᱹᱢᱤ ᱠᱟᱱᱟ</string>
-  <!-- Broken site reason text for site doesn’t load -->
   <string name="webcompat_reporter_reason_load">ᱥᱟᱭᱤᱴ ᱵᱟᱝ ᱞᱳᱰᱚᱜ ᱠᱟᱱᱟ</string>
   <!-- Broken site reason text for can’t pay, check out or shop -->
   <string name="webcompat_reporter_reason_checkout">ᱯᱩᱭᱥᱟᱹ ᱵᱟᱝ ᱮᱢ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ, ᱪᱮᱠ ᱟᱣᱩᱴ ᱥᱮ ᱵᱟᱝ ᱠᱤᱨᱤᱧ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ</string>
-  <!-- Broken site reason text for images or videos -->
-  <string name="webcompat_reporter_reason_media" moz:removedIn="140" tools:ignore="UnusedResources">ᱪᱤᱛᱟᱹᱨ ᱥᱮ ᱣᱤᱰᱳᱭᱳᱠᱚ</string>
-  <!-- Broken site reason text for buttons, links, and other content -->
-  <string name="webcompat_reporter_reason_content" moz:removedIn="140" tools:ignore="UnusedResources">ᱵᱩᱛᱟᱢ, ᱞᱤᱝᱠ, ᱟᱨ ᱮᱴᱟᱜ ᱡᱤᱱᱤᱥ</string>
-  <!-- Broken site reason text for sign in or sign out -->
-  <string name="webcompat_reporter_reason_account" moz:removedIn="140" tools:ignore="UnusedResources">ᱥᱩᱦᱤ ᱮᱢ ᱢᱮ ᱥᱮ ᱧᱩᱛᱩᱢ ᱚᱞ ᱦᱚᱪᱚᱭ ᱢᱮ</string>
   <!-- Broken site reason text for site is slow -->
   <string name="webcompat_reporter_reason_slow2">ᱥᱟᱭᱤᱴ ᱫᱚ ᱵᱟᱹᱭ ᱵᱟᱹᱭ ᱜᱮᱭᱟ</string>
   <!-- Broken site reason text for video isn’t playing or loading -->
@@ -1679,8 +1634,6 @@
   <string name="webcompat_reporter_reason_content2">ᱟᱫ ᱟᱠᱟᱱ ᱡᱤᱱᱤᱥ</string>
   <!-- Broken site reason text for can’t sign in or register -->
   <string name="webcompat_reporter_reason_account2">ᱥᱩᱦᱤᱮᱢ ᱥᱮ ᱨᱮᱡᱤᱥᱴᱚᱨ ᱵᱟᱝ ᱦᱩᱭ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ</string>
-  <!-- Broken site reason text for ad blocker -->
-  <string name="webcompat_reporter_reason_ad_blocker" moz:removedIn="140" tools:ignore="UnusedResources">ᱪᱷᱟᱶᱨᱟ ᱟᱠᱚᱴ</string>
   <!-- Broken site reason text for site asked to turn off ad blocker -->
   <string name="webcompat_reporter_reason_turn_off_adblocker">ᱥᱟᱭᱤᱴ ᱫᱚ ᱮᱰ ᱵᱞᱚᱠᱟᱨ ᱵᱚᱱᱫᱚ ᱞᱟᱹᱜᱤᱫ ᱠᱚ ᱢᱮᱛᱟᱫ ᱠᱚᱣᱟ</string>
   <!-- Broken site reason text for browser isn’t supported or blocked -->
@@ -1700,23 +1653,38 @@
   <!-- Restore tab button text on the tab crash page -->
   <string name="tab_crash_restore">ᱴᱮᱵᱽ ᱫᱩᱦᱲᱟᱹ ᱡᱚᱜᱟᱣ ᱢᱮ</string>
   <!-- Unsubmitted crash dialog title, %s is the name of the app (for example "Firefox"). -->
-  <string name="unsubmitted_crash_dialog_title">%s ᱫᱚ ᱫᱩᱦᱲᱟᱹ ᱮᱛᱵᱟᱦ ᱛᱮ ᱦᱩᱭ ᱟᱭᱟ</string>
+  <string name="unsubmitted_crash_dialog_title_2">%s ᱠᱨᱮᱥ ᱮᱱᱟ ᱾ ᱢᱤᱫ ᱨᱤᱯᱚᱨᱴ ᱵᱷᱮᱡᱟᱭ ᱟ ᱥᱮ ?</string>
+  <!-- Single unsubmitted crash matching remote settings. %1$s is the name of the app (for example "Firefox"). -->
+  <string name="unsubmitted_crash_requested_by_devs_dialog_title">ᱟᱢ ᱴᱷᱮᱱ ᱵᱟᱝ ᱠᱩᱞ ᱟᱠᱟᱱ ᱠᱨᱮᱥ ᱨᱤᱯᱚᱨᱴ ᱢᱮᱱᱟᱜᱼᱟ ᱡᱟᱦᱟᱸ ᱫᱚ ᱠᱨᱮᱥ ᱠᱚ ᱛᱚᱞᱟᱥ ᱠᱟᱱᱟ ᱾ ᱱᱚᱣᱟ ᱵᱷᱮᱡᱟ ᱠᱷᱟᱱ ᱟᱞᱮ ᱥᱩᱫᱷᱨᱟᱹᱣ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱞᱮ ᱧᱟᱢᱟ %1$s ᱾ ᱱᱚᱣᱟ ᱱᱚᱴᱤᱯᱷᱤᱠᱮᱥᱚᱱ ᱵᱚᱱᱫᱚ ᱠᱷᱟᱱ ᱱᱚᱣᱟ ᱨᱤᱯᱚᱨᱴ ᱵᱟᱝ ᱵᱩᱡᱷᱟᱹᱣᱜᱼᱟ ᱾</string>
+  <!-- Multiple unsubmitted crashes matching remote settings. %1$d is the number of unsent crash reports, %2$s is the name of the app (for example "Firefox"). -->
+  <string name="unsubmitted_crashes_requested_by_devs_dialog_title">ᱟᱢ ᱴᱷᱮᱱ ᱵᱟᱝ ᱠᱩᱞ ᱟᱠᱟᱱ ᱠᱨᱟᱥ ᱨᱤᱯᱚᱨᱴ (%1$d) ᱫᱚ ᱠᱨᱟᱥ ᱥᱟᱶ ᱡᱚᱲᱟᱣ ᱠᱟᱛᱮ ᱛᱚᱞᱟᱥ ᱦᱩᱭᱩᱜ ᱠᱟᱱᱟ ᱾ ᱩᱱᱠᱩ ᱵᱷᱮᱡᱟ ᱠᱚ ᱠᱷᱟᱱ ᱟᱞᱮ ᱥᱩᱫᱷᱨᱟᱹᱣ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱞᱮ ᱧᱟᱢᱟ %2$s ᱾ ᱱᱚᱣᱟ ᱱᱚᱴᱤᱯᱷᱤᱠᱮᱥᱚᱱ ᱵᱚᱱᱫᱚ ᱠᱷᱟᱱ ᱱᱚᱣᱟ ᱨᱤᱯᱳᱨᱴ ᱵᱟᱝ ᱵᱩᱡᱷᱟᱹᱣᱜᱼᱟ ᱾</string>
   <!-- Unsubmitted crash dialog checkbox label for automatically sending reports in the future -->
   <string name="unsubmitted_crash_dialog_checkbox_label">ᱟᱡ ᱛᱮ ᱰᱤᱜᱟᱹᱣ ᱠᱷᱚᱵᱚᱨ ᱵᱷᱮᱡᱟᱭᱟ</string>
   <!-- Unsubmitted crash dialog negative button to dismiss the dialog -->
   <string name="unsubmitted_crash_dialog_negative_button">ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
+  <!-- Unsubmitted crash dialog negative button to dismiss the dialog -->
+  <string name="unsubmitted_crash_dialog_negative_button_2">ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
+  <!-- Unsubmitted crash dialog negative button to never be asked for the submission -->
+  <string name="unsubmitted_crash_requested_by_devs_dialog_never_button">ᱫᱚᱦᱲᱟ ᱛᱤᱥ ᱦᱚᱸ ᱟᱞᱚᱢ ᱩᱫᱩᱜᱟ</string>
+  <!-- Unsubmitted crash dialog positive button to submit crash report -->
+  <string name="unsubmitted_crash_dialog_positive_button_2">ᱵᱷᱮᱡᱟᱭ ᱢᱮ</string>
   <!-- Unsubmitted crash dialog positive button to submit crash report -->
   <string name="unsubmitted_crash_dialog_positive_button">ᱰᱤᱜᱟᱹᱣ ᱠᱷᱚᱵᱚᱨ ᱵᱷᱮᱡᱟᱭ ᱢᱮ</string>
+  <!-- Body text for crash report dialog. %s is the link text in the annotated string (ie. "Learn More") -->
+  <string name="unsubmitted_crash_dialog_body">ᱠᱨᱟᱥ ᱨᱤᱯᱚᱨᱴ ᱟᱞᱮ ᱵᱽᱨᱟᱣᱩᱡᱟᱨ ᱨᱮᱭᱟᱜ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱠᱚ ᱧᱮᱞ ᱟᱨ ᱥᱟᱹᱛ ᱞᱟᱹᱜᱤᱫ ᱜᱚᱲᱚ ᱮᱢᱟ ᱞᱮᱭᱟ ᱾ ᱨᱤᱯᱳᱴ ᱨᱮ ᱱᱤᱡᱮᱨᱟᱜ ᱵᱟᱝᱠᱷᱟᱱ ᱥᱮᱱᱥᱮᱴᱤᱵᱷ ᱰᱟᱴᱟ ᱥᱮᱞᱮᱫ ᱛᱟᱦᱮᱸ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾ %s</string>
+  <string name="unsubmitted_crash_dialog_learn_more">ᱰᱷᱮᱨ ᱥᱮᱬᱟᱭ ᱢᱮ</string>
+  <!-- Unsubmitted crash dialog button to open a web page with more details on the feature and privacy policy -->
+  <string name="unsubmitted_crash_requested_by_devs_learn_more">ᱰᱷᱮᱨ ᱥᱮᱬᱟᱭ ᱢᱮ</string>
   <!--
     Bookmarks
 
     Confirmation message for a dialog confirming if the user wants to delete the selected folder
   -->
-  <string name="bookmark_delete_folder_confirmation_dialog">ᱪᱮᱫ ᱟᱢ ᱜᱚᱴᱟ ᱛᱮ ᱢᱮᱱᱟᱢᱼᱟ ᱱᱚᱶᱟ ᱯᱚᱴᱚᱢ ᱢᱮᱴᱟᱣ ᱞᱟ.ᱜᱤᱛ ᱛᱮ?</string>
+  <string name="bookmark_delete_folder_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">ᱪᱮᱫ ᱟᱢ ᱜᱚᱴᱟ ᱛᱮ ᱢᱮᱱᱟᱢᱼᱟ ᱱᱚᱶᱟ ᱯᱚᱴᱚᱢ ᱢᱮᱴᱟᱣ ᱞᱟ.ᱜᱤᱛ ᱛᱮ?</string>
   <!-- Confirmation message for a dialog confirming if the user wants to delete multiple items. -->
   <string name="bookmark_delete_folders_confirmation_dialog">ᱪᱮᱫ ᱟᱢ ᱴᱷᱟᱹᱣᱠᱟᱹ ᱜᱮᱭᱟᱢ ᱟᱢ ᱵᱟᱪᱷᱟᱣ ᱟᱠᱟᱱ ᱡᱤᱱᱤᱥ ᱠᱚ ᱢᱮᱴᱟᱣ ᱥᱟᱱᱟᱭᱮᱫ ᱢᱮᱭᱟ ?</string>
   <!-- Confirmation message for a dialog confirming if the user wants to delete multiple items including folders. %s is the name of the app (for example "Firefox"). -->
-  <string name="bookmark_delete_multiple_folders_confirmation_dialog">%s ᱵᱟᱪᱷᱟᱣᱠᱟᱱ ᱡᱤᱱᱤᱥ ᱠᱚ ᱢᱮᱴᱟᱣ ᱟᱭ ᱾</string>
+  <string name="bookmark_delete_multiple_folders_confirmation_dialog" tools:ignore="UnusedResources" moz:removedIn="143">%s ᱵᱟᱪᱷᱟᱣᱠᱟᱱ ᱡᱤᱱᱤᱥ ᱠᱚ ᱢᱮᱴᱟᱣ ᱟᱭ ᱾</string>
   <!-- Text for the cancel button on delete bookmark dialog -->
   <string name="bookmark_delete_negative">ᱵᱟᱹᱰᱨᱟᱹ</string>
   <!-- Screen title for adding a bookmarks folder -->
@@ -1746,7 +1714,7 @@
   <!-- Bookmark overflow menu delete button -->
   <string name="bookmark_menu_delete_button">ᱢᱮᱴᱟᱣ ᱢᱮ</string>
   <!-- Bookmark overflow menu save button -->
-  <string name="bookmark_menu_save_button">ᱥᱟᱺᱪᱟᱣ ᱢᱮ</string>
+  <string name="bookmark_menu_save_button" tools:ignore="UnusedResources" moz:removedIn="143">ᱥᱟᱺᱪᱟᱣ ᱢᱮ</string>
   <!-- Label for button to sort bookmarks by user-defined sort order in the bookmark sorting overflow menu. -->
   <string name="bookmark_sort_menu_custom">ᱠᱟᱥᱴᱚᱢ ᱚᱰᱟᱨ ᱞᱮᱠᱟᱛᱮ ᱵᱟᱪᱷᱟᱣ ᱢᱮ</string>
   <!-- Label for button to sort bookmarks by newest in the bookmark sorting overflow menu. -->
@@ -1767,7 +1735,7 @@
   <!-- Bookmark folder editing screen title -->
   <string name="edit_bookmark_folder_fragment_title">ᱯᱚᱴᱚᱢ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
   <!-- Bookmark sign in button message -->
-  <string name="bookmark_sign_in_button">ᱥᱭᱝᱠᱼᱰ ᱵᱩᱠᱢᱟᱨᱠ ᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱛᱮ ᱵᱚᱞᱚᱱ ᱥᱩᱦᱤ ᱢᱮ</string>
+  <string name="bookmark_sign_in_button" tools:ignore="UnusedResources" moz:removedIn="143">ᱥᱭᱝᱠᱼᱰ ᱵᱩᱠᱢᱟᱨᱠ ᱠᱚ ᱧᱮᱞ ᱞᱟᱹᱜᱤᱫ ᱛᱮ ᱵᱚᱞᱚᱱ ᱥᱩᱦᱤ ᱢᱮ</string>
   <!-- Bookmark URL editing field label -->
   <string name="bookmark_url_label">URL</string>
   <!-- Bookmark FOLDER editing field label -->
@@ -1779,24 +1747,24 @@
   <!-- Label for a text input field for a bookmark or folder name -->
   <string name="bookmark_name_label_normal_case">ᱧᱩᱛᱩᱢ</string>
   <!-- Bookmark add folder screen title -->
-  <string name="bookmark_add_folder_fragment_label">ᱯᱚᱴᱚᱢ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
+  <string name="bookmark_add_folder_fragment_label" tools:ignore="UnusedResources" moz:removedIn="143">ᱯᱚᱴᱚᱢ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
   <!-- Bookmark select folder screen title -->
   <string name="bookmark_select_folder_fragment_label">ᱯᱚᱴᱚᱢ ᱵᱟᱪᱷᱟᱣ ᱢᱮ</string>
   <!-- Bookmark editing error missing title -->
-  <string name="bookmark_empty_title_error">ᱧᱩᱛᱩᱢ ᱦᱩᱭ ᱫᱚᱨᱠᱟᱨ ᱠᱟᱱᱟ</string>
+  <string name="bookmark_empty_title_error" tools:ignore="UnusedResources" moz:removedIn="143">ᱧᱩᱛᱩᱢ ᱦᱩᱭ ᱫᱚᱨᱠᱟᱨ ᱠᱟᱱᱟ</string>
   <!-- Bookmark editing error missing or improper URL -->
   <string name="bookmark_invalid_url_error">ᱵᱟᱝ ᱵᱟᱛᱟᱣ URL</string>
   <!-- Bookmark screen message for empty bookmarks folder -->
-  <string name="bookmarks_empty_message">ᱵᱩᱠᱢᱟᱨᱠ ᱠᱚ ᱱᱚᱰᱮ ᱵᱚᱱᱩᱜ-ᱟ</string>
+  <string name="bookmarks_empty_message" tools:ignore="UnusedResources" moz:removedIn="143">ᱵᱩᱠᱢᱟᱨᱠ ᱠᱚ ᱱᱚᱰᱮ ᱵᱚᱱᱩᱜ-ᱟ</string>
   <!--
     Bookmark snackbar message on deletion
     %1$s is the host part of the URL of the bookmark deleted, if any
   -->
   <string name="bookmark_deletion_snackbar_message">%1$s ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks not including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_2">ᱵᱩᱠᱢᱟᱨᱠ ᱠᱚ ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_2" tools:ignore="UnusedResources" moz:removedIn="143">ᱵᱩᱠᱢᱟᱨᱠ ᱠᱚ ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
   <!-- Bookmark snackbar message on deleting multiple bookmarks including folders -->
-  <string name="bookmark_deletion_multiple_snackbar_message_3">ᱵᱟᱪᱷᱟᱣᱠᱟᱱ ᱯᱚᱴᱚᱢ ᱠᱚ ᱢᱮᱴᱟᱣ ᱦᱩᱭᱩ ᱠᱟᱱᱟ</string>
+  <string name="bookmark_deletion_multiple_snackbar_message_3" tools:ignore="UnusedResources" moz:removedIn="143">ᱵᱟᱪᱷᱟᱣᱠᱟᱱ ᱯᱚᱴᱚᱢ ᱠᱚ ᱢᱮᱴᱟᱣ ᱦᱩᱭᱩ ᱠᱟᱱᱟ</string>
   <!-- Bookmark undo button for deletion snackbar action -->
   <string name="bookmark_undo_deletion">ᱚᱱᱰᱩ</string>
   <!-- Bookmark snackbar message for deleting a single item. %s is the title of the item being deleted -->
@@ -1804,7 +1772,7 @@
   <!-- Bookmark snackbar message for deleting multiple items. %s is the number of items being deleted -->
   <string name="bookmark_delete_multiple_items">ᱢᱮᱴᱟᱣ ᱟᱠᱟᱱ ᱡᱤᱱᱤᱥ ᱠᱚ: %s</string>
   <!-- Text for the button to search all bookmarks -->
-  <string name="bookmark_search">ᱥᱮᱸᱫᱽᱨᱟ ᱟᱹᱲᱟᱹ ᱠᱚ ᱟᱫᱮᱨ ᱢᱮ</string>
+  <string name="bookmark_search" tools:ignore="UnusedResources" moz:removedIn="143">ᱥᱮᱸᱫᱽᱨᱟ ᱟᱹᱲᱟᱹ ᱠᱚ ᱟᱫᱮᱨ ᱢᱮ</string>
   <!-- Content description for the bookmark navigation bar back button -->
   <string name="bookmark_navigate_back_button_content_description">ᱯᱟᱹᱪᱷᱞᱟᱹᱥᱮᱱ ᱪᱟᱞᱟᱜ ᱢᱮ</string>
   <!-- Content description for the bookmark list new folder navigation bar button -->
@@ -1859,6 +1827,10 @@
   <string name="clear_permissions_on_all_sites">ᱥᱟᱱᱟᱢ ᱥᱟᱭᱤᱴ ᱨᱮ ᱪᱷᱟᱹᱲ ᱠᱚ ᱯᱷᱟᱨᱪᱟᱭ ᱢᱮ</string>
   <!-- Preference for altering video and audio autoplay for all websites -->
   <string name="preference_browser_feature_autoplay">ᱟᱡ ᱛᱮ ᱮᱱᱮᱡ</string>
+  <!-- Preference for local device access for all websites -->
+  <string name="preference_browser_feature_local_device_access">ᱥᱟᱫᱷᱚᱱ ᱮᱯ ᱠᱚ ᱟᱨ ᱥᱮᱵᱟ</string>
+  <!-- Preference for local network access for all websites -->
+  <string name="preference_browser_feature_local_network_access">ᱞᱚᱠᱟᱞ ᱱᱮᱴᱣᱟᱨᱠ ᱥᱟᱫᱷᱚᱤᱱ</string>
   <!-- Preference for altering the camera access for all websites -->
   <string name="preference_phone_feature_camera">ᱠᱮᱢᱨᱟ</string>
   <!-- Preference for altering the microphone access for all websites -->
@@ -1959,12 +1931,10 @@
     %d is a placeholder for the number of tabs selected.
   -->
   <string name="create_collection_save_to_collection_tab_selected">%d ᱴᱮᱵᱽ ᱵᱟᱪᱷᱟᱣ ᱟᱠᱟᱱᱟ</string>
-  <!-- Text shown in snackbar when multiple tabs have been saved in a collection -->
-  <string name="create_collection_tabs_saved">ᱴᱮᱵᱽ ᱠᱚ ᱥᱟᱺᱪᱟᱣᱮᱱᱟ!</string>
   <!-- Text shown in snackbar when one or multiple tabs have been saved in a new collection -->
-  <string name="create_collection_tabs_saved_new_collection">ᱛᱩᱢᱟᱹᱞ ᱥᱟᱺᱪᱟᱣᱮᱱᱟ!</string>
+  <string name="create_collection_tabs_saved_new_collection" tools:ignore="UnusedResources" moz:removedIn="144">ᱛᱩᱢᱟᱹᱞ ᱥᱟᱺᱪᱟᱣᱮᱱᱟ!</string>
   <!-- Text shown in snackbar when one tab has been saved in a collection -->
-  <string name="create_collection_tab_saved">ᱴᱮᱵᱽ ᱥᱟᱺᱪᱟᱣᱮᱱᱟ!</string>
+  <string name="create_collection_tab_saved" tools:ignore="UnusedResources" moz:removedIn="144">ᱴᱮᱵᱽ ᱥᱟᱺᱪᱟᱣᱮᱱᱟ!</string>
   <!-- Content description (not visible, for screen readers etc.): button to close the collection creator -->
   <string name="create_collection_close">ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
   <!-- Button to save currently selected tabs in the "select tabs" step of the collection creator -->
@@ -2011,7 +1981,7 @@
   <!-- An option from the share dialog to sign into sync -->
   <string name="sync_sign_in">ᱥᱭᱝᱠ ᱞᱟᱹᱜᱤᱫ ᱵᱚᱞᱚᱱ ᱥᱩᱦᱤ ᱢᱮ</string>
   <!-- An option from the three dot menu to sync and save data -->
-  <string name="sync_menu_sync_and_save_data">ᱥᱭᱝᱠ ᱟᱨ ᱰᱟᱴᱟ ᱥᱟᱺᱪᱟᱣ</string>
+  <string name="sync_menu_sync_and_save_data" tools:ignore="UnusedResources" moz:removedIn="145">ᱥᱭᱝᱠ ᱟᱨ ᱰᱟᱴᱟ ᱥᱟᱺᱪᱟᱣ</string>
   <!-- An option from the share dialog to send link to all other sync devices -->
   <string name="sync_send_to_all">ᱡᱚᱛᱚ ᱥᱟᱫᱷᱚᱱ ᱛᱮ ᱵᱷᱮᱡᱟᱭᱢᱮ</string>
   <!-- An option from the share dialog to reconnect to sync -->
@@ -2093,9 +2063,7 @@
 
     Text shown in snackbar when user deletes a collection
   -->
-  <string name="snackbar_collection_deleted">ᱛᱩᱢᱟᱹᱞ ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
-  <!-- Text shown in snackbar when user renames a collection -->
-  <string name="snackbar_collection_renamed">ᱛᱩᱢᱟᱹᱞ ᱫᱚᱦᱲᱟ ᱧᱩᱛᱩᱢ ᱮᱢ ᱦᱩᱭᱮᱱᱟ</string>
+  <string name="snackbar_collection_deleted" tools:ignore="UnusedResources" moz:removedIn="143">ᱛᱩᱢᱟᱹᱞ ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
   <!-- Text shown in snackbar when user closes a tab -->
   <string name="snackbar_tab_closed">ᱴᱮᱵᱽ ᱵᱚᱸᱫᱚᱭᱮᱱᱟ</string>
   <!-- Text shown in snackbar when user closes all tabs -->
@@ -2103,19 +2071,17 @@
   <!-- Text shown in snackbar when user closes multiple inactive tabs. %1$s will be replaced with the number of tabs closed. -->
   <string name="snackbar_num_tabs_closed">ᱛᱮᱵᱽ ᱵᱚᱸᱫ ᱟᱠᱟᱱᱟ: %1$s</string>
   <!-- Text shown in snackbar when user bookmarks a list of tabs. %s is the name of the folder the bookmark was saved into. -->
-  <string name="snackbar_message_bookmarks_saved_in">ᱵᱩᱠᱢᱟᱨᱠ ᱫᱚ “%s” ᱨᱮ ᱥᱟᱧᱪᱟᱣ ᱟᱠᱟᱱᱟ!</string>
+  <string name="snackbar_message_bookmarks_saved_in" tools:ignore="UnusedResources" moz:removedIn="144">ᱵᱩᱠᱢᱟᱨᱠ ᱫᱚ “%s” ᱨᱮ ᱥᱟᱧᱪᱟᱣ ᱟᱠᱟᱱᱟ!</string>
   <!-- Text shown in snackbar when user adds a site to shortcuts -->
   <string name="snackbar_added_to_shortcuts">!ᱠᱷᱟᱴᱚᱢᱟᱪᱷᱟ ᱛᱮ ᱥᱮᱞᱮᱫᱽ ᱮᱱᱟ!</string>
   <!-- Text shown in snackbar when user closes a private tab -->
   <string name="snackbar_private_tab_closed">ᱱᱤᱡᱮᱨᱟᱜ ᱴᱮᱵᱽ ᱵᱚᱸᱫᱚᱭᱮᱱᱟ</string>
-  <!-- Text shown in snackbar when user closes all private tabs -->
-  <string name="snackbar_private_tabs_closed" moz:removedIn="141" tools:ignore="UnusedResources">ᱯᱨᱟᱭᱣᱮᱴ ᱴᱮᱵᱽ ᱠᱚ ᱵᱚᱸᱫᱚᱭᱮᱱᱟ</string>
   <!-- Text shown in snackbar when user erases their private browsing data -->
   <string name="snackbar_private_data_deleted">ᱱᱤᱡᱚᱨᱟᱜ ᱵᱽᱨᱟᱣᱩᱡᱤᱝ ᱰᱟᱴᱟ ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
   <!-- Text shown in snackbar to undo deleting a tab, top site or collection -->
   <string name="snackbar_deleted_undo">ᱚᱱᱰᱩ</string>
   <!-- Text shown in snackbar when user removes a top site -->
-  <string name="snackbar_top_site_removed">ᱥᱟᱭᱤᱴ ᱚᱪᱚᱜ ᱦᱩᱭ ᱮᱱᱟ</string>
+  <string name="snackbar_top_site_removed" moz:removedIn="144" tools:ignore="UnusedResources">ᱥᱟᱭᱤᱴ ᱚᱪᱚᱜ ᱦᱩᱭ ᱮᱱᱟ</string>
   <!--
     QR code scanner prompt which appears after scanning a code, but before navigating to it
     %1$s is the name of the app (for example "Firefox"), %2$s is the URL or text scanned
@@ -2132,15 +2098,15 @@
   <!-- Tab collection deletion prompt dialog message. %1$s is the collection name. -->
   <string name="tab_collection_dialog_message">%1$s ᱢᱮᱴᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱛᱮ ᱪᱮᱫ ᱟᱢ ᱜᱚᱴᱟ ᱛᱮ ᱢᱮᱱᱟᱢ-ᱟ?</string>
   <!-- Tab collection deletion prompt dialog option to delete the collection -->
-  <string name="tab_collection_dialog_positive">ᱢᱮᱴᱟᱣ ᱢᱮ</string>
-  <!-- Message for copying the URL via long press on the toolbar -->
-  <string name="url_copied">URL ᱱᱚᱠᱚᱞ ᱮᱱᱟ</string>
+  <string name="tab_collection_dialog_positive" tools:ignore="UnusedResources" moz:removedIn="143">ᱢᱮᱴᱟᱣ ᱢᱮ</string>
   <!-- Sample text for accessibility font size -->
   <string name="accessibility_text_size_sample_text_1">ᱱᱚᱶᱟ ᱫᱚ ᱡᱮᱢᱚᱱ ᱟᱲᱟ ᱠᱟᱱᱟ ᱾ ᱱᱚᱶᱟ ᱫᱚ ᱥᱟᱡᱟᱣ ᱵᱚᱫᱚᱞ ᱠᱚ ᱫᱮᱠᱷᱟᱣ ᱞᱟᱹᱜᱤᱫ ᱠᱟᱱᱟ ᱚᱠᱟᱞᱠᱟᱛᱮ ᱟᱲᱟ ᱞᱚ ᱢᱟᱨᱟᱝ ᱟᱨ ᱵᱟᱝ ᱠᱟᱹᱴᱤᱡ ᱞᱮᱠᱷᱟᱱ ᱚᱠᱟᱞᱠᱟ ᱧᱮᱞᱚᱜᱼᱟ ᱾</string>
   <!-- Summary for Accessibility Text Size Scaling Preference -->
   <string name="preference_accessibility_text_size_summary">ᱣᱮᱵᱥᱟᱭᱤᱴ ᱨᱮ ᱚᱱᱚᱞ ᱠᱚ ᱢᱟᱨᱟᱝ ᱵᱟᱝᱠᱷᱟᱱ ᱦᱩᱰᱤᱧ ᱠᱚᱨᱟᱣ ᱢᱮ</string>
   <!-- Title for Accessibility Text Size Scaling Preference -->
   <string name="preference_accessibility_font_size_title">ᱪᱤᱠᱤ ᱨᱮᱭᱟᱜ ᱢᱟᱯ</string>
+  <!-- %d is the percentage of the slide bar for setting the text font size and %% will be announced as "percent". -->
+  <string name="a11y_preference_accessibility_font_size_percentage">%d %% ᱾</string>
   <!-- Title for Accessibility Text Automatic Size Scaling Preference -->
   <string name="preference_accessibility_auto_size_2">ᱟᱡ ᱛᱮ ᱪᱤᱠᱤ ᱥᱟᱡᱟᱣ</string>
   <!-- Summary for Accessibility Text Automatic Size Scaling Preference -->
@@ -2221,9 +2187,9 @@
 
     Text shown in snackbar when multiple tabs have been sent to device
   -->
-  <string name="sync_sent_tabs_snackbar">ᱴᱮᱵᱽ ᱠᱚ ᱠᱩᱞ ᱦᱩᱭᱮᱱᱟ!</string>
+  <string name="sync_sent_tabs_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">ᱴᱮᱵᱽ ᱠᱚ ᱠᱩᱞ ᱦᱩᱭᱮᱱᱟ!</string>
   <!-- Text shown in snackbar when one tab has been sent to device -->
-  <string name="sync_sent_tab_snackbar">ᱴᱮᱵᱽ ᱠᱩᱞ ᱦᱩᱭᱮᱱᱟ!</string>
+  <string name="sync_sent_tab_snackbar" tools:ignore="UnusedResources" moz:removedIn="144">ᱴᱮᱵᱽ ᱠᱩᱞ ᱦᱩᱭᱮᱱᱟ!</string>
   <!-- Text shown in snackbar when sharing tabs failed -->
   <string name="sync_sent_tab_error_snackbar">ᱵᱟᱝ ᱠᱩᱞ ᱫᱟᱲᱮᱞᱟᱱᱟ</string>
   <!-- Text shown in snackbar for the "retry" action that the user has after sharing tabs failed -->
@@ -2272,6 +2238,10 @@
   <string name="preference_enhanced_tracking_protection_strict">ᱱᱤᱦᱟᱹᱛ</string>
   <!-- Preference description for enhanced tracking protection for the strict protection settings -->
   <string name="preference_enhanced_tracking_protection_strict_description_4">ᱠᱚᱴᱮᱡ ᱯᱟᱧᱡᱟ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱟᱨ ᱞᱚᱜᱚᱱ ᱜᱮ ᱠᱟᱹᱢᱤᱭᱟᱭ, ᱢᱮᱱᱠᱷᱟᱱ ᱡᱷᱚᱛᱚ ᱥᱟᱭᱤᱴ ᱠᱚᱨᱮ ᱫᱚ ᱵᱟᱭ ᱠᱟᱹᱢᱤᱭᱟ ᱾</string>
+  <!-- Preference description for the checkbox setting for "baseline" exceptions (a set of content blocking exceptions applied to fix major website breakage). %1$s is the name of the application (e.g. Fenix). -->
+  <string name="preference_enhanced_tracking_protection_allow_list_baseline">ᱢᱟᱨᱟᱝ ᱣᱮᱵᱽᱥᱟᱭᱤᱴ ᱨᱟᱹᱯᱩᱫ ᱠᱷᱚᱱ ᱥᱟᱦᱟᱜ ᱞᱟᱹᱜᱤᱫ ᱞᱟᱹᱠᱛᱤᱭᱟᱱ ᱵᱷᱮᱜᱟᱨ ᱠᱚ ᱟᱡ ᱛᱮ ᱞᱟᱹᱜᱩ ᱞᱟᱹᱜᱤᱫ %1$s ᱟᱫᱮᱨ ᱮᱢᱚᱜ ᱢᱮ ᱾</string>
+  <!-- Preference description for the checkbox setting for "convenience" exceptions (a set of content blocking exceptions applied to fix convenience site features). -->
+  <string name="preference_enhanced_tracking_protection_allow_list_convenience">ᱟᱨᱦᱚᱸ ᱟᱡ ᱛᱮ ᱩᱞᱴᱟᱹ ᱠᱚ ᱞᱟᱹᱜᱩᱭ ᱢᱮ ᱚᱠᱟ ᱠᱚ ᱫᱚ ᱥᱩᱢᱩᱝ ᱠᱟᱹᱴᱤᱡ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱠᱚ ᱴᱷᱤᱠ ᱟᱨ ᱥᱩᱵᱤᱫᱟ ᱯᱷᱤᱪᱟᱨ ᱠᱚ ᱧᱟᱢ ᱞᱟᱹᱜᱤᱫ ᱞᱟᱹᱠᱛᱤᱭᱟᱱᱟ ᱾</string>
   <!-- Accessibility text for the Strict protection information icon -->
   <string name="preference_enhanced_tracking_protection_strict_info_button">ᱴᱷᱤᱴ ᱜᱷᱮᱨ ᱮᱥᱮᱫ ᱨᱩᱠᱷᱭᱟ ᱫᱚ ᱪᱮᱫ ᱵᱞᱚᱠ ᱠᱮᱜᱼᱟᱭ</string>
   <!-- Preference for enhanced tracking protection for the custom protection settings -->
@@ -2566,6 +2536,22 @@
   <string name="saved_login_clear_username">ᱵᱮᱵᱷᱟᱨᱤᱡ ᱧᱩᱛᱩᱢ ᱯᱷᱟᱨᱪᱟᱭ ᱢᱮ</string>
   <!-- Content Description (for screenreaders etc) read for the button to clear the hostname field while creating a login -->
   <string name="saved_login_clear_hostname">ᱦᱚᱥᱴᱧᱩᱛᱩᱢ ᱢᱮᱴᱟᱣ ᱢᱮ</string>
+  <!-- Content description, used by tools like screenreaders, for the 3 dots button that shows commands related to the currently displayed login (edit, delete). -->
+  <string name="login_detail_menu_button_content_description">ᱞᱚᱜᱤᱱ ᱵᱤᱵᱨᱚᱬ ᱢᱮᱱᱩ</string>
+  <!-- Content description, used by tools like screenreaders, to go back and exit the login detail view. -->
+  <string name="login_details_navigate_back_button_content_description">ᱯᱟᱹᱪᱷᱞᱟᱹᱥᱮᱱ ᱪᱟᱞᱟᱜ ᱢᱮ</string>
+  <!-- Edit text for the login detail menu edit button -->
+  <string name="login_detail_menu_edit_button">ᱥᱟᱯᱲᱟᱣ</string>
+  <!-- Delete text for the login detail menu delete button -->
+  <string name="login_detail_menu_delete_button">ᱢᱮᱴᱟᱣ ᱢᱮ</string>
+  <!-- Content description, used by tools like screenreaders, to go back and exit the add login view. -->
+  <string name="add_login_navigate_back_button_content_description">ᱯᱟᱹᱪᱷᱞᱟᱹᱥᱮᱱ ᱪᱟᱞᱟᱜ ᱢᱮ</string>
+  <!-- Content description, used by tools like screenreaders, to press on the save new login button. -->
+  <string name="add_login_save_new_login_button_content_description">ᱱᱚᱶᱟ ᱞᱚᱜᱤᱱ ᱥᱟᱧᱪᱟᱣ ᱢᱮ</string>
+  <!-- Content description, used by tools like screenreaders, to go back and exit the edit login view. -->
+  <string name="edit_login_navigate_back_button_content_description">ᱯᱟᱹᱪᱷᱞᱟᱹᱥᱮᱱ ᱪᱟᱞᱟᱜ ᱢᱮ</string>
+  <!-- Content description, used by tools like screenreaders, to press on the edit login button. -->
+  <string name="edit_login_button_content_description">ᱞᱚᱜᱽ ᱥᱟᱯᱲᱟᱣ ᱢᱮ</string>
   <!-- Content Description (for screenreaders etc) read for the button to open a site in logins -->
   <string name="saved_login_open_site">ᱥᱟᱭᱤᱴ ᱵᱽᱨᱟᱣᱩᱡᱚᱨ ᱨᱮ ᱡᱷᱤᱡᱽ ᱢᱮ</string>
   <!-- Content Description (for screenreaders etc) read for the button to reveal a password in logins -->
@@ -2624,6 +2610,10 @@
   <string name="preferences_addresses_save_and_autofill_addresses_2">ᱴᱷᱤᱬᱟᱹᱤᱭᱟᱹ ᱥᱟᱧᱪᱟᱣ ᱟᱨ ᱟᱡ ᱛᱮ ᱯᱮᱨᱮᱡ ᱢᱮ</string>
   <!-- Preference summary for saving and filling address data -->
   <string name="preferences_addresses_save_and_autofill_addresses_summary_2">ᱯᱷᱚᱱ ᱱᱚᱢᱵᱚᱨ ᱟᱨ ᱤᱼᱢᱮᱞ ᱴᱷᱤᱠᱬᱟᱹ ᱥᱮᱞᱮᱫ ᱢᱮᱱᱟᱜᱼᱟ</string>
+  <!-- Preference option for syncing addresses across devices. This is displayed when the user is not signed into sync -->
+  <string name="preferences_addresses_sync_addresses_across_devices">ᱥᱟᱱᱟᱢ ᱥᱟᱫᱷᱚᱱ ᱠᱚ ᱨᱮ ᱴᱷᱤᱠᱬᱟᱹᱠᱚ ᱟᱹᱭᱩᱨᱢᱤᱫ ᱢᱮ</string>
+  <!-- Preference option for syncing addresses across devices. This is displayed when the user is signed into sync -->
+  <string name="preferences_addresses_sync_addresses">ᱴᱷᱤᱠᱬᱟᱹᱠᱚ ᱟᱹᱭᱩᱨᱢᱤᱫ ᱢᱮ</string>
   <!-- Title of the "Add card" screen -->
   <string name="credit_cards_add_card">ᱠᱟᱰ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
   <!-- Title of the "Edit card" screen -->
@@ -2748,14 +2738,6 @@
   <string name="search_add_custom_engine_error_empty_search_string">ᱥᱮᱸᱫᱽᱨᱟ ᱥᱴᱨᱭᱸᱜ ᱟᱫᱮᱨ ᱢᱮ</string>
   <!-- Text shown when a user leaves out the required template string -->
   <string name="search_add_custom_engine_error_missing_template">ᱥᱮᱸᱫᱽᱨᱟ ᱥᱴᱨᱭᱸᱜ ᱢᱮᱪ ᱠᱚ ᱨᱮᱭᱟᱜ ᱡᱮᱢᱚᱱ ᱯᱷᱚᱨᱢᱟᱴ ᱠᱚ ᱧᱮᱞ ᱵᱤᱰᱟᱹᱣ ᱢᱮ</string>
-  <!-- Text shown when we aren't able to validate the custom search query. %s is the url of the custom search engine. -->
-  <string name="search_add_custom_engine_error_cannot_reach" moz:removedIn="140" tools:ignore="UnusedResources">%s ᱨᱮ ᱡᱩᱲᱟᱹᱣ ᱛᱮ ᱵᱷᱩᱞ ᱦᱩᱭᱮᱱᱟ</string>
-  <!-- Text shown when a user creates a new search engine. %s is the url of the custom search engine. -->
-  <string name="search_add_custom_engine_success_message">%s ᱛᱮᱭᱟᱨᱮᱱᱟ</string>
-  <!-- Text shown when a user successfully edits a custom search engine. %s is the url of the custom search engine. -->
-  <string name="search_edit_custom_engine_success_message">%s ᱥᱟᱺᱪᱟᱣᱮᱱᱟ</string>
-  <!-- Text shown when a user successfully deletes a custom search engine. %s is the url of the custom search engine. -->
-  <string name="search_delete_search_engine_success_message">%s ᱢᱮᱴᱟᱣᱮᱱᱟ</string>
   <!-- Heading for the instructions to allow a permission -->
   <string name="phone_feature_blocked_intro">ᱦᱮᱥᱟᱨᱤᱭᱟᱹ ᱮᱢ ᱞᱟᱹᱜᱤᱫ ᱛᱮ:</string>
   <!-- First step for the allowing a permission -->
@@ -2783,7 +2765,7 @@
   <!-- label shown when there are not site exceptions to show in the site exception settings -->
   <string name="no_site_exceptions">ᱥᱟᱭᱤᱴ ᱨᱮᱭᱟᱜ ᱪᱷᱟᱰᱟ ᱠᱚ ᱵᱚᱱᱩᱜ-ᱟ</string>
   <!-- Bookmark deletion confirmation -->
-  <string name="bookmark_deletion_confirmation">ᱪᱮᱫ ᱟᱢ ᱜᱚᱴᱟ ᱢᱮᱱᱟᱢᱼᱟ ᱱᱚᱶᱟ ᱵᱩᱠᱢᱟᱨᱠ ᱢᱮᱴᱟᱣ ᱞᱟ.ᱜᱤᱫ ᱛᱮ?</string>
+  <string name="bookmark_deletion_confirmation" tools:ignore="UnusedResources" moz:removedIn="143">ᱪᱮᱫ ᱟᱢ ᱜᱚᱴᱟ ᱢᱮᱱᱟᱢᱼᱟ ᱱᱚᱶᱟ ᱵᱩᱠᱢᱟᱨᱠ ᱢᱮᱴᱟᱣ ᱞᱟ.ᱜᱤᱫ ᱛᱮ?</string>
   <!-- Browser menu button that adds a shortcut to the home fragment -->
   <string name="browser_menu_add_to_shortcuts">ᱠᱷᱟᱴᱚᱢᱟᱪᱷᱟ ᱛᱮ ᱥᱮᱞᱮᱫᱽ ᱢᱮ</string>
   <!-- Browser menu button that removes a shortcut from the home fragment -->
@@ -2862,8 +2844,15 @@
   <!--
     Top Sites
 
-    Title text displayed in the dialog when shortcuts limit is reached.
+    Title text displayed for the shortcuts home screen section.
   -->
+  <string name="homepage_shortcuts_title">ᱠᱷᱟᱴᱚᱢᱟᱪᱷᱟ</string>
+  <!--
+    Context description text for the "Show all" button in the shortcuts home screen section
+    which navigates the user to a screen displaying all the shortcuts.
+  -->
+  <string name="homepage_shortcuts_show_all_content_description">ᱡᱷᱚᱛᱚ ᱠᱷᱟᱴᱚᱢᱟᱪᱷᱟ ᱫᱮᱠᱷᱟᱣᱢᱮ</string>
+  <!-- Title text displayed in the dialog when shortcuts limit is reached. -->
   <string name="shortcut_max_limit_title">ᱠᱷᱟᱴᱚᱢᱟᱪᱷᱟ ᱞᱤᱢᱤᱴ ᱥᱮᱴᱮᱨ ᱦᱩᱭ ᱮᱱᱟ</string>
   <!-- Content description text displayed in the dialog when shortcut limit is reached. -->
   <string name="shortcut_max_limit_content">ᱢᱤᱫ ᱱᱟᱶᱟ ᱠᱷᱟᱴᱚᱢᱟᱪᱷᱟ ᱥᱮᱞᱮᱫᱽ ᱞᱟᱹᱜᱤᱫ, ᱢᱤᱫᱴᱟᱝ ᱚᱰᱚᱠ ᱢᱮ ᱾ ᱥᱟᱭᱤᱴ ᱴᱤᱯᱟᱹᱣ ᱟᱨ ᱚᱛᱟ ᱛᱷᱤᱨ ᱠᱟᱛᱮ ᱵᱟᱪᱷᱟᱣ ᱢᱮ ᱟᱨ ᱚᱰᱚᱠ ᱢᱮ ᱾</string>
@@ -2951,25 +2940,13 @@
   <!-- Content description for the action bar "up" button -->
   <string name="action_bar_up_description">ᱪᱮᱛᱟᱱ ᱥᱮᱱ ᱱᱮᱣᱤᱜᱮᱴ ᱢᱮ</string>
   <!-- Content description for privacy content close button -->
-  <string name="privacy_content_close_button_content_description">ᱵᱚᱸᱫ</string>
+  <string name="privacy_content_close_button_content_description" tools:ignore="UnusedResources" moz:removedIn="143">ᱵᱚᱸᱫ</string>
   <!--
     Pocket recommended stories
 
     Header text for a section on the home screen.
   -->
-  <string name="pocket_stories_header_1" tools:ignore="UnusedResources" moz:removedIn="140">ᱢᱚᱱᱮᱼᱜᱷᱟᱱᱴᱟ ᱠᱟᱹᱦᱱᱤ ᱠᱚ</string>
-  <!-- Header text for a section on the home screen. -->
   <string name="pocket_stories_header_2">ᱠᱟᱹᱦᱱᱤᱠᱚ</string>
-  <!-- Header text for a section on the home screen. -->
-  <string name="pocket_stories_categories_header" moz:removedIn="141" tools:ignore="UnusedResources">ᱦᱟᱛᱟᱢ ᱞᱮᱠᱟᱛᱮ ᱠᱟᱹᱦᱱᱤ ᱠᱚ</string>
-  <!-- Text of a button allowing users to access an external url for more Pocket recommendations. -->
-  <string name="pocket_stories_placeholder_text" moz:removedIn="141" tools:ignore="UnusedResources">ᱟᱨᱦᱚᱸ ᱯᱟᱱᱛᱮ ᱧᱟᱢ ᱢᱮ</string>
-  <!-- Title of an app feature. Smaller than a heading. %s is "Pocket". -->
-  <string name="pocket_stories_feature_title_2" moz:removedIn="140" tools:ignore="UnusedResources">%1$s ᱫᱟᱨᱟᱭ ᱛᱮ ᱫᱟᱲᱮ ᱮᱢ ᱾</string>
-  <!-- Caption for describing a certain feature. %s is a link using pocket_stories_feature_learn_more as text, which will load an url in a new tab when clicked. -->
-  <string name="pocket_stories_feature_caption" moz:removedIn="140" tools:ignore="BrandUsage,UnusedResources">Firefox ᱜᱷᱟᱨᱚᱧᱡᱽ ᱨᱤᱱᱤᱡ ᱦᱟᱹᱴᱤᱧ ᱾ %s</string>
-  <!-- Clickable text for opening an external link for more information about Pocket. -->
-  <string name="pocket_stories_feature_learn_more" moz:removedIn="140" tools:ignore="UnusedResources">ᱰᱷᱮᱨ ᱥᱮᱬᱟᱭ ᱢᱮ</string>
   <!-- Text indicating that the Pocket story that also displays this text is a sponsored story by other 3rd party entity. -->
   <string name="pocket_stories_sponsor_indication">ᱠᱟᱹᱢᱤᱼᱤᱭᱟᱹ</string>
   <!-- Snackbar message for enrolling in a Nimbus experiment from the secret settings when Studies preference is Off. -->
@@ -3000,10 +2977,6 @@
   <string name="a11y_state_label_expanded">ᱯᱟᱥᱱᱟᱣ ᱟᱠᱟᱱᱟ</string>
   <!-- Action label for links to a website containing documentation about a wallpaper collection. Talkback will append this to say "Double tap to open link to learn more about this collection". -->
   <string name="a11y_action_label_wallpaper_collection_learn_more">ᱱᱚᱶᱟ ᱡᱟᱣᱨᱟ ᱵᱮᱵᱚᱫ ᱰᱷᱮᱨ ᱵᱟᱰᱟᱭ ᱞᱟᱹᱜᱤᱫ ᱞᱤᱝᱠ ᱠᱷᱩᱞᱟᱹᱭ ᱢᱮ</string>
-  <!-- Action label for links that point to an article. Talkback will append this to say "Double tap to read the article". -->
-  <string name="a11y_action_label_read_article" moz:removedIn="141" tools:ignore="UnusedResources">ᱚᱱᱚᱞ ᱯᱟᱲᱦᱟᱣ ᱢᱮ</string>
-  <!-- Action label for links to the Firefox Pocket website. Talkback will append this to say "Double tap to open link to learn more". -->
-  <string name="a11y_action_label_pocket_learn_more" moz:removedIn="140" tools:ignore="UnusedResources">ᱰᱷᱮᱨ ᱵᱟᱲᱟᱭ ᱞᱟᱹᱜᱤᱫ ᱞᱤᱝᱠ ᱠᱷᱩᱞᱟᱹᱭ ᱢᱮ</string>
   <!-- Content description for headings announced by accessibility service. %s is the text of the heading. Talkback will announce the text and then speak the word "Heading" indicating to the user that this text is a heading for a section. -->
   <string name="a11y_heading">%s, ᱧᱩᱛᱩᱢ</string>
   <!-- Title for dialog displayed when trying to access links present in a text. -->
@@ -3253,12 +3226,8 @@
   <!--
     Unified Trust Panel
 
-    Text for the protection panel header when the site is secure.
+    Title text for the protection panel banner when the site is not secure.
   -->
-  <string name="protection_panel_header_secure">ᱨᱩᱠᱷᱤᱭᱟᱹ</string>
-  <!-- Text for the protection panel header when the site is not secure. -->
-  <string name="protection_panel_header_not_secure">ᱵᱟᱝ ᱨᱩᱠᱷᱤᱭᱟᱹ</string>
-  <!-- Title text for the protection panel banner when the site is not secure. -->
   <string name="protection_panel_banner_not_secure_title">ᱱᱟᱶᱟ ᱥᱟᱭᱤᱴ ᱨᱮ ᱥᱟᱵᱫᱷᱟᱱ ᱛᱟᱦᱮᱸᱱ ᱢᱮ ᱾</string>
   <!-- Description text for the protection panel banner when the site is not secure. -->
   <string name="protection_panel_banner_not_secure_description">ᱟᱢᱟᱜ ᱡᱩᱲᱟᱣ ᱫᱚ ᱵᱟᱝ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱜᱮᱭᱟ ᱾</string>
@@ -3278,10 +3247,14 @@
   <string name="protection_panel_banner_protected_description">ᱟᱢ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱜᱮᱭᱟᱢ ᱾ \u0020ᱡᱩᱫᱤ ᱟᱞᱮ ᱡᱟᱦᱟᱱᱟᱜ ᱞᱮ ᱧᱮᱞ ᱧᱟᱢ ᱠᱮᱫᱟ, ᱟᱞᱮ ᱟᱢ ᱞᱮ ᱵᱟᱰᱟᱭ ᱚᱪᱚ ᱢᱮᱭᱟ ᱾</string>
   <!-- Label text for the Enhanced Tracking Protection toggle. -->
   <string name="protection_panel_etp_toggle_label">ᱵᱟᱲᱦᱟᱣᱟᱠᱟᱱ ᱯᱟᱸᱡᱟ ᱨᱚᱯᱷᱟ</string>
+  <!-- Toggle if Enhanced Tracking Protection is turned on -->
+  <string name="protection_panel_etp_toggle_on">ᱪᱟᱹᱞᱩ</string>
+  <!-- Toggle if Enhanced Tracking Protection is turned off -->
+  <string name="protection_panel_etp_toggle_off">ᱵᱚᱸᱫᱚᱭ ᱢᱮ</string>
   <!-- Description text for the Enhanced Tracking Protection toggle when tracking protection is enabled. -->
-  <string name="protection_panel_etp_toggle_enabled_description">ᱡᱩᱫᱤ ᱱᱚᱶᱟ ᱥᱟᱭᱤᱴ ᱨᱮ ᱡᱟᱦᱟᱱᱟᱜ ᱨᱟᱹᱯᱩᱫ ᱧᱮᱞᱚᱜ ᱠᱟᱱᱟ, ᱮᱱᱠᱷᱟᱱ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱠᱚ ᱵᱚᱱᱫᱚ ᱨᱮᱭᱟᱜ ᱠᱩᱨᱩᱢᱩᱴᱩᱭ ᱢᱮ ᱾</string>
+  <string name="protection_panel_etp_toggle_enabled_description_2">ᱡᱩᱫᱤ ᱱᱚᱶᱟ ᱥᱟᱭᱤᱴ ᱨᱮ ᱡᱟᱦᱟᱱᱟᱜ ᱨᱟᱹᱯᱩᱫ ᱧᱮᱞᱚᱜ ᱠᱟᱱᱟ, ᱮᱱᱠᱷᱟᱱ ᱚᱱᱟ ᱵᱚᱱᱫᱚ ᱨᱮᱭᱟᱜ ᱠᱩᱨᱩᱢᱩᱴᱩᱭ ᱢᱮ ᱾</string>
   <!-- Description text for the Enhanced Tracking Protection toggle when tracking protection is disabled. -->
-  <string name="protection_panel_etp_toggle_disabled_description">ᱨᱩᱠᱷᱤᱭᱟᱹ ᱫᱚ ᱵᱚᱱᱫᱚ ᱜᱮᱭᱟ ᱾ \u0020ᱟᱞᱮ ᱩᱱᱠᱩ ᱫᱚᱦᱲᱟ ᱪᱟᱹᱞᱩ ᱞᱟᱹᱜᱤᱫ ᱥᱚᱞᱦᱟ ᱞᱮ ᱮᱢᱟᱫ ᱠᱚᱣᱟ ᱾</string>
+  <string name="protection_panel_etp_toggle_disabled_description_2">ᱴᱨᱮᱠᱤᱝ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱪᱟᱹᱞᱩ ᱞᱟᱹᱜᱤᱫ ᱡᱟᱹᱨᱩᱲ ᱜᱮᱭᱟ ᱾</string>
   <!--
     Text for displaying the total number of trackers blocked in the protection panel.
     %d is a placeholder for the number of trackers blocked.
@@ -3290,7 +3263,7 @@
   <!-- Text for when no trackers have been blocked. -->
   <string name="protection_panel_no_trackers_blocked">ᱯᱟᱧᱡᱟᱠᱩᱜ ᱵᱟᱠᱚ ᱧᱟᱢ ᱞᱮᱱᱟ</string>
   <!-- Link text to navigate to privacy and security settings from the protection panel. -->
-  <string name="protection_panel_privacy_and_security_settings">ᱯᱨᱟᱭᱣᱮᱥᱤ ᱟᱨ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱥᱟᱡᱟᱣᱠᱚ</string>
+  <string name="protection_panel_privacy_and_security_settings_2">ᱯᱨᱟᱭᱣᱮᱥᱤ ᱥᱮᱴᱤᱝ</string>
   <!-- Title text for the protection panel permissions section. -->
   <string name="protection_panel_permissions_title">ᱪᱷᱟᱹᱰ ᱠᱚ</string>
   <!--
@@ -3314,14 +3287,14 @@
   <!-- Button text on the clear site data dialog to allow users to cancel the action and not clear the site data. -->
   <string name="clear_site_data_dialog_negative_button_text">ᱵᱟᱹᱰᱨᱟᱹ</string>
   <!-- Snackbar title shown when the site data has been cleared. -->
-  <string name="clear_site_data_snackbar">ᱠᱩᱠᱤᱡᱽ ᱟᱨ ᱥᱟᱭᱤᱴ ᱰᱟᱴᱟ ᱚᱪᱚᱜ ᱮᱱᱟ</string>
+  <string name="clear_site_data_snackbar" moz:removedIn="144" tools:ignore="UnusedResources">ᱠᱩᱠᱤᱡᱽ ᱟᱨ ᱥᱟᱭᱤᱴ ᱰᱟᱴᱟ ᱚᱪᱚᱜ ᱮᱱᱟ</string>
   <!-- Text for the connection security panel when the site is secure. -->
   <string name="connection_security_panel_secure">ᱡᱟᱹᱯᱛᱤ ᱡᱚᱱᱚᱲᱟᱣ</string>
   <!-- Text for the connection security panel when the site is not secure. -->
   <string name="connection_security_panel_not_secure">ᱡᱩᱲᱟᱹᱣ ᱵᱟᱭ ᱨᱩᱠᱷᱤᱭᱟᱹ ᱜᱮᱭᱟ</string>
   <!--
     Text for the connection security panel to indicate who the certificate was verified by.
-    %s is a placeholder for the name of the certificate authority that verified the ticket
+    %s is a placeholder for the name of the certificate authority that issued the certificate.
   -->
   <string name="connection_security_panel_verified_by">ᱫᱟᱨᱟᱭ ᱛᱮ ᱧᱮᱞ ᱢᱮᱲᱟᱣ %s</string>
   <!--
@@ -3501,6 +3474,14 @@
   <!-- The title of the button for overriding home region permanently. -->
   <string name="debug_drawer_override_home_region_permanently">ᱚᱲᱟᱜ ᱴᱚᱴᱷᱟ ᱥᱮᱢᱟᱭ ᱞᱟᱹᱜᱤᱫ ᱚᱵᱷᱟᱨᱟᱭᱤᱰ ᱢᱮ</string>
   <!--
+    Add-ons debug tools
+
+    The description of the Add-ons Tools in the Debug Drawer
+  -->
+  <string name="debug_drawer_addons_tools_title">ᱮᱰ-ᱚᱱᱥ ᱦᱟᱹᱛᱤᱭᱟᱨᱠᱚ</string>
+  <!-- The title of the button used to check for add-on updates. -->
+  <string name="addons_debug_tools_check_for_updates_button">ᱦᱟᱹᱞᱤᱭᱟᱹᱠ ᱧᱮᱞᱵᱤᱲᱟᱹᱣ ᱢᱮ</string>
+  <!--
     Messages explaining how to exit fullscreen mode
 
     Message shown to explain how to exit fullscreen mode when gesture navigation is enabled.
@@ -3627,7 +3608,9 @@
   <!-- The title of the explore extensions task for the setup checklist -->
   <string name="setup_checklist_task_explore_extensions">ᱮᱠᱥᱴᱮᱱᱥᱚᱱᱠᱚ ᱯᱟᱧᱡᱟᱭ ᱢᱮ</string>
   <!-- The title of the search widget task for the setup checklist -->
-  <string name="setup_checklist_task_search_widget">ᱥᱮᱸᱫᱽᱨᱟ ᱣᱤᱡᱮᱴ ᱵᱚᱦᱟᱞ ᱢᱮ</string>
+  <string name="setup_checklist_task_search_widget" moz:removedIn="143" tools:ignore="UnusedResources">ᱥᱮᱸᱫᱽᱨᱟ ᱣᱤᱡᱮᱴ ᱵᱚᱦᱟᱞ ᱢᱮ</string>
+  <!-- The title of the search widget task for the setup checklist -->
+  <string name="setup_checklist_task_search_widget_2">ᱥᱮᱸᱫᱽᱨᱟ ᱣᱤᱡᱮᱴ ᱯᱟᱱᱛᱮ ᱢᱮ</string>
   <!--
     ===== Setup checklist feature: Group titles =====
 
@@ -3692,4 +3675,32 @@
   <string name="review_prompt_feedback_header">ᱟᱞᱮ ᱤᱠᱟᱹ ᱞᱮ ᱠᱷᱚᱡᱚᱜ ᱠᱟᱱᱟ ᱟᱢ ᱴᱷᱮᱱ ᱮᱴᱠᱮᱴᱚᱬᱮ ᱢᱮᱱᱟᱜᱼᱟ ᱾ ᱟᱞᱮ ᱵᱟᱲᱟᱭ ᱚᱪᱚ ᱞᱮᱢ ᱪᱮᱫ ᱞᱮᱠᱟ ᱟᱞᱮ %1$s ᱞᱮ ᱥᱩᱫᱷᱨᱟᱹᱣ ᱫᱟᱲᱮᱭᱟᱜᱼᱟ ᱾</string>
   <!-- Label for a button opening a feedback forum -->
   <string name="review_prompt_feedback_button">ᱟᱢᱟᱜ ᱦᱩᱫᱤᱥ</string>
+  <!--
+    Terms of use pop up prompt
+
+    Title for the pop up prompt
+  -->
+  <string name="terms_of_use_prompt_title">ᱟᱞᱮ ᱢᱤᱫ ᱦᱟᱹᱞᱤᱭᱟᱹᱠ ᱞᱮ ᱧᱟᱢ ᱠᱮᱫᱟ</string>
+  <!--
+    Message for the terms of use pop up prompt
+    %1$s is the product name "Firefox"
+    %2$s is the string terms_of_use_prompt_link_terms_of_use (Terms of Use) that is a link to the terms of use
+    %3$s is the string terms_of_use_prompt_link_privacy_notice (Privacy Notice) that is a link to the privacy notice
+  -->
+  <string name="terms_of_use_prompt_message_1">ᱟᱞᱮ ᱫᱚ %1$s %2$s ᱞᱮ ᱮᱦᱚᱵ ᱟᱠᱟᱫᱟ ᱟᱨ ᱟᱞᱮᱭᱟᱜ %3$s ᱞᱮ ᱟᱯᱰᱮᱴ ᱟᱠᱟᱫᱟ ᱾</string>
+  <!--
+    Second part of the terms of use pop up prompt
+    %1$s is the string terms_of_use_prompt_link_learn_more (Learn more) that is a link to a website with more information about the terms of use
+  -->
+  <string name="terms_of_use_prompt_message_2">ᱫᱟᱭᱟ ᱠᱟᱛᱮ ᱧᱮᱞ ᱫᱚᱦᱲᱟ ᱟᱨ ᱟᱝᱜᱚᱪ ᱞᱟᱹᱜᱤᱫ ᱢᱤᱫ ᱜᱷᱟᱹᱲᱤ ᱚᱠᱛᱚ ᱦᱟᱛᱟᱣ ᱢᱮ ᱾ %1$s ᱾</string>
+  <!-- Terms of use link in the pop up prompt message that links to the terms of use -->
+  <string name="terms_of_use_prompt_link_terms_of_use">ᱵᱮᱵᱷᱟᱨ ᱨᱮᱭᱟᱜ ᱥᱚᱨᱛᱚ</string>
+  <!-- Privacy notice link in the pop up prompt message that links to the privacy notice -->
+  <string name="terms_of_use_prompt_link_privacy_notice">ᱫᱟᱱᱟᱝ ᱠᱷᱚᱵᱚᱨ</string>
+  <!-- Learn more link in the pop up prompt message that links to a site with more information about the terms of use -->
+  <string name="terms_of_use_prompt_link_learn_more">ᱰᱷᱮᱨ ᱥᱮᱬᱟᱭ ᱢᱮ</string>
+  <!-- Label for a button to accept the terms of use -->
+  <string name="terms_of_use_prompt_accept">ᱦᱮᱸᱥᱮᱨᱤᱭᱟᱹ</string>
+  <!-- Label for a button to postpone accepting the terms of use -->
+  <string name="terms_of_use_prompt_postpone">ᱛᱟᱭᱚᱢ ᱛᱮ ᱵᱟᱛᱟᱣ ᱤᱧ ᱢᱮ</string>
 </resources>

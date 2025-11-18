@@ -45,6 +45,14 @@
             "description": "The starting URL opened when Taskbar Tab is launched from the taskbar.",
             "type": "string",
             "format": "uri"
+          },
+          "name": {
+            "description": "The visible name of this Taskbar Tab.",
+            "type": "string"
+          },
+          "shortcutRelativePath": {
+            "description": "The path to the shortcut relative to the Start Menu/Programs folder.",
+            "type": "string"
           }
         }
       }

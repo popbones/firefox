@@ -35,7 +35,11 @@ from mozbuild.base import (
     MozbuildObject,
 )
 from mozbuild.base import MachCommandConditions as conditions
-from mozbuild.util import MOZBUILD_METRICS_PATH, ForwardingArgumentParser
+from mozbuild.util import (
+    MOZBUILD_METRICS_PATH,
+    ForwardingArgumentParser,
+    ensure_l10n_central,
+)
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -55,18 +59,6 @@ and tell us about your machine and build configuration so we can adjust the
 warning heuristic.
 ===================
 """
-
-
-class MissingL10nError(Exception):
-    """Raised when the l10n repositories haven’t been checked out."""
-
-    pass
-
-
-class NotAGitRepositoryError(Exception):
-    """Raised when the directory isn’t a git repository."""
-
-    pass
 
 
 class StoreDebugParamsAndWarnAction(argparse.Action):
@@ -476,7 +468,7 @@ def doctor(command_context, fix=False, verbose=False):
     )
 
 
-CLOBBER_CHOICES = {"objdir", "python", "gradle"}
+CLOBBER_CHOICES = {"objdir", "python", "gradle", "artifacts"}
 
 
 @Command(
@@ -511,6 +503,9 @@ def clobber(command_context, what, full=False):
 
     The `gradle` target will remove the "gradle" subdirectory of the object
     directory.
+
+    The `artifacts` target will remove cached artifact files from
+    ~/.mozbuild/package-frontend or $MOZBUILD_STATE_PATH/package-frontend.
 
     By default, the command clobbers the `objdir` and `python` targets.
     """
@@ -606,6 +601,16 @@ def clobber(command_context, what, full=False):
         shutil.rmtree(
             mozpath.join(command_context.topobjdir, "gradle"), ignore_errors=True
         )
+
+    if "artifacts" in what:
+        from mach.util import get_state_dir
+
+        state_dir = Path(get_state_dir(specific_to_topsrcdir=False))
+        artifact_cache_dir = state_dir / "package-frontend"
+
+        if artifact_cache_dir.exists():
+            print(f"Removing artifact cache directory: {artifact_cache_dir}")
+            shutil.rmtree(artifact_cache_dir, ignore_errors=True)
 
     return ret
 
@@ -1089,6 +1094,9 @@ def gtest(
     )
 
     gtest_env["MOZ_RUN_GTEST"] = "True"
+
+    # For parity with CI mozharness test runner, provide Python path in an environment variable
+    gtest_env["PYTHON"] = sys.executable
 
     if shuffle:
         gtest_env["GTEST_SHUFFLE"] = "True"
@@ -2459,7 +2467,7 @@ def repackage(command_context):
     help="Location of the templates used to generate the debian/ directory files",
 )
 @CommandArgument(
-    "--release-product",
+    "--product",
     type=str,
     required=True,
     help="The product being shipped. Used to disambiguate beta/devedition etc.",
@@ -2478,7 +2486,7 @@ def repackage_deb(
     version,
     build_number,
     templates,
-    release_product,
+    product,
     release_type,
 ):
     if not os.path.exists(input):
@@ -2502,7 +2510,7 @@ def repackage_deb(
         arch,
         version,
         build_number,
-        release_product,
+        product,
         release_type,
         FluentLocalization,
         FluentResourceLoader,
@@ -2543,10 +2551,16 @@ def repackage_deb(
     help="Location of the templates used to generate the debian/ directory files",
 )
 @CommandArgument(
-    "--release-product",
+    "--product",
     type=str,
     required=True,
     help="The product being shipped. Used to disambiguate beta/devedition etc.",
+)
+@CommandArgument(
+    "--extensions-dir",
+    type=str,
+    required=True,
+    help="Path to extensions.",
 )
 def repackage_deb_l10n(
     command_context,
@@ -2556,7 +2570,8 @@ def repackage_deb_l10n(
     version,
     build_number,
     templates,
-    release_product,
+    product,
+    extensions_dir,
 ):
     for input_file in (input_xpi_file, input_tar_file):
         if not os.path.exists(input_file):
@@ -2577,7 +2592,8 @@ def repackage_deb_l10n(
         template_dir,
         version,
         build_number,
-        release_product,
+        product,
+        extensions_dir,
     )
 
 
@@ -2624,7 +2640,7 @@ def repackage_deb_l10n(
     help="Location of the templates used to generate the rpm/ directory files",
 )
 @CommandArgument(
-    "--release-product",
+    "--product",
     type=str,
     required=True,
     help="The product being shipped. Used to disambiguate beta/devedition etc.",
@@ -2644,7 +2660,7 @@ def repackage_rpm(
     version,
     build_number,
     templates,
-    release_product,
+    product,
     release_type,
 ):
     if not os.path.exists(input):
@@ -2669,7 +2685,7 @@ def repackage_rpm(
         arch,
         version,
         build_number,
-        release_product,
+        product,
         release_type,
         FluentLocalization,
         FluentResourceLoader,
@@ -3405,15 +3421,15 @@ def repackage_snap_install(command_context, snap_file, snap_name, sudo=None):
 @SubCommand(
     "repackage",
     "desktop-file",
-    description="Prepare a firefox.desktop file",
+    description="Prepare a firefox.desktop file for snap",
     virtualenv_name="repackage-desktop-file",
 )
 @CommandArgument("--output", type=str, required=True, help="Output desktop file")
 @CommandArgument(
     "--flavor",
     type=str,
-    required=True,
-    choices=["snap", "flatpak"],
+    required=False,
+    choices=["snap"],
     help="Desktop file flavor to generate.",
 )
 @CommandArgument(
@@ -3442,92 +3458,19 @@ def repackage_desktop_file(
     release_type,
     wmclass,
 ):
-    desktop = None
-    if flavor == "flatpak":
-        from fluent.runtime.fallback import FluentLocalization, FluentResourceLoader
+    from mozbuild.repackaging.snapcraft_transform import (
+        SnapDesktopFile,
+    )
 
-        from mozbuild.repackaging.desktop_file import generate_browser_desktop_entry
-
-        # This relies in existing build variables usage inherited from the
-        # debian repackage code that serves the same purpose on Flatpak, so
-        # it is just directly re-used here.
-        build_variables = {
-            "PKG_NAME": release_product,
-            "DBusActivatable": "false",
-            "Icon": "org.mozilla.firefox",
-            "StartupWMClass": release_product,
-        }
-
-        desktop = "\n".join(
-            generate_browser_desktop_entry(
-                command_context.log,
-                build_variables,
-                release_product,
-                release_type,
-                FluentLocalization,
-                FluentResourceLoader,
-            )
-        )
-
-    if flavor == "snap":
-        from mozbuild.repackaging.snapcraft_transform import (
-            SnapDesktopFile,
-        )
-
-        desktop = SnapDesktopFile(
-            command_context.log,
-            appname=release_product,
-            branchname=release_type,
-            wmclass=wmclass,
-        ).repack()
-
-    if desktop is None:
-        raise NotImplementedError(
-            f"Couldn't generate a desktop file. Unknown flavor: {flavor}"
-        )
+    desktop = SnapDesktopFile(
+        command_context.log,
+        appname=release_product,
+        branchname=release_type,
+        wmclass=wmclass,
+    ).repack()
 
     with open(output, "w") as desktop_file:
         desktop_file.write(desktop)
-
-
-def _ensure_l10n_central(command_context):
-    # For nightly builds, we automatically check out missing localizations
-    # from firefox-l10n.  We never automatically check out in automation:
-    # automation builds check out revisions that have been signed-off by
-    # l10n drivers prior to use.
-    l10n_base_dir = Path(command_context.substs["L10NBASEDIR"])
-    moz_automation = os.environ.get("MOZ_AUTOMATION")
-    if moz_automation:
-        if not l10n_base_dir.exists():
-            raise MissingL10nError(
-                f"Automation requires l10n repositories to be checked out: {l10n_base_dir}"
-            )
-
-    nightly_build = command_context.substs.get("NIGHTLY_BUILD")
-    if nightly_build:
-        git = os.environ.get("GIT", "git")
-        if not l10n_base_dir.exists():
-            l10n_base_dir.mkdir(parents=True)
-            subprocess.run(
-                [
-                    git,
-                    "clone",
-                    "https://github.com/mozilla-l10n/firefox-l10n.git",
-                    str(l10n_base_dir),
-                    "--depth",
-                    "1",
-                ],
-                check=True,
-            )
-        if not moz_automation:
-            if (l10n_base_dir / ".git").exists():
-                subprocess.run(
-                    [git, "-C", str(l10n_base_dir), "pull", "--quiet"], check=True
-                )
-            else:
-                raise NotAGitRepositoryError(
-                    f"Directory is not a git repository: {l10n_base_dir}"
-                )
 
 
 @Command(
@@ -3566,7 +3509,7 @@ def package_l10n(command_context, verbose=False, locales=[]):
         "MOZ_CHROME_MULTILOCALE": " ".join(locales),
     }
 
-    _ensure_l10n_central(command_context)
+    ensure_l10n_central(command_context)
 
     command_context.log(
         logging.INFO,
@@ -3704,7 +3647,7 @@ def repackage_single_locales(command_context, verbose=False, locales=[], dest=No
         # On macOS DMG packaging is slow to work with.
         append_env["MOZ_PKG_FORMAT"] = "TAR"
 
-    _ensure_l10n_central(command_context)
+    ensure_l10n_central(command_context)
 
     command_context.log(
         logging.INFO,

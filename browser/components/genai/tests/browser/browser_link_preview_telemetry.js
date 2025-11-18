@@ -32,6 +32,11 @@ async function waitForPanelOpen(message = "waiting for preview panel to open") {
 }
 
 add_task(async function test_default_telemetry() {
+  //set value to browser.ml.linkPreview.onboardingTimes to avoid  changed-pref test error
+  await SpecialPowers.pushPrefEnv({
+    set: [["browser.ml.linkPreview.onboardingTimes", ""]],
+  });
+
   // Open a window to initialize metrics in case previous test file reset
   await BrowserTestUtils.closeWindow(
     await BrowserTestUtils.openNewBrowserWindow()
@@ -54,7 +59,7 @@ add_task(async function test_default_telemetry() {
   );
   Assert.equal(
     Glean.genaiLinkpreview.shortcut.testGetValue(),
-    "shift,shift_alt,long_press",
+    "shift_alt,long_press",
     "Got default shortcut for testing"
   );
 });
@@ -521,8 +526,8 @@ add_task(async function test_onboarding_shift_type_telemetry() {
   Assert.equal(events[0].extra.action, "view", "View action recorded");
   Assert.equal(
     events[0].extra.type,
-    "shiftKey",
-    "shiftKey type recorded for view"
+    "longPress",
+    "longPress type recorded for view"
   );
 
   const closeButton = onboarding_card.shadowRoot.querySelector(
@@ -536,8 +541,8 @@ add_task(async function test_onboarding_shift_type_telemetry() {
   Assert.equal(events[1].extra.action, "close", "Close action recorded");
   Assert.equal(
     events[1].extra.type,
-    "shiftKey",
-    "shiftKey type recorded for close"
+    "longPress",
+    "longPress type recorded for close"
   );
 
   panel.remove();

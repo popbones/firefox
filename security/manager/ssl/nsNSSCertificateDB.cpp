@@ -9,7 +9,6 @@
 #include "ExtendedValidation.h"
 #include "NSSCertDBTrustDomain.h"
 #include "certdb.h"
-#include "mozilla/glean/SecurityCertverifierMetrics.h"
 #include "mozilla/Assertions.h"
 #include "mozilla/Base64.h"
 #include "mozilla/Casting.h"
@@ -58,24 +57,6 @@ using namespace mozilla::psm;
 extern LazyLogModule gPIPNSSLog;
 
 NS_IMPL_ISUPPORTS(nsNSSCertificateDB, nsIX509CertDB)
-
-NS_IMETHODIMP
-nsNSSCertificateDB::CountTrustObjects(uint32_t* aCount) {
-  UniquePK11SlotInfo slot(PK11_GetInternalKeySlot());
-  PK11GenericObject* objects =
-      PK11_FindGenericObjects(slot.get(), CKO_NSS_TRUST);
-  int count = 0;
-  for (PK11GenericObject* cursor = objects; cursor;
-       cursor = PK11_GetNextGenericObject(cursor)) {
-    count++;
-  }
-  PK11_DestroyGenericObjects(objects);
-
-  mozilla::glean::cert_verifier::trust_obj_count.Set(count);
-
-  *aCount = count;
-  return NS_OK;
-}
 
 NS_IMETHODIMP
 nsNSSCertificateDB::FindCertByDBKey(const nsACString& aDBKey,
@@ -1210,79 +1191,6 @@ nsNSSCertificateDB::GetCerts(nsTArray<RefPtr<nsIX509Cert>>& _retval) {
                                                                   _retval);
 }
 
-nsresult IsCertBuiltInRoot(const RefPtr<nsIX509Cert>& cert,
-                           bool& isBuiltInRoot) {
-  nsTArray<uint8_t> der;
-  nsresult rv = cert->GetRawDER(der);
-  if (NS_FAILED(rv)) {
-    return rv;
-  }
-  pkix::Input certInput;
-  pkix::Result result = certInput.Init(der.Elements(), der.Length());
-  if (result != pkix::Result::Success) {
-    return NS_ERROR_FAILURE;
-  }
-  result = IsCertBuiltInRoot(certInput, isBuiltInRoot);
-  if (result != pkix::Result::Success) {
-    return NS_ERROR_FAILURE;
-  }
-  return NS_OK;
-}
-
-NS_IMETHODIMP
-nsNSSCertificateDB::AsyncHasThirdPartyRoots(nsIAsyncBoolCallback* aCallback) {
-  NS_ENSURE_ARG_POINTER(aCallback);
-  nsMainThreadPtrHandle<nsIAsyncBoolCallback> callback(
-      new nsMainThreadPtrHolder<nsIAsyncBoolCallback>("AsyncHasThirdPartyRoots",
-                                                      aCallback));
-
-  return NS_DispatchBackgroundTask(
-      NS_NewRunnableFunction(
-          "nsNSSCertificateDB::AsyncHasThirdPartyRoots",
-          [cb = std::move(callback), self = RefPtr{this}] {
-            bool hasThirdPartyRoots = [self]() -> bool {
-              nsTArray<RefPtr<nsIX509Cert>> certs;
-              nsresult rv = self->GetCerts(certs);
-              if (NS_FAILED(rv)) {
-                return false;
-              }
-
-              for (const auto& cert : certs) {
-                bool isTrusted = false;
-                nsresult rv =
-                    self->IsCertTrusted(cert, nsIX509Cert::CA_CERT,
-                                        nsIX509CertDB::TRUSTED_SSL, &isTrusted);
-                if (NS_FAILED(rv)) {
-                  return false;
-                }
-
-                if (!isTrusted) {
-                  continue;
-                }
-
-                bool isBuiltInRoot = false;
-                rv = IsCertBuiltInRoot(cert, isBuiltInRoot);
-                if (NS_FAILED(rv)) {
-                  return false;
-                }
-
-                if (!isBuiltInRoot) {
-                  return true;
-                }
-              }
-
-              return false;
-            }();
-
-            NS_DispatchToMainThread(NS_NewRunnableFunction(
-                "nsNSSCertificateDB::AsyncHasThirdPartyRoots callback",
-                [cb, hasThirdPartyRoots]() {
-                  cb->OnResult(hasThirdPartyRoots);
-                }));
-          }),
-      NS_DISPATCH_EVENT_MAY_BLOCK);
-}
-
 static mozilla::Result<VerifyUsage, nsresult> MapX509UsageToVerifierUsage(
     nsIX509CertDB::VerifyUsage usage) {
   switch (usage) {
@@ -1307,6 +1215,7 @@ static mozilla::Result<VerifyUsage, nsresult> MapX509UsageToVerifierUsage(
 nsresult VerifyCertAtTime(nsIX509Cert* aCert, nsIX509CertDB::VerifyUsage aUsage,
                           uint32_t aFlags, const nsACString& aHostname,
                           mozilla::pkix::Time aTime,
+                          const Maybe<nsTArray<uint8_t>>& aSctsFromTls,
                           nsTArray<RefPtr<nsIX509Cert>>& aVerifiedChain,
                           bool* aHasEVPolicy,
                           int32_t* /*PRErrorCode*/ _retval) {
@@ -1339,10 +1248,10 @@ nsresult VerifyCertAtTime(nsIX509Cert* aCert, nsIX509CertDB::VerifyUsage aUsage,
         certVerifier->VerifySSLServerCert(certBytes, aTime,
                                           nullptr,  // Assume no context
                                           aHostname, resultChain, aFlags,
-                                          Nothing(),  // extraCertificates
-                                          Nothing(),  // stapledOCSPResponse
-                                          Nothing(),  // sctsFromTLSExtension
-                                          Nothing(),  // dcInfo
+                                          Nothing(),     // extraCertificates
+                                          Nothing(),     // stapledOCSPResponse
+                                          aSctsFromTls,  // sctsFromTLSExtension
+                                          Nothing(),     // dcInfo
                                           OriginAttributes(), &evStatus);
   } else {
     const nsCString& flatHostname = PromiseFlatCString(aHostname);
@@ -1352,9 +1261,9 @@ nsresult VerifyCertAtTime(nsIX509Cert* aCert, nsIX509CertDB::VerifyUsage aUsage,
         certBytes, vu, aTime,
         nullptr,  // Assume no context
         aHostname.IsVoid() ? nullptr : flatHostname.get(), resultChain, aFlags,
-        Nothing(),  // extraCertificates
-        Nothing(),  // stapledOCSPResponse
-        Nothing(),  // sctsFromTLSExtension
+        Nothing(),     // extraCertificates
+        Nothing(),     // stapledOCSPResponse
+        aSctsFromTls,  // sctsFromTLSExtension
         OriginAttributes(), &evStatus);
   }
 
@@ -1378,7 +1287,8 @@ class VerifyCertAtTimeTask final : public CryptoTask {
  public:
   VerifyCertAtTimeTask(nsIX509Cert* aCert, nsIX509CertDB::VerifyUsage aUsage,
                        uint32_t aFlags, const nsACString& aHostname,
-                       uint64_t aTime, nsICertVerificationCallback* aCallback)
+                       uint64_t aTime, const nsTArray<uint8_t>& aSctsFromTls,
+                       nsICertVerificationCallback* aCallback)
       : mCert(aCert),
         mUsage(aUsage),
         mFlags(aFlags),
@@ -1387,7 +1297,11 @@ class VerifyCertAtTimeTask final : public CryptoTask {
         mCallback(new nsMainThreadPtrHolder<nsICertVerificationCallback>(
             "nsICertVerificationCallback", aCallback)),
         mPRErrorCode(SEC_ERROR_LIBRARY_FAILURE),
-        mHasEVPolicy(false) {}
+        mHasEVPolicy(false) {
+    if (aSctsFromTls.Length() > 0) {
+      mSctsFromTls.emplace(aSctsFromTls.Clone());
+    }
+  }
 
  private:
   virtual nsresult CalculateResult() override {
@@ -1397,7 +1311,8 @@ class VerifyCertAtTimeTask final : public CryptoTask {
     }
     return VerifyCertAtTime(mCert, mUsage, mFlags, mHostname,
                             mozilla::pkix::TimeFromEpochInSeconds(mTime),
-                            mVerifiedCertList, &mHasEVPolicy, &mPRErrorCode);
+                            mSctsFromTls, mVerifiedCertList, &mHasEVPolicy,
+                            &mPRErrorCode);
   }
 
   virtual void CallCallback(nsresult rv) override {
@@ -1420,15 +1335,17 @@ class VerifyCertAtTimeTask final : public CryptoTask {
   int32_t mPRErrorCode;
   nsTArray<RefPtr<nsIX509Cert>> mVerifiedCertList;
   bool mHasEVPolicy;
+  Maybe<nsTArray<uint8_t>> mSctsFromTls;
 };
 
 NS_IMETHODIMP
 nsNSSCertificateDB::AsyncVerifyCertAtTime(
     nsIX509Cert* aCert, nsIX509CertDB::VerifyUsage aUsage, uint32_t aFlags,
     const nsACString& aHostname, uint64_t aTime,
+    const nsTArray<uint8_t>& aSctsFromTls,
     nsICertVerificationCallback* aCallback) {
   RefPtr<VerifyCertAtTimeTask> task(new VerifyCertAtTimeTask(
-      aCert, aUsage, aFlags, aHostname, aTime, aCallback));
+      aCert, aUsage, aFlags, aHostname, aTime, aSctsFromTls, aCallback));
   return task->Dispatch();
 }
 
