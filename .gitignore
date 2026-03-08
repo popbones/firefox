@@ -92,6 +92,7 @@ security/manager/.nss.checkout
 
 # Build directories
 /obj*/
+/.obj*/
 
 # Hazard analysis results
 /haz-*/
@@ -408,3 +409,7 @@ CLAUDE.local.md
 # Ignore .json.gz (typically profiles) in the root directory
 # lint-ignore-next-line: git-only
 /*.json.gz
+
+# Ignore direnv
+.envrc
+

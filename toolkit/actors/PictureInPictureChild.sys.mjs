@@ -1979,6 +1979,21 @@ export class PictureInPictureChild extends JSWindowActorChild {
       }
       case "pause": {
         this.sendAsyncMessage("PictureInPicture:Paused");
+        // MARKER: Pip Auto-Replay
+        let video = this.getWeakVideo();
+        let currentTime = this.videoWrapper.getCurrentTime(video);
+        let duration = this.videoWrapper.getDuration(video);
+        if (duration - currentTime <= 1.0) {
+          console.log("Video ended");
+          console.log("Move the scrubber to the beginning");
+          this.sendAsyncMessage("PictureInPicture:SetTimestampAndScrubberPosition", {
+            timestamp: this.videoWrapper.formatTimestamp(currentTime, duration),
+            scrubberPosition: 0
+          });
+          setTimeout(() => {
+            this.videoWrapper.play(video);
+          }, 100);
+        }
         break;
       }
       case "volumechange": {

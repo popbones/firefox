@@ -296,7 +296,10 @@ body:not(:fullscreen) #controls:hover #timestamp {
   opacity: 1;
 }
 
-#close,
+#close {
+  visibility: hidden;
+}
+
 #unpip {
   background-color: rgba(255, 255, 255, 0.8);
   position: absolute;
@@ -650,13 +653,10 @@ input:checked + .slider::before {
 }
 
 @media (width <= 630px) {
-  #audio-scrubber {
-    display: none;
-  }
 
   .end-controls {
     grid-template-columns: repeat(3, 1fr);
-    grid-template-areas: "audio closedcaption fullscreen";
+    grid-template-areas: "audio closedcaption audio-scrubber fullscreen";
   }
 }
 
@@ -667,7 +667,7 @@ input:checked + .slider::before {
 
   .end-controls {
     grid-template-columns: repeat(2, 1fr);
-    grid-template-areas: "audio fullscreen";
+    grid-template-areas: "audio audio-scrubber fullscreen";
   }
 }
 
@@ -683,14 +683,13 @@ input:checked + .slider::before {
 }
 
 @media (height <= 325px) and (width <= 630px) {
-  #closed-caption,
-  #audio-scrubber {
+  #closed-caption {
     display: none;
   }
 
   .end-controls {
     grid-template-columns: repeat(2, 1fr);
-    grid-template-areas: "audio fullscreen";
+    grid-template-areas: "audio audio-scrubber fullscreen";
   }
 }
 
@@ -707,7 +706,7 @@ input:checked + .slider::before {
 
   .end-controls {
     grid-template-columns: repeat(1, 1fr);
-    grid-template-areas: "audio";
+    grid-template-areas: "audio audio-scrubber";
   }
 }
 
